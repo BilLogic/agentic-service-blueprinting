@@ -47,6 +47,7 @@ import { ServicePanel } from '@/components/blueprint/ServicePanel'
 import { Drawer } from '@/components/ui/drawer'
 import { CanvasModeContext } from '@/contexts/canvasModeContext'
 import { QUERY_DEFAULTS } from '@/lib/queryClient'
+import { setActiveService } from '@/contexts/activeService'
 
 const SERVICE_NAME = 'Rooftop Retrofit'
 const SERVICE_SUMMARY = 'Rooftop solar, end to end.'
@@ -152,12 +153,18 @@ function mountPanel(node: ReactElement) {
   )
 }
 
+// The service is resolved once, at the root, into a store the hook is handed
+// from; here that root is stood in for by setting the store directly.
 beforeEach(() => {
   named = []
   supabase.client = fakeSupabase()
+  setActiveService({ id: 'svc-1', slug: 'rooftop-retrofit' })
 })
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  setActiveService(null)
+})
 
 describe('the service read, by who is reading', () => {
   it('a signed-out reader gets the service and no commercial spec', async () => {

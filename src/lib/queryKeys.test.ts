@@ -57,7 +57,7 @@ describe('the query key builder', () => {
       if (typeof entry === 'string') continue
       const sample =
         entry === queryKeys.serviceSpec
-          ? entry.of(true)
+          ? entry.of('x', true)
           : entry === queryKeys.sliceScenario
             ? entry.of(['b', 'a'])
             : (entry.of as (id: string) => string)('x')

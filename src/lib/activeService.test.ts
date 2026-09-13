@@ -9,10 +9,11 @@ import {
 import { setActiveServiceSlug } from '@/contexts/activeServiceStore'
 
 /*
- * The read seam: `findActiveServiceId` is what scopes every unpinned journey
- * read (`useServicePhases`, `useSlices`) to one service. These assert that the
- * slug in the URL selects the service whose rows those reads return — and only
- * that service — mirroring how the path-selection tests pin the selection seam.
+ * The slug-to-id resolver the components and agent tools still call for
+ * themselves (the scoped read hooks are handed the resolved store's id
+ * instead). These assert that the slug in the URL selects one service — and
+ * only that service — mirroring how the path-selection tests pin the
+ * selection seam.
  */
 
 const TWO_SERVICES = [

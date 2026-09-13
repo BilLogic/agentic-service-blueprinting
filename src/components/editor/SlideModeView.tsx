@@ -51,9 +51,9 @@ export function SlideModeSidebarNav({
   const [scenarioPhaseId, setScenarioPhaseId] = useState<string | null>(null)
 
   // The service a new phase would belong to: the one the URL names, not the
-  // first by `created_at`. The sidebar draws the ACTIVE service's phases
-  // (`useServicePhases` resolves the same slug), so a `+` that wrote to the
-  // first service put the new phase on a board nobody was looking at.
+  // first by `created_at`. The sidebar draws the ACTIVE service's phases (the
+  // resolved store's id), so a `+` that wrote to the first service put the
+  // new phase on a board nobody was looking at.
   //
   // Keyed on the slug so switching service re-resolves rather than leaving
   // the previous service's id behind — this sidebar outlives a switch, which

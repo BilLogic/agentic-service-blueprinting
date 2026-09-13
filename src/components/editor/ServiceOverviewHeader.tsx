@@ -10,6 +10,7 @@ import {
 } from '@/contexts/sidebarCollapsedContext'
 import { useServiceSpec } from '@/hooks/useServiceSpec'
 import { cn } from '@/lib/utils'
+import { useActiveServiceId } from '@/contexts/activeService'
 
 /**
  * The overview's title bar — the service, and the way into its properties.
@@ -41,7 +42,7 @@ import { cn } from '@/lib/utils'
  * to the floating navbar and draw nothing itself.
  */
 export function ServiceOverviewHeader() {
-  const result = useServiceSpec()
+  const result = useServiceSpec(useActiveServiceId())
   // `useServiceSpec` is `QueryResult<ServiceSpec | null>`, so `ready` can
   // carry null data — a deployment with no service recorded yet. That is a
   // different fact from a failure, and the bar draws it differently.

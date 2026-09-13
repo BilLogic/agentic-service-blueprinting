@@ -45,7 +45,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setShellBooting } from '@/contexts/shellBootStore'
 import type { ReactNode } from 'react'
 import {
@@ -65,6 +65,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { EntityDetailProvider } from '@/contexts/EntityDetailContext'
 import { ENTITY_KIND_DEFINITIONS } from '@/lib/panelTerms'
 import { QUERY_DEFAULTS } from '@/lib/queryClient'
+import { setActiveService } from '@/contexts/activeService'
 
 const supabase = vi.hoisted(() => ({ client: null as unknown, calls: 0 }))
 
@@ -81,7 +82,13 @@ vi.mock('@/contexts/SupabaseProvider', () => ({
   }),
 }))
 
-afterEach(cleanup)
+// The service is resolved once, at the root, into a store the hook is handed
+// from; here that root is stood in for by setting the store directly.
+beforeEach(() => setActiveService({ id: 'svc-1', slug: 'example-service' }))
+afterEach(() => {
+  cleanup()
+  setActiveService(null)
+})
 // The shell's boot latch is a module store, so a test that raises it would
 // leave every later render skeletoning. Lowered after each.
 afterEach(() => setShellBooting(false))

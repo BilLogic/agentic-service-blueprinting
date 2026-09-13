@@ -2,12 +2,13 @@
 /**
  * The service a reader is told about is the service the board is drawing.
  *
- * The board resolves its service through `findActiveServiceId` — the one the
- * URL slug names, or the first by `created_at` at the bare root. The header's
- * service read and the definition popovers' examples each took the first row
- * by `created_at` instead, unconditionally. With one service the two answers
- * are the same row and nothing shows; with a second, the board drew one
- * service while its title, summary, counts and examples described another.
+ * The header's service read and the definition popovers' examples each took
+ * the first row by `created_at`, unconditionally; then each resolved the URL's
+ * slug for itself. Now neither resolves anything: the active service is
+ * resolved once, at the root, into a store, and every scoped read is handed
+ * the id. These set the store and assert what the hooks read — and that a
+ * hook handed nothing reads nothing, rather than the first service or all of
+ * them.
  *
  * The seam is the two hooks, rendered over a fake PostgREST that honours the
  * filters it is given, because the claim is about which row comes back: a
@@ -45,14 +46,13 @@ vi.mock('@/contexts/SupabaseProvider', () => ({
   }),
 }))
 
-import { setActiveServiceSlug } from '@/contexts/activeServiceStore'
+import { setActiveService, useActiveServiceId } from '@/contexts/activeService'
 import {
   EntityExamplesProvider,
   useEntityExamples,
 } from '@/contexts/EntityExamplesContext'
 import { useServiceSpec } from '@/hooks/useServiceSpec'
 import { QUERY_DEFAULTS } from '@/lib/queryClient'
-import { __resetActiveServiceIdCache } from '@/lib/service'
 
 type Row = Record<string, unknown>
 type Result = { data: unknown; error: { message: string } | null }
@@ -149,7 +149,7 @@ function mount(node: ReactNode) {
 
 /** What the service header is built from, as one line of text. */
 function ServiceLine() {
-  const result = useServiceSpec()
+  const result = useServiceSpec(useActiveServiceId())
   if (result.status !== 'ready') return <p>{result.status}</p>
   const spec = result.data
   if (!spec) return <p>no service</p>
@@ -174,17 +174,18 @@ beforeEach(() => {
   supabase.client = fakeSupabase()
   supabase.canReadPrivate = false
   supabase.isLoading = false
-  __resetActiveServiceIdCache()
 })
 
 afterEach(() => {
   cleanup()
-  setActiveServiceSlug(null)
+  setActiveService(null)
 })
 
+const HEAT_PUMPS = { id: 'svc-2', slug: 'heat-pump-grants' }
+
 describe('the service the header names', () => {
-  it('is the one the URL names, not the first one created', async () => {
-    setActiveServiceSlug('heat-pump-grants')
+  it('is the active one, not the first one created', async () => {
+    setActiveService(HEAT_PUMPS)
     mount(<ServiceLine />)
     expect(
       await screen.findByText('Heat Pump Grants · 2 phases · 2 scenarios'),
@@ -192,17 +193,31 @@ describe('the service the header names', () => {
     expect(screen.queryByText(/Rooftop Retrofit/)).toBeNull()
   })
 
-  it('is the first one created at the bare root, where no service is named', async () => {
+  it('is nothing while no service is active — not the first, not all', async () => {
+    mount(<ServiceLine />)
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(screen.getByText('loading')).toBeDefined()
+    expect(requests).toEqual([])
+  })
+
+  it('follows a switch: the new service is a new key, read afresh', async () => {
+    setActiveService({ id: 'svc-1', slug: 'rooftop-retrofit' })
     mount(<ServiceLine />)
     expect(
       await screen.findByText('Rooftop Retrofit · 1 phases · 1 scenarios'),
+    ).toBeDefined()
+    act(() => setActiveService(HEAT_PUMPS))
+    expect(
+      await screen.findByText('Heat Pump Grants · 2 phases · 2 scenarios'),
     ).toBeDefined()
   })
 })
 
 describe('the examples the definitions are grounded with', () => {
-  it('come from the service the URL names', async () => {
-    setActiveServiceSlug('heat-pump-grants')
+  it('come from the active service', async () => {
+    setActiveService(HEAT_PUMPS)
     mount(
       <EntityExamplesProvider>
         <LaneExample />
@@ -215,7 +230,7 @@ describe('the examples the definitions are grounded with', () => {
 describe('the requests the service read makes', () => {
   it('asks for nothing until the session is known', async () => {
     supabase.isLoading = true
-    setActiveServiceSlug('heat-pump-grants')
+    setActiveService(HEAT_PUMPS)
     const view = mount(<ServiceLine />)
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0))
@@ -237,7 +252,7 @@ describe('the requests the service read makes', () => {
 
   it('sends the counts and the business model together', async () => {
     supabase.canReadPrivate = true
-    setActiveServiceSlug('heat-pump-grants')
+    setActiveService(HEAT_PUMPS)
     held = new Set(['phases', 'business_models'])
     mount(<ServiceLine />)
 

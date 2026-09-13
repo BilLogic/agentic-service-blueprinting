@@ -30,6 +30,7 @@ import { suppressCanvasResizeRefit } from '@/lib/canvasChromeResize'
 import { cn } from '@/lib/utils'
 import type { Slice } from '@/types/database'
 import { WorkspaceServiceSwitcher } from '@/components/editor/WorkspaceServiceSwitcher'
+import { useActiveServiceId } from '@/contexts/activeService'
 
 function availableSlices(result: ReturnType<typeof useSlices>): Slice[] {
   switch (result.status) {
@@ -186,7 +187,7 @@ export function TabStrip({
     dismissMissingSlice,
   } = useViewState()
   const { canWrite } = useSupabase()
-  const slices = useSlices()
+  const slices = useSlices(useActiveServiceId())
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string
     title: string

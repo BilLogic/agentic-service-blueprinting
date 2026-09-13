@@ -4,9 +4,8 @@ import {
 } from '@/data/sliceFallbacks'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
 import { isBundledSampleActive } from '@/lib/bundledSample'
-import { awaitOrAbort, findActiveServiceId } from '@/lib/service'
 import type { Slice, Slide } from '@/types/database'
-import { FIRST_SERVICE, queryKeys } from '@/lib/queryKeys'
+import { queryKeys } from '@/lib/queryKeys'
 
 /** Slim frame projection carried on the list — powers client-side
  * membership checks (panel "In slices" footer) without per-cell queries. */
@@ -46,25 +45,20 @@ const slicesFallback = (): SliceListEntry[] | null =>
     : null
 
 /**
- * All slices for one service, ordered by position, each carrying
- * its frames' cell ids. With no explicit `serviceId`, the ACTIVE service is
- * used — the same resolution as `useServicePhases`.
+ * All slices for one service, ordered by position, each carrying its frames'
+ * cell ids. The service is the caller's to name, as for `useServicePhases`;
+ * given `null` the hook fetches nothing.
  */
-export function useSlices(serviceId?: string): QueryResult<SliceListEntry[]> {
+export function useSlices(serviceId: string | null): QueryResult<SliceListEntry[]> {
   return useSupabaseQuery<SliceListEntry[]>(
-    queryKeys.slices.of(serviceId ?? FIRST_SERVICE),
+    serviceId ? queryKeys.slices.of(serviceId) : null,
     async (client, signal) => {
-      let resolvedServiceId = serviceId
-      if (!resolvedServiceId) {
-        resolvedServiceId =
-          (await awaitOrAbort(findActiveServiceId(client), signal)) ?? undefined
-        if (!resolvedServiceId) return []
-      }
-
+      // Unreachable — the key is null without a service — but a type-level fact.
+      if (!serviceId) return []
       const { data, error } = await client
         .from('slices')
         .select('*, slides (id, position, cell_ids)')
-        .eq('service_id', resolvedServiceId)
+        .eq('service_id', serviceId)
         .order('position', { ascending: true })
         .abortSignal(signal)
       if (error) throw new Error(error.message)

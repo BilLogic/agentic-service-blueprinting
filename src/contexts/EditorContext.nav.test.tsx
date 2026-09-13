@@ -17,9 +17,10 @@
  * that never overlaid `sample.nav`, this template's phase and scenario names were
  * rendered as theirs, briefly, on every single load.
  *
- * The seam under test is the real one end to end: `useServicePhases` is NOT
- * mocked, only the Supabase provider is, so the no-database case runs the
- * hook's actual unconfigured path rather than a stand-in for it. The
+ * The seam under test is the real one end to end: `ActiveServiceProvider`
+ * resolves the service into the store and `useServicePhases` is handed its
+ * id, neither mocked — only the Supabase provider is — so the no-database
+ * case runs the hook's actual unconfigured path rather than a stand-in for it. The
  * `isSupabaseConfigured` mock below moves WITH the provider's `configured`
  * for the same reason — in the app they are one function, and a test where
  * they disagree is testing a state that cannot happen.
@@ -28,6 +29,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, render, waitFor } from '@testing-library/react'
 import { useEffect } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { setActiveService } from '@/contexts/activeService'
+import { ActiveServiceProvider } from '@/contexts/ActiveServiceContext'
+import { setActiveServiceSlug } from '@/contexts/activeServiceStore'
 import { DeploymentConfigProvider } from '@/contexts/DeploymentConfigContext'
 import { EditorProvider, useEditor } from '@/contexts/EditorContext'
 import { hasBlueprintFallback } from '@/data/blueprintFallbacks'
@@ -82,6 +86,8 @@ const OWN_SCENARIO_SUMMARY = 'What this deployment calls its first scenario.'
 const OWN_LAYOUT = SAMPLE_KEPT!.layout === 'merged' ? 'stacked' : 'merged'
 
 const SERVICE_ID = '00000000-0000-4000-8000-0000000000ff'
+/** The one service the roster read answers with — what the provider resolves. */
+const SERVICE_ROW = { id: SERVICE_ID, name: 'Our service', slug: 'our-service' }
 
 /**
  * The rows a deployment that adopted this template's ids, rewrote their prose and
@@ -138,7 +144,7 @@ function table(data: unknown) {
 
 const connectedClient = {
   from: (relation: string) =>
-    relation === 'services' ? table([{ id: SERVICE_ID }]) : table(PHASE_ROWS),
+    relation === 'services' ? table([SERVICE_ROW]) : table(PHASE_ROWS),
 }
 
 /** A phases read that never settles: the first fetch, still in flight. */
@@ -161,13 +167,13 @@ function pendingTable() {
 /** Configured, and the structure query has not come back yet. */
 const inFlightClient = {
   from: (relation: string) =>
-    relation === 'services' ? table([{ id: SERVICE_ID }]) : pendingTable(),
+    relation === 'services' ? table([SERVICE_ROW]) : pendingTable(),
 }
 
 /** Configured, answered, and holding no phases at all. */
 const emptyClient = {
   from: (relation: string) =>
-    relation === 'services' ? table([{ id: SERVICE_ID }]) : table([]),
+    relation === 'services' ? table([SERVICE_ROW]) : table([]),
 }
 
 let observed: NavItem[] | null = null
@@ -195,9 +201,11 @@ async function mount() {
     render(
       <QueryClientProvider client={client}>
         <DeploymentConfigProvider>
-          <EditorProvider>
-            <Probe />
-          </EditorProvider>
+          <ActiveServiceProvider>
+            <EditorProvider>
+              <Probe />
+            </EditorProvider>
+          </ActiveServiceProvider>
         </DeploymentConfigProvider>
       </QueryClientProvider>,
     )
@@ -206,6 +214,8 @@ async function mount() {
 
 afterEach(() => {
   cleanup()
+  setActiveServiceSlug(null)
+  setActiveService(null)
   supabase.configured = false
   supabase.client = null
   observed = null

@@ -7,40 +7,44 @@ import {
   type ReactNode,
 } from 'react'
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery'
+import { useSupabase } from '@/contexts/SupabaseProvider'
+import {
+  setActiveService,
+  useActiveServiceRef,
+  type ActiveServiceRef,
+} from '@/contexts/activeService'
 import {
   getActiveServiceSlug,
   setActiveServiceSlug,
   useActiveServiceSlug,
 } from '@/contexts/activeServiceStore'
-import { invalidateQueries, invalidateStructure } from '@/lib/queryClient'
+import { SAMPLE_SERVICE_ID } from '@/data/sampleBlueprint'
 import { resolveServiceBySlug, serviceSlug } from '@/lib/serviceSlug'
 import { queryKeys } from '@/lib/queryKeys'
 
 /**
  * The active service — the one the URL slug names — resolved to its id and
- * name, threaded the way the path selection is: a provider mounted high in the
- * tree, read through a hook.
+ * name, ONCE, here, at the surface root.
  *
- * The slug itself lives in a module store (`activeServiceStore`) under the
- * decision that cross-surface state is a module store, because non-React
- * resolvers read it; this provider is the React-side resolution of slug ->
- * service and the one place that CANONICALIZES the URL: once the service is
- * known, its own slug is written to the path, so a single-service
- * installation that booted at the bare root ends with its slug in the address
- * bar, and a reload lands on the same service.
+ * Two module stores meet in this provider. The requested slug lives in
+ * `activeServiceStore`: seeded from the boot path, moved by a switch,
+ * mirrored into the URL. The resolved service — id and slug together — lives
+ * in `activeService`, and this provider is its only writer: once the roster
+ * is read, the slug is matched (or the first service taken at the bare
+ * root), the answer is written to the store, and the service's own slug is
+ * written back to the URL so a single-service installation that booted at `/`
+ * ends with its slug in the address bar and a reload lands on the same
+ * service.
  *
- * Without it the routing scheme is only half wired. `lib/service.ts` READS the
- * store — and through it the agent's WRITE path, which lands a new row on the
- * service on screen — while `serviceRoute.ts` parses the slug out of the boot
- * path and builds the path back. But nothing ever WROTE the store, so an app
- * entered at `/` stayed at `/` forever and its first read fell through to "the
- * first service by created_at" every time.
- * This is the missing write.
+ * Everything below reads the resolved store and resolves nothing: a
+ * service-scoped read hook takes the id as a parameter, and a hook given
+ * `null` fetches nothing. This context is the thin subscription over the
+ * store for the surfaces that also need the service's NAME or the whole
+ * roster — the header, the switcher, the cover.
  *
- * Journey reads do not consume this context — they resolve the id inside their
- * fetchers via `lib/service.ts` so their two reads still go out in the same
- * tick. This context is for surfaces that need the service's identity or the
- * whole roster, and for the canonicalization effect below.
+ * With no database the active service is the bundled sample's, so the
+ * sample board's reads have an id to key on and resolve from their
+ * fallbacks. The URL is left alone in that mode.
  */
 
 export type ActiveService = { id: string; name: string; slug: string }
@@ -54,10 +58,11 @@ type ActiveServiceContextValue = {
   slug: string | null
   loading: boolean
   /**
-   * Make another service active: write its slug (and the URL, via the store)
-   * and drop the caches the new service must repopulate. A no-op switch to the
-   * service already active still refetches nothing new, since the slug guard in
-   * the store short-circuits.
+   * Make another service active: write its slug (and the URL, via the slug
+   * store) and the resolved service (via the resolved store), in one step.
+   * The reads are keyed by the service's id, so a switch refetches nothing
+   * and drops nothing: the new service's reads are new keys, and the old
+   * service's stay warm for a switch back.
    */
   switchService: (slug: string) => void
 }
@@ -73,7 +78,21 @@ const ActiveServiceContext = createContext<ActiveServiceContextValue>({
   switchService: () => {},
 })
 
+/**
+ * The bundled sample's service, active whenever there is no database. The
+ * sample's service row carries no slug and nothing dereferences this one —
+ * the URL is left alone in that mode — so the value is a placeholder that
+ * only has to be a string.
+ */
+const SAMPLE_ACTIVE_SERVICE: ActiveServiceRef = { id: SAMPLE_SERVICE_ID, slug: 'sample' }
+
+/** The store's view of a roster entry: the id and the slug, without the name. */
+function toRef(service: ActiveService): ActiveServiceRef {
+  return { id: service.id, slug: service.slug }
+}
+
 export function ActiveServiceProvider({ children }: { children: ReactNode }) {
+  const { configured } = useSupabase()
   // Subscribe so the context value tracks the slug the store holds.
   const routeSlug = useActiveServiceSlug()
   const fallback = useCallback(() => null, [])
@@ -81,7 +100,7 @@ export function ActiveServiceProvider({ children }: { children: ReactNode }) {
   const result = useSupabaseQuery<ActiveService[]>(
     // The roster is one read per page load; the ACTIVE one is derived from it
     // and the URL slug below, so a switch re-picks without refetching. The key
-    // is constant — `switchService` invalidates the board caches, not this one.
+    // is constant: a switch changes which service is active, not the roster.
     queryKeys.activeService,
     async (client, signal) => {
       const { data, error } = await client
@@ -102,47 +121,47 @@ export function ActiveServiceProvider({ children }: { children: ReactNode }) {
 
   const services = result.status === 'ready' ? result.data : NO_SERVICES
 
-  // The active service is the one the URL slug names, or the first at the bare
-  // root (the single-service case). Derived from the roster + the reactive
-  // slug, so a switch re-picks the moment the store changes — no refetch.
-  const service = useMemo<ActiveService | null>(() => {
+  // The resolution: the service the URL slug names, or the first at the bare
+  // root (the single-service case), picked from the roster.
+  const picked = useMemo<ActiveService | null>(() => {
     if (services.length === 0) return null
-    const picked = routeSlug
-      ? resolveServiceBySlug(services, routeSlug)
-      : services[0]
-    return picked ?? null
+    return (routeSlug ? resolveServiceBySlug(services, routeSlug) : services[0]) ?? null
   }, [services, routeSlug])
 
-  // Canonicalize: write the resolved service's own slug into the URL. This is
-  // what puts the single service's slug in the address bar and keeps a reload
-  // on the same service. No-ops once the URL already carries the canonical slug.
+  // The one resolution: write the answer to the resolved store, and
+  // canonicalize the URL with the service's own slug — what puts the single
+  // service's slug in the address bar and keeps a reload on the same service.
+  // No-ops once both already hold the answer. `null` while the roster loads
+  // and when the slug names no service: a reader given null reads nothing.
   useEffect(() => {
-    if (!service) return
-    if (getActiveServiceSlug() !== service.slug) setActiveServiceSlug(service.slug)
-  }, [service])
+    if (!configured) {
+      setActiveService(SAMPLE_ACTIVE_SERVICE)
+      return
+    }
+    setActiveService(picked ? toRef(picked) : null)
+    if (picked && getActiveServiceSlug() !== picked.slug) setActiveServiceSlug(picked.slug)
+  }, [configured, picked])
 
-  const switchService = useCallback((slug: string) => {
-    setActiveServiceSlug(slug)
-    /*
-      The board and the service surfaces read under constant keys, because
-      reads never refetch on their own: changing the slug alone would not
-      refetch them, so drop the caches the newly-active service must
-      repopulate — the journey (`invalidateStructure`), the service identity
-      (`serviceSpec`) and the per-kind examples, which are keyed separately
-      (`serviceEntityExamples`) rather than riding the spec. A UI-only
-      switch, not a write, which is why the invalidation lives here and not
-      in a mutation module.
+  // The context is built OVER the store, not beside it: `service` is the
+  // store's entry named in the roster, so this hook and `useActiveServiceId`
+  // agree in every frame — there is no frame where the header names a service
+  // the board has not yet been handed.
+  const ref = useActiveServiceRef()
+  const service = useMemo<ActiveService | null>(
+    () => (ref ? (services.find((entry) => entry.id === ref.id) ?? null) : null),
+    [ref, services],
+  )
 
-      Every one of those reads resolves `findActiveServiceId` — the board's
-      `useServicePhases` and `useSlices`, and the service's `useServiceSpec`
-      and `useServiceEntityExamples` — so the dropped caches come back scoped
-      to the newly-active service rather than to whichever one is first by
-      `created_at`, and the header names the service the canvas draws.
-    */
-    invalidateStructure()
-    invalidateQueries(queryKeys.serviceSpec.prefix)
-    invalidateQueries(queryKeys.serviceEntityExamples.prefix)
-  }, [])
+  const switchService = useCallback(
+    (slug: string) => {
+      setActiveServiceSlug(slug)
+      // Resolved here and now from the roster in hand rather than left to the
+      // effect, so no frame reads the old service under the new slug.
+      const picked = resolveServiceBySlug(services, slug)
+      setActiveService(picked ? toRef(picked) : null)
+    },
+    [services],
+  )
 
   const value = useMemo<ActiveServiceContextValue>(
     () => ({

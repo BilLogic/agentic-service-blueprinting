@@ -28,6 +28,7 @@ import {
 } from '@/lib/blueprintValidation'
 import { errorMessage } from '@/lib/utils'
 import { queryKeys } from '@/lib/queryKeys'
+import { useActiveServiceId } from '@/contexts/activeService'
 
 /** A version that lanes can be copied from, labelled by where it lives. */
 type LaneSource = {
@@ -116,7 +117,7 @@ export function CreateBlueprintDialog({
   fixedPhaseId?: string | null
 }) {
   const { client } = useSupabase()
-  const phases = useServicePhases()
+  const phases = useServicePhases(useActiveServiceId())
   const laneSources = useLaneSources()
   // The standard set is the deployment's to name; standalone it resolves to
   // the template's own.

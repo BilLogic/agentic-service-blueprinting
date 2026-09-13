@@ -1,10 +1,9 @@
 import { useCallback, useMemo } from 'react'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery'
-import { awaitOrAbort, findActiveServiceId } from '@/lib/service'
 import { phasesToSlides, type PhaseRow } from '@/lib/phasesToSlides'
 import type { NavItem } from '@/types/nav'
-import { FIRST_SERVICE, queryKeys } from '@/lib/queryKeys'
+import { queryKeys } from '@/lib/queryKeys'
 
 const SERVICE_PHASES_SELECT = `
   id,
@@ -23,67 +22,35 @@ const SERVICE_PHASES_SELECT = `
   )
 `
 
-/**
- * Same projection plus the owning service, for the unpinned read that
- * cannot filter server-side because the service id is still in flight.
- */
-const SERVICE_PHASES_SELECT_WITH_OWNER = `service_id,${SERVICE_PHASES_SELECT}`
-
-type PhaseQueryRow = PhaseRow & { service_id?: string }
-
 const NO_PHASES: PhaseRow[] = []
 
 /**
  * Load the phases (and nested scenarios) of one service.
  *
- * With no explicit `serviceId`, the ACTIVE service is used — the one the URL
- * slug names, falling back to the first service by `created_at` at the bare
- * root (the common single-service case). Pass an id to pin a specific service.
- *
- * Both reads go out in the same tick. Resolving the service *then*
- * querying its phases put a full serial round trip in front of the canvas
- * mount, which is exactly the window where the unfitted viewport used to
- * show. Unpinned, the phases read is therefore unfiltered and narrowed to
- * the resolved service client-side — no extra rows in the single-service
- * databases this targets. The result goes through the shared query cache, so
- * the lookup survives remounts and is shared with every other consumer of
- * `findActiveServiceId`.
+ * The service is the caller's to name — the active one from the store at a
+ * surface root, or a pinned id. Given `null`, the hook fetches nothing and
+ * stays `loading`: no service is a board with nothing on it, not a read of
+ * every service's phases. This hook used to resolve the URL's slug itself,
+ * in parallel with an unfiltered read it then narrowed client-side; the
+ * resolution now happens once, in the provider, before any scoped read.
  */
-export function useServicePhases(serviceId?: string) {
+export function useServicePhases(serviceId: string | null) {
   const { configured } = useSupabase()
   const fallback = useCallback(() => null, [])
 
   const result = useSupabaseQuery<PhaseRow[]>(
-    queryKeys.servicePhases.of(serviceId ?? FIRST_SERVICE),
+    serviceId ? queryKeys.servicePhases.of(serviceId) : null,
     async (client, signal) => {
-      const serviceIdPromise = serviceId
-        ? Promise.resolve<string | null>(serviceId)
-        : awaitOrAbort(findActiveServiceId(client), signal)
-
-      const rowsPromise = (
-        serviceId
-          ? client
-              .from('phases')
-              .select(SERVICE_PHASES_SELECT)
-              .eq('service_id', serviceId)
-          : client.from('phases').select(SERVICE_PHASES_SELECT_WITH_OWNER)
-      )
+      // Unreachable — the key is null without a service — but a type-level fact.
+      if (!serviceId) return NO_PHASES
+      const { data, error } = await client
+        .from('phases')
+        .select(SERVICE_PHASES_SELECT)
+        .eq('service_id', serviceId)
         .order('position', { ascending: true })
         .abortSignal(signal)
-
-      const [resolvedServiceId, { data, error }] = await Promise.all([
-        serviceIdPromise,
-        rowsPromise,
-      ])
       if (error) throw new Error(error.message)
-      // Empty database — the caller falls back to local sample slides.
-      if (!resolvedServiceId) return NO_PHASES
-
-      const rows = (data ?? []) as PhaseQueryRow[]
-      if (serviceId) return rows as PhaseRow[]
-      return rows.filter(
-        (row) => row.service_id === resolvedServiceId,
-      )
+      return (data ?? []) as PhaseRow[]
     },
     fallback,
   )
