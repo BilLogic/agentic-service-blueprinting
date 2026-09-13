@@ -46,9 +46,9 @@ Procedure: [releasing.md](./releasing.md).
 | `npm run check:parity` | The SQL adapter and the no-database adapter project different field sets out of one blueprint. The contract calls the second one "not a degraded mode"; this is what makes that sentence true. |
 | `npm run check:seed-load` | The generated seed does not load onto a fresh core + recipe, or it loads but the **anon** key cannot read the content back. Stands up a database of its own (shim, the platform's SELECT default, core, recipe, seed), then reads every seeded table and the two render joins as `anon` — the role the deployed app's key resolves to. Every other database check reads as the owner, which cannot see the one failure the deployer feels: a table the recipe never exposed renders blank in the browser and stays green everywhere else. It then asks the other half — what a signed-in **author** may write — by becoming that role: for every column and verb the panels write, it sets `authenticated`, sets a service-account claim, attempts the write and rolls it back, then attempts the same write as a signed-in reader, who must change nothing. Both directions matter. A grant or a policy has gone missing in three of the last migrations, and a policy that refuses matches zero rows and returns 200, so the catalogue cannot tell "an author may write this" from "only a service account may". Needs a reachable Postgres and permission to create a database; in CI it is the `portable-core` job's service. |
 | `npm run check:function-bodies` | A `language sql` function in `public` does not resolve when it is CALLED. A SQL body is stored as text and resolved at call time, so a rename moves the relation and leaves every body naming it untouched: the function keeps existing, keeps dumping cleanly, and raises `42P01` the first time anybody calls it. Creation is no defence — the body was valid when it was written, and the rename that falsified it validates nothing. This stands up the same stack as the row above, then calls every `language sql` function with a typed null per argument inside a rolled-back transaction, plus `slices_referencing` and `deletion_impact` with real ids out of the seed. Only the SQLSTATEs meaning "that is not there" fail it (undefined table, column, function, schema); a function raising its own exception on null input has already answered the question and is reported as tolerated. `--self-test` plants the defect in its own order — a table, a body that reads it, then the rename — and asserts the call is reported, because a sweep where everything answers looks identical to one that called nothing. This is #171: `21000115000000` renamed `slice_items` to `slides`, `slices_referencing` kept reading the old name, and since `deletion_impact` reads that function and every delete RPC reads `deletion_impact`, no structural delete could succeed on a fresh core. |
-| `npm run check:deployment-seed-load` | *Not in CI — it needs a deployment's checkout.* A **deployment's own** seed does not load onto this template's portable core, or loads and does not render to `anon`. Same stack as the row above with the last step swapped: the deployment's seed replaces this repository's, loaded in the order the deployment itself states under `[db.seed]` in its `supabase/config.toml`. This is the behavioural-parity substrate a reconciliation ticket reads against — the sibling row proves the loop closes on content this repo generated, which the generator and the schema can hardly disagree about; only a real deployment's content answers whether the core is *sufficient*. It applies the seed with `ON_ERROR_STOP` **off** on purpose, because here the failing statements are the deliverable rather than a bug to stop at: every one is collected, grouped by reason with counts and examples, and knock-on failures (a foreign key whose row an earlier failure never inserted, the core's own `cells: …` raises, an aborted transaction block) are listed separately so the one root cause is not buried under the forty it caused. Point it at a deployment with `-- --seed <path>` or `DEPLOYMENT_SEED=<path>`; with neither it looks for a checkout beside this one that ships a `supabase/seed.sql` and states a different package name, and **skips with a message** when there is none or more than one. |
-| `npm run check:target` | *Not in CI — it needs a live project.* Asks the configured database for `public.schema_version` and distinguishes never migrated from stale from fine. Worth running once against any target, because the fallback renders perfectly over a database that was never migrated. |
-| `npm run check:agent-account` | *Not in CI — it needs a live project.* A connected database's agent-facing account has drifted from `panelTerms.ts`, `database.ts` or `pg_description`, or column-comment coverage fell. Writes with `npm run agent-account`; `--record` moves the ratchet. With no database configured it prints a skip and exits 0 — the template's bundled sample is that path, and a check that always skipped would read as an answer. Fixture coverage of the renderers, the ratchet and the skip lives in `scripts/tests/agent-account.test.mjs`, which does run in CI. |
+| `npm run check:deployment-seed-load` | *Not in CI, and by decision nothing schedules it — it needs a deployment's checkout beside this one; see § 3, the three live guards.* A **deployment's own** seed does not load onto this template's portable core, or loads and does not render to `anon`. Same stack as the row above with the last step swapped: the deployment's seed replaces this repository's, loaded in the order the deployment itself states under `[db.seed]` in its `supabase/config.toml`. This is the behavioural-parity substrate a reconciliation ticket reads against — the sibling row proves the loop closes on content this repo generated, which the generator and the schema can hardly disagree about; only a real deployment's content answers whether the core is *sufficient*. It applies the seed with `ON_ERROR_STOP` **off** on purpose, because here the failing statements are the deliverable rather than a bug to stop at: every one is collected, grouped by reason with counts and examples, and knock-on failures (a foreign key whose row an earlier failure never inserted, the core's own `cells: …` raises, an aborted transaction block) are listed separately so the one root cause is not buried under the forty it caused. Point it at a deployment with `-- --seed <path>` or `DEPLOYMENT_SEED=<path>`; with neither it looks for a checkout beside this one that ships a `supabase/seed.sql` and states a different package name, and **skips with a message** when there is none or more than one. |
+| `npm run check:target` | *Not in CI — it needs a live project, which a deployment has and this repository does not; see § 3, the three live guards.* Asks the configured database for `public.schema_version` and distinguishes never migrated from stale from fine. Worth running once against any target, because the fallback renders perfectly over a database that was never migrated. |
+| `npm run check:agent-account` | *Not in CI — it needs a live project, which a deployment has and this repository does not; see § 3, the three live guards.* A connected database's agent-facing account has drifted from `panelTerms.ts`, `database.ts` or `pg_description`, or column-comment coverage fell. Writes with `npm run agent-account`; `--record` moves the ratchet. With no database configured it prints a skip and exits 0 — the template's bundled sample is that path, and a check that always skipped would read as an answer. Fixture coverage of the renderers, the ratchet and the skip lives in `scripts/tests/agent-account.test.mjs`, which does run in CI. |
 
 The `portable-core` CI job goes further than a diff: it applies the generated
 core to a stock `postgres:17` with nothing in front of it, applies the recipe
@@ -58,19 +58,52 @@ inventories, loads the seed onto a third and reads it back as `anon`
 stayed green. A guard nobody has watched fail is a guard nobody knows the shape
 of.
 
-**The three local guards.** `check:target`, `check:agent-account` and
-`check:deployment-seed-load` are the checks CI cannot run, and for the same
-reason in each case: a CI runner has one repository and no live project, so
-none of them has anything to look at. (`check:sample-content`, in the next
-section, is outside CI for a different reason — CI *could* run it, and what
-it would report every time is correct.) `check:deployment-seed-load` would
-therefore *skip* on
-every run — and a check that always skips is worse than absent, because the
-green tick reads as an answer. Run them by hand: `check:target` whenever you
-point a checkout at a database, `check:agent-account` against that same
-database once an account exists, and `check:deployment-seed-load` before a
-release, from a machine that has a deployment checked out beside this one.
-The parts that can be wrong without a database are held in CI —
+**The three live guards, and who owns the question.** `check:target`,
+`check:agent-account` and `check:deployment-seed-load` need something a CI
+runner here does not have: a live project, or a second checkout. The decision
+is recorded rather than deferred — **this repository does not own the live
+target**, and no job here reaches one.
+
+That is a statement about what a template is. This repository has no
+deployment: any project it could be pointed at belongs to somebody else, and a
+job here that reached one would be this package asking a question about a
+database it does not run. A deployment has exactly one, knows when it changed,
+and is where a red answer is actionable. So the live half of each of these runs
+in a deployment, against that deployment's own target:
+
+| check | who runs its live half | how it is kept running |
+| --- | --- | --- |
+| `check:target` | the deployment, whenever it points a checkout at a database, and after a deploy | the deployment's own live-check coverage |
+| `check:agent-account --check` | the deployment, against the project whose account it generated | the same |
+| `check:deployment-seed-load` | nobody, by decision — see below | — |
+
+A deployment that takes this package is expected to declare its live checks and
+to fail if one of them stops running, rather than to remember. The one this
+package was generalised from does that; the mechanism is the deployment's, not
+this repository's, and nothing here asserts it.
+
+`check:deployment-seed-load` is the one where the decision costs something, and
+it is worth saying plainly: it asks whether this package's portable core accepts
+a **real** deployment's seed, which is the template's own question, not a
+deployment's. Answering it needs two checkouts side by side. The decision is
+that this repository does not take that on — so nothing runs it on a schedule,
+and the question is answered only when somebody runs it by hand from a machine
+that has a deployment checked out beside this one, before a release. Its sibling
+`check:seed-load` runs in CI on every pull request and proves the loop closes on
+content this repository generated; it cannot tell you the core is *sufficient*.
+
+None of this is a silent skip. Each of the three writes to the unverified
+register when it looks at nothing — a `::warning::` and a line in the run
+summary, once per fact — so a green run says which question went unanswered
+rather than implying it was answered. That register is the floor here, and the
+floor is the answer: the warning is expected, and reading it is the whole
+mechanism. What is not acceptable is adding any of the three to the `check`
+job, where it would print a passing line over an absent subject.
+
+(`check:sample-content`, in the next section, is outside CI for a different
+reason — CI *could* run it, and what it would report every time is correct.)
+
+The parts of all three that can be wrong without a database ARE held in CI:
 `scripts/tests/deployment-seed-load.test.mjs` and
 `scripts/tests/agent-account.test.mjs`.
 
