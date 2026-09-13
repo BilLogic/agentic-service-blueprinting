@@ -3,13 +3,14 @@ import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CellResourcesTab } from '@/components/blueprint/CellResourcesTab'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import type { CellResource } from '@/types/blueprint'
+import type { CellResource, CellTouchpoint } from '@/types/blueprint'
 
 const rpc = vi.fn()
 vi.mock('@/contexts/SupabaseProvider', () => ({
   useSupabase: () => ({ client: { rpc }, canWrite: true }),
 }))
-vi.mock('@/contexts/canvasModeContext', () => ({ useCanvasModeValue: () => 'design' }))
+let canvasMode = 'design'
+vi.mock('@/contexts/canvasModeContext', () => ({ useCanvasModeValue: () => canvasMode }))
 vi.mock('@/hooks/useSupabaseQuery', () => ({ invalidateQueries: () => {} }))
 vi.mock('@/lib/authoringSession', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/authoringSession')>()),
@@ -48,15 +49,16 @@ function openMenu(trigger: HTMLElement) {
   fireEvent.click(trigger)
 }
 
-function mount(resources: CellResource[]) {
+function mount(resources: CellResource[], touchpoints: CellTouchpoint[] = []) {
   return render(
     <TooltipProvider>
-      <CellResourcesTab cellId="cell-1" resources={resources} />
+      <CellResourcesTab cellId="cell-1" resources={resources} touchpoints={touchpoints} />
     </TooltipProvider>,
   )
 }
 
 beforeEach(() => {
+  canvasMode = 'design'
   uploadAttachment.mockReset()
   rpc.mockReset()
   rpc.mockResolvedValue({ data: 1, error: null })
@@ -328,5 +330,52 @@ describe('the Resources tab takes a file with no placement', () => {
     await waitFor(() => expect(container.textContent).toContain('too large'))
     expect(container.querySelectorAll('[data-resource-row]')).toHaveLength(1)
     expect((getByText('Save resources') as HTMLButtonElement).disabled).toBe(true)
+  })
+})
+
+describe('a touchpoint’s logo is listed on the cell, inherited and read-only', () => {
+  const LOGO = '/touchpoint-logos/example-logo.png'
+  const placedOn: CellTouchpoint = {
+    id: 'p-1',
+    touchpointId: 'tp-1',
+    name: 'Intake App',
+    kind: 'app',
+    iconUrl: LOGO,
+    summary: null,
+    role: null,
+  }
+  const inherited = () =>
+    document.querySelector('[aria-label="Inherited from this cell\'s touchpoints"]')
+
+  it('in Edit mode: listed with no menu, no reorder, and never saved as a row', async () => {
+    const { container, getByLabelText, getByText, queryByLabelText } = mount(RESOURCES, [placedOn])
+    expect(inherited()?.textContent).toContain('Intake App')
+    expect(inherited()?.querySelector('img')?.getAttribute('src')).toBe(LOGO)
+    expect(inherited()?.querySelectorAll('button')).toHaveLength(0)
+    expect(queryByLabelText('More for Intake App')).toBeNull()
+    expect(queryByLabelText('Reorder Intake App')).toBeNull()
+    expect(container.querySelectorAll('[data-resource-row]')).toHaveLength(1)
+
+    fireEvent.change(getByLabelText('Paste a link'), { target: { value: 'tracker.dev/2' } })
+    fireEvent.click(getByText('Add'))
+    fireEvent.click(getByText('Save resources'))
+    await waitFor(() => expect(rpc).toHaveBeenCalledTimes(1))
+    const [, args] = rpc.mock.calls[0]!
+    expect(args.p_rows.map((r: { url: string }) => r.url)).not.toContain(LOGO)
+  })
+
+  it('in View mode: listed on a cell that points at nothing else', () => {
+    canvasMode = 'view'
+    const { container } = mount([], [placedOn])
+    expect(container.textContent).not.toContain('No resources linked to this cell.')
+    expect(inherited()?.textContent).toContain('Intake App')
+    expect(inherited()?.querySelector('a')).toBeNull()
+  })
+
+  it('a touchpoint with no logo lends nothing', () => {
+    canvasMode = 'view'
+    const { container } = mount([], [{ ...placedOn, iconUrl: null }])
+    expect(inherited()).toBeNull()
+    expect(container.textContent).toContain('No resources linked to this cell.')
   })
 })

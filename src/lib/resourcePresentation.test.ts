@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   attachmentMedium,
+  featuredImage,
   featuredPresentation,
   linkPresentation,
+  touchpointLogos,
 } from '@/lib/resourcePresentation'
-import type { CellResource } from '@/types/blueprint'
+import type { CellResource, CellTouchpoint } from '@/types/blueprint'
 
 const resource = (over: Partial<CellResource> & { url: string }): CellResource => ({
   id: over.url,
@@ -113,5 +115,91 @@ describe('featuredPresentation', () => {
     })
     expect(preview).toBeNull()
     expect(buttons).toEqual([])
+  })
+})
+
+describe('featuredImage', () => {
+  const LOGO = '/touchpoint-logos/example-logo.png'
+  const placement = (over: Partial<CellTouchpoint> = {}): CellTouchpoint => ({
+    id: 'placement-1',
+    touchpointId: 'tp-1',
+    name: 'Intake portal',
+    kind: 'app',
+    iconUrl: LOGO,
+    summary: null,
+    role: null,
+    ...over,
+  })
+  const shot = resource({
+    url: 'https://x.supabase.co/storage/v1/object/public/cell-attachments/shot.png',
+    name: 'Screen',
+    kind: 'attachment',
+    placementId: 'placement-1',
+    featured: true,
+  })
+
+  it('is the cell’s own featured attachment when it has one, logo or not', () => {
+    expect(featuredImage({ resources: [shot], touchpoints: [placement()] })).toEqual({
+      url: shot.url,
+      name: 'Screen',
+      source: 'attachment',
+    })
+    expect(
+      featuredImage({ resources: [shot], touchpoints: [placement()], placement: placement() }),
+    ).toEqual({ url: shot.url, name: 'Screen', source: 'attachment' })
+  })
+
+  it('is the touchpoint’s logo when the cell features no attachment of its own', () => {
+    const unfeatured = { ...shot, featured: false }
+    expect(featuredImage({ resources: [unfeatured], touchpoints: [placement()] })).toEqual({
+      url: LOGO,
+      name: 'Intake portal',
+      source: 'logo',
+    })
+  })
+
+  it('is nothing when there is neither', () => {
+    expect(
+      featuredImage({ resources: [], touchpoints: [placement({ iconUrl: null })] }),
+    ).toBeNull()
+  })
+
+  it('is nothing for a cell placed on no touchpoint', () => {
+    expect(featuredImage({ resources: [], touchpoints: [] })).toBeNull()
+    // A featured LINK is a button, never a picture.
+    expect(
+      featuredImage({
+        resources: [resource({ url: 'https://tracker.dev/1', featured: true })],
+        touchpoints: [],
+      }),
+    ).toBeNull()
+  })
+
+  it('asked about one placement, reads only that placement', () => {
+    const other = placement({ id: 'placement-2', name: 'Duty phone', iconUrl: '/touchpoint-logos/phone-logo.png' })
+    expect(
+      featuredImage({ resources: [shot], touchpoints: [placement(), other], placement: other }),
+    ).toEqual({ url: '/touchpoint-logos/phone-logo.png', name: 'Duty phone', source: 'logo' })
+  })
+})
+
+describe('touchpointLogos', () => {
+  it('lists each placed touchpoint’s logo once, in placement order', () => {
+    const at = (id: string, name: string, iconUrl: string | null): CellTouchpoint => ({
+      id,
+      touchpointId: id,
+      name,
+      kind: null,
+      iconUrl,
+      summary: null,
+      role: null,
+    })
+    expect(
+      touchpointLogos([
+        at('a', 'Intake portal', '/touchpoint-logos/example-logo.png'),
+        at('b', 'Field visit', null),
+        at('c', 'Intake portal again', '/touchpoint-logos/example-logo.png'),
+      ]),
+    ).toEqual([{ url: '/touchpoint-logos/example-logo.png', name: 'Intake portal' }])
   })
 })

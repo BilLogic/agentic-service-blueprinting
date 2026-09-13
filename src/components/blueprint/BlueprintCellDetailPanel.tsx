@@ -1530,6 +1530,7 @@ function BlueprintCellDetailPanelBody() {
                     <CellResourcesTab
                       cellId={resolvedCellId}
                       resources={cellResourceList}
+                      touchpoints={cellTouchpointList}
                     />
                   ) : null}
                 </div>
