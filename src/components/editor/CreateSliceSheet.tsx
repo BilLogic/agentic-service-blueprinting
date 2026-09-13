@@ -12,7 +12,7 @@ import { IconTooltip } from '@/components/editor/IconTooltip'
 import { SliceSlideComposer } from '@/components/editor/SliceSlideComposer'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useViewState } from '@/contexts/viewStateStore'
-import { resolveActiveServiceId } from '@/lib/service'
+import { useActiveServiceId } from '@/contexts/activeService'
 import { createSlice } from '@/lib/sliceMutations'
 import { deriveSliceType, describeSliceType } from '@/lib/sliceKind'
 import { validateDraftSlice, type DraftSlide } from '@/lib/sliceValidation'
@@ -118,19 +118,19 @@ export function CreateSliceSheet({
     slides: slides,
   })
 
+  // The slice belongs to the service on screen — the resolved store's id,
+  // the same one `useSlices` reads under. It used to be the first service by
+  // `created_at`, so with two services the slice was written somewhere it
+  // could never be seen; then the sheet resolved the slug for itself. With
+  // none active the Create button stays disabled — the phase dialog's
+  // pattern — rather than falling back.
+  const serviceId = useActiveServiceId()
+
   const handleCreate = async () => {
-    if (!client || busy || !title.trim()) return
+    if (!client || !serviceId || busy || !title.trim()) return
     setBusy(true)
     setError(null)
     try {
-      // The slice belongs to the service on screen. It used to be the first
-      // service by `created_at` — the cells being sliced come off the active
-      // service's canvas and `useSlices` reads that service, so with two
-      // services the slice was written somewhere it could never be seen.
-      // `resolveActiveServiceId` throws rather than falling back, and its two
-      // sentences — empty database, unresolvable slug — land in the Alert
-      // below.
-      const serviceId = await resolveActiveServiceId(client)
       const slice = await createSlice(client, {
         serviceId,
         title,
@@ -293,7 +293,7 @@ export function CreateSliceSheet({
                 type="button"
                 size="sm"
                 className="px-2.5"
-                disabled={busy || problems.length > 0 || cellIds.length === 0}
+                disabled={busy || !serviceId || problems.length > 0 || cellIds.length === 0}
                 onClick={handleCreate}
               >
                 {busy ? 'Creating…' : 'Create slice'}

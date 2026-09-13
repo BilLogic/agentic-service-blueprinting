@@ -1,8 +1,13 @@
 import { z } from 'zod'
-import { arg, defineTool, defineWriteTool, requireClient } from '@/lib/agent/tools/definition'
+import {
+  arg,
+  defineTool,
+  defineWriteTool,
+  requireActiveService,
+  requireClient,
+} from '@/lib/agent/tools/definition'
 import { getEvidence, listEvidence } from '@/lib/agent/tools/read'
 import { EVIDENCE_KINDS, addEvidence, updateEvidence } from '@/lib/evidenceMutations'
-import { resolveActiveServiceId } from '@/lib/service'
 
 /**
  * The provenance: the sources a blueprint's claims rest on. The bundled
@@ -49,13 +54,12 @@ export const createEvidenceTool = defineWriteTool({
       'Anything worth keeping about the source — a quotation, an observation, or a URL, which renders as a link; omit if none',
     ),
   }),
-  run: async ({ cell_id, kind, title, note }, { client }) => {
-    // Same wrapper, same service resolution and the same documented
-    // cell_key placeholder the cell panel uses — so an agent-added source
-    // lands in the session ledger and can be reverted exactly like a
-    // human-added one.
-    const id = await addEvidence(client, {
-      serviceId: await resolveActiveServiceId(client),
+  run: async ({ cell_id, kind, title, note }, ctx) => {
+    // Same wrapper, same service and the same documented cell_key
+    // placeholder the cell panel uses — so an agent-added source lands in
+    // the session ledger and can be reverted exactly like a human-added one.
+    const id = await addEvidence(ctx.client, {
+      serviceId: requireActiveService(ctx),
       cellId: cell_id,
       cellKey: cell_id,
       kind,

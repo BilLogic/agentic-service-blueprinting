@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { arg, defineWriteTool } from '@/lib/agent/tools/definition'
+import { arg, defineWriteTool, requireActiveService } from '@/lib/agent/tools/definition'
 import {
   addLane,
   addStep,
@@ -10,7 +10,6 @@ import {
   duplicateScenario,
   renamePath,
 } from '@/lib/authoringRpc'
-import { resolveActiveServiceId } from '@/lib/service'
 import { PATH_KINDS } from '@/lib/versionValidation'
 
 /**
@@ -19,8 +18,8 @@ import { PATH_KINDS } from '@/lib/versionValidation'
  * wrapper records the change, and the tool's job is the argument shape the
  * model sees and the sentence it reads back.
  *
- * A write that creates under the service lands on the service the URL slug
- * names — `resolveActiveServiceId` — never on a service the model picks.
+ * A write that creates under the service lands on the active service the
+ * session was handed (`ctx.service`) — never on a service the model picks.
  */
 
 const PATH_KIND = z.enum(PATH_KINDS)
@@ -33,9 +32,9 @@ export const createPhaseTool = defineWriteTool({
     name: arg.text('Phase name'),
     summary: arg.optionalText('One-line summary; omit for none'),
   }),
-  run: async ({ name, summary }, { client }) => {
-    const id = await createPhase(client, {
-      serviceId: await resolveActiveServiceId(client),
+  run: async ({ name, summary }, ctx) => {
+    const id = await createPhase(ctx.client, {
+      serviceId: requireActiveService(ctx),
       name,
       summary: summary ?? null,
     })

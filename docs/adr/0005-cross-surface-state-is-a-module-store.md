@@ -23,9 +23,10 @@ Two conditions send state here, and either one is sufficient:
    which one exists *mid-gesture*. Component state dies in that gap, taking the
    drop-target ring, the open session and a half-typed message with it.
 2. **Code with no hooks available to it must read it.** The agent's UI-context
-   collector is plain functions, and `lib/service.ts` resolves the active
-   service's id inside fetchers that are not components. A value both a
-   component and a bare function must agree on has nowhere else to live.
+   collector is plain functions, and the agent's dispatcher reads the resolved
+   active service (`contexts/activeService.ts`) to hand each tool call the
+   service it writes under. A value both a component and a bare function must
+   agree on has nowhere else to live.
 
 The live instances each carry their reason in their own header comment:
 `agent/placement.ts`, `agent/panelState.ts`, `agent/settings.ts`,

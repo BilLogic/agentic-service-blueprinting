@@ -9,10 +9,8 @@ import { parseServiceSlug, serviceRoutePath } from '@/lib/serviceRoute'
  *
  * The slug is seeded from the boot URL path, so a deep link to `/<slug>` and a
  * reload both land on the same service, and this module is what mirrors a
- * switch back into the address bar. `lib/service.ts` still reads it to
- * resolve an id inside plain functions for the components and agent tools
- * that have not yet been handed the resolved store; the scoped read hooks no
- * longer do.
+ * switch back into the address bar. Nothing resolves an id from it any more;
+ * the provider is its only reader.
  */
 
 let activeSlug: string | null =

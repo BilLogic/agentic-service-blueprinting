@@ -4,6 +4,7 @@ import type { Database } from '@/types/database'
 import type { ToolSpec } from '@/lib/agent/providers/provider'
 import type { AgentSearchIndex } from '@/deploymentConfig'
 import type { ServiceScope } from '@/lib/agent/tools/serviceScope'
+import type { ActiveServiceRef } from '@/contexts/activeService'
 
 /**
  * A Tool is one module: what it is called, which surface it belongs to, the
@@ -84,8 +85,19 @@ export type ToolSession = {
  */
 export type ToolContext = {
   client: Client | null
-  /** The service(s) this call covers. */
+  /**
+   * The service(s) a READ covers — today always the whole deployment, until
+   * the reads' default becomes the active service and this field carries it,
+   * folding `service` below into it.
+   */
   scope: ServiceScope
+  /**
+   * The resolved active service the session runs under — what a WRITE that
+   * creates under the service lands on. `null` when none is active: no
+   * database, or a URL naming a slug no service carries. Resolved once, at
+   * the surface root, and handed here; a tool never resolves a slug.
+   */
+  service: ActiveServiceRef | null
   session: ToolSession
   ui: ToolUi
   /**
@@ -168,6 +180,17 @@ export function defineWriteTool<Args extends z.ZodObject>(definition: {
 export function requireClient(ctx: ToolContext): Client {
   if (!ctx.client) throw new Error('No database in this session.')
   return ctx.client
+}
+
+/**
+ * The active service's id for a write that creates under the service, or the
+ * sentence a caller can show when none is active. A tool never falls back to
+ * the first service by `created_at` — that fallback is how a row landed on a
+ * service nobody was looking at.
+ */
+export function requireActiveService(ctx: ToolContext): string {
+  if (ctx.service) return ctx.service.id
+  throw new Error('No service is active — open a service before creating under it.')
 }
 
 /**

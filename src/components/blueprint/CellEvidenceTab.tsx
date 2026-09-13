@@ -23,7 +23,7 @@ import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useEvidence } from '@/hooks/useEvidence'
 import { addEvidence } from '@/lib/evidenceMutations'
 import { linkedTextSegments } from '@/lib/linkedText'
-import { resolveActiveServiceId } from '@/lib/service'
+import { useActiveServiceId } from '@/contexts/activeService'
 import type { Database, Evidence } from '@/types/database'
 
 const EVIDENCE_KINDS = [
@@ -122,6 +122,12 @@ function AddSourceForm({
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // The service the board is drawing — the resolved store's id. This used to
+  // take the first service by `created_at`, so a deployment with two filed
+  // the source against the one nobody was looking at; then it resolved the
+  // slug for itself. With none active the form's button stays disabled — the
+  // phase dialog's pattern — rather than falling back.
+  const serviceId = useActiveServiceId()
 
   if (!open) {
     return (
@@ -140,18 +146,14 @@ function AddSourceForm({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (busy || !title.trim()) return
+    if (busy || !serviceId || !title.trim()) return
     setBusy(true)
     setError(null)
     try {
-      // The service the URL names, like every other read on this board —
-      // this used to take the first service by `created_at`, so a deployment
-      // with two filed the source against the one nobody was looking at.
-      const serviceId = await resolveActiveServiceId(client)
       // Through the ledger wrapper, like every other write — an added source
       // shows in the session log and can be taken back.
       await addEvidence(client, {
-        serviceId: serviceId,
+        serviceId,
         cellId,
         // TODO(map-skill): id placeholder — real IR key-paths come from
         // the skill.
@@ -254,7 +256,7 @@ function AddSourceForm({
         >
           Cancel
         </Button>
-        <Button type="submit" size="sm" disabled={busy}>
+        <Button type="submit" size="sm" disabled={busy || !serviceId}>
           {busy ? 'Adding…' : 'Add source'}
         </Button>
       </div>
