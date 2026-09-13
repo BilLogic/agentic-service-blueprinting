@@ -10,7 +10,7 @@
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { classListHas, classLists, classListsIn } from '@/lib/classList'
 import { sourceFiles } from '@/lib/tokenModel'
@@ -177,7 +177,7 @@ describe('authored classes on the slice and presentation surfaces', () => {
   })
 })
 
-describe('stage headings, captions, badges and nav sit on sm', () => {
+describe('stage headings, captions, the cells list and nav sit on sm', () => {
   it('seats the named stage sites on sm or above, in full ink', () => {
     const stage = scopedSites().filter((site) => isStage(site.file))
     const missing = STAGE_TEXT.flatMap((entry) => {
@@ -216,23 +216,23 @@ const STAGE_TEXT: ReadonlyArray<{
 }> = [
   {
     file: 'components/editor/SlicePresentation.tsx',
-    has: ['font-mono', 'tabular-nums', 'uppercase'],
+    has: ['font-mono', 'tabular-nums', 'font-medium'],
     because: 'slide counter',
   },
   {
     file: 'components/editor/SlicePresentation.tsx',
-    has: ['max-w-xl'],
-    because: 'caption under media',
-  },
-  {
-    file: 'components/editor/SlicePresentation.tsx',
     has: ['max-w-2xl'],
-    because: 'title-slide caption',
+    because: 'slide caption',
   },
   {
     file: 'components/editor/SlicePresentation.tsx',
-    has: ['rounded-full', 'px-3', 'py-1'],
-    because: 'cited-cell badge row',
+    has: ['text-left', 'text-foreground'],
+    because: 'cells-list rows',
+  },
+  {
+    file: 'components/editor/SlicePresentation.tsx',
+    has: ['font-medium', 'border-border', 'bg-card'],
+    because: 'cells button',
   },
   {
     file: 'components/editor/SlicePresentation.tsx',
@@ -345,32 +345,35 @@ vi.mock('@/hooks/useSliceBlueprint', () => ({
 afterEach(cleanup)
 
 describe('a long caption and several cited cells fit the stage', () => {
-  it('renders the caption and every badge without clipping at the new sizes', async () => {
+  it('renders the caption and every cells-list row without clipping at the new sizes', async () => {
     const { SlicePresentation } = await import('@/components/editor/SlicePresentation')
     const { container } = render(
       <SlicePresentation sliceId={SLICE_ID} onReturn={() => {}} />,
     )
 
     const caption = screen.getByText(LONG_CAPTION)
-    expect(caption.className).toMatch(/\btext-(sm|base)\b/)
+    expect(caption.className).toMatch(/\btext-sm\b/)
     expect(caption.className).toMatch(/\btext-foreground\b/)
     expect(caption.className).not.toMatch(/text-muted-foreground/)
     expect(caption.className).not.toMatch(/\b(truncate|overflow-hidden|leading-relaxed)\b/)
 
-    const badges = cited.map((cell) =>
+    const button = screen.getByRole('button', { name: `${cited.length} cells` })
+    expect(button.className).toMatch(/\btext-sm\b/)
+    expect(button.className).toMatch(/\bfont-medium\b/)
+    expect(button.className).not.toMatch(/text-muted-foreground/)
+    fireEvent.click(button)
+    await screen.findByRole('button', { name: `Open ${cited[0].content} in the slice` })
+
+    const rows = cited.map((cell) =>
       screen.getByRole('button', { name: `Open ${cell.content} in the slice` }),
     )
-    expect(badges).toHaveLength(cited.length)
-    for (const badge of badges) {
-      expect(badge.className).toMatch(/\btext-sm\b/)
-      expect(badge.className).toMatch(/\btext-foreground\b/)
-      expect(badge.className).not.toMatch(/text-muted-foreground/)
-      expect(badge.className).not.toMatch(/\b(truncate|overflow-hidden)\b/)
+    expect(rows).toHaveLength(cited.length)
+    for (const row of rows) {
+      expect(row.className).toMatch(/\btext-sm\b/)
+      expect(row.className).toMatch(/\btext-foreground\b/)
+      expect(row.className).not.toMatch(/text-muted-foreground/)
+      expect(row.className).not.toMatch(/\b(truncate|overflow-hidden)\b/)
     }
-
-    const badgeRow = badges[0]?.parentElement
-    expect(badgeRow?.className).toMatch(/\bflex-wrap\b/)
-    expect(badgeRow?.className).not.toMatch(/\boverflow-hidden\b/)
 
     const counter = screen.getByText(/Slide 1 of 1/)
     expect(counter.className).toMatch(/\btext-sm\b/)

@@ -104,7 +104,7 @@ export const REGISTER_2: readonly NamedSurface[] = [
   },
   {
     file: 'components/editor/SlicePresentation.tsx',
-    because: 'slide numbers in the filmstrip and the presentation eyebrow',
+    because: 'slide numbers in the filmstrip and the slide counter',
   },
   {
     file: 'components/editor/SliceSlideComposer.tsx',
