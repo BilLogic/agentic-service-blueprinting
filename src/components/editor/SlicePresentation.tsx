@@ -179,15 +179,16 @@ export function SlicePresentation({
   }
 
   /**
-   * Open the slice tab on this cell. The tab descriptor carries no cell,
-   * so the focus is left pending for the viewport to consume when it
-   * registers — including when the tab was not already open.
+   * Open the slice tab on this cell, with its detail panel. The tab
+   * descriptor carries no cell, so the focus is left pending for the
+   * viewport to consume when it registers — including when the tab was not
+   * already open.
    *
    * @param cellId - The cited cell this row names.
    */
   const openSliceCell = useCallback(
     (cellId: string) => {
-      requestSliceCellFocus(sliceId, [cellId])
+      requestSliceCellFocus(sliceId, [cellId], { openDetail: true })
       openTab({ kind: 'slice', sliceId })
     },
     [openTab, sliceId],
@@ -433,7 +434,9 @@ const SLIDE_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'Home', 'End'])
 
 /**
  * The slide's cited cells, behind one `N cells` button. Each row opens its
- * own cell in the slice, cells without a picture included.
+ * own cell in the slice, cells without a picture included. Choosing a row
+ * closes the list first: the stage stays mounted behind the slice tab, so
+ * nothing else would.
  */
 function SlideCellsList({
   cellIds,
@@ -445,8 +448,9 @@ function SlideCellsList({
   onOpenCell: (cellId: string) => void
 }) {
   const count = cellIds.length
+  const [open, setOpen] = useState(false)
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger className="rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent">
         {count === 1 ? '1 cell' : `${count} cells`}
       </PopoverTrigger>
@@ -469,7 +473,10 @@ function SlideCellsList({
               <li key={cellId}>
                 <button
                   type="button"
-                  onClick={() => onOpenCell(cellId)}
+                  onClick={() => {
+                    setOpen(false)
+                    onOpenCell(cellId)
+                  }}
                   aria-label={`Open ${snippet} in the slice`}
                   title="Open in slice focus view"
                   className="w-full rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"

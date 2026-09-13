@@ -7,8 +7,18 @@
  * slice tab — a tab descriptor carries no cell — and each one leaves a
  * pending focus for its own cell, consumed when the slice viewport
  * registers. The rows live behind the slide's `N cells` button.
+ *
+ * Choosing a row closes the list — the presentation stays mounted behind
+ * the slice tab, so an open list would float over the slice — and asks the
+ * slice viewport for that cell's detail panel as well as the flight.
  */
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SliceBlueprint } from '@/hooks/useSliceBlueprint'
 import type { BlueprintData } from '@/types/blueprint'
@@ -150,14 +160,15 @@ describe('presentation cells list', () => {
     render(<SlicePresentation sliceId={SLICE_ID} onReturn={() => {}} />)
     await openCellsList()
 
-    const greet = screen.getByRole('button', {
-      name: 'Open Greet the guest in the slice',
-    })
-    const keys = screen.getByRole('button', {
-      name: 'Open Hand over the keys in the slice',
-    })
-    fireEvent.click(greet)
-    fireEvent.click(keys)
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Open Greet the guest in the slice' }),
+    )
+    await openCellsList()
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Open Hand over the keys in the slice',
+      }),
+    )
 
     expect(calls).toEqual([[CELL_A], [CELL_B]])
     expect(openTab).toHaveBeenCalledTimes(2)
@@ -187,6 +198,44 @@ describe('presentation cells list', () => {
 
     const remove = registerFocusCells(sliceFocusCellsKey(SLICE_ID), focus)
     expect(calls).toEqual([[CELL_A]])
+    remove()
+  })
+
+  it('closes the list when a row is chosen', async () => {
+    render(<SlicePresentation sliceId={SLICE_ID} onReturn={() => {}} />)
+    await openCellsList()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Open Greet the guest in the slice',
+      }),
+    )
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', {
+          name: 'Open Greet the guest in the slice',
+        }),
+      ).toBeNull(),
+    )
+  })
+
+  it("asks the slice viewport for the chosen cell's detail panel", async () => {
+    const { focus } = recordingFocus()
+    const opened: string[] = []
+    const remove = registerFocusCells(
+      sliceFocusCellsKey(SLICE_ID),
+      focus,
+      (cellId) => opened.push(cellId),
+    )
+    render(<SlicePresentation sliceId={SLICE_ID} onReturn={() => {}} />)
+    await openCellsList()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Open Hand over the keys in the slice',
+      }),
+    )
+    await waitFor(() => expect(opened).toEqual([CELL_B]))
     remove()
   })
 })

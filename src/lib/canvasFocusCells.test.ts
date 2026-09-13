@@ -155,3 +155,63 @@ describe('a pending focus on a board still loading', () => {
     expect(board.calls.at(-1)).toEqual(['cell-b'])
   })
 })
+
+describe('a pending focus that asks for the cell detail panel', () => {
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+  /** An opener stand-in that records the cells it was asked to open. */
+  function recordingOpener(): {
+    open: (cellId: string) => void
+    opened: string[]
+  } {
+    const opened: string[] = []
+    return { open: (cellId) => opened.push(cellId), opened }
+  }
+
+  it('opens the panel for that cell once the viewport already registered has flown to it', async () => {
+    const { focus } = recordingFocus()
+    const { open, opened } = recordingOpener()
+    cleanups.push(registerFocusCells(sliceFocusCellsKey('slice-1'), focus, open))
+    requestSliceCellFocus('slice-1', ['cell-a'], { openDetail: true })
+    await settle()
+    expect(opened).toEqual(['cell-a'])
+  })
+
+  it('opens the panel when the viewport registers late and its board lands on the first fit', async () => {
+    const key = sliceFocusCellsKey('slice-1')
+    let drawn = false
+    const focus: FocusCellsFn = async (cellIds) =>
+      drawn
+        ? { kind: 'flown', completion: 'completed' }
+        : { kind: 'miss', missing: [...cellIds] }
+    const { open, opened } = recordingOpener()
+    requestSliceCellFocus('slice-1', ['cell-a'], { openDetail: true })
+    cleanups.push(registerFocusCells(key, focus, open))
+    await settle()
+    expect(opened).toEqual([])
+    drawn = true
+    flushPendingFocus(key)
+    await settle()
+    expect(opened).toEqual(['cell-a'])
+  })
+
+  it('leaves the panel alone when the request did not ask for it', async () => {
+    const { focus } = recordingFocus()
+    const { open, opened } = recordingOpener()
+    cleanups.push(registerFocusCells(sliceFocusCellsKey('slice-1'), focus, open))
+    requestSliceCellFocus('slice-1', ['cell-a'])
+    await settle()
+    expect(opened).toEqual([])
+  })
+
+  it('opens no panel for a cell the fitted board does not hold', async () => {
+    const key = sliceFocusCellsKey('slice-1')
+    const { open, opened } = recordingOpener()
+    requestSliceCellFocus('slice-1', ['cell-gone'], { openDetail: true })
+    cleanups.push(registerFocusCells(key, miss, open))
+    await settle()
+    flushPendingFocus(key)
+    await settle()
+    expect(opened).toEqual([])
+  })
+})
