@@ -6,12 +6,10 @@ import {
   BLUEPRINT_LANE_ROW_GAP,
   BLUEPRINT_ROW_MIN_HEIGHT,
   BLUEPRINT_ROW_MIN_HEIGHT_COMPACT,
-  BLUEPRINT_WRAP_CORRIDOR_MARGIN,
-  BLUEPRINT_OVERHEAD_RAIL_CORRIDOR_MARGIN,
-  BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN,
   INTERACTION_LINE_LABEL,
   INTERNAL_INTERACTION_LINE_LABEL,
   VISIBILITY_LINE_LABEL,
+  getCellShellPaddingY,
   getLaneRowMinHeight,
   getStepColumnsWidth,
   STEP_COLUMN_GAP,
@@ -25,6 +23,12 @@ import {
   COMPARE_LANE_COLLAPSED_HEIGHT,
   isBlueprintLaneCollapsed,
 } from '@/lib/blueprintLaneCollapse'
+import {
+  laneHasInLaneLoopCorridor,
+  laneHasOverheadArrowCorridor,
+  resolveBlueprintLane,
+  rowTrackHeight,
+} from '@/lib/laneCorridor'
 import type { PathListItem } from '@/lib/pathSelection'
 import { itemsInSelectionOrder } from '@/lib/pathSelection'
 import type { BlueprintData, BlueprintLane } from '@/types/blueprint'
@@ -294,8 +298,11 @@ export function buildSideBySideLabelRowSpecs(
       height: collapsed
         ? COMPARE_LANE_COLLAPSED_HEIGHT
         : getSharedLaneRowHeight(lane, blueprints, compact),
+      // The corridor rule is the single board's, asked of every compared
+      // blueprint at once: the canonical row needs a corridor when any
+      // variant's lane of that name does.
       wrapCorridorAbove:
-        !collapsed && laneHasOverheadRailCorridorAbove(lane, blueprints),
+        !collapsed && laneHasOverheadArrowCorridor(lane, blueprints),
       wrapCorridorBelow: !collapsed && laneHasWrapCorridorBelow(lane, lanes),
       inLaneLoopCorridorAbove:
         !collapsed && laneHasInLaneLoopCorridor(lane, blueprints),
@@ -422,118 +429,6 @@ export function getCanonicalLanes(blueprints: BlueprintData[]): BlueprintLane[] 
   return [...source.lanes].sort((a, b) => a.position - b.position)
 }
 
-/** Map a canonical swimlane row onto a path's lane ids (paths use different lane uuids). */
-export function resolveBlueprintLane(
-  canonicalLane: BlueprintLane,
-  blueprint: Pick<BlueprintData, 'lanes'>,
-): BlueprintLane {
-  return (
-    blueprint.lanes.find((lane) => lane.id === canonicalLane.id) ??
-    blueprint.lanes.find((lane) => lane.name === canonicalLane.name) ??
-    blueprint.lanes.find(
-      (lane) =>
-        lane.position === canonicalLane.position &&
-        lane.name === canonicalLane.name,
-    ) ??
-    blueprint.lanes.find(
-      (lane) => lane.position === canonicalLane.position,
-    ) ??
-    canonicalLane
-  )
-}
-
-/**
- * Structural blueprint shape for in-lane loop detection — satisfied by both
- * `BlueprintData` (a single path's blueprint).
- */
-type InLaneLoopLayoutSource = {
-  lanes: BlueprintLane[]
-  steps: ReadonlyArray<{ id: string; position: number }>
-  cells: ReadonlyArray<{ id: string; lane_id: string; step_id: string }>
-  dependencies: ReadonlyArray<{ source_cell_id: string; target_cell_id: string }>
-}
-
-/**
- * Does one compared blueprint route a dependency that both starts and ends in
- * this lane, with its two step columns satisfying `matches`?
- *
- * The rule is read straight off the data — which lane a cell belongs to, and
- * which column its step sits in — so it holds for any content. The canonical
- * row is resolved into each blueprint first: compared variants describe the
- * same lane, but they need not agree on its id, and a lane matched by identity
- * alone would silently report "no corridor" for every variant but one.
- */
-function blueprintLaneHasCorridorDependency(
-  canonicalLane: BlueprintLane,
-  source: InLaneLoopLayoutSource,
-  matches: (sourceColumn: number, targetColumn: number) => boolean,
-): boolean {
-  const lane = resolveBlueprintLane(canonicalLane, source)
-  const cellById = new Map(source.cells.map((cell) => [cell.id, cell]))
-  const columnByStepId = new Map(
-    source.steps.map((step) => [step.id, step.position]),
-  )
-
-  return source.dependencies.some((dependency) => {
-    const sourceCell = cellById.get(dependency.source_cell_id)
-    const targetCell = cellById.get(dependency.target_cell_id)
-    if (!sourceCell || !targetCell) return false
-    if (
-      sourceCell.lane_id !== lane.id ||
-      targetCell.lane_id !== lane.id
-    ) {
-      return false
-    }
-
-    const sourceColumn = columnByStepId.get(sourceCell.step_id)
-    const targetColumn = columnByStepId.get(targetCell.step_id)
-    if (sourceColumn === undefined || targetColumn === undefined) return false
-    return matches(sourceColumn, targetColumn)
-  })
-}
-
-/** A backward loop that stays inside the lane, needing headroom at its top. */
-export function blueprintLaneHasBackwardInLaneLoop(
-  canonicalLane: BlueprintLane,
-  source: InLaneLoopLayoutSource,
-): boolean {
-  return blueprintLaneHasCorridorDependency(
-    canonicalLane,
-    source,
-    (sourceColumn, targetColumn) => targetColumn < sourceColumn,
-  )
-}
-
-/** Canonical row needs an in-lane loop corridor when any compared variant has one. */
-export function laneHasInLaneLoopCorridor(
-  canonicalLane: BlueprintLane,
-  sources: readonly InLaneLoopLayoutSource[],
-): boolean {
-  return sources.some((source) =>
-    blueprintLaneHasBackwardInLaneLoop(canonicalLane, source),
-  )
-}
-
-/**
- * Canonical row needs the overhead rail when any compared variant routes a
- * forward in-lane dependency that clears at least one column — the arrow
- * cannot run along the row, so it climbs into the strip above it. Mirrors
- * `laneHasOverheadArrowCorridor`, which decides the same thing for a single
- * board.
- */
-export function laneHasOverheadRailCorridorAbove(
-  canonicalLane: BlueprintLane,
-  sources: readonly InLaneLoopLayoutSource[],
-): boolean {
-  return sources.some((source) =>
-    blueprintLaneHasCorridorDependency(
-      canonicalLane,
-      source,
-      (sourceColumn, targetColumn) => targetColumn >= sourceColumn + 2,
-    ),
-  )
-}
-
 export function getCompareCellShellMinHeight(
   rowHeight: number,
   compact = false,
@@ -544,25 +439,21 @@ export function getCompareCellShellMinHeight(
   return Math.max(rowHeight, shellFloor)
 }
 
+/**
+ * A compare row's track, priced by the one corridor rule. The spec's flag
+ * names predate the rule's: `wrapCorridorAbove` is the overhead rail.
+ */
 export function getCompareRowTrackHeight(row: {
   height: number
   wrapCorridorAbove?: boolean
   wrapCorridorBelow?: boolean
   inLaneLoopCorridorAbove?: boolean
 }): number {
-  return (
-    row.height +
-    (row.wrapCorridorAbove ? BLUEPRINT_OVERHEAD_RAIL_CORRIDOR_MARGIN : 0) +
-    (row.wrapCorridorBelow ? BLUEPRINT_WRAP_CORRIDOR_MARGIN : 0) +
-    (row.inLaneLoopCorridorAbove
-      ? BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN
-      : 0)
-  )
-}
-
-/** Vertical shell padding on compare cells (Tailwind py-3 / py-4). */
-export function getCompareCellShellPaddingY(compact = false): number {
-  return compact ? 24 : 32
+  return rowTrackHeight(row.height, {
+    overheadRailAbove: row.wrapCorridorAbove,
+    wrapBelow: row.wrapCorridorBelow,
+    inLaneLoopAbove: row.inLaneLoopCorridorAbove,
+  })
 }
 
 export function getSharedLaneRowHeight(
@@ -571,7 +462,7 @@ export function getSharedLaneRowHeight(
   compact = false,
 ): number {
   if (blueprints.length === 0) return 0
-  const shellPad = getCompareCellShellPaddingY(compact)
+  const shellPad = getCellShellPaddingY(compact)
   const contentHeight = Math.max(
     ...blueprints.map((blueprint) =>
       // Each path has its own lane uuids — measure against the path's own

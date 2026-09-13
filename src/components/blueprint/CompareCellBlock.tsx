@@ -8,6 +8,8 @@ import {
 } from '@/components/ui/tooltip'
 import {
   STEP_COLUMN_WIDTH,
+  getCellShellInsetY,
+  getCellShellPaddingY,
   NARRATIVE_CELL_HEIGHT,
   NARRATIVE_CELL_HEIGHT_COMPACT,
   getStoryboardCellButtonMaxHeight,
@@ -103,21 +105,23 @@ export function CompareCellBlock({
   const ariaDescribedBy = hasMembershipOutline
     ? membershipDescriptionId
     : undefined
-  const shellPadding = cn(
-    compact ? BLUEPRINT_SLOT_INSET_COMPACT : BLUEPRINT_SLOT_INSET,
-    compact ? 'pt-3' : 'pt-4',
-    flushBottom ? 'pb-0' : compact ? 'pb-3' : 'pb-4',
-  )
+  const shellPadding = compact ? BLUEPRINT_SLOT_INSET_COMPACT : BLUEPRINT_SLOT_INSET
+  // The vertical inset is a layout number the row heights are summed from,
+  // so it arrives as a style from where layout numbers live rather than as
+  // a padding class that would have to agree with it.
+  const insetY = getCellShellInsetY(compact)
+  const shellVerticalPad = getCellShellPaddingY(compact)
   const width = STEP_COLUMN_WIDTH
   const isStoryboard = variant === 'storyboard'
   const narrativeHeight = compact
     ? NARRATIVE_CELL_HEIGHT_COMPACT
     : NARRATIVE_CELL_HEIGHT
-  const shellVerticalPad = compact ? 24 : 32
   const shellStyle = {
     width,
     minWidth: width,
     maxWidth: width,
+    paddingTop: insetY,
+    paddingBottom: flushBottom ? 0 : insetY,
     ...(hasMembershipOutline
       ? {
           '--background-compare-membership-outline':

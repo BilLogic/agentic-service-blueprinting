@@ -54,8 +54,8 @@ import {
   getComparePathArrowData,
   getCompareBoardWrapperPadding,
   getMergedCompareRowTrackCss,
-  resolveBlueprintLane,
 } from '@/lib/sideBySideCompareLayout'
+import { resolveBlueprintLane } from '@/lib/laneCorridor'
 import { cellResources } from '@/lib/cellResources'
 import { cellTouchpoints } from '@/lib/cellTouchpoints'
 import { getPathColor } from '@/lib/pathColorTheme'

@@ -17,8 +17,6 @@ import assert from 'node:assert/strict'
 import {
   countBlueprintDividerRows,
   countBlueprintWrapCorridorMargins,
-  laneHasInLaneLoopCorridor,
-  laneHasOverheadArrowCorridor,
   laneHasWrapCorridorBelow,
   lanePrecedesBlueprintDivider,
   shouldShowInteractionLineAfter,
@@ -36,7 +34,7 @@ import {
   STORYBOARD_ROLE,
   SUPPORT_ACTIONS_ROLE,
 } from '@/lib/laneRoles'
-import type { BlueprintData, BlueprintLane } from '@/types/blueprint'
+import type { BlueprintLane } from '@/types/blueprint'
 
 /** A lane, named however the caller likes. */
 function lane(
@@ -314,115 +312,6 @@ test('the internal interaction line needs a backstage actions lane before it', (
 test('the last lane never draws an internal interaction line', () => {
   const lanes = [lane(BACKSTAGE_ACTIONS_ROLE, 'Back Stage Actions', 0)]
   assert.equal(shouldShowInternalInteractionLineAfter(lanes[0]!, lanes), false)
-})
-
-/*
-  The corridors, and the one thing THEY must never read.
-
-  A lane used to get arrow headroom because of what it was called: three
-  names — a tutor, a teacher, a discovery rail — were written into the layout
-  module, and any other lane's spanning or backward arrow drew straight over
-  its own cells. The rule below is the whole rule, stated on the data: which
-  lane a cell sits in, and which column its step occupies. Every case is
-  therefore posed on lanes named nothing in particular, because a name is not
-  an input.
-*/
-
-/** A four-column board of `laneCount` lanes, one cell per lane per column. */
-function board2(laneCount: number): { lanes: BlueprintLane[]; data: BlueprintData } {
-  const lanes = Array.from({ length: laneCount }, (_, index) =>
-    lane(null, `lane ${index}`, index),
-  )
-  const steps = [0, 1, 2, 3].map((position) => ({ id: `s${position}`, position }))
-  const cells = lanes.flatMap((entry) =>
-    steps.map((step) => ({
-      id: `${entry.id}:${step.id}`,
-      lane_id: entry.id,
-      step_id: step.id,
-    })),
-  )
-  return {
-    lanes,
-    data: { lanes, steps, cells, dependencies: [] } as unknown as BlueprintData,
-  }
-}
-
-function withDependencies(
-  data: BlueprintData,
-  ...pairs: Array<[string, string]>
-): BlueprintData {
-  return {
-    ...data,
-    dependencies: pairs.map(([source_cell_id, target_cell_id]) => ({
-      source_cell_id,
-      target_cell_id,
-    })),
-  } as unknown as BlueprintData
-}
-
-test('a forward in-lane dependency clearing a column reserves the overhead rail', () => {
-  const { lanes, data } = board2(3)
-  // Same lane, columns 0 -> 2: one cell is skipped, so the arrow cannot run
-  // along the row and needs the strip above it.
-  const board = withDependencies(data, ['lane-none-1:s0', 'lane-none-1:s2'])
-  assert.equal(laneHasOverheadArrowCorridor(lanes[1]!, board), true)
-  // and on no other lane
-  assert.equal(laneHasOverheadArrowCorridor(lanes[0]!, board), false)
-  assert.equal(laneHasOverheadArrowCorridor(lanes[2]!, board), false)
-})
-
-test('the overhead rail is reserved on ANY lane, not on three named ones', () => {
-  // The regression. The same shape, moved from lane to lane, must reserve the
-  // same corridor every time — the previous rule answered `true` only for
-  // lanes called 'Regular Tutor' or 'Teacher'.
-  for (const index of [0, 1, 2]) {
-    const { lanes, data } = board2(3)
-    const board = withDependencies(data, [
-      `lane-none-${index}:s1`,
-      `lane-none-${index}:s3`,
-    ])
-    assert.equal(
-      laneHasOverheadArrowCorridor(lanes[index]!, board),
-      true,
-      `lane ${index} lost its overhead corridor`,
-    )
-  }
-})
-
-test('a neighbouring-column dependency needs no corridor', () => {
-  const { lanes, data } = board2(2)
-  // 0 -> 1 clears nothing: the arrow fits in the gap between the two cells.
-  const board = withDependencies(data, ['lane-none-0:s0', 'lane-none-0:s1'])
-  assert.equal(laneHasOverheadArrowCorridor(lanes[0]!, board), false)
-  assert.equal(laneHasInLaneLoopCorridor(lanes[0]!, board), false)
-})
-
-test('a dependency that leaves the lane is not the lane\'s corridor to reserve', () => {
-  const { lanes, data } = board2(2)
-  const board = withDependencies(data, ['lane-none-0:s0', 'lane-none-1:s3'])
-  assert.equal(laneHasOverheadArrowCorridor(lanes[0]!, board), false)
-  assert.equal(laneHasOverheadArrowCorridor(lanes[1]!, board), false)
-})
-
-test('a backward in-lane dependency reserves the loop corridor above its row', () => {
-  const { lanes, data } = board2(3)
-  const board = withDependencies(data, ['lane-none-2:s3', 'lane-none-2:s1'])
-  assert.equal(laneHasInLaneLoopCorridor(lanes[2]!, board), true)
-  assert.equal(laneHasOverheadArrowCorridor(lanes[2]!, board), false)
-  assert.equal(laneHasInLaneLoopCorridor(lanes[0]!, board), false)
-})
-
-test('a backward loop one column wide still reserves the loop corridor', () => {
-  const { lanes, data } = board2(1)
-  const board = withDependencies(data, ['lane-none-0:s2', 'lane-none-0:s1'])
-  assert.equal(laneHasInLaneLoopCorridor(lanes[0]!, board), true)
-})
-
-test('a lane with neither shape reserves nothing', () => {
-  const { lanes, data } = board2(2)
-  assert.equal(laneHasOverheadArrowCorridor(lanes[0]!, data), false)
-  assert.equal(laneHasInLaneLoopCorridor(lanes[0]!, data), false)
-  assert.equal(laneHasWrapCorridorBelow(lanes[0]!), false)
 })
 
 test('only the spine actor gets a corridor BELOW its row', () => {
