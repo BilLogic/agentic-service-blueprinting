@@ -20,7 +20,14 @@
  *    saves to; every key must be a column of that table, spelled in camelCase.
  *    The panel→table map below is a declaration of the subject — which table a
  *    form edits is a fact this file has to be told — not a list of pardons.
- *    The two keys that carry a `Text` suffix are named with their reason.
+ *    `suffix` is how a key that genuinely cannot be spelled as its column
+ *    names the column anyway, with its reason beside it. No current form needs
+ *    one: the two that did — `functionText` and `formText` on the cell editor,
+ *    for columns this app cannot use as bare identifiers without shadowing the
+ *    keyword and the element — left with that form when its state became a
+ *    type derived from the schema. The mechanism stays for the next column that
+ *    cannot be spelled, because a reason beside the key is the only place such
+ *    a decision can live.
  *
  * 2. THE ASSIGNMENT SITE. `description: cell.summary` is a column changing its
  *    name on the way into the app, and it is the exact shape every renamed
@@ -61,20 +68,16 @@ const APP_PACKAGE = appPackageRoot(REPO_ROOT)
 
 /**
  * Which table each editor form writes. `nested` names a key whose value is
- * itself a form for another table; `suffix` names the two keys that could not
- * be spelled as their column.
+ * itself a form for another table; `suffix` names any key that could not be
+ * spelled as its column, of which there are currently none.
  */
 export const EDITOR_FORMS = [
-  {
-    file: 'src/components/blueprint/CellPanelEditor.tsx',
-    type: 'FormState',
-    table: 'cells',
-    nested: { placement: 'cell_touchpoints' },
-    // `function` and `form` are column names this app cannot use as bare
-    // identifiers without shadowing the keyword and the element — so the form
-    // key carries a suffix, and this is where that decision is written down.
-    suffix: { functionText: 'function', formText: 'form' },
-  },
+  // The cell editor's form is NOT here, and cannot rot the way this check
+  // watches for. Its state is `CellEdits` in `src/lib/cellFields.ts`, a mapped
+  // type over the cell field descriptors whose keys are derived from the
+  // generated `cells` row, so a key that is not a column is a type error at
+  // `tsc` rather than a finding here — and `tsc` says it at the one place the
+  // key is written rather than after the fact.
   {
     file: 'src/lib/touchpointMutations.ts',
     type: 'PlacementDetailDraft',

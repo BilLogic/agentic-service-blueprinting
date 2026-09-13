@@ -34,10 +34,94 @@
  * around the table is hand-written, because a decision about why two words
  * differ is not in any catalogue.
  *
+ * THE CELL ROWS ARE NOT WRITTEN HERE. `src/lib/cellFields.ts` already carries,
+ * per column, the word a person sees above the field and the reason it differs
+ * from the column's name — the panel renders from that list, so a cell row
+ * typed here would be a second copy of the label the panel actually says, free
+ * to drift from it in silence. One row is read from every descriptor that has
+ * an `editor` (the fields a panel shows); a cell label cannot be spelled in
+ * this file, and the guard below refuses a hand row that tries.
+ *
  * Read by:
  *   - `scripts/generate-interface-schema-map.mjs`         (the document)
- *   - `scripts/tests/labels-name-their-columns.test.mjs`  (#89 — the four rules)
+ *   - `scripts/tests/labels-name-their-columns.test.mjs`  (#89 — the two rules left: names exist, divergences carry reasons)
  */
+
+import { loadAppModule } from './app-module.mjs'
+
+const { CELL_FIELDS } = await loadAppModule('lib/cellFields.ts')
+
+/**
+ * The cell's rows, keyed by column: a descriptor with an `editor` is a field
+ * some panel labels, and one with none is not a row of this map at all —
+ * structure moves on the board and the frame has its own affordance, so no
+ * panel says their words.
+ */
+const CELL_ROWS = new Map(
+  CELL_FIELDS.filter((descriptor) => descriptor.editor !== undefined).map((descriptor) => [
+    descriptor.key,
+    descriptor,
+  ]),
+)
+
+/**
+ * The one hand row that names a cell column a descriptor also names, and why
+ * it is allowed to.
+ *
+ * `Also on this step` is not a field of a cell: it heads the touchpoints
+ * standing in the same step, and `cells.content` names where their words live
+ * — its own `because` says so. Without this, the guard would read it as a hand
+ * copy of the Content row, which is the one thing it is not.
+ */
+const BORROWS_A_CELL_COLUMN = new Set(['Also on this step'])
+
+/**
+ * A placeholder row — `{ cell }`, optionally with the names of other tables the
+ * same label heads — resolved against the descriptor.
+ *
+ * The label and the reason come from `src/lib/cellFields.ts`; the cells name is
+ * `cells.<key>` and comes first, so a merged row lists the cell's column ahead
+ * of the other relations the label also heads.
+ */
+function resolveCellRow({ cell, names = [] }) {
+  const descriptor = CELL_ROWS.get(cell)
+  if (!descriptor) {
+    throw new Error(
+      `LABEL_COLUMNS names cells.${cell}, which src/lib/cellFields.ts has no ` +
+        'panel-edited descriptor for: the cell rows are read from that list, so a ' +
+        'row here can only name a field the panel shows',
+    )
+  }
+  const borrowed = names.filter((name) => name.startsWith('cells.'))
+  if (borrowed.length > 0) {
+    throw new Error(
+      `LABEL_COLUMNS spells ${borrowed.join(', ')} beside cells.${cell}: the cell rows ` +
+        'come from src/lib/cellFields.ts, and a cell column is named by its descriptor ' +
+        'rather than restated here',
+    )
+  }
+  return {
+    label: descriptor.label,
+    names: [`cells.${cell}`, ...names],
+    because: descriptor.because ?? '',
+  }
+}
+
+/** A hand row, checked against the descriptors it is not allowed to restate. */
+function checkHandRow(row) {
+  if (BORROWS_A_CELL_COLUMN.has(row.label)) return row
+  const restated = row.names.filter(
+    (name) => name.startsWith('cells.') && CELL_ROWS.has(name.slice('cells.'.length)),
+  )
+  if (restated.length > 0) {
+    throw new Error(
+      `LABEL_COLUMNS has a hand row "${row.label}" naming ${restated.join(', ')}: the cell ` +
+        'rows come from src/lib/cellFields.ts — write the label and the reason on the ' +
+        "descriptor there, and put a { cell: '…' } placeholder here",
+    )
+  }
+  return row
+}
 
 /**
  * Every panel label, the schema name behind it, and why they differ.
@@ -52,34 +136,31 @@
  * aligns with EVERY name it lists — so a shared word cannot be smuggled past
  * this by pairing a divergence with an agreement.
  *
+ * A `{ cell }` row is a cell field, read from `src/lib/cellFields.ts`; where it
+ * also carries `names`, the label heads those relations too and the cell's own
+ * column leads the list. Every other row is written here.
+ *
  * Ordered as a reader meets them: the cell's own fields, then the three
  * tabs and what stands under the first of them.
  */
 export const LABEL_COLUMNS = Object.freeze(
   [
-    { label: 'Content', names: ['cells.content'], because: '' },
+    { cell: 'content' },
     {
-      label: 'Summary',
+      cell: 'summary',
       names: [
-        'cells.summary',
         'paths.summary',
         'phases.summary',
         'scenarios.summary',
         'services.summary',
         'steps.summary',
       ],
-      because: '',
     },
-    { label: 'Owner', names: ['cells.owner'], because: '' },
-    { label: 'Perceived owner', names: ['cells.perceived_owner'], because: '' },
-    { label: 'Function', names: ['cells.function'], because: '' },
-    { label: 'Form', names: ['cells.form'], because: '' },
-    {
-      label: 'Value proposition',
-      names: ['cells.value_props'],
-      because:
-        '`props` abbreviates this exact phrase and no other. A label is read once and a name is typed daily, so the panel spells out what the schema shortens.',
-    },
+    { cell: 'owner' },
+    { cell: 'perceived_owner' },
+    { cell: 'function' },
+    { cell: 'form' },
+    { cell: 'value_props' },
     { label: 'Touchpoint', names: ['touchpoints'], because: '' },
     { label: 'Role', names: ['cell_touchpoints.role'], because: '' },
     {
@@ -145,7 +226,7 @@ export const LABEL_COLUMNS = Object.freeze(
       because: '',
     },
     { label: 'Paths', names: ['paths'], because: '' },
-    { label: 'Status', names: ['cells.status', 'paths.status'], because: '' },
+    { cell: 'status', names: ['paths.status'] },
     {
       label: 'Author note',
       names: ['paths.note'],
@@ -170,8 +251,33 @@ export const LABEL_COLUMNS = Object.freeze(
       because:
         'The one row whose right-hand side is a VALUE rather than the name of a place to put one: `storyboard` is one of the eight `lane_role` admits, and this label heads the frames of the lanes carrying it. The word is in the schema; it is simply not a column name.',
     },
-  ].map((row) => Object.freeze({ ...row, names: Object.freeze(row.names) })),
+  ]
+    .map((row) => (row.cell === undefined ? checkHandRow(row) : resolveCellRow(row)))
+    .map((row) => Object.freeze({ ...row, names: Object.freeze(row.names) })),
 )
+
+/**
+ * Every panel-edited descriptor has a row. A field added to the panel and not
+ * placed here would be a label bound to nothing — the defect #89 named. The
+ * test that used to catch it walked the app's `.tsx` for label props, and
+ * went when the cell panel stopped spelling its labels there; for a cell
+ * field the check belongs here, where the descriptors are read and the
+ * omission is.
+ */
+{
+  const placed = new Set(
+    LABEL_COLUMNS.flatMap((row) => row.names)
+      .filter((name) => name.startsWith('cells.'))
+      .map((name) => name.slice('cells.'.length)),
+  )
+  const missing = [...CELL_ROWS.keys()].filter((key) => !placed.has(key))
+  if (missing.length > 0) {
+    throw new Error(
+      `LABEL_COLUMNS has no row for ${missing.map((key) => `cells.${key}`).join(', ')}: every ` +
+        "descriptor a panel edits needs a { cell: '…' } row, in the place a reader meets it",
+    )
+  }
+}
 
 /* -------------------------------------------------------------- catalogue */
 

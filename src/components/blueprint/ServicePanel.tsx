@@ -323,12 +323,11 @@ function ServicePanelBody({
  *
  * A `Field` with the same textarea treatment `PanelTextareaField` gives every
  * other field here — not `PanelTextareaField` itself, because its label would
- * have to be the KIND name as a literal, and a literal label on a scanned
- * component is read as a column binding by
- * `scripts/tests/labels-name-their-columns.test.mjs`. The kind is not a column;
- * the one label that names one is the "Examples" section heading. So the kind
- * name arrives as an expression on a `Field` wrapping its own children, the
- * shape that check reads as "not a column label".
+ * have to be the KIND name as a literal, and the kind is not a column. The one
+ * label here that names one is the "Examples" section heading, which binds the
+ * whole jsonb map. So the kind name arrives as an expression on a `Field`
+ * wrapping its own children, which keeps the six inputs beneath the heading
+ * visibly not field-name labels.
  */
 function ServiceExampleField({
   kind,

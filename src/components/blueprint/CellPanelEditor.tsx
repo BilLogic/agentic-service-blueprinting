@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -17,17 +17,21 @@ import { useBlueprintCellDetailOptional } from '@/contexts/BlueprintCellDetailCo
 import { useBlueprintCell } from '@/hooks/useBlueprintCell'
 import { useValueAudiences } from '@/hooks/useValueAudiences'
 import { useNameOnlyPlacements } from '@/hooks/useRegistryTouchpoints'
-import { upsertCell } from '@/lib/authoringRpc'
 import {
   cellBudgetKindForLane,
   getCellContentLengthGuidance,
   type CellBudgetKind,
 } from '@/lib/cellContentLimits'
-import { updateCellContent } from '@/lib/cellContentMutations'
 import {
-  DEFAULT_ENTITY_STATUS,
-  type EntityStatus,
-} from '@/lib/entityStatus'
+  cellEditsFromCell,
+  EDITABLE_CELL_FIELDS,
+  type CellEditKey,
+  type CellEdits,
+  type CellEditValue,
+  type EditableCellField,
+} from '@/lib/cellFields'
+import { saveCell } from '@/lib/cellSave'
+import type { EntityStatus } from '@/lib/entityStatus'
 import { RegistryLink } from '@/components/blueprint/RegistryLink'
 import { RoleSelect } from '@/components/blueprint/RoleSelect'
 import { PlacementResourcesList } from '@/components/blueprint/PlacementResourcesList'
@@ -39,9 +43,8 @@ import {
 } from '@/lib/touchpointMutations'
 import { errorMessage } from '@/lib/utils'
 import type { BlueprintData, CellResource, CellTouchpoint } from '@/types/blueprint'
-import { updateCellSpec } from '@/lib/cellSpecMutations'
 import { parseCellContentItems } from '@/lib/parseCellContent'
-import { parseValueProps, type ValueProp } from '@/lib/valueProps'
+import type { ValueProp } from '@/lib/valueProps'
 
 /** Where a not-yet-created cell would go — the draft the editor writes on Save. */
 export type DraftCellTarget = {
@@ -62,16 +65,11 @@ export type DraftCellTarget = {
   phaseName?: string
 }
 
-type FormState = {
-  content: string
-  summary: string
-  owner: string
-  perceivedOwner: string
-  functionText: string
-  formText: string
-  valueProps: ValueProp[]
-  /** How far along the thing this cell describes is (`cells.status`). */
-  status: EntityStatus
+/**
+ * The form: the cell's editable fields, keyed by column and shaped by the
+ * cell field list, plus one thing that is not a cell field.
+ */
+type FormState = CellEdits & {
   /**
    * The selected touchpoint's own detail, when a touchpoint was clicked to
    * open this panel. Part of the SAME form state as the cell's fields, and
@@ -111,6 +109,28 @@ function budgetKindForEditor(
     if (lane) return cellBudgetKindForLane(lane)
   }
   return cellBudgetKindForLane(null)
+}
+
+/**
+ * The fields as rows of the form: one per row, except fields whose editor
+ * names the same `row`, which share one. The descriptor says it; the form
+ * only groups what it is told to.
+ */
+function fieldRows(fields: readonly EditableCellField[]): EditableCellField[][] {
+  const rows: EditableCellField[][] = []
+  const byName = new Map<string, EditableCellField[]>()
+  for (const field of fields) {
+    const name = 'row' in field.editor ? field.editor.row : null
+    const shared = name ? byName.get(name) : undefined
+    if (shared) {
+      shared.push(field)
+      continue
+    }
+    const row = [field]
+    if (name) byName.set(name, row)
+    rows.push(row)
+  }
+  return rows
 }
 
 /**
@@ -216,19 +236,12 @@ export function CellPanelEditor({
     // edit — the same case the fetch answered with no row.
     if (!cell) return null
 
+    // The DB truth, in the form's shape. The summary *field* may be seeded
+    // with the links-derived fallback below, but diffs and reverts compare
+    // against this — an owner-only edit must not smuggle the fallback prose
+    // into the summary column, and undo must restore what the DB held.
     const baseline: FormState = {
-      content: cell.content,
-      // The DB truth. The *field* may be seeded with the links-derived
-      // fallback below, but diffs and reverts compare against this — an
-      // owner-only edit must not smuggle the fallback prose into the
-      // summary column, and undo must restore what the DB actually held.
-      summary: cell.summary ?? '',
-      owner: cell.owner ?? '',
-      perceivedOwner: cell.perceived_owner ?? '',
-      functionText: cell.function ?? '',
-      formText: cell.form ?? '',
-      valueProps: parseValueProps(cell.value_props ?? null),
-      status: cell.status ?? DEFAULT_ENTITY_STATUS,
+      ...cellEditsFromCell(cell),
       placement: editable ? placementDraft(editable) : EMPTY_PLACEMENT,
     }
 
@@ -258,16 +271,8 @@ export function CellPanelEditor({
       cellId={null}
       draft={draft}
       baseline={{
-        content: '',
-        summary: '',
-        owner: '',
-        perceivedOwner: '',
-        functionText: '',
-        formText: '',
-        valueProps: [],
-        // The column's own default, so a cell created without touching the
-        // control reads the same as one the importer wrote.
-        status: DEFAULT_ENTITY_STATUS,
+        // The empty form, with the status column's own default.
+        ...cellEditsFromCell(null),
         // A cell that does not exist yet holds no placements: its touchpoints
         // come into being when its text is first saved and synced.
         placement: EMPTY_PLACEMENT,
@@ -359,19 +364,6 @@ function CellPanelEditorForm({
   const budgetKind = budgetKindForEditor(cellId, draft, detail?.blueprints)
   const lengthGuidance = getCellContentLengthGuidance(form.content, budgetKind)
 
-  const effectiveSummary = summaryTouched
-    ? form.summary
-    : baseline.summary
-  const contentChanged =
-    form.content !== baseline.content ||
-    effectiveSummary !== baseline.summary ||
-    form.owner !== baseline.owner ||
-    form.perceivedOwner !== baseline.perceivedOwner ||
-    form.status !== baseline.status
-  const specChanged =
-    form.functionText !== baseline.functionText ||
-    form.formText !== baseline.formText ||
-    JSON.stringify(form.valueProps) !== JSON.stringify(baseline.valueProps)
   const placementChanged =
     Boolean(placement) &&
     (form.placement.summary !== baseline.placement.summary ||
@@ -382,85 +374,41 @@ function CellPanelEditorForm({
     setBusy(true)
     setError(null)
     try {
-      let targetId = cellId ?? createdId
-      const creating = targetId === null
-      if (targetId === null) {
-        // The draft becomes real here and only here. Cancel never writes.
-        // The draft is a slot the editor already knows is empty — there is
-        // no cell id — so this is the upsert's insert half. It says so itself
-        // now; the id is what this caller wants either way.
-        targetId = (
-          await upsertCell(client, {
-            pathId: draft!.pathId,
-            laneId: draft!.laneId,
-            stepId: draft!.stepId,
-            content: form.content.trim(),
-          })
-        ).id
-        setCreatedId(targetId)
-      }
-
-      const draftExtras =
-        !cellId &&
-        Boolean(
-          form.summary.trim() ||
-            form.owner.trim() ||
-            form.perceivedOwner.trim() ||
-            form.status !== DEFAULT_ENTITY_STATUS,
-        )
-      if ((cellId && contentChanged) || (!cellId && (draftExtras || !creating))) {
-        await updateCellContent(
-          client,
-          targetId,
-          {
-            content: form.content,
-            summary: cellId ? effectiveSummary : form.summary,
-            owner: form.owner,
-            perceivedOwner: form.perceivedOwner,
-            status: form.status,
-          },
-          cellId
-            ? {
-                content: baseline.content,
-                summary: baseline.summary,
-                owner: baseline.owner,
-                perceivedOwner: baseline.perceivedOwner,
-                // The status as it stood, so the inverse restores five fields
-                // and not four. `CellContentUpdate` requires it, which is what
-                // makes that a compile error rather than a quiet omission.
-                status: baseline.status,
-              }
-            : undefined,
-          // The create already logs "Added a cell"; its field fill-in is
-          // part of the same user action, not a second change.
-          { record: Boolean(cellId) },
-        )
-      }
-      if (specChanged) {
-        await updateCellSpec(
-          client,
-          targetId,
-          {
-            function: form.functionText,
-            form: form.formText,
-            valueProps: form.valueProps,
-          },
-          cellId
-            ? {
-                function: baseline.functionText,
-                form: baseline.formText,
-                valueProps: baseline.valueProps,
-              }
-            : undefined,
-          { record: Boolean(cellId) },
-        )
-      }
+      const { placement: placementEdits, ...cellEdits } = form
+      const { placement: placementBaseline, ...cellBaseline } = baseline
+      // The one save: it creates the cell when there is none — the draft
+      // becomes real here and only here, Cancel never writes — and routes
+      // each changed field to its own write path. Which field goes where is
+      // the cell field list's business, not this form's.
+      const existing = cellId ?? createdId
+      const saved = await saveCell(client, {
+        // An existing cell by id — the one opened, or the one a failed earlier
+        // attempt created — else the draft's slot. `draft!` because the form
+        // is only ever mounted with a cell id or a draft.
+        ...(existing !== null
+          ? { cellId: existing }
+          : { cellId: null, slot: { pathId: draft!.pathId, laneId: draft!.laneId, stepId: draft!.stepId } }),
+        values: {
+          ...cellEdits,
+          // Only a deliberate edit persists the seeded fallback prose.
+          summary: cellId && !summaryTouched ? cellBaseline.summary : cellEdits.summary,
+        },
+        baseline: cellBaseline,
+        // The create already logs "Added a cell"; its field fill-in — and a
+        // retry after the create landed — is part of the same user action,
+        // not a second change.
+        record: Boolean(cellId),
+        // Remembered as soon as the row exists, not when the save returns: a
+        // draft that created its row and then failed a later write resumes
+        // on retry instead of upserting a second time.
+        onCreated: setCreatedId,
+      })
 
       /*
         The placement, after the cell — and after the sync the cell's save
         runs, which is what makes the order load-bearing rather than tidy.
 
-        `updateCellContent` calls `sync_cell_touchpoints`, and a save that
+        The content write calls `sync_cell_touchpoints`, and a save that
         removed this touchpoint's name from the text deletes its placement
         along with everything written about it. Writing the detail first would
         write words onto a row about to be destroyed; writing it afterwards
@@ -474,9 +422,9 @@ function CellPanelEditorForm({
       ) {
         await updateTouchpointPlacement(
           client,
-          { id: placement.id, cellId: targetId, name: placement.name },
-          form.placement,
-          placementColumns(baseline.placement),
+          { id: placement.id, cellId: saved.cellId, name: placement.name },
+          placementEdits,
+          placementColumns(placementBaseline),
         )
       }
 
@@ -491,6 +439,71 @@ function CellPanelEditorForm({
       if (aliveRef.current) setBusy(false)
     }
   }
+
+  /*
+    The placement, directly under the text that lists it.
+
+    Enclosed and headed rather than mixed into the cell's fields, because
+    these belong to a DIFFERENT thing: the cell is the moment, the
+    placement is one touchpoint used at it, and the same tool at the next
+    step keeps its own words. Two fields called Summary on one screen is
+    exactly why the group draws a border and says whose it is. Its labels
+    are its own, not the cell field list's: they name columns of
+    `cell_touchpoints`.
+
+    Directly under Content and not at the bottom because the author
+    reached this panel by clicking that touchpoint. Making them scroll
+    past six of the cell's fields to reach the thing they clicked is how
+    an editor teaches people it is not for them.
+  */
+  const placementGroup = placement ? (
+    <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/20 p-3">
+      <div className="flex flex-col gap-0.5">
+        <span className="text-xs font-medium text-muted-foreground">
+          “{placement.name}” at this step
+        </span>
+        <p className="text-xs text-muted-foreground">
+          This touchpoint’s own words here. The same tool at another
+          step keeps its own.
+        </p>
+      </div>
+      <Field
+        label="Summary"
+        hint="What this touchpoint does at this moment — the screen, the message, the part of it being used."
+      >
+        <textarea
+          value={form.placement.summary}
+          rows={3}
+          onChange={(event) => setPlacement('summary', event.target.value)}
+          className={PANEL_TEXTAREA_CLASS}
+        />
+      </Field>
+      <Field
+        label="Role"
+        hint="Whether the moment happens through this touchpoint or merely alongside it. Most placements are never marked, and leaving it unmarked is not the same as calling it peripheral."
+      >
+        <RoleSelect
+          value={form.placement.role}
+          aria-label="Role"
+          onChange={(next) => setPlacement('role', next)}
+        />
+      </Field>
+      {/*
+        The one exception to "one Save": the list has its own. A reorder
+        is a whole-list fact and featuring is one row's flag that the
+        database settles in its own transaction — folding either into the
+        field Save would make that button write things it cannot show as
+        unsaved. The list says so on its own button.
+      */}
+      {placement.id && cellId ? (
+        <PlacementResourcesList
+          placement={{ id: placement.id, cellId, name: placement.name }}
+          resources={placementResources}
+          frame={frame}
+        />
+      ) : null}
+    </div>
+  ) : null
 
   return (
     <div
@@ -519,226 +532,48 @@ function CellPanelEditorForm({
             />
           ))
         : null}
-      <Field label="Content" hint="What this cell says on the grid." required>
-        <Input
-          value={form.content}
-          autoFocus={cellId === null}
-          // Advice, not a gate. The same note the agent receives in its
-          // tool result lands under this field at the same thresholds;
-          // stopping the box used to contradict that (cellContentLimits).
-          onChange={(event) => set('content', event.target.value)}
-        />
-        {lengthGuidance.message ? (
-          <p role="status" className="text-xs font-normal text-muted-foreground">
-            {lengthGuidance.message}
-          </p>
-        ) : null}
-      </Field>
-
       {/*
-        The placement, directly under the text that lists it.
-
-        Enclosed and headed rather than mixed into the cell's fields, because
-        these belong to a DIFFERENT thing: the cell is the moment, the
-        placement is one touchpoint used at it, and the same tool at the next
-        step keeps its own words. Two fields called Summary on one screen is
-        exactly why the group draws a border and says whose it is.
-
-        Directly under Content and not at the bottom because the author
-        reached this panel by clicking that touchpoint. Making them scroll
-        past six of the cell's fields to reach the thing they clicked is how
-        an editor teaches people it is not for them.
+        The cell's fields, from the cell field list: label, hint and control
+        are the descriptor's, in the list's order — what the cell says and
+        who owns it, then what it is like. Two things sit between them that
+        are not cell fields: the length guidance under Content, and the
+        placement group directly under the text that lists it.
       */}
-      {placement ? (
-        <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/20 p-3">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-xs font-medium text-muted-foreground">
-              “{placement.name}” at this step
-            </span>
-            <p className="text-xs text-muted-foreground">
-              This touchpoint’s own words here. The same tool at another
-              step keeps its own.
-            </p>
-          </div>
-          <Field
-            label="Summary"
-            hint="What this touchpoint does at this moment — the screen, the message, the part of it being used."
-          >
-            <textarea
-              value={form.placement.summary}
-              rows={3}
-              onChange={(event) => setPlacement('summary', event.target.value)}
-              className={PANEL_TEXTAREA_CLASS}
-            />
-          </Field>
-          <Field
-            label="Role"
-            hint="Whether the moment happens through this touchpoint or merely alongside it. Most placements are never marked, and leaving it unmarked is not the same as calling it peripheral."
-          >
-            <RoleSelect
-              value={form.placement.role}
-              aria-label="Role"
-              onChange={(next) => setPlacement('role', next)}
-            />
-          </Field>
-          {/*
-            The one exception to "one Save": the list has its own. A reorder
-            is a whole-list fact and featuring is one row's flag that the
-            database settles in its own transaction — folding either into the
-            field Save would make that button write things it cannot show as
-            unsaved. The list says so on its own button.
-          */}
-          {placement.id && cellId ? (
-            <PlacementResourcesList
-              placement={{ id: placement.id, cellId, name: placement.name }}
-              resources={placementResources}
-              frame={frame}
-            />
-          ) : null}
-        </div>
-      ) : null}
-
-      {/* The tl;dr that consolidates what the detailed fields (function,
-          form, value proposition) spell out. Label and column are the same
-          word here; references/interface-schema-map.md says which are not.
-          A leftover of the description→summary rename used to sit here
-          saying "Summary", not "Summary" — both halves swept. */}
-      <Field label="Summary" hint="The tl;dr — what the detailed fields below add up to.">
-        <textarea
-          value={form.summary}
-          rows={3}
-          onChange={(event) => {
-            setSummaryTouched(true)
-            set('summary', event.target.value)
-          }}
-          className={PANEL_TEXTAREA_CLASS}
-        />
-      </Field>
-
-      <Field
-        label="Status"
-        hint="How far along the thing this cell describes is, from proposed to live to on its way out."
-      >
-        <StatusSelect
-          value={form.status}
-          onChange={(next) => set('status', next)}
-        />
-      </Field>
-
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Owner" hint="The team accountable for this moment.">
-          <OwnerTagSelect
-            value={form.owner}
-            ariaLabel="Owner"
-            onChange={(value) => set('owner', value)}
-          />
-        </Field>
-        <Field
-          label="Perceived owner"
-          hint="Who the person on the other side thinks they are dealing with. A gap between the two is a finding."
-        >
-          <OwnerTagSelect
-            value={form.perceivedOwner}
-            ariaLabel="Perceived owner"
-            onChange={(value) => set('perceivedOwner', value)}
-          />
-        </Field>
-      </div>
-
-      <Field label="Function" hint="What this cell has to accomplish.">
-        <textarea
-          value={form.functionText}
-          rows={2}
-          onChange={(event) => set('functionText', event.target.value)}
-          className={PANEL_TEXTAREA_CLASS}
-        />
-      </Field>
-      <Field label="Form" hint="How it comes across.">
-        <textarea
-          value={form.formText}
-          rows={2}
-          onChange={(event) => set('formText', event.target.value)}
-          className={PANEL_TEXTAREA_CLASS}
-        />
-      </Field>
-
-      <Field label="Value proposition" hint="Who gets what from it.">
-        <div className="flex flex-col gap-1.5">
-          {form.valueProps.map((entry, index) => (
-            <div key={index} className="flex items-center gap-1.5">
-              <Input
-                value={entry.for}
-                placeholder="For…"
-                // Suggests the audiences already in use — same tag logic as
-                // owners, lighter control: a datalist suggests, never blocks.
-                list="cell-value-audiences"
-                className="h-7 w-24 shrink-0 text-xs"
-                onChange={(event) =>
-                  set(
-                    'valueProps',
-                    form.valueProps.map((item, itemIndex) =>
-                      itemIndex === index
-                        ? { ...item, for: event.target.value }
-                        : item,
-                    ),
-                  )
-                }
-              />
-              <Input
-                value={entry.value}
-                placeholder="…gets this"
-                className="h-7 min-w-0 flex-1 text-xs"
-                onChange={(event) =>
-                  set(
-                    'valueProps',
-                    form.valueProps.map((item, itemIndex) =>
-                      itemIndex === index
-                        ? { ...item, value: event.target.value }
-                        : item,
-                    ),
-                  )
-                }
-              />
-              <IconTooltip label="Remove this value proposition">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label="Remove value proposition"
-                  className="shrink-0 text-muted-foreground hover:text-foreground"
-                  onClick={() =>
-                    set(
-                      'valueProps',
-                      form.valueProps.filter(
-                        (_, itemIndex) => itemIndex !== index,
-                      ),
-                    )
-                  }
-                >
-                  <X className="size-3" />
-                </Button>
-              </IconTooltip>
-            </div>
-          ))}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="self-start px-2 text-muted-foreground hover:text-foreground"
-            onClick={() =>
-              set('valueProps', [...form.valueProps, { for: '', value: '' }])
+      {fieldRows(EDITABLE_CELL_FIELDS).map((row) => {
+        const editors = row.map((field) => (
+          <CellFieldEditor
+            key={field.key}
+            field={field}
+            value={form[field.key]}
+            onChange={(value) => {
+              if (field.key === 'summary') setSummaryTouched(true)
+              set(field.key, value)
+            }}
+            autoFocus={field.key === 'content' && cellId === null}
+            audiences={audiences}
+            after={
+              field.key === 'content' && lengthGuidance.message ? (
+                // Advice, not a gate. The same note the agent receives in its
+                // tool result lands under this field at the same thresholds;
+                // stopping the box used to contradict that (cellContentLimits).
+                <p role="status" className="text-xs font-normal text-muted-foreground">
+                  {lengthGuidance.message}
+                </p>
+              ) : null
             }
-          >
-            <Plus className="size-3" />
-            Add value proposition
-          </Button>
-          <datalist id="cell-value-audiences">
-            {audiences.map((audience) => (
-              <option key={audience} value={audience} />
-            ))}
-          </datalist>
-        </div>
-      </Field>
+            below={field.key === 'content' ? placementGroup : null}
+          />
+        ))
+        // A shared row sits side by side — the owner pair, whose interesting
+        // case is when the two differ and a reader compares them at a glance.
+        return row.length > 1 ? (
+          <div key={row.map((field) => field.key).join(':')} className="grid grid-cols-2 gap-2">
+            {editors}
+          </div>
+        ) : (
+          editors
+        )
+      })}
 
       {blocked ? (
         <p className="text-xs text-muted-foreground">
@@ -773,6 +608,146 @@ function CellPanelEditorForm({
         // for everything on the panel. Inline only as a fallback.
         return footerHost ? createPortal(controls, footerHost) : controls
       })()}
+    </div>
+  )
+}
+
+/**
+ * One field of the form, rendered from its descriptor: the label and hint
+ * are the descriptor's, the control is the one its `editor` names, and the
+ * value is typed by the field. `after` sits inside the field under the
+ * control (the length guidance); `below` sits after the field (the
+ * placement group).
+ */
+function CellFieldEditor<K extends CellEditKey>({
+  field,
+  value,
+  onChange,
+  autoFocus,
+  audiences,
+  after,
+  below,
+}: {
+  field: EditableCellField & { key: K }
+  value: CellEditValue<K>
+  onChange: (value: CellEditValue<K>) => void
+  autoFocus: boolean
+  audiences: readonly string[]
+  after: ReactNode
+  below: ReactNode
+}) {
+  // Each branch narrows the value by the control rather than by the key,
+  // so a second field with the same control needs no branch of its own;
+  // the casts are the price of a union the descriptor list correlates and
+  // the checker cannot.
+  const change = onChange as (value: unknown) => void
+  const control = (() => {
+    switch (field.editor.control) {
+      case 'input':
+        return (
+          <Input
+            value={value as string}
+            autoFocus={autoFocus}
+            onChange={(event) => change(event.target.value)}
+          />
+        )
+      case 'textarea':
+        return (
+          <textarea
+            value={value as string}
+            rows={field.editor.rows}
+            onChange={(event) => change(event.target.value)}
+            className={PANEL_TEXTAREA_CLASS}
+          />
+        )
+      case 'status':
+        return <StatusSelect value={value as EntityStatus} onChange={change} />
+      case 'ownerTag':
+        return (
+          <OwnerTagSelect value={value as string} ariaLabel={field.label} onChange={change} />
+        )
+      case 'valueProps':
+        return (
+          <ValuePropsEditor value={value as ValueProp[]} onChange={change} audiences={audiences} />
+        )
+    }
+  })()
+
+  const rendered = (
+    <Field label={field.label} hint={field.hint} required={field.required}>
+      {control}
+      {after}
+    </Field>
+  )
+  if (!below) return rendered
+  return (
+    <>
+      {rendered}
+      {below}
+    </>
+  )
+}
+
+/** The value propositions: a list of audience/value pairs, added and removed by row. */
+function ValuePropsEditor({
+  value,
+  onChange,
+  audiences,
+}: {
+  value: ValueProp[]
+  onChange: (value: ValueProp[]) => void
+  audiences: readonly string[]
+}) {
+  const update = (index: number, patch: Partial<ValueProp>) =>
+    onChange(value.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)))
+  return (
+    <div className="flex flex-col gap-1.5">
+      {value.map((entry, index) => (
+        <div key={index} className="flex items-center gap-1.5">
+          <Input
+            value={entry.for}
+            placeholder="For…"
+            // Suggests the audiences already in use — same tag logic as
+            // owners, lighter control: a datalist suggests, never blocks.
+            list="cell-value-audiences"
+            className="h-7 w-24 shrink-0 text-xs"
+            onChange={(event) => update(index, { for: event.target.value })}
+          />
+          <Input
+            value={entry.value}
+            placeholder="…gets this"
+            className="h-7 min-w-0 flex-1 text-xs"
+            onChange={(event) => update(index, { value: event.target.value })}
+          />
+          <IconTooltip label="Remove this value proposition">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Remove value proposition"
+              className="shrink-0 text-muted-foreground hover:text-foreground"
+              onClick={() => onChange(value.filter((_, itemIndex) => itemIndex !== index))}
+            >
+              <X className="size-3" />
+            </Button>
+          </IconTooltip>
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="self-start px-2 text-muted-foreground hover:text-foreground"
+        onClick={() => onChange([...value, { for: '', value: '' }])}
+      >
+        <Plus className="size-3" />
+        Add value proposition
+      </Button>
+      <datalist id="cell-value-audiences">
+        {audiences.map((audience) => (
+          <option key={audience} value={audience} />
+        ))}
+      </datalist>
     </div>
   )
 }

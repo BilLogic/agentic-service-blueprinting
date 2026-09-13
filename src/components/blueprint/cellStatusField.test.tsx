@@ -29,6 +29,10 @@ vi.mock('@/hooks/useBlueprintCell', () => ({
 }))
 
 import { CellContentSection } from '@/components/blueprint/CellContentSection'
+import { CELL_FIELDS } from '@/lib/cellFields'
+
+/** The hint is the descriptor's — the same sentence the editor shows. */
+const STATUS_HINT = CELL_FIELDS.find((field) => field.key === 'status')!.hint
 
 afterEach(cleanup)
 
@@ -57,9 +61,7 @@ describe('the Status field carries a hint like Summary', () => {
     // A plain field label, not a badge caption.
     expect(label.hasAttribute('data-panel-term-badge')).toBe(false)
     hover(label)
-    expect(
-      await screen.findByText('How far along the thing this cell describes is.'),
-    ).not.toBeNull()
+    expect(await screen.findByText(STATUS_HINT)).not.toBeNull()
   })
 })
 

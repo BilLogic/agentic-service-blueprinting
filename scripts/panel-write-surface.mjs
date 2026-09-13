@@ -88,7 +88,10 @@
  * have.
  */
 
+import { loadAppModule } from './app-module.mjs'
 import { directTableWrites, writtenVerbsByTable } from './direct-table-writes.mjs'
+
+const { CELL_FIELDS } = await loadAppModule('lib/cellFields.ts')
 
 /**
  * `table: [columns]`. The columns are the ones named in an `.update({…})`
@@ -116,20 +119,17 @@ export const PANEL_WRITE_SURFACE = {
   stakeholders: ['name', 'kind', 'summary', 'aliases'],
   // src/lib/serviceSpecMutations.ts (the Service panel's second row)
   business_models: ['funding', 'pricing', 'delivery_cost', 'revenue_model', 'partners'],
-  // src/lib/cellContentMutations.ts (content, summary, owner, perceived_owner,
-  // status) and src/lib/cellSpecMutations.ts (function, form, value_props) —
-  // one table, two panels, and the reason the grant for it arrives in three
-  // separate migrations.
-  cells: [
-    'content',
-    'summary',
-    'owner',
-    'perceived_owner',
-    'status',
-    'function',
-    'form',
-    'value_props',
-  ],
+  // The cell's two direct-write routes, off the descriptors: a field whose
+  // `writeRoute` is `content` goes through src/lib/cellContentMutations.ts and
+  // one whose route is `spec` through src/lib/cellSpecMutations.ts — one table,
+  // two mutations, and the reason the grant for it arrives in three separate
+  // migrations. The `rpc` fields are not here; they move through a definer
+  // function, which holds its own privileges. Read rather than copied, so a
+  // field added to a panel is a column this check probes in the same edit —
+  // which is precisely the way this list used to fall behind.
+  cells: CELL_FIELDS.filter(
+    (field) => field.writeRoute === 'content' || field.writeRoute === 'spec',
+  ).map((field) => field.key),
   // src/lib/touchpointMutations.ts — the cell panel's placement rows.
   cell_touchpoints: ['summary', 'role'],
   // src/lib/evidenceMutations.ts. The form also inserts and deletes, and those
