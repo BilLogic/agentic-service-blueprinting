@@ -63,5 +63,10 @@ The shared-script fence is closed under relative import, and the walk that
 closes it read one spelling of an import. No shared script uses the other one
 today, which is exactly when the hole is cheap to close.
 
+And the tag fetch moves to the top of the CI job, beside `npm ci`. A checkout
+does not fetch tags, and the fetch sat two dozen steps below `npm test` — so
+the suite ran against an empty tag list, which is the vacuous state this whole
+change is about, one layer up. It was the new breadth assertion that found it.
+
 This repository's results are unchanged throughout: the same subjects, the same
 counts, the same verdicts.

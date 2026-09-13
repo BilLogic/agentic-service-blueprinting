@@ -63,7 +63,19 @@ test('this checkout can see tags, so the guard has something to hold', () => {
   // vacuous — and this repository has a hundred tags, which means an empty
   // answer here is a checkout that cannot see them rather than a repository
   // that has none.
-  assert.ok(localTags().length > 0, 'no v* tag is visible — run `git fetch --tags` first')
+  //
+  // THIS IS NOT A LOCAL-ONLY ASSERTION, and the first run of it proved that:
+  // `actions/checkout` does not fetch tags, and the fetch that gets them sat
+  // two dozen steps below `npm test`, so the suite ran against none. The fetch
+  // now runs beside `npm ci`, before anything reads a tag. A red line here is
+  // that ordering having come undone — which is the state the whole guard
+  // exists to refuse, so it must never be softened into a skip.
+  assert.ok(
+    localTags().length > 0,
+    'no v* tag is visible, so every claim check:release-tag makes is vacuously true. ' +
+      'Locally: git fetch --tags. In CI: the `git fetch --tags --force` step in ' +
+      '.github/workflows/ci.yml has to run before this suite.',
+  )
 })
 
 /**

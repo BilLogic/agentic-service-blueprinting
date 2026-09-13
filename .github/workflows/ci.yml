@@ -39,6 +39,15 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # THE TAGS, BEFORE ANYTHING READS THEM. A checkout does not fetch tags,
+      # and the tag is the only thing a consumer can pin — so a runner without
+      # them is a runner where every claim about tags is vacuously true. This
+      # sat beside `check:release-tag` two dozen steps below, which left `npm
+      # test` running against an empty tag list: the suite's breadth assertion
+      # over that subject went red, correctly, and the check itself would have
+      # announced that it held nothing. Both of those stay as the backstop; the
+      # fetch moving up here is what makes them unnecessary.
+      - run: git fetch --tags --force
       # The plugin contract's identifier layer, and the one version number.
       - run: npm run check:manifest
       - run: npm run check:version
@@ -73,11 +82,10 @@ jobs:
       # does its cast or one of its scenarios. Content with the name filed off
       # walked straight past the grep until #329.
       - run: npm run check:content-coupling
-      # The tag is the only thing a consumer can pin, and a checkout does not
-      # fetch tags. `--require` is not passed here: the tag for a version is
-      # cut after the release commit is on main, not on the pull request that
-      # proposes it (docs/engineering/releasing.md).
-      - run: git fetch --tags --force
+      # `--require` is not passed here: the tag for a version is cut after the
+      # release commit is on main, not on the pull request that proposes it
+      # (docs/engineering/releasing.md). The fetch that makes the tags visible
+      # is a precondition of the whole job and runs above, beside `npm ci`.
       - run: npm run check:release-tag
       # The two indexes are generated from the docs' own frontmatter, and a
       # doc that states no summary fails here rather than landing as a blank
