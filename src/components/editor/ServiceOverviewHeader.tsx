@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils'
  * level up, because that IS the template:
  *
  *   docked bar          border, sidebar surface, px-4, items-center
- *     menubar row       min-h-9, flat, flex-1
+ *     menubar row       one row height, flat, flex-1
  *       EntityHeader    the title AND the summary, shared with both
  *       right cluster   empty at this level; the phase header's controls
  *                       belong to a phase
