@@ -1,5 +1,75 @@
 # Changelog
 
+## 1.44.3
+
+**Two sweeps stopped where their fence stopped rather than where their argument
+stopped.** Both were widened only after the widening was measured, and both
+tails are named below rather than excluded.
+
+**The content-coupling sweep read no root-level document.** Its subject was
+seven directory prefixes — `src/`, `skills/`, `agents/`, `references/`,
+`evals/`, `scripts/`, `docs/` — and no root-level file starts with any of them.
+So `README.md`, `CONTEXT.md`, `SETUP.md`, `INDEX.md`, `CONTRIBUTING.md`,
+`SECURITY.md` and **`AGENTS.md`** were outside the sweep entirely. `AGENTS.md`
+is the always-loaded tier, the one file every session is handed without
+choosing, and a foreign cell id, a cast role and a deployment's asset path
+appended to it passed in green: `no deployment content in 620 shared files`.
+The same three lines in `references/data-model.md` were caught at once. The
+header named two deliberate exclusions and never mentioned the root documents,
+which is what made it an escape rather than a decision.
+
+The subject is now everything a commit would carry, tracked and untracked —
+which is the subject `check:standalone` beside it already read. A new module
+states it once for both, so the two cannot drift apart, and the exclusions that
+survive carry their reason beside them instead of being an accident of a prefix
+list. Widening added 36 files and produced one finding: a released CHANGELOG
+entry quoting the check's own header, which is one allowed site with its
+reason, not an excluded file. The changelog stays swept, and so do the
+changesets it is generated from — where a pasted value now fails before a
+release rather than after one. The swept count went from 620 to 657 in the
+commit that widened it, and moves with the tree from there.
+
+The shared module that assembles the prose corpus went with it: the root
+documents are discovered rather than listed, because which documents sit at a
+repository's root is that repository's own fact. Four of them are read by a
+prose sweep here for the first time, and that tail was zero.
+
+**The path check resolved nothing under `docs/`.** It held the paths named by 36
+plugin-surface documents true, and `docs/` is the largest prose tree in this
+package. Planted dangling paths in `CONTEXT.md` and in `docs/engineering/checks.md`
+passed the whole suite.
+
+Measured before deciding, as the issue asked: `docs/engineering/` 3,
+`docs/guidelines/` 0, the rest of `docs/` 11, the root documents 35 — of which
+34 were in `CHANGELOG.md`. The non-history tail was fifteen, short enough to do
+in one change rather than in stages, and it resolved as: **one real defect** (a
+connector document sending readers to a hook file that never existed); **three
+an exemption should already have covered** — `blueprint/*.json` was listed as a
+glob and looked up by exact key, so it excused nothing while the three
+documents it was written for failed; **four decision records**, excluded on the
+ground already recorded for them, that they keep the words of the day they were
+written; and **seven sites in six sentences that are right about a file this
+tree is right not to have.** Those seven are keyed by document AND token, so an
+exemption cannot travel to the document where the same path is a defect. Both
+lists fail closed, and an entry nothing matches any more is itself a failure.
+Subject: 36 documents became 58.
+
+**The line between the two guards is unmoved, and both now state it the same
+way.** This check REQUIRES a named path to resolve here; the citation guard
+FORBIDS a shared file naming a path its reader lacks. A document under both
+rules could satisfy neither — so the line is which reader the document is
+written for, and everything added here is packed with the package and read out
+of its own installed tree. The two subjects do not overlap.
+
+**Upgrading a deployment:** this is where to read carefully, because both
+changes can turn a gate red in your repository that was green in ours. If you
+enrol either sweep, its subject grows: the coupling sweep will read your root
+documents — including your `AGENTS.md`, which is the point — and the prose
+corpus will read the root documents you have rather than the ones this package
+has. A finding in one of those is a real one; resolve it by moving the content,
+or record an allowed site with its reason, and do not narrow the subject back.
+Nothing else here changes an interface.
+
 ## 1.44.2
 
 **A check that cannot see its subject now either refuses or says so.** The
@@ -6017,8 +6087,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                    ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                    "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                      ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                      "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
