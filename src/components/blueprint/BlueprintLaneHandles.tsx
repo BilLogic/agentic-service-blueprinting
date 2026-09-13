@@ -12,7 +12,6 @@ import { useAtScenarioLevel, useEditor } from '@/contexts/EditorContext'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useCellPick } from '@/contexts/cellPickContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { addLane } from '@/lib/authoringRpc'
 import { errorMessage } from '@/lib/utils'
 
@@ -131,7 +130,6 @@ function BlueprintLaneHandlesActive({
         name: trimmed,
         atPosition: naming.at,
       })
-      invalidateStructure()
       setNaming(null)
       setName('')
     } catch (laneError) {

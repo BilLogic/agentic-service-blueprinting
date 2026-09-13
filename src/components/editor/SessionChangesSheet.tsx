@@ -25,7 +25,6 @@ import {
 import { scrollBlueprintCellIntoView } from '@/lib/blueprintCellConnections'
 import { executeRevert } from '@/lib/revertChange'
 import { reportWriteFailure } from '@/lib/writeFailures'
-import { invalidateQueries, invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { cn, errorMessage } from '@/lib/utils'
 
@@ -95,35 +94,14 @@ async function revertEntry(
   revertsInFlight.add(entry.id)
   try {
     await executeRevert(client, entry)
-    // The change is gone from the database, so it leaves the list — and the
-    // grid re-reads, because every revert is structural or content-bearing.
+    // The change is gone from the database, so it leaves the list. What it
+    // changed on screen is refetched by the write module the inverse went
+    // through — the same module the forward write did — so this sheet holds
+    // no list of keys. Its own list had been a subset three times over: a
+    // reverted duplicate_path left a ghost in the paths catalog, an undone
+    // "Added evidence" kept the row in an open Evidence tab, an undone frame
+    // rewrite left the slice editor on frames the database no longer had.
     forgetChange(entry.id)
-    // The full structural set, the same one every other mutation site sends.
-    // Two keys was this path's own subset, and it is why reverting a
-    // duplicated path left the copy in the sidebar's PATHS list with an id
-    // that 404s until a reload.
-    invalidateStructure()
-    const cellId =
-      typeof entry.args.cell_id === 'string' ? entry.args.cell_id : null
-    if (cellId) {
-      invalidateQueries(`cell-content:${cellId}`)
-      invalidateQueries(`cell-spec:${cellId}`)
-      // Evidence caches under its own key with explicit-only revalidation;
-      // without this, undoing "Added evidence" keeps rendering the deleted
-      // row in an open Evidence tab for the rest of the session.
-      invalidateQueries(`evidence:${cellId}`)
-    }
-    // Slices cache under their own keys, which `invalidateStructure` does not
-    // touch. Without this, undoing a frame rewrite left the slice tab and the
-    // open frame editor rendering the frames the database no longer had — the
-    // same class of failure the `evidence:` line above was added for, and one
-    // only reachable now that a slice write HAS a revert.
-    const sliceId =
-      typeof entry.args.slice_id === 'string' ? entry.args.slice_id : null
-    if (sliceId) {
-      invalidateQueries('slices')
-      invalidateQueries(`slice:${sliceId}`)
-    }
     return 'reverted'
   } finally {
     revertsInFlight.delete(entry.id)
@@ -259,8 +237,8 @@ function useUndoHotkey(changes: SessionEntry[]) {
  *
  * Deliberately NOT `revertAll` with a filter — it walks the same shape but
  * over a different set, and shares the parts that matter: `revertEntry` (so
- * the in-flight guard, `forgetChange` and every cache invalidation are the
- * proven ones), the module-level run flag (so a row button or ⌘Z landing
+ * the in-flight guard and `forgetChange` are the proven ones), the module-level
+ * run flag (so a row button or ⌘Z landing
  * mid-run is refused rather than double-executing an inverse), and the
  * re-read-from-the-store loop (a captured array goes stale the moment a
  * concurrent revert or a human save touches the ledger).
@@ -440,8 +418,8 @@ export function SessionChangesSheet() {
    * Take back everything this session can take back.
    *
    * Newest first, one at a time, through the very same `revertEntry` the row
-   * button and ⌘Z use — so the in-flight guard, the `forgetChange`, and every
-   * cache invalidation are the ones already proven. Sequential rather than
+   * button and ⌘Z use — so the in-flight guard and the `forgetChange` are the
+   * ones already proven. Sequential rather than
    * `Promise.all` because these inverses are ordered: a cell added into a lane
    * added in the same session has to go before the lane does.
    *

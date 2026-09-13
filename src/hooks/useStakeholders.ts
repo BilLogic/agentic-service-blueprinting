@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
 import type { Stakeholder } from '@/types/database'
+import { queryKeys } from '@/lib/queryKeys'
 
 /**
  * What sort of party a registry row is.
@@ -70,7 +71,7 @@ export function useStakeholders(): QueryResult<Stakeholder[]> {
   const fallback = useCallback(() => [], [])
 
   return useSupabaseQuery<Stakeholder[]>(
-    'stakeholders',
+    queryKeys.stakeholders,
     async (client, signal) => {
       const { data, error } = await client
         .from('stakeholders')

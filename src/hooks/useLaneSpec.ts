@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
+import { queryKeys } from '@/lib/queryKeys'
 
 export type LaneSpec = {
   id: string
@@ -44,7 +45,7 @@ export function useLaneSpec(laneId: string | null): QueryResult<LaneSpec | null>
   const fallback = useCallback(() => null, [])
 
   return useSupabaseQuery<LaneSpec | null>(
-    `lane-spec:${laneId ?? 'none'}`,
+    queryKeys.laneSpec.of(laneId ?? 'none'),
     async (client, signal) => {
       if (!laneId) return null
 

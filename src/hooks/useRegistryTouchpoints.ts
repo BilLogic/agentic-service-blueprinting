@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
+import { queryKeys } from '@/lib/queryKeys'
 
 export type RegistryTouchpoint = { id: string; name: string; kind: string }
 
@@ -21,7 +22,7 @@ export function useRegistryTouchpoints(
 ): QueryResult<RegistryTouchpoint[]> {
   const fallback = useCallback(() => [], [])
   return useSupabaseQuery<RegistryTouchpoint[]>(
-    cellId ? `registry-touchpoints:${cellId}` : null,
+    cellId ? queryKeys.registryTouchpoints.of(cellId) : null,
     async (client, signal) => {
       const { data, error } = await client
         .from('touchpoints')
@@ -43,7 +44,7 @@ export function useNameOnlyPlacements(
 ): QueryResult<NameOnlyPlacement[]> {
   const fallback = useCallback(() => [], [])
   return useSupabaseQuery<NameOnlyPlacement[]>(
-    cellId ? `name-only-placements:${cellId}` : null,
+    cellId ? queryKeys.nameOnlyPlacements.of(cellId) : null,
     async (client, signal) => {
       const { data, error } = await client
         .from('cell_touchpoints')

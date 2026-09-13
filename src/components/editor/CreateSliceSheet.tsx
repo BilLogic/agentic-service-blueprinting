@@ -12,7 +12,6 @@ import { IconTooltip } from '@/components/editor/IconTooltip'
 import { SliceSlideComposer } from '@/components/editor/SliceSlideComposer'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useViewState } from '@/contexts/viewStateStore'
-import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { resolveActiveServiceId } from '@/lib/service'
 import { createSlice } from '@/lib/sliceMutations'
 import { deriveSliceType, describeSliceType } from '@/lib/sliceKind'
@@ -141,7 +140,6 @@ export function CreateSliceSheet({
         cellIds,
         slides: slides,
       })
-      invalidateQueries('slices')
       reset()
       onCreated()
       // Land in the slice's own tab — the point of creating it is to look

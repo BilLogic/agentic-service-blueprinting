@@ -30,7 +30,6 @@ import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useActiveServiceSlug } from '@/contexts/activeServiceStore'
 import { useArchiveAvailable } from '@/hooks/useArchiveAvailable'
 import { useScenarioPaths } from '@/hooks/useScenarioPaths'
-import { invalidateStructure } from '@/hooks/useSupabaseQuery'
 import {
   duplicatePath,
   duplicateScenario,
@@ -146,7 +145,6 @@ export function StructureRowContextMenu({
           sourceScenarioId: id,
           name: copyName,
         })
-      invalidateStructure()
     } catch (duplicateFailure) {
       // Never swallowed. The bare `catch {}` that used to sit here made a
       // refused duplicate — a tier guard, a name collision — indistinguishable
@@ -441,7 +439,6 @@ function RenameDialog({
         })
       else
         await renamePath(client, { pathId: id, name, previousName: currentName })
-      invalidateStructure()
       onOpenChange(false)
     } catch (renameError) {
       onError(errorMessage(renameError))

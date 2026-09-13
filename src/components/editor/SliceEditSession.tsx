@@ -7,7 +7,6 @@ import { SlideRemovalDialog } from '@/components/editor/SlideRemovalDialog'
 import { CellPickContext, type CellPickApi } from '@/contexts/cellPickContext'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import type { SliceDetail } from '@/hooks/useSlice'
 import {
   replaceSlides,
@@ -177,8 +176,6 @@ export function SliceEditSession({
       }
 
       await replaceSlides(client, detail.slice.id, slides)
-      invalidateQueries('slices')
-      invalidateQueries(`slice:${detail.slice.id}`)
       onClose()
     } catch (saveError) {
       setError(errorMessage(saveError))

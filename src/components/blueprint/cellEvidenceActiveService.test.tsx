@@ -37,7 +37,6 @@ vi.mock('@/lib/evidenceMutations', () => ({
 
 vi.mock('@/hooks/useEvidence', () => ({
   useEvidence: () => ({ status: 'ready', data: [], source: 'database' }),
-  invalidateEvidence: () => {},
 }))
 
 /** A client stub that answers the `services` reads both resolvers make. */

@@ -1,5 +1,4 @@
 import { setSharedCanvasMode } from '@/contexts/canvasModeContext'
-import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { attributedTo } from '@/lib/authoringSession'
 import {
   agentUiCommandMutates,
@@ -42,14 +41,9 @@ export const liveUi: ToolUi = {
 export function liveSession(id: string): ToolSession {
   return {
     id,
-    async attributed(work) {
-      try {
-        return await attributedTo(id, work)
-      } finally {
-        // The canvas reads through the shared query cache; the empty prefix
-        // matches every key, so the grids refetch and repaint after a write.
-        invalidateQueries('')
-      }
-    },
+    // The grids repaint because the write module the tool called invalidated
+    // what it changed — the same way a panel's save does. Nothing here sweeps
+    // the cache.
+    attributed: (work) => attributedTo(id, work),
   }
 }

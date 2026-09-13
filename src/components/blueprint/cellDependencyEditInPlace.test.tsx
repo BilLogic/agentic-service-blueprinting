@@ -58,7 +58,6 @@ const rpc = vi.hoisted(() => ({
 vi.mock('@/contexts/SupabaseProvider', () => ({
   useSupabase: () => ({ client: {}, configured: true, canWrite: true }),
 }))
-vi.mock('@/hooks/useSupabaseQuery', () => ({ invalidateQueries: () => {} }))
 vi.mock('@/lib/authoringRpc', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/authoringRpc')>()),
   updateCellDependency: rpc.update,

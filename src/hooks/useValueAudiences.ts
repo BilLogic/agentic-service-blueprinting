@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
 import { parseValueProps } from '@/lib/valueProps'
 import type { Json } from '@/types/database'
+import { queryKeys } from '@/lib/queryKeys'
 
 /**
  * The vocabulary the Value editor suggests from: the STAKEHOLDER REGISTRY
@@ -23,7 +24,7 @@ export function useValueAudiences(): QueryResult<string[]> {
   const fallback = useCallback(() => [], [])
 
   return useSupabaseQuery<string[]>(
-    'value-audiences',
+    queryKeys.valueAudiences,
     async (client, signal) => {
       const [registry, cells] = await Promise.all([
         client

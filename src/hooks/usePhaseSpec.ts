@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
+import { queryKeys } from '@/lib/queryKeys'
 
 export type PhaseSpec = {
   id: string
@@ -27,7 +28,7 @@ export function usePhaseSpec(
   const fallback = useCallback(() => null, [])
 
   return useSupabaseQuery<PhaseSpec | null>(
-    `phase-spec:${phaseId ?? 'none'}`,
+    queryKeys.phaseSpec.of(phaseId ?? 'none'),
     async (client, signal) => {
       if (!phaseId) return null
 

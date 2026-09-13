@@ -26,7 +26,10 @@
  *     `read<T>(client, 'fn', { … })`;
  *   - the `args` of a revert spec, `{ fn: 'fn', args: { … } }`. An inverse is
  *     posted the moment somebody clicks undo, which is the latest a name can
- *     be wrong and the least likely place to notice.
+ *     be wrong and the least likely place to notice. An inverse the revert
+ *     path executes ITSELF — a `case` of `src/lib/revertChange.ts`'s switch
+ *     that the schema has no function for (`rename_owner_tag_scoped`) — is
+ *     never posted, and is left out.
  *
  * AGAINST: the parameter lists parsed from
  * `supabase/generated/portable-core.schema.sql` — the dump of what the
@@ -51,11 +54,11 @@
  *
  * Run: node scripts/check-rpc-arguments.mjs   (also: npm run check:rpc-arguments)
  */
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { readAppFile } from './app-source.mjs'
+import { appPackageRoot, readAppFile } from './app-source.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
@@ -70,6 +73,7 @@ const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
  * whether the calls fit THAT database.
  */
 const CALLER = 'src/lib/authoringRpc.ts'
+const REVERTER = 'src/lib/revertChange.ts'
 const SCHEMA = 'supabase/generated/portable-core.schema.sql'
 
 /* ----------------------------------------------------------------- schema */
@@ -285,6 +289,15 @@ export function problemsAt(site, functions) {
   ]
 }
 
+/**
+ * The inverses the revert path executes itself: every `case` of its switch.
+ * One of those that the schema has no function for is a client-side inverse
+ * and is never posted, so a revert spec naming it is not a call.
+ */
+export function clientSideInverses(source) {
+  return new Set([...source.matchAll(/^\s*case '([a-z_]+)':/gm)].map((match) => match[1]))
+}
+
 export function compare(root = REPO_ROOT) {
   const read = (path) => readFileSync(join(root, path), 'utf8')
   const source = readAppFile(root, CALLER)
@@ -293,9 +306,13 @@ export function compare(root = REPO_ROOT) {
   if (sites.length === 0) {
     throw new Error(`no RPC call sites found in ${CALLER}`)
   }
-  return sites.flatMap((site) =>
-    problemsAt(site, functions).map((problem) => ({ line: site.line, problem })),
-  )
+  const reverter = join(appPackageRoot(root), REVERTER)
+  const handled = existsSync(reverter) ? clientSideInverses(readFileSync(reverter, 'utf8')) : new Set()
+  return sites
+    .filter((site) => !(handled.has(site.fn) && !functions.has(site.fn)))
+    .flatMap((site) =>
+      problemsAt(site, functions).map((problem) => ({ line: site.line, problem })),
+    )
 }
 
 function main() {

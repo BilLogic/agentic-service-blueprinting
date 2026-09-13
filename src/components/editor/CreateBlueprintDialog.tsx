@@ -13,7 +13,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { useDeploymentConfig } from '@/contexts/DeploymentConfigContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { useSupabaseQuery, invalidateStructure } from '@/hooks/useSupabaseQuery'
+import { useSupabaseQuery } from '@/hooks/useSupabaseQuery'
 import { useServicePhases } from '@/hooks/useServicePhases'
 import { createScenario } from '@/lib/authoringRpc'
 import {
@@ -27,6 +27,7 @@ import {
   type DraftBlueprint,
 } from '@/lib/blueprintValidation'
 import { errorMessage } from '@/lib/utils'
+import { queryKeys } from '@/lib/queryKeys'
 
 /** A version that lanes can be copied from, labelled by where it lives. */
 type LaneSource = {
@@ -44,7 +45,7 @@ type LaneSource = {
 function useLaneSources() {
   const fallback = useCallback((): LaneSource[] => [], [])
   return useSupabaseQuery<LaneSource[]>(
-    'lane-sources',
+    queryKeys.laneSources,
     async (client, signal) => {
       const { data, error } = await client
         .from('paths')
@@ -159,7 +160,6 @@ export function CreateBlueprintDialog({
         stepCount: draft.stepCount,
         pathName: draft.pathName,
       })
-      invalidateStructure()
       setDraft(EMPTY_DRAFT)
       onOpenChange(false)
       onCreated?.(created.scenario_id)

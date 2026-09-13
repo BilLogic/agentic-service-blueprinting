@@ -7,6 +7,7 @@ import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
 import { isBundledSampleActive } from '@/lib/bundledSample'
 import type { Slice, Slide } from '@/types/database'
 import { asSlideWithImages } from '@/lib/slideImages'
+import { queryKeys } from '@/lib/queryKeys'
 
 export type SliceDetail = {
   slice: Slice
@@ -38,7 +39,7 @@ export function useSlice(sliceId: string): QueryResult<SliceDetail> {
   const fallback = useCallback(() => sliceFallback(sliceId), [sliceId])
 
   return useSupabaseQuery<SliceDetail>(
-    `slice:${sliceId}`,
+    queryKeys.slice.of(sliceId),
     async (client, signal) => {
       const { data: slice, error: sliceError } = await client
         .from('slices')

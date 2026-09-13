@@ -5,19 +5,25 @@ import { renderHook } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { SAMPLE_SCENARIO_ID } from '@/data/blueprintFallbacks'
 import { SupabaseProvider } from '@/contexts/SupabaseProvider'
+import { useCanvasBlueprints } from '@/hooks/useCanvasBlueprints'
 import {
+  invalidateCanvasBlueprintsForCell,
   invalidateCanvasBlueprintsForPath,
   invalidateCanvasBlueprintsForScenario,
-  useCanvasBlueprints,
-} from '@/hooks/useCanvasBlueprints'
-import { queryClient } from '@/lib/queryClient'
+  queryClient,
+} from '@/lib/queryClient'
+import { queryKeys } from '@/lib/queryKeys'
 
 afterEach(() => {
   queryClient.clear()
 })
 
-function seedScenario(scenarioId: string, pathIds: string[] | undefined) {
-  const key = [`canvas-blueprints:scenario:${scenarioId}`]
+function seedScenario(
+  scenarioId: string,
+  pathIds: string[] | undefined,
+  cellIdsByPath: Record<string, string[]> = {},
+) {
+  const key = [queryKeys.canvasBlueprints.of(scenarioId)]
   if (pathIds === undefined) {
     // A known query with no cached data yet (in flight / never settled).
     queryClient.getQueryCache().build(queryClient, { queryKey: key })
@@ -25,14 +31,14 @@ function seedScenario(scenarioId: string, pathIds: string[] | undefined) {
   }
   queryClient.setQueryData(
     key,
-    pathIds.map((id) => ({ id })),
+    pathIds.map((id) => ({ id, cells: (cellIdsByPath[id] ?? []).map((cell) => ({ id: cell })) })),
   )
 }
 
 function isStale(scenarioId: string): boolean {
   const query = queryClient
     .getQueryCache()
-    .find({ queryKey: [`canvas-blueprints:scenario:${scenarioId}`] })
+    .find({ queryKey: [queryKeys.canvasBlueprints.of(scenarioId)] })
   if (!query) throw new Error(`no cached query for scenario ${scenarioId}`)
   return query.state.isInvalidated
 }
@@ -72,11 +78,11 @@ describe('invalidateCanvasBlueprintsForPath', () => {
   })
 
   it('never touches keys outside the scenario prefix', () => {
-    queryClient.setQueryData(['service-phases:first'], [])
+    queryClient.setQueryData([queryKeys.servicePhases.of('first')], [])
     invalidateCanvasBlueprintsForPath('p1')
     const query = queryClient
       .getQueryCache()
-      .find({ queryKey: ['service-phases:first'] })
+      .find({ queryKey: [queryKeys.servicePhases.of('first')] })
     expect(query?.state.isInvalidated).toBe(false)
   })
 })
@@ -87,6 +93,28 @@ describe('invalidateCanvasBlueprintsForPath', () => {
  * reports progress complete, so a loading bar never parks below full while
  * nothing is on the wire.
  */
+
+describe('invalidateCanvasBlueprintsForCell', () => {
+  // The write modules know a cell, not a path: a cell text edit from an
+  // existing cell's panel, a placement link, a dependency. The predicate
+  // reads the cached rows' cells, so only the board holding the cell refetches.
+  it('invalidates only the scenario whose cached rows carry the cell', () => {
+    seedScenario('s1', ['p1'], { p1: ['c1', 'c2'] })
+    seedScenario('s2', ['p2'], { p2: ['c3'] })
+    invalidateCanvasBlueprintsForCell('c2')
+    expect(isStale('s1')).toBe(true)
+    expect(isStale('s2')).toBe(false)
+  })
+
+  it('treats a query with no cached data as matching (stale to be safe)', () => {
+    seedScenario('s1', ['p1'], { p1: ['c1'] })
+    seedScenario('s2', undefined)
+    invalidateCanvasBlueprintsForCell('c9')
+    expect(isStale('s1')).toBe(false)
+    expect(isStale('s2')).toBe(true)
+  })
+})
+
 describe('useCanvasBlueprints (no database configured)', () => {
   // An adopter's real .env is loaded into import.meta.env by Vite for
   // vitest too — stub it empty so "no database configured" is true in

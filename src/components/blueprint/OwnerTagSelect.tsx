@@ -11,8 +11,7 @@ import {
 } from '@/components/ui/popover'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useOwnerTags } from '@/hooks/useOwnerTags'
-import { invalidateQueries } from '@/hooks/useSupabaseQuery'
-import { recordChange } from '@/lib/authoringSession'
+import { renameOwnerTag } from '@/lib/authoringRpc'
 import { cn, errorMessage } from '@/lib/utils'
 
 /**
@@ -79,28 +78,7 @@ export function OwnerTagSelect({
     setBusy(true)
     setError(null)
     try {
-      // One RPC, one transaction — the two-UPDATE version could fail
-      // between columns and split the vocabulary in half. It returns the
-      // touched cell ids, so the revert is scoped to exactly those cells
-      // rather than every cell that happens to carry the new name later.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC postdates generated types, same seam as authoringRpc
-      const { data, error: rpcError } = await (client.rpc as any)(
-        'rename_owner_tag',
-        { from_name: from, to_name: next },
-      )
-      if (rpcError) throw new Error(rpcError.message)
-      const affectedIds = (data ?? []) as string[]
-
-      recordChange(
-        'rename_owner_tag',
-        { from, to: next },
-        {
-          fn: 'rename_owner_tag_scoped',
-          args: { cell_ids: affectedIds, from: next, to: from },
-        },
-      )
-      invalidateQueries('owner-tags')
-      invalidateQueries('service-phases')
+      await renameOwnerTag(client, { from, to: next })
       if (value === from) onChange(next)
       setRenaming(null)
     } catch (renameError) {

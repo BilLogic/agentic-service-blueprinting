@@ -3,6 +3,8 @@ import { recordChange } from '@/lib/authoringSession'
 import { toAuthoringError } from '@/lib/authoringErrors'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
 import type { Database, Json } from '@/types/database'
+import { invalidateQueries } from '@/lib/queryClient'
+import { queryKeys } from '@/lib/queryKeys'
 
 type Client = SupabaseClient<Database>
 
@@ -66,6 +68,8 @@ export async function updateLaneSpec(
   // would drop the entry from the ledger having written nothing.
   requireRowsWritten(data, 'lane')
 
+  // Every sibling lane row moves with this write, so the whole family.
+  invalidateQueries(queryKeys.laneSpec.prefix)
   // Direct table write — `call()` never sees it, so it logs itself.
   if (options.record !== false) {
     recordChange(

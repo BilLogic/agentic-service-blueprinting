@@ -4,6 +4,8 @@ import { toAuthoringError } from '@/lib/authoringErrors'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
 import { ENTITY_KIND_ORDER, type EntityExamples } from '@/lib/panelTerms'
 import type { Database } from '@/types/database'
+import { invalidateQueries } from '@/lib/queryClient'
+import { queryKeys } from '@/lib/queryKeys'
 
 type Client = SupabaseClient<Database>
 
@@ -65,6 +67,8 @@ export async function updateServiceSummary(
   if (error) throw toAuthoringError(error)
   requireRowsWritten(data, 'service')
 
+  invalidateQueries(queryKeys.serviceSpec.prefix)
+  invalidateQueries(queryKeys.serviceEntityExamples.prefix)
   if (options.record !== false) {
     recordChange(
       'update_service_summary',
@@ -108,6 +112,8 @@ export async function updateBusinessModel(
   if (error) throw toAuthoringError(error)
   requireRowsWritten(data, 'business model')
 
+  invalidateQueries(queryKeys.serviceSpec.prefix)
+  invalidateQueries(queryKeys.serviceEntityExamples.prefix)
   if (options.record !== false) {
     recordChange(
       'update_business_model',
@@ -158,6 +164,8 @@ export async function updateServiceEntityExamples(
   if (error) throw toAuthoringError(error)
   requireRowsWritten(data, 'service')
 
+  invalidateQueries(queryKeys.serviceSpec.prefix)
+  invalidateQueries(queryKeys.serviceEntityExamples.prefix)
   if (options.record !== false) {
     recordChange(
       'update_service_entity_examples',

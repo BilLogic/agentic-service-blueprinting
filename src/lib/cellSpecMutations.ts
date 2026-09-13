@@ -4,6 +4,8 @@ import { toAuthoringError } from '@/lib/authoringErrors'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
 import type { ValueProp } from '@/lib/valueProps'
 import type { Database, Json } from '@/types/database'
+import { invalidateCellBoard, invalidateQueries } from '@/lib/queryClient'
+import { queryKeys } from '@/lib/queryKeys'
 
 type Client = SupabaseClient<Database>
 
@@ -51,6 +53,9 @@ export async function updateCellSpec(
   // See `requireRowsWritten`: a zero-row update is a 200, and reverting one
   // would drop the entry from the ledger having written nothing.
   requireRowsWritten(data, 'cell')
+  // The grid draws the spec's presence, and the audiences are read off it.
+  invalidateCellBoard(cellId)
+  invalidateQueries(queryKeys.valueAudiences)
   // Direct table write — `call()` never sees it, so it logs itself.
   if (options.record !== false) {
     recordChange(

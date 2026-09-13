@@ -3,8 +3,22 @@ import { recordChange } from '@/lib/authoringSession'
 import { toAuthoringError } from '@/lib/authoringErrors'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
 import type { Database } from '@/types/database'
+import { invalidateQueries } from '@/lib/queryClient'
+import { queryKeys } from '@/lib/queryKeys'
 
 type Client = SupabaseClient<Database>
+
+/**
+ * The cast is read once; a rename also reaches every slice that names the
+ * actor, and the audience picker, which offers stakeholder names and aliases
+ * beside the cells' own.
+ */
+function castWritten(): void {
+  invalidateQueries(queryKeys.stakeholders)
+  invalidateQueries(queryKeys.slices.prefix)
+  invalidateQueries(queryKeys.slice.prefix)
+  invalidateQueries(queryKeys.valueAudiences)
+}
 
 export type StakeholderInput = {
   name: string
@@ -44,6 +58,7 @@ export async function createStakeholder(
     .select('id')
     .single()
   if (error) throw toAuthoringError(error)
+  castWritten()
   recordChange(
     'create_stakeholder',
     { stakeholder_id: data.id, name: input.name.trim() },
@@ -82,6 +97,7 @@ export async function updateStakeholder(
     .select('id')
   if (error) throw toAuthoringError(error)
   requireRowsWritten(data, 'stakeholder')
+  castWritten()
   if (options.record !== false) {
     recordChange(
       'update_stakeholder',
@@ -152,4 +168,5 @@ export async function deleteStakeholder(
   // and the person who added someone by mistake is left with the row still in
   // the cast and no entry left to try again from.
   requireRowsWritten(data, 'stakeholder')
+  castWritten()
 }

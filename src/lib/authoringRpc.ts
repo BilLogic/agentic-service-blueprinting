@@ -6,6 +6,13 @@ import {
   type RevertSpec,
   type WriteFn,
 } from '@/lib/authoringSession'
+import {
+  invalidateCanvasBlueprintsForPath,
+  invalidateCellBoard,
+  invalidateQueries,
+  invalidateStructure,
+} from '@/lib/queryClient'
+import { queryKeys } from '@/lib/queryKeys'
 
 type Client = SupabaseClient<Database>
 
@@ -218,11 +225,72 @@ async function invoke<T>(
 }
 
 /**
- * A **write**: run it, then log it to the session ledger.
+ * What each RPC changes on screen, for the reads that cache it.
+ *
+ * The default is the whole structural set: an RPC not named here cascades
+ * across tables (a delete takes cells, arrows and slice frames with it), and
+ * the grid re-reads rather than patching itself. The entries narrow that
+ * for the writes that touch one cell's row — a cell text upsert on one path
+ * need not refetch every scenario's board.
+ *
+ * Keyed by name and given the arguments, not the result, so the revert
+ * path can use the same table for the inverse it sends straight to the
+ * database (`restore_cell_content`, `remove_lanes`) as `call()` uses for
+ * the forward write.
+ */
+const FRESHNESS: Record<string, (args: Record<string, unknown>) => void> = {
+  upsert_cell: (args) => {
+    invalidateQueries(queryKeys.servicePhases.prefix)
+    if (typeof args.path_id === 'string') invalidateCanvasBlueprintsForPath(args.path_id)
+    else invalidateQueries(queryKeys.canvasBlueprints.prefix)
+  },
+  restore_cell_content: (args) =>
+    invalidateCellBoard(typeof args.cell_id === 'string' ? args.cell_id : null),
+  // Arrows are drawn from the grid read and the canvas alike; the dependency
+  // row names cells, not a path, so every board.
+  set_cell_dependency: dependencyWritten,
+  update_cell_dependency: dependencyWritten,
+  clear_cell_dependency: dependencyWritten,
+  set_cell_featured_image: () => {
+    // The frame is drawn by the grid and the canvas, and the step's
+    // storyboard reads it as the column's picture.
+    invalidateStructure()
+    invalidateQueries(queryKeys.stepSpec.prefix)
+  },
+  rename_owner_tag: ownerTagWritten,
+  rename_owner_tag_scoped: ownerTagWritten,
+}
+
+function dependencyWritten(): void {
+  invalidateQueries(queryKeys.servicePhases.prefix)
+  invalidateQueries(queryKeys.canvasBlueprints.prefix)
+}
+
+function ownerTagWritten(): void {
+  invalidateQueries(queryKeys.ownerTags)
+  invalidateQueries(queryKeys.servicePhases.prefix)
+}
+
+/**
+ * Refetch what an RPC changed — the table above, or the structural set.
+ * Called by `call()` after every forward write, and by the revert path after
+ * an inverse it sends to the database itself.
+ */
+export function invalidateAfterRpc(fn: string, args: Record<string, unknown>): void {
+  const narrow = Object.hasOwn(FRESHNESS, fn) ? FRESHNESS[fn] : undefined
+  if (narrow) narrow(args)
+  else invalidateStructure()
+}
+
+/**
+ * A **write**: run it, refetch what it changed, then log it to the session
+ * ledger.
  *
  * Logged here and only here, *after* the call succeeded. That placement is
  * what makes the session list trustworthy: it records writes that actually
- * landed, so it can never claim a change the database does not have.
+ * landed, so it can never claim a change the database does not have. The
+ * cache is invalidated at the same point, for the same reason: a caller that
+ * had to remember to do it forgot at eight sites and over-swept at five.
  */
 async function call<T>(
   client: Client,
@@ -231,6 +299,7 @@ async function call<T>(
   revert?: RevertSpec,
 ): Promise<T> {
   const data = await invoke<T>(client, fn, args)
+  invalidateAfterRpc(fn, args)
   recordChange(fn, args, revert ?? deriveRevert(fn, args, data))
   return data
 }
@@ -403,6 +472,16 @@ function deriveRevert(
           }
         : undefined
     }
+    case 'rename_owner_tag':
+      // The RPC returns the ids it touched, so the inverse renames exactly
+      // those cells back. A name-keyed inverse would also rewrite cells that
+      // legitimately adopted the new name since.
+      return Array.isArray(data)
+        ? {
+            fn: 'rename_owner_tag_scoped',
+            args: { cell_ids: data, from: args.to_name, to: args.from_name },
+          }
+        : undefined
     default:
       return undefined
   }
@@ -900,6 +979,31 @@ export function removeLane(
 
 export function deleteCell(client: Client, cellId: string): Promise<string> {
   return call<string>(client, 'delete_cell', { cell_id: cellId })
+}
+
+// ---------------------------------------------------------------------------
+// Vocabulary
+// ---------------------------------------------------------------------------
+
+/**
+ * Rename an owner tag on every cell that carries it, in either owner
+ * column, in one transaction — the two-UPDATE version could fail between
+ * columns and split the vocabulary in half. Returns the touched cell ids;
+ * the recorded inverse is scoped to exactly those (see `deriveRevert`).
+ *
+ * The caller decides whether the rename is allowed — renaming onto a name
+ * another tag already has merges two vocabularies, and that is a decision,
+ * not a typo.
+ */
+export async function renameOwnerTag(
+  client: Client,
+  input: { from: string; to: string },
+): Promise<string[]> {
+  const ids = await call<string[] | null>(client, 'rename_owner_tag', {
+    from_name: input.from,
+    to_name: input.to,
+  })
+  return ids ?? []
 }
 
 /*

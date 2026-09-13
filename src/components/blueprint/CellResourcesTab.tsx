@@ -9,7 +9,6 @@ import { IconTooltip } from '@/components/editor/IconTooltip'
 import { Button } from '@/components/ui/button'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { invalidateQueries, invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { setCellFeaturedImage } from '@/lib/authoringRpc'
 import { updateCellResources } from '@/lib/cellContentMutations'
 import { setFeaturedResource } from '@/lib/placementResourceMutations'
@@ -125,13 +124,6 @@ function InheritedLogos({
       {problem ? <p className="text-xs text-destructive">{problem}</p> : null}
     </>
   )
-}
-
-/** After the frame changed: everything that draws a frame reads it again. */
-function frameWritten(cellId: string) {
-  invalidateStructure()
-  invalidateQueries('step-spec:')
-  invalidateQueries(`cell-content:${cellId}`)
 }
 
 /**
@@ -273,7 +265,6 @@ function CellResourcesEditor({
 
   const setFeaturedImage = async (url: string) => {
     await setCellFeaturedImage(client, { cellId, imageUrl: url })
-    frameWritten(cellId)
   }
 
   return (
@@ -316,10 +307,6 @@ function CellResourcesEditor({
       onFeature={feature}
       frame={frame}
       onSetFeaturedImage={setFeaturedImage}
-      onWritten={() => {
-        invalidateQueries('service-phases')
-        invalidateQueries(`cell-content:${cellId}`)
-      }}
     />
   )
 }

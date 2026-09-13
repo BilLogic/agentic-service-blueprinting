@@ -41,8 +41,6 @@ vi.mock('@/contexts/SupabaseProvider', () => ({
   useSupabase: () => ({ client: {}, configured: true, canWrite: true }),
 }))
 
-vi.mock('@/hooks/useSupabaseQuery', () => ({ invalidateQueries: () => {} }))
-
 import { CellDependencyEditor } from '@/components/blueprint/CellDependencyEditor'
 import { dispatchTool } from '@/lib/agent/tools/registry'
 import { TOOL_SPECS } from '@/lib/agent/tools/specs'

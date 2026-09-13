@@ -4,6 +4,7 @@ import { useSupabaseQuery } from '@/hooks/useSupabaseQuery'
 import { awaitOrAbort, findActiveServiceId } from '@/lib/service'
 import { phasesToSlides, type PhaseRow } from '@/lib/phasesToSlides'
 import type { NavItem } from '@/types/nav'
+import { FIRST_SERVICE, queryKeys } from '@/lib/queryKeys'
 
 const SERVICE_PHASES_SELECT = `
   id,
@@ -53,7 +54,7 @@ export function useServicePhases(serviceId?: string) {
   const fallback = useCallback(() => null, [])
 
   const result = useSupabaseQuery<PhaseRow[]>(
-    `service-phases:${serviceId ?? 'first'}`,
+    queryKeys.servicePhases.of(serviceId ?? FIRST_SERVICE),
     async (client, signal) => {
       const serviceIdPromise = serviceId
         ? Promise.resolve<string | null>(serviceId)

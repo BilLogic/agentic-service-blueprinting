@@ -15,6 +15,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  clientSideInverses,
   compare,
   objectKeys,
   problemsAt,
@@ -123,6 +124,36 @@ test('a function the schema does not have fails by name', () => {
   assert.deepEqual(problemsAt(site, schemaFunctions(SCHEMA)), [
     'set_cell_label is not a function in supabase/generated/portable-core.schema.sql',
   ])
+})
+
+test('an inverse the revert path executes itself is not a call', () => {
+  // `rename_owner_tag_scoped` is a `case` of revertChange's switch and no
+  // SQL function; a revert spec naming it posts nothing. One the schema DOES
+  // have stays checked even when the switch names it.
+  const root = mkdtempSync(join(tmpdir(), 'rpc-arguments-'))
+  mkdirSync(join(root, 'src/lib'), { recursive: true })
+  mkdirSync(join(root, 'supabase/generated'), { recursive: true })
+  writeFileSync(
+    join(root, 'src/lib/authoringRpc.ts'),
+    [
+      "return call<void>(client, 'sync_cell_resources', { p_cell_id: id, p_rows: rows })",
+      "return { fn: 'rename_owner_tag_scoped', args: { cell_ids: ids, from: a, to: b } }",
+      "return { fn: 'set_cell_dependency', args: { label: previous } }",
+    ].join('\n'),
+  )
+  writeFileSync(
+    join(root, 'src/lib/revertChange.ts'),
+    "switch (fn) {\n  case 'rename_owner_tag_scoped': {\n  }\n  case 'set_cell_dependency': {\n  }\n}\n",
+  )
+  writeFileSync(join(root, 'supabase/generated/portable-core.schema.sql'), SCHEMA)
+  assert.deepEqual(
+    clientSideInverses("  case 'a_b':\n case 'c':\n"),
+    new Set(['a_b', 'c']),
+  )
+  const problems = compare(root).map(({ problem }) => problem)
+  assert.equal(problems.some((problem) => problem.startsWith('rename_owner_tag_scoped')), false)
+  assert.equal(problems.some((problem) => problem.startsWith('set_cell_dependency is called with label')), true)
+  rmSync(root, { recursive: true, force: true })
 })
 
 test('a caller with no call sites fails loudly rather than passing empty', () => {

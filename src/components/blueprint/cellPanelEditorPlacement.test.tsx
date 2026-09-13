@@ -92,12 +92,6 @@ vi.mock('@/hooks/useRegistryTouchpoints', () => ({
   useRegistryTouchpoints: () => ({ status: 'ready', data: [] }),
   useNameOnlyPlacements: () => ({ status: 'ready', data: [] }),
 }))
-vi.mock('@/hooks/useSupabaseQuery', () => ({
-  invalidateQueries: () => {},
-}))
-vi.mock('@/hooks/useCanvasBlueprints', () => ({
-  invalidateCanvasBlueprintsForPath: () => {},
-}))
 // Its own button, its own transaction — see the note at the list.
 vi.mock('@/components/blueprint/PlacementResourcesList', () => ({
   PlacementResourcesList: () => <div data-stub="placement-resources" />,

@@ -21,7 +21,7 @@ import {
   SupabaseTimeoutError,
   withSupabaseTimeout,
 } from '@/lib/supabaseFetchTimeout'
-import { sliceScenarioKey } from '@/hooks/useSliceScenarioId'
+import { queryKeys } from '@/lib/queryKeys'
 
 /** A request that never answers on its own — only its signal ends it. */
 function pending(signal: AbortSignal): Promise<never> {
@@ -134,18 +134,21 @@ describe('cache retention', () => {
   })
 })
 
-describe('sliceScenarioKey', () => {
+describe('the slice-scenario key', () => {
+  // The lookup is `.in('id', …)`: it answers the same scenario for any
+  // permutation of the same ids, so the key is sorted before joining.
+  const key = queryKeys.sliceScenario.of
   it('gives every permutation of the same cells one key', () => {
-    expect(sliceScenarioKey(['c', 'a', 'b'])).toBe(sliceScenarioKey(['a', 'b', 'c']))
+    expect(key(['c', 'a', 'b'])).toBe(key(['a', 'b', 'c']))
   })
 
   it('still tells different cell sets apart', () => {
-    expect(sliceScenarioKey(['a', 'b'])).not.toBe(sliceScenarioKey(['a', 'c']))
+    expect(key(['a', 'b'])).not.toBe(key(['a', 'c']))
   })
 
   it('does not reorder the caller’s own array', () => {
     const ids = ['c', 'a']
-    sliceScenarioKey(ids)
+    key(ids)
     expect(ids).toEqual(['c', 'a'])
   })
 })

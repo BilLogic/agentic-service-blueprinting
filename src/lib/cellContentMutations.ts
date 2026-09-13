@@ -11,8 +11,21 @@ import { requireRowsWritten } from '@/lib/optimisticConcurrency'
 import { validateResourceUrl } from '@/lib/resourceUrl'
 import { hostOf } from '@/lib/cellResources'
 import { parseCellContentItems } from '@/lib/parseCellContent'
+import { invalidateCellBoard, invalidateQueries } from '@/lib/queryClient'
+import { queryKeys } from '@/lib/queryKeys'
 
 type Client = SupabaseClient<Database>
+
+/**
+ * What a cell's own writes change on screen: the grid and the board draw
+ * the text, and the owner vocabulary is read off the cells. Called by every
+ * writer below once its rows have landed — the raw writers a revert shares
+ * included, so their callers do not call it again — and never by a caller.
+ */
+function cellWritten(cellId: string): void {
+  invalidateCellBoard(cellId)
+  invalidateQueries(queryKeys.ownerTags)
+}
 
 /** One resource a removed placement carried, as the sync hands it back. */
 export type RemovedResource = {
@@ -76,6 +89,7 @@ export async function restoreCellTouchpoints(
     p_rows: rows as unknown as Json,
   })
   if (error) throw toAuthoringError(error)
+  cellWritten(cellId)
 }
 
 export type CellContentUpdate = {
@@ -154,6 +168,7 @@ export async function updateCellContent(
   // that left keeps its writing as a name-only row or goes. What
   // the sync removed rides in the inverse so a revert can put it back.
   const removed = await syncCellTouchpoints(client, cellId, content)
+  cellWritten(cellId)
   // Direct table write, so `call()` never sees it — logged here for the same
   // reason and with the same after-success placement.
   if (options.record !== false) {
@@ -360,4 +375,5 @@ export async function writeCellResources(
     p_rows: rows as unknown as Json,
   })
   if (error) throw toAuthoringError(error)
+  cellWritten(cellId)
 }

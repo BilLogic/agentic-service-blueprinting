@@ -47,6 +47,8 @@ import { requireRowsWritten } from '@/lib/optimisticConcurrency'
 import { parseCellContentItems } from '@/lib/parseCellContent'
 import type { TouchpointRoleValue } from '@/lib/touchpointRole'
 import type { Database } from '@/types/database'
+import { invalidateCellBoard, invalidateQueries } from '@/lib/queryClient'
+import { queryKeys } from '@/lib/queryKeys'
 
 type Client = SupabaseClient<Database>
 
@@ -113,6 +115,10 @@ export async function renameTouchpoint(
 
   const result = readRename(data)
 
+  // The registry's name is drawn on every placement of it, and read by the pickers.
+  invalidateCellBoard(null)
+  invalidateQueries(queryKeys.registryTouchpoints.prefix)
+  invalidateQueries(queryKeys.touchpointRegistryTones)
   if (options.record !== false) {
     recordChange(
       'rename_touchpoint',
@@ -282,6 +288,7 @@ export async function updateTouchpointPlacement(
 
   await writePlacementDetail(client, placement.id, normalized.columns)
 
+  invalidateCellBoard(placement.cellId)
   if (options.record === false) return
   recordChange(
     'update_touchpoint_placement',
@@ -312,6 +319,7 @@ export async function restoreTouchpointPlacement(
   columns: PlacementDetailColumns,
 ): Promise<void> {
   await writePlacementDetail(client, placementId, columns)
+  invalidateCellBoard(null)
 }
 
 /** The one statement both paths run, so they cannot disagree about columns. */

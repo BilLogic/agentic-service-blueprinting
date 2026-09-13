@@ -17,7 +17,6 @@ import { ScenarioPanelLoading } from '@/components/blueprint/panelLoading'
 import { PanelTextareaField } from '@/components/blueprint/PanelTextareaField'
 import { useScenarioSpec, type ScenarioSpec } from '@/hooks/useScenarioSpec'
 import { usePanelFooterHost } from '@/hooks/usePanelFooterHost'
-import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import {
@@ -65,9 +64,9 @@ export function ScenarioPanel({
 
             The body freezes a baseline and a per-path form at mount, and the
             paths under a scenario are not fixed while the drawer is open: the
-            canvas agent's `create_path` and `duplicate_path` both invalidate
-            every query, so this panel refetches and re-renders against a
-            scenario carrying a path the form has never heard of. Keyed on the
+            canvas agent's `create_path` and `duplicate_path` refetch the
+            structure, so this panel re-renders against a scenario carrying a
+            path the form has never heard of. Keyed on the
             id alone the body did not remount, and the first render of the new
             path read `form.paths[id].status` on `undefined` — a TypeError, the
             error boundary, and the whole drawer gone.
@@ -206,13 +205,6 @@ function ScenarioPanelBody({
           baseline.paths[path.id],
         )
       }
-      invalidateQueries(`scenario-spec:${scenario.id}`)
-      // The scenario's summary is also cached under `service-phases`, which is
-      // where the overview, the phase menubar and the sticky header read it.
-      // Without this the drawer shows the new sentence and the canvas behind it
-      // shows the old one until a reload — `staleTime` is Infinity, so nothing
-      // else ever refetches it.
-      invalidateQueries('service-phases')
       onDone()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'That did not save.')

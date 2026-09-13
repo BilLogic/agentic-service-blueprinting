@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { createPhase } from '@/lib/authoringRpc'
 import { errorMessage } from '@/lib/utils'
 
@@ -54,7 +53,6 @@ export function CreatePhaseDialog({
     setError(null)
     try {
       const phaseId = await createPhase(client, { serviceId, name: trimmed })
-      invalidateStructure()
       setName('')
       onOpenChange(false)
       onCreated?.(phaseId)

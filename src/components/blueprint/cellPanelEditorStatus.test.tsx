@@ -69,10 +69,6 @@ vi.mock('@/hooks/useRegistryTouchpoints', () => ({
   useRegistryTouchpoints: () => ({ status: 'ready', data: [] }),
   useNameOnlyPlacements: () => ({ status: 'ready', data: [] }),
 }))
-vi.mock('@/hooks/useSupabaseQuery', () => ({ invalidateQueries: () => {} }))
-vi.mock('@/hooks/useCanvasBlueprints', () => ({
-  invalidateCanvasBlueprintsForPath: () => {},
-}))
 
 // The owner tags query a client this file does not stand up.
 vi.mock('@/components/blueprint/OwnerTagSelect', () => ({

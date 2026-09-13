@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
 import type { TouchpointRegistryEntry } from '@/lib/touchpointColors'
+import { queryKeys } from '@/lib/queryKeys'
 
 const NO_ENTRIES: readonly TouchpointRegistryEntry[] = []
 
@@ -32,7 +33,7 @@ export function useTouchpointRegistryTones(): QueryResult<
   const fallback = useCallback(() => NO_ENTRIES, [])
 
   return useSupabaseQuery<readonly TouchpointRegistryEntry[]>(
-    'touchpoint-registry-tones',
+    queryKeys.touchpointRegistryTones,
     async (client, signal) => {
       const { data, error } = await client
         .from('touchpoints')

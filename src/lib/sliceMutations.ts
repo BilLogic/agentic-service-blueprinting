@@ -12,8 +12,20 @@ import { authorshipAfterEdit, type DraftSlide, type SliceKind } from '@/lib/slic
 import { removeSlideUploadObjects } from '@/lib/illustrationUpload'
 import { asSlideWithImages, imageSetCarriedOntoReplacedSlide } from '@/lib/slideImages'
 import type { Database, Slice } from '@/types/database'
+import { invalidateQueries } from '@/lib/queryClient'
+import { queryKeys } from '@/lib/queryKeys'
 
 type Client = SupabaseClient<Database>
+
+/**
+ * A slice's rows moved: the catalog that lists it and its own detail. Called
+ * by every writer below, and by the revert path's own slice writes, so no
+ * caller does it. `null` when only a slide is known — every detail, then.
+ */
+export function sliceWritten(sliceId: string | null): void {
+  invalidateQueries(queryKeys.slices.prefix)
+  invalidateQueries(sliceId ? queryKeys.slice.of(sliceId) : queryKeys.slice.prefix)
+}
 
 /**
  * A `slides` row exactly as the server stores it — what a slide revert
@@ -100,6 +112,7 @@ export async function deleteSlice(
 
   const { error } = await client.from('slices').delete().eq('id', sliceId)
   if (error) throw toAuthoringError(error)
+  sliceWritten(sliceId)
   recordChange('delete_slice', { slice_id: sliceId, title: title ?? null })
 }
 
@@ -260,6 +273,7 @@ export async function replaceSlides(
     }
   }
 
+  sliceWritten(sliceId)
   // After the write, like every other entry: the ledger records what landed.
   if (record) {
     recordChange(
@@ -338,6 +352,7 @@ export async function duplicateSlice(
     }
   }
 
+  sliceWritten(copy.id)
   // One entry for the whole copy, inverted by deleting the copy — the slides
   // cascade with it, so nothing of the original is at risk in the undo.
   recordChange(
@@ -411,6 +426,7 @@ export async function updateSliceMeta(
   // `before === null` cannot coexist with `ok` (the guarded update matched a
   // row), but it is recorded rather than skipped if it ever does: an entry
   // without a revert is recoverable from, a missing entry is not.
+  if (outcome.status === 'ok') sliceWritten(sliceId)
   if (outcome.status === 'ok' && (!before || metaMoved(before, outcome.row))) {
     recordChange(
       'update_slice_meta',
@@ -582,6 +598,8 @@ async function writeSlideImageSet(
     })),
   )
   if (insertError) throw toAuthoringError(insertError)
+  // The slide's slice is not in hand; every detail, and the catalog's thumbnails.
+  sliceWritten(null)
 }
 
 /**

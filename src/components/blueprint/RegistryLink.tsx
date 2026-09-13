@@ -26,13 +26,11 @@ export function RegistryLink({
   placement,
   cellId,
   shown,
-  onWritten,
 }: {
   placement: { id: string; name: string }
   cellId: string
   /** The names the cell's text already shows — already placed, so not offered. */
   shown: readonly string[]
-  onWritten: (gone: boolean) => void
 }) {
   const { client } = useSupabase()
   const registry = useRegistryTouchpoints(cellId)
@@ -48,13 +46,12 @@ export function RegistryLink({
       .map((entry) => ({ value: entry.id, label: entry.name })),
   ]
 
-  const run = async (action: () => Promise<unknown>, gone: boolean) => {
+  const run = async (action: () => Promise<unknown>) => {
     if (!client || busy) return
     setBusy(true)
     setError(null)
     try {
       await action()
-      onWritten(gone)
     } catch (cause) {
       setError(errorMessage(cause))
     } finally {
@@ -96,7 +93,6 @@ export function RegistryLink({
                     { id: placement.id, cellId, name: placement.name },
                     { touchpointId: target.id, touchpointName: target.name },
                   ),
-                false,
               )
             }}
           >
@@ -119,7 +115,6 @@ export function RegistryLink({
                 cellId,
                 name: placement.name,
               }),
-            true,
           )
         }}
       >

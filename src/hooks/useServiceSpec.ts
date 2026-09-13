@@ -3,6 +3,7 @@ import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
 import { awaitOrAbort, findActiveServiceId } from '@/lib/service'
 import type { EntityExamples } from '@/lib/panelTerms'
+import { queryKeys } from '@/lib/queryKeys'
 
 // Re-exported from its canonical home in `panelTerms`, beside the kinds it is
 // keyed by, so a caller that already reads the service spec need not learn a
@@ -86,9 +87,7 @@ export function useServiceSpec(): QueryResult<ServiceSpec | null> {
   return useSupabaseQuery<ServiceSpec | null>(
     sessionLoading
       ? null
-      : canReadPrivate
-        ? 'service-spec:first:private'
-        : 'service-spec:first',
+      : queryKeys.serviceSpec.of(canReadPrivate),
     async (client, signal) => {
       const serviceId = await awaitOrAbort(findActiveServiceId(client), signal)
       if (!serviceId) return null

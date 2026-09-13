@@ -4,6 +4,7 @@ import { useViewState } from '@/contexts/viewStateStore'
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery'
 import { agentOpenCellPanel } from '@/lib/agent/uiBridge'
 import { findFallbackScenarioForCells } from '@/lib/sliceCells'
+import { queryKeys } from '@/lib/queryKeys'
 
 /**
  * `?cell=<id>` — open the blueprint on one cell, panel showing.
@@ -53,7 +54,7 @@ export function useCellDeepLink(): void {
   )
 
   const scenario = useSupabaseQuery<string>(
-    cellId === null ? null : `cell-deep-link:${cellId}`,
+    cellId === null ? null : queryKeys.cellDeepLink.of(cellId),
     async (client, signal) => {
       const { data, error } = await client
         .from('cells')

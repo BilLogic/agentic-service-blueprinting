@@ -6,7 +6,7 @@ import {
   getFallbackPathsForScenario,
 } from '@/data/blueprintFallbacks'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { queryClient } from '@/lib/queryClient'
+import { queryKeys } from '@/lib/queryKeys'
 import { withSupabaseTimeout } from '@/lib/supabaseFetchTimeout'
 import { resolveBlueprintForScenario } from '@/lib/resolveBlueprint'
 import type { RawPath } from '@/lib/normalizeBlueprint'
@@ -142,49 +142,14 @@ function deriveFromRows(
   }
 }
 
-const SCENARIO_KEY_PREFIX = 'canvas-blueprints:scenario:'
-
-/**
- * Invalidate exactly the scenarios a write touched — one refetch, not a
- * board-wide storm, which is what the per-scenario keys below buy. Membership
- * changes (create/delete/duplicate scenario) still go through
- * `invalidateStructure()`'s bare 'canvas-blueprints' prefix, which these keys
- * also match.
- */
-export function invalidateCanvasBlueprintsForScenario(
-  scenarioId: string,
-): void {
-  void queryClient.invalidateQueries({
-    predicate: (query) =>
-      String(query.queryKey[0] ?? '') === `${SCENARIO_KEY_PREFIX}${scenarioId}`,
-  })
-}
-
-/**
- * Path-scoped variant for callers that only know the path (the cell panel
- * editor): match the one scenario query whose cached rows contain the
- * path. A query with no cached data yet is counted as matching — stale to
- * be safe.
- */
-export function invalidateCanvasBlueprintsForPath(pathId: string): void {
-  void queryClient.invalidateQueries({
-    predicate: (query) => {
-      const key = String(query.queryKey[0] ?? '')
-      if (!key.startsWith(SCENARIO_KEY_PREFIX)) return false
-      const rows = query.state.data as CanvasRawPath[] | undefined
-      return rows === undefined || rows.some((row) => row.id === pathId)
-    },
-  })
-}
-
 /**
  * Blueprints for a set of scenarios, fetched ONE QUERY PER SCENARIO so
  * loading progress is measurable (each settle is one real tick), cache
  * keys are stable under membership changes (adding a scenario adds one
  * key; the rest stay warm), and a lost request degrades only its own
- * scenario to the static fallback instead of the whole board. Keys live
- * under the `canvas-blueprints:` prefix the mutation contract
- * invalidates.
+ * scenario to the static fallback instead of the whole board. Keys are
+ * `queryKeys.canvasBlueprints`; the writes that change a board invalidate
+ * them by scenario, path or cell through `queryClient.ts`.
  */
 export function useCanvasBlueprints(scenarioIds: string[]) {
   const idsKey = scenarioIds.slice().sort().join(',')
@@ -202,7 +167,7 @@ export function useCanvasBlueprints(scenarioIds: string[]) {
 
   const results = useQueries({
     queries: orderedScenarioIds.map((scenarioId) => ({
-      queryKey: [`${SCENARIO_KEY_PREFIX}${scenarioId}`],
+      queryKey: [queryKeys.canvasBlueprints.of(scenarioId)],
       enabled: !noDb,
       queryFn: ({ signal }): Promise<CanvasRawPath[]> =>
         withSupabaseTimeout(signal, async (deadline) => {

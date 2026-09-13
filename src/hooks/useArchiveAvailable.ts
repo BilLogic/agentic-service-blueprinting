@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery'
+import { queryKeys } from '@/lib/queryKeys'
 
 /**
  * Whether the recovery archive exists in this database.
@@ -31,7 +32,7 @@ import { useSupabaseQuery } from '@/hooks/useSupabaseQuery'
 export function useArchiveAvailable(): boolean {
   const fallback = useCallback(() => false, [])
   const result = useSupabaseQuery<boolean>(
-    'archive-available',
+    queryKeys.archiveAvailable,
     async (client, signal) => {
       // Cast for the same reason `authoringRpc` casts `rpc`: the generated
       // `Database` type is regenerated from whichever schema was linked last,

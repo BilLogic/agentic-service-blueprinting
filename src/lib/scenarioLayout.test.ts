@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { persistScenarioLayout } from '@/lib/scenarioLayout'
 
+// The write itself refetches the structure, through `authoringRpc.call()`;
+// the rest of the cache module is stubbed so no query client is built here.
 const invalidateStructure = vi.fn()
 vi.mock('@/lib/queryClient', () => ({
   invalidateStructure: () => invalidateStructure(),
+  invalidateQueries: () => {},
+  invalidateCanvasBlueprintsForPath: () => {},
+  invalidateCellBoard: () => {},
 }))
 
 const recordChange = vi.fn()

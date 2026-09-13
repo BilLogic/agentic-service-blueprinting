@@ -51,7 +51,6 @@ vi.mock('@/lib/service', () => ({
 let rows: Evidence[] = []
 vi.mock('@/hooks/useEvidence', () => ({
   useEvidence: () => ({ status: 'ready', data: rows, source: 'database' }),
-  invalidateEvidence: () => {},
 }))
 
 const source = (over: Partial<Evidence> & { id: string }): Evidence =>

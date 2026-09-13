@@ -14,6 +14,7 @@ import {
 } from '@/contexts/activeServiceStore'
 import { invalidateQueries, invalidateStructure } from '@/lib/queryClient'
 import { resolveServiceBySlug, serviceSlug } from '@/lib/serviceSlug'
+import { queryKeys } from '@/lib/queryKeys'
 
 /**
  * The active service — the one the URL slug names — resolved to its id and
@@ -81,7 +82,7 @@ export function ActiveServiceProvider({ children }: { children: ReactNode }) {
     // The roster is one read per page load; the ACTIVE one is derived from it
     // and the URL slug below, so a switch re-picks without refetching. The key
     // is constant — `switchService` invalidates the board caches, not this one.
-    'active-service',
+    queryKeys.activeService,
     async (client, signal) => {
       const { data, error } = await client
         .from('services')
@@ -127,9 +128,10 @@ export function ActiveServiceProvider({ children }: { children: ReactNode }) {
       reads never refetch on their own: changing the slug alone would not
       refetch them, so drop the caches the newly-active service must
       repopulate — the journey (`invalidateStructure`), the service identity
-      (`service-spec:first`) and the per-kind examples, which are keyed
-      separately here (`service-entity-examples:first`) rather than riding the
-      spec.
+      (`serviceSpec`) and the per-kind examples, which are keyed separately
+      (`serviceEntityExamples`) rather than riding the spec. A UI-only
+      switch, not a write, which is why the invalidation lives here and not
+      in a mutation module.
 
       Every one of those reads resolves `findActiveServiceId` — the board's
       `useServicePhases` and `useSlices`, and the service's `useServiceSpec`
@@ -138,8 +140,8 @@ export function ActiveServiceProvider({ children }: { children: ReactNode }) {
       `created_at`, and the header names the service the canvas draws.
     */
     invalidateStructure()
-    invalidateQueries('service-spec')
-    invalidateQueries('service-entity-examples')
+    invalidateQueries(queryKeys.serviceSpec.prefix)
+    invalidateQueries(queryKeys.serviceEntityExamples.prefix)
   }, [])
 
   const value = useMemo<ActiveServiceContextValue>(
