@@ -9,7 +9,8 @@ import type {
   BlueprintLane,
   BlueprintStep,
 } from '@/types/blueprint'
-import type { Json, PathKind } from '@/types/database'
+import type { PathKind } from '@/types/database'
+import { cellFieldsFromRow, type RawCellColumns } from '@/lib/cellFields'
 import { cellResourcesFromRows, type RawCellResource } from '@/lib/cellResources'
 import {
   cellTouchpointsFromRows,
@@ -30,26 +31,11 @@ function normalizeDependencyKind(kind: string | null | undefined): 'leads_to' | 
   return kind === 'enables' ? 'enables' : 'leads_to'
 }
 
-export type RawCell = {
-  id: string
-  lane_id: string
-  step_id: string
-  content: string
-  /** The cell's index inside its slot; absent data sorts as 0. */
-  position?: number | null
-  frame?: string | null
-  summary?: string | null
-  /** The `entity_status` column, as text; anything unknown reads as absent. */
-  status?: string | null
-  /**
-   * The spec block and the owner pair (`cells.function` … `cells.value_props`),
-   * carried with the board rather than fetched when a panel opens.
-   */
-  function?: string | null
-  form?: string | null
-  value_props?: Json | null
-  owner?: string | null
-  perceived_owner?: string | null
+/**
+ * A cell as the board query returns it: the columns the cell field list
+ * names, plus the relations the query embeds under it.
+ */
+export type RawCell = RawCellColumns & {
   /** `resources` rows embedded by the board query. */
   resources?: RawCellResource[] | null
   /** `cell_touchpoints` rows embedded by the board query. */
@@ -270,32 +256,13 @@ export function normalizeBlueprint(raw: RawPath): BlueprintData {
     }))
   const steps = resolveSteps(raw)
   const rawCells = raw.cells ?? []
+  // The columns come through the cell field list — the same list the board
+  // select was built from, so a column the query asks for is a column the
+  // cell receives. The embedded relations have mappers of their own.
   const cells: BlueprintCell[] = rawCells.map((cell) => ({
-    id: cell.id,
-    lane_id: cell.lane_id,
-    step_id: cell.step_id,
-    content: cell.content,
-    // Selected by the board query, typed on `BlueprintCell` and sorted on.
-    // Without it every slot sort is `0 - 0` and a slot holding more than one
-    // cell renders in whatever order the database happened to return.
-    position: cell.position ?? 0,
-    frame: cell.frame ?? null,
-    summary: cell.summary ?? null,
-    // Narrowed rather than passed through: the column is a plain text with a
-    // check constraint, so a value the renderer has no treatment for should
-    // read as shipped rather than as an unrecognised marker.
-    status: asEntityStatus(cell.status),
+    ...cellFieldsFromRow(cell),
     resources: cellResourcesFromRows(cell.resources),
     touchpoints: cellTouchpointsFromRows(cell.cell_touchpoints),
-    // Carried with the board rather than fetched on panel open: two round
-    // trips per cell, for five columns the board can hold.
-    function: cell.function ?? null,
-    form: cell.form ?? null,
-    // The column is jsonb; the type names the shape the panel renders. Absent
-    // rather than empty, so "unset" and "set to nothing" stay distinguishable.
-    value_props: (cell.value_props ?? undefined) as BlueprintCell['value_props'],
-    owner: cell.owner ?? null,
-    perceived_owner: cell.perceived_owner ?? null,
   }))
   const dependencies =
     raw.cell_dependencies && raw.cell_dependencies.length > 0
