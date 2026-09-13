@@ -1,5 +1,51 @@
 # Changelog
 
+## 1.44.7
+
+**A cell's featured image is its frame, and a person can choose it.**
+
+A cell had two ways to have "its picture": its frame, and an attachment marked
+featured, which the detail panel led with regardless of the frame. A
+touchpoint's logo lived only on the touchpoint, so getting one onto a slide
+meant uploading a copy as the cell's frame — and the panel then drew the logo
+twice.
+
+Now the frame is the one slot, and what is stored is what shows.
+
+- **Choosing it.** In a cell's Resources tab, a picture attachment and the logo
+  the cell inherits from its touchpoint each offer "Set as featured image", which
+  writes the frame through a new logged, undoable function,
+  `set_cell_featured_image`. The inherited logo is listed read-only and is never
+  saved as a resource row. A new picture is added as an attachment first.
+- **Placing a cell.** Placing a cell on a touchpoint that has a logo fills an
+  empty frame with the logo's path. A frame that holds anything is left alone.
+- **The panel** draws one image, the frame, with no separate logo row.
+  Attachments no longer lead through `featured`; featured links are still the
+  panel's buttons.
+- **Slides** are unchanged — an untouched slide still shows its cited cells'
+  frames — except that an image stored as a root-relative path, such as a stock
+  logo, now renders.
+
+**Upgrading a deployment:** apply migration `21000227000000` before deploying
+this release: the app calls the new function, and the migration rewrites
+`sync_cell_touchpoints` and `set_placement_touchpoint`. No column changes.
+
+Then move your data into frames **back to back with the deploy** — until you do,
+a cell whose picture was only a featured attachment shows no image in the panel.
+In this order:
+
+1. **Freeze first.** For every untouched slide (`shows_all_images = true`) whose
+   resolved images the steps below would change, make its image set explicit
+   with the images it resolves to today.
+2. **Featured attachments.** Where a cell has an attachment marked `featured` and
+   an empty frame, set the frame to that attachment's url. A cell that already
+   has a different frame keeps it: the frame is the featured image.
+3. **Uploaded logo copies.** Where a cell's frame is an uploaded copy of its
+   touchpoint's logo, set the frame to the touchpoint's `icon_url`. Delete the
+   copies from storage once nothing refers to them.
+4. **Touchpoint cells without a frame.** Set the frame to the touchpoint's
+   `icon_url`, so they match what placing a cell now does.
+
 ## 1.44.6
 
 **Choosing a cell from a slide's cells list closes the list and opens that
@@ -6188,8 +6234,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                            ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                            "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                              ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                              "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
