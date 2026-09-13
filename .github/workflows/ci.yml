@@ -67,6 +67,9 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
+      # The agent harness's keyless rehearsal: the loop's gates and the
+      # sample reads through the bundled app surface, no provider involved.
+      - run: npm run agent:harness:smoke
       # The write tools post their
       # arguments BY NAME, and PostgREST resolves an RPC by matching those
       # names to a function's parameters. A key the function does not have is

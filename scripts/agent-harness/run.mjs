@@ -127,8 +127,17 @@ async function rest(pathAndQuery) {
 // ---------------------------------------------------------------------------
 // One-sourced app surface: surface.mjs bundles specs + fixture from src.
 // ---------------------------------------------------------------------------
-const { TOOL_SPECS, TOOL_DEFINITIONS, WRITE_TOOL_NAMES, MOBILE_READ_TOOL_NAMES, renderCanvasAdapter } =
-  surface
+const {
+  TOOL_SPECS,
+  TOOL_DEFINITIONS,
+  WRITE_TOOL_NAMES,
+  MOBILE_READ_TOOL_NAMES,
+  BATCH_LIMIT_REFUSAL,
+  MOBILE_SHELL_REFUSAL,
+  VIEW_ONLY_REFUSAL,
+  WRITE_BATCH_LIMIT,
+  renderCanvasAdapter,
+} = surface
 
 const isWriteCall = (name) => WRITE_TOOL_NAMES.has(name)
 
@@ -477,7 +486,6 @@ async function realListFindings(statusFilter) {
 // batch etiquette.
 // ---------------------------------------------------------------------------
 let dryCounter = 0
-const WRITE_BATCH_LIMIT = 8
 async function dispatch(caseDef, name, args, trace, turn = 0) {
   const mock = caseDef.mocks?.[name]
   const record = { name, args, isError: false, turn }
@@ -485,15 +493,13 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
   if (caseDef.mobile && !MOBILE_READ_TOOL_NAMES.has(name)) {
     record.offRoster = true
     record.isError = true
-    record.result =
-      'The mobile shell is view-only — only the reading and navigation tools exist here. Editing happens on desktop; describe the change instead.'
+    record.result = MOBILE_SHELL_REFUSAL
     return record.result
   }
   if (caseDef.allowWrites === false && isWriteCall(name)) {
     record.refusedWrite = true
     record.isError = true
-    record.result =
-      'This session is view-only (not a service account) — no write tools exist here. Describe the change for a service account instead.'
+    record.result = VIEW_ONLY_REFUSAL
     return record.result
   }
   // Mirror of the app loop's enforced batch etiquette: only calls that
@@ -510,7 +516,7 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
     if (executed >= WRITE_BATCH_LIMIT) {
       record.limited = true
       record.isError = true
-      record.result = `Batch limit: ${WRITE_BATCH_LIMIT} writes already landed this turn. Stop now, summarize what you did, and let the user say "continue" before the next batch.`
+      record.result = BATCH_LIMIT_REFUSAL
       return record.result
     }
   }

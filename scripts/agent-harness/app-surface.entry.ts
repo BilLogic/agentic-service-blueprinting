@@ -53,3 +53,15 @@ export { formatBlueprintList, listBlueprintRequest } from '@/lib/agent/tools/for
  * list rather than a second copy the harness would have to keep in step.
  */
 export { REFERENCE_NAMES } from '@/lib/agent/tools/referenceNames'
+/**
+ * The loop's refusals and the batch limit they quote, so the harness's
+ * rehearsal of the same gates answers in the loop's words. run.mjs carried
+ * its own copy of each before, and a copy is a sentence the loop can change
+ * without the harness noticing.
+ */
+export {
+  BATCH_LIMIT_REFUSAL,
+  MOBILE_SHELL_REFUSAL,
+  VIEW_ONLY_REFUSAL,
+  WRITE_BATCH_LIMIT,
+} from '@/lib/agent/tools/refusals'
