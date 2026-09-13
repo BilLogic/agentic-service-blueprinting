@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.44.6
+
+**Choosing a cell from a slide's cells list closes the list and opens that
+cell's detail panel on the slice.**
+
+The list stayed open over the slice canvas after a row was chosen — the
+presentation stays mounted behind the slice tab, so nothing closed it — and the
+slice tab flew to the cell without opening its panel. A row now closes the list
+first, and its pending focus asks for the panel too: once the slice viewport has
+found the cell, it opens the panel the same way "View cell detail" does. A cell
+no longer on the board still opens nothing.
+
+**Upgrading a deployment:** nothing to do. No data or schema change.
+
 ## 1.44.5
 
 **The presentation page lays each slide out in one left-aligned column, and
@@ -6174,8 +6188,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                          ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                          "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                            ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                            "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
