@@ -51,10 +51,10 @@
  * `BilLogic` is the repository owner and copyright holder — authorship and
  * the canonical repo URL, required rather than coupling.
  */
-import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { commitFiles } from './commit-subject.mjs'
 import { readListed } from './read-listed.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
@@ -106,39 +106,16 @@ export function isScanned(path) {
   return !EXCLUDED.some((prefix) => path.startsWith(prefix))
 }
 
-/** Tracked text files, minus the exclusions above. */
 /**
- * Every file the sweep reads: tracked, plus untracked files git would not
- * ignore. Tracked alone was a trap — a changeset written and checked locally
- * before `git add` was invisible to `npm run check:standalone`, then failed
- * `npm test` in CI the moment it was committed (#180, #181). The two subjects
- * are one function, and that function sees what a commit would.
+ * Every file the sweep reads: what a commit would carry, minus the exclusions
+ * above. `commit-subject.mjs` holds the listing, the reason it takes the
+ * untracked files too (#180, #181), and the empty-sweep refusal — one
+ * description of the subject this sweep shares with
+ * `check-content-coupling.mjs`, so the only thing each states for itself is
+ * what it narrows and why.
  */
 export function scannedFiles(root = REPO_ROOT) {
-  const listed = execFileSync(
-    'git',
-    ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
-    { cwd: root, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 },
-  )
-  const seen = new Set()
-  const found = listed.split('\0').filter((path) => {
-    if (path === '' || seen.has(path) || !isScanned(path)) return false
-    seen.add(path)
-    return true
-  })
-  // AN EMPTY SWEEP IS A FAILURE. Two steps stand between `git ls-files` and
-  // this result — the listing itself, and a predicate that can reject every
-  // path it returns — and either of them coming back with nothing produces the
-  // same green line the full sweep produces, with a `0` in it that nobody
-  // reads as a defect. The refusal lives here rather than in each caller
-  // because the subject is the same one in all of them.
-  if (found.length === 0) {
-    throw new Error(
-      `no scanned file under ${root}: git listed ${listed.split('\0').filter(Boolean).length} ` +
-        `path(s) and none of them is in this sweep's subject, which is a failure and not a pass`,
-    )
-  }
-  return found
+  return commitFiles(root, isScanned)
 }
 
 /**

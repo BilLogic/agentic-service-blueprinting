@@ -17,7 +17,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
-import { ROOT_DOCS, sweptDocs } from '../swept-docs.mjs'
+import { rootDocs, sweptDocs } from '../swept-docs.mjs'
 
 /** A throwaway tree holding exactly the files named. */
 function tree(files) {
@@ -28,6 +28,16 @@ function tree(files) {
   }
   return { root, done: () => rmSync(root, { recursive: true, force: true }) }
 }
+
+/**
+ * The root documents these throwaway trees hold, in the order the walk
+ * returns them.
+ *
+ * Named here rather than imported, because the module DISCOVERS the root
+ * documents now: importing its answer would make each assertion below a
+ * restatement of the walk rather than a claim about it.
+ */
+const ROOT_FILES = ['AGENTS.md', 'CONTEXT.md', 'README.md']
 
 const PLUGIN_DIRS = ['docs', 'references', 'skills', 'agents']
 
@@ -42,10 +52,10 @@ const PLUGIN_DIRS = ['docs', 'references', 'skills', 'agents']
 const QUIET = { env: {}, write: () => {}, append: () => {} }
 
 test('a tree with docs/ and no plugin surface sweeps its docs and nothing else', () => {
-  const t = tree([...ROOT_DOCS, 'docs/guide.md', 'docs/engineering/checks.md', 'docs/adr/0001-a.md'])
+  const t = tree([...ROOT_FILES, 'docs/guide.md', 'docs/engineering/checks.md', 'docs/adr/0001-a.md'])
   try {
     assert.deepEqual(sweptDocs(t.root, PLUGIN_DIRS, QUIET), [
-      ...ROOT_DOCS,
+      ...ROOT_FILES,
       'docs/engineering/checks.md',
       'docs/guide.md',
     ])
@@ -55,18 +65,38 @@ test('a tree with docs/ and no plugin surface sweeps its docs and nothing else',
 })
 
 test('a tree with none of the swept folders sweeps its root docs alone', () => {
-  const t = tree(ROOT_DOCS)
+  const t = tree(ROOT_FILES)
   try {
-    assert.deepEqual(sweptDocs(t.root, PLUGIN_DIRS, QUIET), ROOT_DOCS)
+    assert.deepEqual(sweptDocs(t.root, PLUGIN_DIRS, QUIET), ROOT_FILES)
   } finally {
     t.done()
   }
 })
 
 test('a folder that exists is still swept beside one that does not', () => {
-  const t = tree([...ROOT_DOCS, 'skills/map/SKILL.md'])
+  const t = tree([...ROOT_FILES, 'skills/map/SKILL.md'])
   try {
-    assert.deepEqual(sweptDocs(t.root, PLUGIN_DIRS, QUIET), [...ROOT_DOCS, 'skills/map/SKILL.md'])
+    assert.deepEqual(sweptDocs(t.root, PLUGIN_DIRS, QUIET), [...ROOT_FILES, 'skills/map/SKILL.md'])
+  } finally {
+    t.done()
+  }
+})
+
+test('a root document nobody listed is swept; the changelog is the one that is not', () => {
+  // The list used to be three names, so SETUP.md, INDEX.md, CONTRIBUTING.md
+  // and SECURITY.md were read by no prose sweep at all, with no reason stated
+  // beside the list. The root is read instead — so a document added at it
+  // tomorrow is swept tomorrow, and the single exclusion carries its reason.
+  const t = tree([...ROOT_FILES, 'SETUP.md', 'SECURITY.md', 'CHANGELOG.md', 'docs/guide.md'])
+  try {
+    assert.deepEqual(rootDocs(t.root), [
+      'AGENTS.md',
+      'CONTEXT.md',
+      'README.md',
+      'SECURITY.md',
+      'SETUP.md',
+    ])
+    assert.equal(sweptDocs(t.root, PLUGIN_DIRS, QUIET).includes('CHANGELOG.md'), false)
   } finally {
     t.done()
   }

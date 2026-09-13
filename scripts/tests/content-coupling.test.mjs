@@ -164,6 +164,49 @@ test('a fixture is out of subject, and the vendored mirror with it', () => {
   assert.equal(isScanned('scripts/generate_sample_blueprint.mjs'), true)
 })
 
+test('every root document is in subject, the always-loaded tier included', () => {
+  // The sweep used to narrow by directory, over seven roots no root-level file
+  // can match. So a foreign cell id appended to AGENTS.md — the one file every
+  // session is handed without choosing — passed in green, and so did the same
+  // line in SETUP.md, INDEX.md, CONTRIBUTING.md and SECURITY.md. Nothing beside
+  // the list said they were out, which is what made it an escape rather than a
+  // decision.
+  for (const doc of [
+    'AGENTS.md',
+    'README.md',
+    'CONTEXT.md',
+    'SETUP.md',
+    'INDEX.md',
+    'CONTRIBUTING.md',
+    'SECURITY.md',
+    'CHANGELOG.md',
+  ]) {
+    assert.equal(isScanned(doc), true, `${doc} is outside the sweep's subject`)
+  }
+  // The plugin's hooks and the changesets were outside it for the same reason.
+  assert.equal(isScanned('hooks/validate_ir_on_edit.py'), true)
+  assert.equal(isScanned('.changeset/a-change.md'), true)
+})
+
+test('the three shapes planted in AGENTS.md and SETUP.md are caught where they land', () => {
+  // The leak, reproduced: a cell id copied out of a deployment's database, its
+  // cast, and a touchpoint asset only it has the file for. Under the seven-root
+  // subject all three passed; the report now names the document and the line.
+  const planted = couplingsIn(
+    'Cell `ae874da3-865c-a06c-f55e-e9085920b694` is assigned to a Regular Tutor.\n' +
+      'Logo: `/touchpoint-logos/zoom-logo.png`\n',
+  )
+  assert.deepEqual(
+    planted.map(({ line, match }) => `${line}:${match}`),
+    [
+      '1:ae874da3-865c-a06c-f55e-e9085920b694',
+      '1:Tutor',
+      '2:/touchpoint-logos/zoom-logo.png',
+    ],
+  )
+  assert.equal(isScanned('AGENTS.md') && isScanned('SETUP.md'), true)
+})
+
 test('an allowlist entry exempts one file and one value, and nothing else', () => {
   const allowed = [
     { file: 'src/lib/legacy.ts', match: 'Tutor', why: 'pinned by a design decision' },
