@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 /**
- * Two badges on one slide must open two different cells.
+ * Two rows in a slide's cells list must open two different cells.
  *
- * Every badge used to call the same no-argument handler, so they all opened
- * the slice and none of them the cell they named. The badges still open the
+ * Every entry used to call the same no-argument handler, so they all opened
+ * the slice and none of them the cell they named. The rows still open the
  * slice tab — a tab descriptor carries no cell — and each one leaves a
  * pending focus for its own cell, consumed when the slice viewport
- * registers.
+ * registers. The rows live behind the slide's `N cells` button.
  */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -116,6 +116,12 @@ import {
   type FocusCellsFn,
 } from '@/lib/canvasFocusCells'
 
+/** Open the slide's cells list, and wait for its rows to mount. */
+async function openCellsList(): Promise<void> {
+  fireEvent.click(screen.getByRole('button', { name: '2 cells' }))
+  await screen.findByRole('button', { name: 'Open Greet the guest in the slice' })
+}
+
 afterEach(() => {
   cleanup()
   openTab.mockClear()
@@ -137,11 +143,12 @@ function recordingFocus(): {
   return { focus, calls }
 }
 
-describe('presentation cell badges', () => {
-  it('opens two different cells, and names the action on each badge', () => {
+describe('presentation cells list', () => {
+  it('opens two different cells, and names the action on each row', async () => {
     const { focus, calls } = recordingFocus()
     const remove = registerFocusCells(sliceFocusCellsKey(SLICE_ID), focus)
     render(<SlicePresentation sliceId={SLICE_ID} onReturn={() => {}} />)
+    await openCellsList()
 
     const greet = screen.getByRole('button', {
       name: 'Open Greet the guest in the slice',
@@ -165,9 +172,10 @@ describe('presentation cell badges', () => {
     remove()
   })
 
-  it('lands the focus after the slice viewport registers, when the tab was not already open', () => {
+  it('lands the focus after the slice viewport registers, when the tab was not already open', async () => {
     const { focus, calls } = recordingFocus()
     render(<SlicePresentation sliceId={SLICE_ID} onReturn={() => {}} />)
+    await openCellsList()
 
     fireEvent.click(
       screen.getByRole('button', {

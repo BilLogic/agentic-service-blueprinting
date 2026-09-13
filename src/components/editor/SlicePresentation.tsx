@@ -7,12 +7,20 @@ import {
   type KeyboardEvent,
 } from 'react'
 import { ChevronLeft, ChevronRight, CornerUpLeft } from 'lucide-react'
-import { ZoomableImage } from '@/components/blueprint/ZoomableImage'
+import {
+  ZoomableImage,
+  type ZoomableImageSibling,
+} from '@/components/blueprint/ZoomableImage'
 import { CanvasLoadProgress } from '@/components/editor/CanvasLoadProgress'
 import { SlicePresentationLoadingSkeleton } from '@/components/editor/EditorLoadingSkeletons'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { SliceHeaderBand } from '@/components/editor/SliceHeaderBand'
 import { Button } from '@/components/ui/button'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { DeferredSkeleton } from '@/components/ui/deferred-skeleton'
 import { useViewState } from '@/contexts/viewStateStore'
 import { useSliceBlueprint } from '@/hooks/useSliceBlueprint'
@@ -35,6 +43,32 @@ function cellSnippet(cell: BlueprintCell | undefined): string {
     : firstLine
 }
 
+/**
+ * The width the stage column and the filmstrip share, so both start on one
+ * left edge.
+ */
+const STAGE_COLUMN_WIDTH = 'max-w-5xl'
+
+/**
+ * Columns for a slide's frames, by image count alone.
+ *
+ * One image takes two-thirds of the column; two, three and four share a row
+ * evenly; past four the frames stay quarters and wrap, the short row starting
+ * at the left edge. Each `max-w-[…]` caps the grid at the width whose frames
+ * are 40vh tall (a 4:3 frame is 4/3 as wide as it is tall, plus the gaps), so
+ * on a short window the frames shrink before the title and caption are pushed
+ * off the stage. The strings are whole literals so the Tailwind scanner sees
+ * them.
+ *
+ * @param count - how many images the slide shows
+ */
+function frameGridClass(count: number): string {
+  if (count === 1) return 'w-2/3 grid-cols-1 max-w-[calc(160vh/3)]'
+  if (count === 2) return 'w-full grid-cols-2 max-w-[calc(320vh/3_+_1rem)]'
+  if (count === 3) return 'w-full grid-cols-3 max-w-[calc(160vh_+_2rem)]'
+  return 'w-full grid-cols-4 max-w-[calc(640vh/3_+_3rem)]'
+}
+
 type SlicePresentationProps = {
   sliceId: string
   /**
@@ -50,10 +84,10 @@ type SlicePresentationProps = {
 
 /**
  * Presentation tab: a dark full-bleed stage (the root carries the `.dark`
- * token class regardless of app theme) with the illustration as the star
- * when present, title as headline, cell badges as a subtle bottom row, a
- * dim mini-map locator bottom-right, and a filmstrip of cells bracketed per
- * slide. Slides render synchronously from the cached useSlice data —
+ * token class regardless of app theme) with one left-aligned column —
+ * counter, title, caption, even image frames, and the slide's cells behind
+ * one button — a dim mini-map locator bottom-right, and a filmstrip of
+ * cells bracketed per slide. Slides render synchronously from the cached useSlice data —
  * navigation never refetches. Keyboard is scoped to the container (tabIndex
  * + onKeyDown, no window listeners); the slide mirrors to the URL via the
  * debounced ViewStateContext mechanism.
@@ -149,7 +183,7 @@ export function SlicePresentation({
    * so the focus is left pending for the viewport to consume when it
    * registers — including when the tab was not already open.
    *
-   * @param cellId - The cited cell this badge names.
+   * @param cellId - The cited cell this row names.
    */
   const openSliceCell = useCallback(
     (cellId: string) => {
@@ -166,7 +200,7 @@ export function SlicePresentation({
   }
 
   // All-or-nothing: the stage waits for the blueprint too, otherwise every
-  // cell badge paints "Removed cell" for a beat before the cells land.
+  // cells-list row paints "Removed cell" for a beat before the cells land.
   if (
     result.status === 'loading' ||
     scenarioResult.status === 'loading' ||
@@ -271,66 +305,47 @@ export function SlicePresentation({
           />
 
           <div className="min-w-0 flex-1 overflow-y-auto px-2">
-            <div className="flex min-h-full flex-col items-center justify-center gap-4 py-4 text-center">
-              <p className="font-mono text-sm font-medium text-foreground tabular-nums uppercase">
+            {/* One column, centred on the stage; everything in it starts at
+                its left edge, in reading order. */}
+            <div
+              className={cn(
+                'mx-auto flex min-h-full w-full flex-col items-start justify-center gap-4 py-4 text-left',
+                STAGE_COLUMN_WIDTH,
+              )}
+              data-presentation-column=""
+            >
+              <p className="font-mono text-sm font-medium text-foreground tabular-nums">
                 Slide {clampedSlide + 1} of {slideCount}
               </p>
-              {stageMedia.length > 0 ? (
-                <>
-                  {/* Media is the star — large centered area; multiple cell
-                      frames on one slide sit side by side. */}
-                  <div className="flex max-w-full items-center justify-center gap-4">
-                    {stageMedia.map((src, index) => (
-                      <ZoomableImage
-                        key={`${src}-${index}`}
-                        src={src}
-                        alt=""
-                        triggerLabel="Enlarge image"
-                        siblings={stageSiblings}
-                        siblingIndex={index}
-                        triggerClassName="min-w-0"
-                      >
-                        <img
-                          src={src}
-                          alt=""
-                          className={cn(
-                            'max-h-[60vh] w-auto rounded-lg object-contain',
-                            stageMedia.length > 1
-                              ? 'min-w-0 bg-card/40 p-2'
-                              : 'max-w-full',
-                          )}
-                          style={
-                            stageMedia.length > 1
-                              ? {
-                                  maxWidth: `${Math.floor(94 / stageMedia.length)}%`,
-                                }
-                              : undefined
-                          }
-                        />
-                      </ZoomableImage>
-                    ))}
-                  </div>
-                  <h2 className="max-w-3xl text-2xl font-semibold text-balance">
-                    {title}
-                  </h2>
-                  {item.caption && (
-                    <p className="max-w-xl text-sm text-foreground">
-                      {item.caption}
-                    </p>
-                  )}
-                </>
-              ) : (
-                <>
-                  {/* No illustration: title-slide layout, no card frame. */}
-                  <h2 className="mt-6 max-w-3xl text-3xl font-semibold text-balance">
-                    {title}
-                  </h2>
-                  {item.caption && (
-                    <p className="max-w-2xl text-base text-foreground">
-                      {item.caption}
-                    </p>
-                  )}
-                </>
+              <h2 className="max-w-3xl text-2xl font-semibold text-balance">
+                {title}
+              </h2>
+              {item.caption && (
+                <p className="max-w-2xl text-sm text-foreground">
+                  {item.caption}
+                </p>
+              )}
+              {stageMedia.length > 0 && (
+                <div
+                  className={cn('grid gap-4', frameGridClass(stageMedia.length))}
+                  data-presentation-frames=""
+                >
+                  {stageMedia.map((src, index) => (
+                    <StageFrame
+                      key={`${src}-${index}`}
+                      src={src}
+                      siblings={stageSiblings}
+                      siblingIndex={index}
+                    />
+                  ))}
+                </div>
+              )}
+              {item.cell_ids.length > 0 && (
+                <SlideCellsList
+                  cellIds={item.cell_ids}
+                  cellById={cellById}
+                  onOpenCell={openSliceCell}
+                />
               )}
             </div>
           </div>
@@ -340,27 +355,6 @@ export function SlicePresentation({
             disabled={clampedSlide === slideCount - 1}
             onClick={() => goToSlide(clampedSlide + 1)}
           />
-        </div>
-
-        {/* Cell badges — subtle row at the bottom of the stage. */}
-        <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 px-24 pt-3 pb-4">
-          {item.cell_ids.map((cellId) => {
-            const snippet = cellSnippet(
-              cellById.get(resolveBlueprintCellId(cellId)),
-            )
-            return (
-              <button
-                key={cellId}
-                type="button"
-                onClick={() => openSliceCell(cellId)}
-                aria-label={`Open ${snippet} in the slice`}
-                title="Open in slice focus view"
-                className="rounded-full border border-border bg-card px-3 py-1 text-sm text-foreground transition-colors hover:bg-accent"
-              >
-                {snippet}
-              </button>
-            )
-          })}
         </div>
 
         {blueprint && (
@@ -381,6 +375,113 @@ export function SlicePresentation({
         />
       )}
     </div>
+  )
+}
+
+/**
+ * One image frame: a 4:3 box the picture is fitted inside, so a picture can
+ * never change its frame's size. The cap goes on the image rather than the
+ * frame — frames stay even — and holds a picture to twice its natural size.
+ */
+function StageFrame({
+  src,
+  siblings,
+  siblingIndex,
+}: {
+  src: string
+  siblings: readonly ZoomableImageSibling[]
+  siblingIndex: number
+}) {
+  const [natural, setNatural] = useState<{
+    width: number
+    height: number
+  } | null>(null)
+  return (
+    <ZoomableImage
+      src={src}
+      alt=""
+      triggerLabel="Enlarge image"
+      siblings={siblings}
+      siblingIndex={siblingIndex}
+      triggerClassName="flex aspect-[4/3] w-full min-w-0 items-center justify-center overflow-hidden rounded-lg bg-card/40"
+    >
+      <img
+        src={src}
+        alt=""
+        onLoad={(event) => {
+          const { naturalWidth, naturalHeight } = event.currentTarget
+          if (naturalWidth > 0 && naturalHeight > 0) {
+            setNatural({ width: naturalWidth, height: naturalHeight })
+          }
+        }}
+        className="h-full w-full object-contain"
+        style={
+          natural
+            ? {
+                maxWidth: `${natural.width * 2}px`,
+                maxHeight: `${natural.height * 2}px`,
+              }
+            : undefined
+        }
+      />
+    </ZoomableImage>
+  )
+}
+
+/** Keys the stage root turns into slide moves. */
+const SLIDE_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'Home', 'End'])
+
+/**
+ * The slide's cited cells, behind one `N cells` button. Each row opens its
+ * own cell in the slice, cells without a picture included.
+ */
+function SlideCellsList({
+  cellIds,
+  cellById,
+  onOpenCell,
+}: {
+  cellIds: readonly string[]
+  cellById: ReadonlyMap<string, BlueprintCell>
+  onOpenCell: (cellId: string) => void
+}) {
+  const count = cellIds.length
+  return (
+    <Popover>
+      <PopoverTrigger className="rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent">
+        {count === 1 ? '1 cell' : `${count} cells`}
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        side="top"
+        className="dark w-80 gap-0 p-1"
+        // The list portals out of the stage but its React events still
+        // bubble to it; a key pressed in the list must not change slides.
+        onKeyDown={(event) => {
+          if (SLIDE_KEYS.has(event.key)) event.stopPropagation()
+        }}
+      >
+        <ul className="flex flex-col">
+          {cellIds.map((cellId) => {
+            const snippet = cellSnippet(
+              cellById.get(resolveBlueprintCellId(cellId)),
+            )
+            return (
+              <li key={cellId}>
+                <button
+                  type="button"
+                  onClick={() => onOpenCell(cellId)}
+                  aria-label={`Open ${snippet} in the slice`}
+                  title="Open in slice focus view"
+                  className="w-full rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
+                >
+                  {snippet}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -437,9 +538,9 @@ function PresentationFilmstrip({
       className="shrink-0 overflow-x-auto border-t border-border px-6 py-4"
       data-presentation-filmstrip=""
     >
-      {/* Centered to match the stage; `w-max mx-auto` keeps centering while the
-          strip stays scrollable when slides overflow the viewport. */}
-      <div className="mx-auto flex w-max items-start gap-6">
+      {/* Starts on the stage column's left edge; slides past its width
+          overflow to the right and the strip scrolls. */}
+      <div className={cn('mx-auto flex items-start gap-6', STAGE_COLUMN_WIDTH)}>
         {items.map((item, index) => {
           const active = index === activeSlide
           return (
