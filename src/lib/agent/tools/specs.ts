@@ -92,7 +92,6 @@ export const MOBILE_READ_TOOL_NAMES = new Set([
   'get_reference',
   'list_references',
   'list_blueprint',
-  'list_scenarios',
   // A phone asking "where do we chase a missing document" is the Q&A this
   // shell exists for, and ranked search is the read that answers it. Offered
   // here on the same terms as anywhere else: `searchPlan.ts` still decides
@@ -137,7 +136,6 @@ export const SAMPLE_TRIAL_TOOL_NAMES = new Set([
   'get_reference',
   'list_references',
   'list_blueprint',
-  'list_scenarios',
   'get_blueprint',
   'compare_blueprint',
   'get_cell',
@@ -171,7 +169,6 @@ export const READ_TOOL_NAMES = new Set([
   'get_reference',
   'list_references',
   'list_blueprint',
-  'list_scenarios',
   // Classified as a read here even though it is OFTEN NOT OFFERED: this set
   // partitions `TOOL_SPECS`, and the spec exists in every build. Whether a
   // session may call it is `searchPlan.ts`'s question, not this set's.
@@ -324,15 +321,6 @@ export const TOOL_SPECS: ToolSpec[] = [
         },
       },
       required: ['granularity'],
-    },
-  },
-  {
-    name: 'list_scenarios',
-    description:
-      'Alias of list_blueprint with granularity ["phase","scenario"], kept for one release so a caller that learned this name still gets an answer, and removed after it. Call list_blueprint instead. Covers every service by default; pass service to confine it to one.',
-    parameters: {
-      type: 'object',
-      properties: { service: SERVICE_SCOPE_PARAM },
     },
   },
   {

@@ -51,7 +51,7 @@ describe('the sample-trial tool roster', () => {
     ).map((spec) => spec.name)
     expect(offered.length).toBe(SAMPLE_TRIAL_TOOL_NAMES.size)
     expect(offered.some((name) => WRITE_TOOL_NAMES.has(name))).toBe(false)
-    for (const name of ['list_blueprint', 'list_scenarios', 'get_blueprint', 'get_cell'])
+    for (const name of ['list_blueprint', 'get_blueprint', 'get_cell'])
       expect(offered).toContain(name)
   })
 })
@@ -182,7 +182,9 @@ describe('the sample answers the catalog reads it can', () => {
 
 describe('trial dispatch never reaches a database', () => {
   it('answers reads from the sample with a null client', async () => {
-    const text = await dispatchTool(null, 'session', 'list_scenarios', {})
+    const text = await dispatchTool(null, 'session', 'list_blueprint', {
+      granularity: ['phase', 'scenario'],
+    })
     expect(text).toContain(Object.keys(SAMPLE_BLUEPRINTS_BY_SCENARIO)[0]!)
   })
 

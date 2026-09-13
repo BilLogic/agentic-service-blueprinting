@@ -200,13 +200,6 @@ function listBlueprintArgs(args: Record<string, unknown>): BlueprintListOptions 
 }
 
 /**
- * What `list_scenarios` answers: `list_blueprint` at the orientation levels.
- * The old name stays for one release as an alias, and this is the whole of
- * what distinguishes it — same read, same text.
- */
-const SCENARIO_LEVELS = ['phase', 'scenario'] as const
-
-/**
  * What one session may reach that another may not.
  *
  * Only ranked search needs this today, and it needs it because the capability
@@ -288,11 +281,6 @@ export async function dispatchTool(
     case 'list_blueprint':
       return listBlueprint(client, {
         ...listBlueprintArgs(args),
-        scope: await readScope(client, args),
-      })
-    case 'list_scenarios':
-      return listBlueprint(client, {
-        granularity: SCENARIO_LEVELS,
         scope: await readScope(client, args),
       })
     case 'search_blueprint':
@@ -980,8 +968,6 @@ async function dispatchSampleTool(
       return readReference(need(args, 'name'))
     case 'list_blueprint':
       return sampleListBlueprint(listBlueprintArgs(args))
-    case 'list_scenarios':
-      return sampleListBlueprint({ granularity: SCENARIO_LEVELS })
     case 'get_blueprint':
       return sampleGetBlueprint(need(args, 'scenario_id'))
     case 'compare_blueprint': {

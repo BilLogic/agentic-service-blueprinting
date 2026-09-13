@@ -556,34 +556,6 @@ describe('the no-database twin', () => {
   })
 })
 
-describe('list_scenarios, the one-release alias', () => {
-  const spec = (name: string) => TOOL_SPECS.find((entry) => entry.name === name)!
-
-  it('says it is an alias, of what, and for how long', () => {
-    const alias = spec('list_scenarios')
-    expect(alias.description).toMatch(/alias of list_blueprint/i)
-    expect(alias.description).toContain('granularity ["phase","scenario"]')
-    expect(alias.description).toMatch(/one release/i)
-    expect(Object.keys(alias.parameters.properties ?? {})).toEqual(['service'])
-  })
-
-  it('answers exactly what list_blueprint answers at phase and scenario', async () => {
-    const { client } = fakeDb(BOARD)
-    for (const service of [undefined, 'Sales Pipeline']) {
-      const scope = service ? { service } : {}
-      expect(await dispatchTool(client, 'session', 'list_scenarios', scope)).toBe(
-        await dispatchTool(client, 'session', 'list_blueprint', {
-          granularity: ['phase', 'scenario'],
-          ...scope,
-        }),
-      )
-    }
-    expect(await dispatchTool(null, 'session', 'list_scenarios', {})).toBe(
-      sampleListBlueprint({ granularity: ['phase', 'scenario'] }),
-    )
-  })
-})
-
 describe('the list_blueprint spec', () => {
   it('offers the shared lane-role filter and the shared service filter', () => {
     const properties = TOOL_SPECS.find((entry) => entry.name === 'list_blueprint')!
