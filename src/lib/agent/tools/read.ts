@@ -262,7 +262,7 @@ async function readJourneyTree(
  * caller's own limit, with the true total in the header so a clipped list says
  * it was clipped. It reads the tables the board already reads, over plain
  * PostgREST; the walk and the text live in `format.ts`, where the no-database
- * twin shares them. `list_scenarios` is this read at ['phase', 'scenario'].
+ * twin shares them.
  *
  * The call is checked before anything is read, so a word outside a vocabulary
  * costs no round trip.

@@ -215,7 +215,6 @@
     "list_lanes",
     "list_owner_tags",
     "list_references",
-    "list_scenarios",
     "list_sessions",
     "list_slices",
     "list_stakeholders",

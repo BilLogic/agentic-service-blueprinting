@@ -89,9 +89,9 @@ describe('reading the two files', () => {
   })
 
   it('credits an argument read through a helper', () => {
-    // `list_scenarios` never says `s(args, 'service')`. It calls
+    // `list_blueprint` never says `s(args, 'service')`. It calls
     // `readScope(client, args)`, which does.
-    expect(readArguments(registry).get('list_scenarios')?.has('service')).toBe(
+    expect(readArguments(registry).get('list_blueprint')?.has('service')).toBe(
       true,
     )
   })

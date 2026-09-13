@@ -31,7 +31,7 @@
  *     `properties: { path_id: str('Path id'), name: str('New name') }`, and a
  *     line-oriented reading of it finds no keys at all — which reads as
  *     "declares nothing, reads name" and accuses a correct tool.
- *   - an argument read through a HELPER. `list_scenarios` never says
+ *   - an argument read through a HELPER. `list_blueprint` never says
  *     `s(args, 'service')`; it calls `readScope(client, args)`, which does.
  *     Any local function in the same file that takes `args` lends its keys to
  *     every case that passes `args` to it.
@@ -165,8 +165,8 @@ export function readArguments(registrySource) {
     // Union, never overwrite: `registry.ts` holds TWO switches over the same
     // tool names — `dispatchTool` for a live client and `dispatchSampleTool`
     // for the sample workspace — so a name is read if either arm reads it.
-    // Overwriting made `list_scenarios` look like it ignored `service`,
-    // because the sample arm is one line that takes no arguments.
+    // Overwriting made a tool look like it ignored `service` whenever its
+    // sample arm was one line that took no arguments.
     const already = read.get(entry[1])
     if (already) for (const key of keys) already.add(key)
     else read.set(entry[1], keys)
