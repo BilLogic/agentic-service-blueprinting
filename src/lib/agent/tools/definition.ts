@@ -53,14 +53,28 @@ export type ToolUi = {
   focusCell: (cellId: string) => Promise<string>
   openCellPanel: (cellId: string) => Promise<string>
   setSidebar: (collapsed: boolean) => string
+  setCanvasMode: (mode: 'view' | 'design') => void
   annotateCells: (cellIds: string[], note?: string) => string
   /** The live UI state the shells report, as text; empty when nothing is. */
   uiState: () => string
+  /** The controls the open surfaces have registered, as text. */
+  listCommands: () => string
+  /** Whether a registered control changes data, and so runs attributed. */
+  commandMutates: (command: string) => boolean
+  runCommand: (command: string, arg?: string) => Promise<string>
 }
 
-/** The agent session a tool call belongs to, for the ledger's attribution. */
+/**
+ * The agent session a tool call belongs to. `attributed` runs a piece of
+ * work as this session's on the authoring ledger — the ✦ badge, and how a
+ * scoped revert knows which entries are its own. A tool never sets
+ * attribution itself. Freshness after the work is the writer's burden under
+ * the decision that reads never refetch on their own; until each write
+ * module carries its own, the live session settles it here.
+ */
 export type ToolSession = {
   id: string
+  attributed: <T>(work: () => Promise<T>) => Promise<T>
 }
 
 /**

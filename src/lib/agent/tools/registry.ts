@@ -28,9 +28,6 @@ import {
 } from '@/lib/evidenceMutations'
 import type { SliceKind } from '@/lib/sliceValidation'
 import { asUpdatedAtToken } from '@/lib/optimisticConcurrency'
-import { setSharedCanvasMode } from '@/contexts/canvasModeContext'
-import { agentUiCommandMutates, runAgentUiCommand } from '@/lib/agent/uiCommands'
-import { setAgentAttribution } from '@/lib/authoringSession'
 import {
   updateCellContent,
   type CellContentUpdate,
@@ -49,22 +46,13 @@ import {
   type FindingSeverity,
   type FindingStatus,
 } from '@/lib/findingMutations'
-import { invalidateQueries } from '@/hooks/useSupabaseQuery'
-import {
-  agentAnnotateCells,
-  agentFocusCell,
-  agentOpenCellPanel,
-  agentOpenPhase,
-  agentOpenScenario,
-  agentSetSidebar,
-  collectAgentUiContext,
-} from '@/lib/agent/uiBridge'
 import { SCOPE_ALL } from '@/lib/agent/tools/serviceScope'
 import { resolveActiveServiceId } from '@/lib/service'
 import { SAMPLE_TRIAL_TOOL_NAMES } from '@/lib/agent/tools/specs'
 import type { AgentSearchIndex } from '@/deploymentConfig'
 import { runTool, type ToolContext } from '@/lib/agent/tools/definition'
 import { findToolDefinition } from '@/lib/agent/tools/definitions'
+import { liveSession, liveUi } from '@/lib/agent/tools/liveContext'
 
 type Client = SupabaseClient<Database>
 
@@ -159,7 +147,7 @@ export type DispatchContext = {
  * The context a defined tool runs in, built from what the dispatcher already
  * holds. The scope is the whole deployment — the default every read has
  * today, until a session carries the resolved active service and hands it
- * down; the UI is the live bridge. A test builds its own.
+ * down; the UI and the session are the live ones. A test builds its own.
  */
 function toolContext(
   client: Client | null,
@@ -169,16 +157,8 @@ function toolContext(
   return {
     client,
     scope: SCOPE_ALL,
-    session: { id: agentSessionId },
-    ui: {
-      openPhase: agentOpenPhase,
-      openScenario: agentOpenScenario,
-      focusCell: agentFocusCell,
-      openCellPanel: agentOpenCellPanel,
-      setSidebar: agentSetSidebar,
-      annotateCells: agentAnnotateCells,
-      uiState: collectAgentUiContext,
-    },
+    session: liveSession(agentSessionId),
+    ui: liveUi,
     meaning: context.meaning ?? null,
     signal: context.signal,
   }
@@ -197,67 +177,21 @@ export async function dispatchTool(
   context: DispatchContext = {},
 ): Promise<string> {
   // A tool that is a definition runs from it, whichever mode the session is
-  // in — the definition branches on `ctx.client` itself. The switches below
-  // shrink as tools move; a name found here never reaches them. The one
+  // in — the definition branches on `ctx.client` itself. The write switch
+  // below shrinks as tools move; a name found here never reaches it. The one
   // exception is a definition the no-database trial does not offer: it falls
-  // through to the trial's refusal below rather than running with no client.
+  // through to the trial's refusal rather than running with no client.
   const definition = findToolDefinition(name)
   if (definition && (client !== null || definition.availability.sample)) {
     return runTool(definition, args, toolContext(client, agentSessionId, context))
   }
-  // No-database trial: the read tools answer from the bundled sample, and
-  // the roster the panel registered contains nothing else. A call from
-  // outside it can only be a model inventing a name — say so plainly.
-  if (client === null) return dispatchSampleTool(name, args)
-  switch (name) {
-    // UI control + navigation: drives the interface, changes no data — no
-    // attribution, no ledger entry. Same gestures the human has.
-    case 'open_phase':
-      return agentOpenPhase(need(args, 'phase_id'))
-    case 'open_scenario':
-      return agentOpenScenario(need(args, 'scenario_id'))
-    case 'focus_cell':
-      return agentFocusCell(need(args, 'cell_id'))
-    case 'ui_command': {
-      const command = need(args, 'command')
-      // A command the registry marks `[changes data]` runs under the same
-      // attribution as a write tool. Two reasons, both discovered by the
-      // scoped revert: it is how `revert_my_changes` knows which entries are
-      // its own, and a mutating command that repainted nothing left the canvas
-      // showing state the database no longer had. The non-mutating majority
-      // stays outside, where an interface command belongs.
-      if (!agentUiCommandMutates(command)) {
-        return await runAgentUiCommand(command, s(args, 'arg'))
-      }
-      setAgentAttribution(agentSessionId)
-      try {
-        return await runAgentUiCommand(command, s(args, 'arg'))
-      } finally {
-        setAgentAttribution(null)
-        invalidateQueries('')
-      }
-    }
-    case 'open_cell_panel':
-      return agentOpenCellPanel(need(args, 'cell_id'))
-    case 'set_canvas_mode': {
-      const mode = args.mode === 'design' ? 'design' : 'view'
-      setSharedCanvasMode(mode)
-      return `Canvas mode is now ${mode}.`
-    }
-    case 'set_sidebar':
-      return agentSetSidebar(args.collapsed === true)
-    case 'annotate_cells': {
-      const ids = Array.isArray(args.cell_ids)
-        ? args.cell_ids.filter((value): value is string => typeof value === 'string')
-        : []
-      if (ids.length === 0) throw new Error('cell_ids must be a non-empty array.')
-      return agentAnnotateCells(ids, s(args, 'note'))
-    }
-  }
+  // No-database trial: whatever is not a definition the trial offers is a
+  // name the trial cannot answer — say so plainly.
+  if (client === null) return sampleRefusal(name)
 
-  // Everything below writes.
-  setAgentAttribution(agentSessionId)
-  try {
+  // Everything below writes, attributed to the session the way a defined
+  // tool's `ctx.session.attributed` is — the same code, because it is.
+  return liveSession(agentSessionId).attributed(async () => {
     switch (name) {
       case 'create_step': {
         const at = typeof args.at_position === 'number' ? args.at_position : undefined
@@ -721,42 +655,18 @@ export async function dispatchTool(
       default:
         return `Tool "${name}" is not on the allow-list. Available tools are fixed; deletes do not exist here — removal is human-only.`
     }
-  } finally {
-    setAgentAttribution(null)
-    // The canvas reads through the shared query cache; empty prefix
-    // matches every key, so the grids refetch and repaint after a write.
-    invalidateQueries('')
-  }
+  })
 }
 
 /**
- * Trial dispatch — what is left of it. Every data read is a definition now
- * and answers from the sample through its own `run`; what remains here is
- * the navigation the trial shares with the database path (it drives the
- * canvas, which is rendering the same sample content) and the refusal.
- * Writes are unreachable by construction: `SAMPLE_TRIAL_TOOL_NAMES` is what
- * the loop registers, and anything else lands on the closing refusal rather
- * than on a mutation.
+ * The trial's refusal. Every read and every navigation is a definition now
+ * and decides for itself whether it answers without a database; a name that
+ * reaches here in the no-database trial is one the trial does not offer —
+ * a write, a desktop control, or a read the bundled sample cannot answer
+ * (it is a board, not a deployment: no cast, no provenance, no business
+ * model). Saying so is the honest answer; an invented one would teach the
+ * model the tables are empty.
  */
-async function dispatchSampleTool(
-  name: string,
-  args: Record<string, unknown>,
-): Promise<string> {
-  switch (name) {
-    case 'open_phase':
-      return agentOpenPhase(need(args, 'phase_id'))
-    case 'open_scenario':
-      return agentOpenScenario(need(args, 'scenario_id'))
-    case 'focus_cell':
-      return agentFocusCell(need(args, 'cell_id'))
-    case 'open_cell_panel':
-      return agentOpenCellPanel(need(args, 'cell_id'))
-    default:
-      // `list_stakeholders`, `list_evidence`, `get_evidence` and
-      // `get_business_model` land here on purpose: the bundled sample is a
-      // board, not a deployment, and it carries no cast, no provenance and no
-      // business model to answer from. Saying so is the honest answer — an
-      // invented one would teach the model the tables are empty.
-      return `This session is running on the bundled SAMPLE blueprint with no database connected, so "${name}" does not exist here. Available: ${[...SAMPLE_TRIAL_TOOL_NAMES].join(', ')}. Connect a database to author.`
-  }
+function sampleRefusal(name: string): string {
+  return `This session is running on the bundled SAMPLE blueprint with no database connected, so "${name}" does not exist here. Available: ${[...SAMPLE_TRIAL_TOOL_NAMES].join(', ')}. Connect a database to author.`
 }
