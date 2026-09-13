@@ -214,10 +214,11 @@ export type DeploymentConfig = {
    * search exists at all are set by the deployment, not hardcoded, the same
    * way brand and content are.
    *
-   * `search` IS READ. `doctrine` and `enabledTools` are still declared shape
-   * with no reader: later slices wire `doctrine` into the agent's prompt
-   * assembly and `enabledTools` into its tool registry. Present and unused,
-   * on purpose.
+   * `search` and `enabledTools` ARE READ: the second is an allowlist of
+   * tool names the session roster is filtered by (absent means every tool —
+   * see `lib/agent/tools/roster.ts`). `doctrine` is still declared shape
+   * with no reader: a later slice wires it into the agent's prompt assembly.
+   * Present and unused, on purpose.
    */
   agent?: {
     doctrine?: string

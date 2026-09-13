@@ -16,6 +16,7 @@ import type { CoverContent } from '@/components/cover/coverModel'
 import { applyBrandAccent } from '@/lib/brandAccent'
 import { configureCellBudget } from '@/lib/cellContentLimits'
 import { configureAgentSearch } from '@/lib/agent/searchPlan'
+import { configureAgentTools } from '@/lib/agent/tools/roster'
 import { configurePathColorPins } from '@/lib/pathColorTheme'
 import { configureStoryboardBorders } from '@/lib/storyboardWalkthrough'
 
@@ -115,6 +116,16 @@ export function DeploymentConfigProvider({
   useEffect(() => {
     configureAgentSearch(agentSearch)
   }, [agentSearch])
+
+  /**
+   * The tool allowlist onto the roster module, on the same terms: read when
+   * a roster is assembled, so an ordinary effect. Absent — the template and
+   * every deployment that has not narrowed the agent — is every tool.
+   */
+  const agentEnabledTools = resolved.agent?.enabledTools
+  useEffect(() => {
+    configureAgentTools(agentEnabledTools)
+  }, [agentEnabledTools])
 
   return (
     <DeploymentConfigContext.Provider value={resolved}>

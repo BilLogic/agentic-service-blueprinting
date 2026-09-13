@@ -9,9 +9,10 @@
  * that do — and nothing noticed, because a list of identifiers wearing prose
  * reads like prose.
  *
- * `WRITE_TOOL_NAMES` in `src/lib/agent/tools/specs.ts` is the source of truth:
- * the loop gates batch etiquette and the viewer refusal on it. This compares
- * the two in both directions and names every tool they disagree about.
+ * The write surface is every `defineWriteTool` under
+ * `src/lib/agent/tools/definitions/`: the loop gates batch etiquette and the
+ * viewer refusal on that surface. This compares the two in both directions
+ * and names every tool they disagree about.
  *
  *   node scripts/check-write-surface.mjs
  */
@@ -19,7 +20,7 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { readAppFile } from './app-source.mjs'
+import { toolSources, toolsOnSurface } from './tool-sources.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
@@ -27,27 +28,24 @@ const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
  * The two sides, and the two places they live — same split as the read check.
  *
  * The adapter is a file of THIS tree, held byte-identical by every deployment.
- * The specs are the APPLICATION's, and a deployment keeps no `src` of its own:
- * it reads them out of `node_modules/agentic-service-blueprinting/src`.
- * `readAppFile` refuses a tree that has the application in neither place,
+ * The definitions are the APPLICATION's, and a deployment keeps no `src` of
+ * its own: it reads them out of `node_modules/agentic-service-blueprinting/src`.
+ * `toolSources` refuses a tree that has the application in neither place,
  * because "the document lists nothing the roster lacks" is satisfied by a
  * roster that could not be read at all.
  */
 const ADAPTER = 'references/canvas-adapter.md'
-const SPECS = 'src/lib/agent/tools/specs.ts'
 
 /**
- * The tool names in `WRITE_TOOL_NAMES`.
+ * The tools on the write surface, from their definitions.
  *
- * Read textually rather than imported: specs.ts is TypeScript behind a path
- * alias, and every consumer that wants the real value already pays for a
- * rollup bundle (scripts/agent-harness/run.mjs). A check that needs a build
- * step is a check that gets skipped.
+ * Read textually rather than imported: the definitions are TypeScript behind
+ * a path alias, and every consumer that wants the real value already pays for
+ * a bundle (scripts/agent-harness/run.mjs). A check that needs a build step
+ * is a check that gets skipped.
  */
 export function declaredWriteTools(source) {
-  const block = /export const WRITE_TOOL_NAMES = new Set\(\[([\s\S]*?)^\]\)/m.exec(source)
-  if (!block) throw new Error(`no WRITE_TOOL_NAMES set found in ${SPECS}`)
-  return [...block[1].matchAll(/'([a-z_]+)'/g)].map(([, name]) => name)
+  return toolsOnSurface(source, 'write')
 }
 
 /**
@@ -80,7 +78,7 @@ export function differences(documented, declared) {
 
 export function compare(root = REPO_ROOT) {
   const adapter = readFileSync(join(root, ADAPTER), 'utf8')
-  return differences(documentedWriteTools(adapter), declaredWriteTools(readAppFile(root, SPECS)))
+  return differences(documentedWriteTools(adapter), declaredWriteTools(toolSources(root)))
 }
 
 function main() {
@@ -93,14 +91,14 @@ function main() {
     console.error(`${name} is a write tool that ${ADAPTER} does not list`)
   }
   for (const name of unknown) {
-    console.error(`${ADAPTER} lists ${name}, which is not in WRITE_TOOL_NAMES`)
+    console.error(`${ADAPTER} lists ${name}, which is not a write tool`)
   }
   for (const name of duplicated) {
     console.error(`${ADAPTER} lists ${name} more than once`)
   }
   console.error(
     `\nThe agent treats that list as permission. Fix the row in ${ADAPTER}, or` +
-      ` the set in ${SPECS}, so the two agree.`,
+      ' the tool definitions, so the two agree.',
   )
   process.exit(1)
 }

@@ -12,13 +12,9 @@ import type {
 } from '@/lib/agent/providers/provider'
 import { dispatchTool, type DispatchContext } from '@/lib/agent/tools/registry'
 import { agentSearchPlan } from '@/lib/agent/searchPlan'
-import {
-  MOBILE_READ_TOOL_NAMES,
-  SAMPLE_TRIAL_TOOL_NAMES,
-  TOOL_SPECS,
-  WRITE_TOOL_NAMES,
-  sessionRoster,
-} from '@/lib/agent/tools/specs'
+import { toolSpec } from '@/lib/agent/tools/definition'
+import { findToolDefinition } from '@/lib/agent/tools/definitions'
+import { sessionRoster, toolEnabled } from '@/lib/agent/tools/roster'
 import { isMobileViewport } from '@/hooks/useMobileShell'
 import { collectAgentUiContext } from '@/lib/agent/uiBridge'
 import { agentUiCommandMutates } from '@/lib/agent/uiCommands'
@@ -392,8 +388,8 @@ export async function sendToAgent(input: {
   const WRITE_BATCH_LIMIT = 8
 
   // No database, no writes — not "refused writes", ABSENT ones. The roster
-  // is the sample-trial whitelist, and the paragraph below tells the model
-  // what it is looking at so it stops trying to author.
+  // is the definitions that may run without one, and the paragraph below
+  // tells the model what it is looking at so it stops trying to author.
   const sampleTrial = client === null
   /**
    * Ranked search: whether this session has it at all, and whether its
@@ -459,13 +455,13 @@ export async function sendToAgent(input: {
         systemStableLength,
         messages: run.messages,
         // One pass, and the gates' ORDER is part of the contract — it lives
-        // in `sessionRoster`, next to the rosters it reads.
-        tools: sessionRoster(TOOL_SPECS, {
+        // in `sessionRoster`, with the definitions it derives from.
+        tools: sessionRoster({
           sampleTrial,
           mobileReading,
           allowWrites,
           searchOffered: searchPlan.offered,
-        }),
+        }).map(toolSpec),
         apiKey,
         model: modelFor(settings),
         signal: controller.signal,
@@ -493,10 +489,14 @@ export async function sendToAgent(input: {
       // predicate so the viewer refusal and the batch limiter cannot
       // disagree about what counts as a write.
       const isWrite = (call: AgentToolCallPart) =>
-        WRITE_TOOL_NAMES.has(call.name) ||
+        findToolDefinition(call.name)?.surface === 'write' ||
         (call.name === 'ui_command' &&
           agentUiCommandMutates(String(call.args.command ?? '')))
       for (const call of calls) {
+        // Off-roster calls: a model can still emit a name it invented or
+        // remembered from another session, so each gate the roster applied
+        // is applied again to the call, in the roster's words.
+        const called = findToolDefinition(call.name)
         if (controller.signal.aborted) {
           // Stopping mid-batch must not strand the assistant's tool_use
           // parts without results: every provider rejects the NEXT send of
@@ -521,7 +521,20 @@ export async function sendToAgent(input: {
           run.messages.push(results)
           throw new DOMException('stopped', 'AbortError')
         }
-        if (sampleTrial && !SAMPLE_TRIAL_TOOL_NAMES.has(call.name)) {
+        if (!toolEnabled(call.name)) {
+          // Disabled by the deployment's config: the tool exists in the
+          // template and not in this session, so the refusal says the
+          // second thing only — the model has no business learning the first.
+          results.parts.push({
+            type: 'tool_result',
+            toolCallId: call.id,
+            name: call.name,
+            result: `There is no ${call.name} tool in this session.`,
+            isError: true,
+          })
+          continue
+        }
+        if (sampleTrial && !called?.availability.sample) {
           results.parts.push({
             type: 'tool_result',
             toolCallId: call.id,
@@ -532,7 +545,7 @@ export async function sendToAgent(input: {
           })
           continue
         }
-        if (mobileReading && !MOBILE_READ_TOOL_NAMES.has(call.name)) {
+        if (mobileReading && !called?.availability.mobile) {
           results.parts.push({
             type: 'tool_result',
             toolCallId: call.id,

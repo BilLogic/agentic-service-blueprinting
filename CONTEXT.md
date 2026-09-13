@@ -256,7 +256,7 @@ So write the owner you mean — *the slice's record*, *the audit's findings*,
 migration's scope — enumerate them, which is four words against a category name
 that has twice had to be replaced.
 `scripts/tests/who-writes-what.test.mjs` holds the table above against
-`WRITE_TOOL_NAMES`, so a renamed tool or a new write with no owner fails
+the write surface, so a renamed tool or a new write with no owner fails
 `npm test` rather than leaving this table quietly wrong.
 
 **`business_model` is not one of them**, and the schema settles it rather than
@@ -374,6 +374,22 @@ it there.
 **Sprawl** — a document too long even when every line of it is live: attention
 thins across the whole of it. The cure is the ladder rather than a shorter
 sentence. Distinct from *bloat*, which is dead weight.
+
+## The agent
+
+**Tool** — one thing the in-app agent may call: its name, its surface (read,
+interface or write), its argument schema, where it may run (without a database;
+on the mobile shell), and what it does. A tool is one definition under the
+agent's tools folder, grouped with the others that act on the same noun, and
+nothing else declares it — the spec the model receives, the roster and the
+dispatch all derive from that definition. **Not a table and not an RPC**: the
+tool `create_step` calls the RPC `add_step`.
+
+**Roster** — the tools one session is offered. Derived, never listed: the
+definition list filtered by the deployment's allowlist (`agent.enabledTools`;
+absent means every tool) and by each tool's own availability for the session's
+mode. A tool absent from the roster does not exist for that session — it is
+never offered, so it is never refused.
 
 ## The session
 

@@ -35,8 +35,8 @@ import type { BlueprintData } from '@/types/blueprint'
  *    the fixture and used to carry its own hand-copied formatters.
  *
  * Read-only by construction: there is nothing here that writes, so the trial
- * cannot pretend to author. The panel registers only the read roster
- * (`SAMPLE_TRIAL_TOOL_NAMES`), so a write tool is absent rather than refused.
+ * cannot pretend to author. The trial's roster is the definitions whose
+ * availability says `sample`, so a write tool is absent rather than refused.
  */
 
 function sampleBlueprintsFor(scenarioId: string): BlueprintData[] {

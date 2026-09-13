@@ -1,16 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { SCOPE_ALL } from '@/lib/agent/tools/serviceScope'
-import { SAMPLE_TRIAL_TOOL_NAMES } from '@/lib/agent/tools/specs'
 import type { AgentSearchIndex } from '@/deploymentConfig'
 import { runTool, type ToolContext } from '@/lib/agent/tools/definition'
-import { findToolDefinition } from '@/lib/agent/tools/definitions'
+import { TOOL_DEFINITIONS, findToolDefinition } from '@/lib/agent/tools/definitions'
 import { liveSession, liveUi } from '@/lib/agent/tools/liveContext'
 
 type Client = SupabaseClient<Database>
 
-// Tool specs and rosters live in `specs.ts` (imported directly by their
-// consumers — one canonical path); this module owns only dispatch.
+// The spec table is `specs.ts` and the session roster is `roster.ts`, both
+// derived from the definitions; this module owns only dispatch.
 
 /**
  * What one session may reach that another may not.
@@ -89,5 +88,6 @@ export async function dispatchTool(
  * honest answer; an invented one would teach the model the tables are empty.
  */
 function sampleRefusal(name: string): string {
-  return `This session is running on the bundled SAMPLE blueprint with no database connected, so "${name}" does not exist here. Available: ${[...SAMPLE_TRIAL_TOOL_NAMES].join(', ')}. Connect a database to author.`
+  const available = TOOL_DEFINITIONS.filter((tool) => tool.availability.sample).map((tool) => tool.name)
+  return `This session is running on the bundled SAMPLE blueprint with no database connected, so "${name}" does not exist here. Available: ${available.join(', ')}. Connect a database to author.`
 }

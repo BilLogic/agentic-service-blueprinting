@@ -27,13 +27,13 @@ test('the documented list stops at the em dash, before ui_command', () => {
   assert.deepEqual(documentedWriteTools(row), ['upsert_cell', 'create_lane'])
 })
 
-test('the declared set is read out of the Set literal, not the whole file', () => {
+test('the write surface is every defineWriteTool, and nothing a defineTool declares', () => {
   const source = [
-    "export const READ_TOOL_NAMES = new Set(['get_cell'])",
-    'export const WRITE_TOOL_NAMES = new Set([',
-    "  'upsert_cell',",
-    "  'create_lane',",
-    '])',
+    "export const getCellTool = defineTool({ name: 'get_cell', surface: 'read' })",
+    'export const upsertCellTool = defineWriteTool({',
+    "  name: 'upsert_cell',",
+    '})',
+    "export const createLaneTool = defineWriteTool({ name: 'create_lane' })",
     "const other = 'update_path'",
   ].join('\n')
   assert.deepEqual(declaredWriteTools(source), ['upsert_cell', 'create_lane'])
