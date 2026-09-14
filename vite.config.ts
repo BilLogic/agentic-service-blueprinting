@@ -39,8 +39,8 @@ import { defineConfig } from 'vite'
  * the copies one fact. Edit the roots here and that test goes red.
  */
 const APP_SOURCE_ROOTS = [
-  path.resolve(__dirname, './src'),
-  path.resolve(__dirname, './node_modules/agentic-service-blueprinting/src'),
+  path.resolve(import.meta.dirname, './src'),
+  path.resolve(import.meta.dirname, './node_modules/agentic-service-blueprinting/src'),
 ]
 
 const [residents, packagedApplication] = APP_SOURCE_ROOTS as [string, string]
@@ -136,7 +136,7 @@ const packagedApplicationOptimizeDeps = {
  * that the three lines name the root, and that this tree is unchanged by their
  * naming it.
  */
-const deploymentSource = path.resolve(__dirname, './deployment')
+const deploymentSource = path.resolve(import.meta.dirname, './deployment')
 
 // https://vite.dev/config/
 export default defineConfig({
