@@ -68,6 +68,27 @@ export const repoConfig = {
   },
 
   /**
+   * The composition documents, and which of this repository's own trees they
+   * claim beside the application (`check-harness-claims.mjs`).
+   *
+   * `documents` is the folder they live in. The check reads this repository's
+   * folder and, in a deployment, the installed package's underneath it — the
+   * overlay rule the application already resolves per path, resolved here per
+   * document — so the name is stated once per repository rather than spelled
+   * in a script both repositories run.
+   *
+   * `claimed` is the trees of assembled files this repository holds that are
+   * NOT the application's. The package claims what the package ships, so here
+   * the list is empty and the application is the whole subject; a deployment
+   * that assembles files of its own names those trees here, and each of their
+   * files needs a claim in a document of its own.
+   */
+  composition: {
+    documents: 'docs/guidelines/composition',
+    claimed: [],
+  },
+
+  /**
    * Where a glossary row that names a column belongs instead
    * (`check-glossary-only.mjs`), and a routing target below.
    */
@@ -109,6 +130,7 @@ export const repoConfig = {
       ['Why do skills/, references/, agents/, hooks/ and scripts/ sit at the root?', 'docs/adr/0002-plugin-contract-folder-names.md'],
       ['Why does a service own its journey but share the catalog of tools and actors?', 'docs/adr/0003-a-service-owns-its-journey-and-shares-the-catalog.md'],
       ['May I move a file under references/ or skills/?', 'docs/adr/0004-reference-paths-are-a-published-interface.md'],
+      ['May I move a document a deployment reads out of this package?', 'docs/adr/0023-a-document-a-deployment-resolves-is-a-published-path.md'],
       ['Where does state shared across surfaces live?', 'docs/adr/0005-cross-surface-state-is-a-module-store.md'],
       ['When may a surface I am adding stop showing its skeleton?', 'docs/adr/0007-the-canvas-and-the-shell-run-on-separate-clocks.md'],
       ['Does switching a still-open view remount the canvas?', 'docs/adr/0010-open-views-stay-mounted.md'],
@@ -125,6 +147,7 @@ export const repoConfig = {
       ['How does a deployment consume this template?', 'docs/adr/0020-the-deployment-imports-the-template.md'],
       ['Who owns the canvas agent, and how may a deployment tune it?', 'docs/adr/0021-the-template-owns-the-agent.md'],
       ['What decisions have been recorded, and under which numbers?', 'docs/adr/overview.md'],
+      ['Which document owns this assembled surface, and who writes its claim?', 'docs/guidelines/composition/overview.md'],
       ['Add or move a document', 'docs/guidelines/documentation.md'],
       ['Propose a change; what a commit and a pull request carry', 'docs/guidelines/contributing.md'],
       ['See what is already being worked on', 'GitHub issues — the queue is not in this repo'],

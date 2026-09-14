@@ -29,7 +29,7 @@ Folders are named for the class of thing inside them.
 | `adr/` | Decisions, numbered, with the context that forced them. Never edited after acceptance — a decision that changed gets a new ADR that supersedes it. |
 | `agents/` | Repository-specific configuration consumed by engineering skills. |
 | `guide/` | The numbered narrative, for a person reading start to finish. |
-| `guidelines/` | How we work: this file, and how to propose a change. |
+| `guidelines/` | How we work: this file, and how to propose a change. `composition/` is the one exception inside it — one document per assembled surface, each claiming the files it documents (`docs/guidelines/composition/overview.md`). |
 | `engineering/` | Procedure for whoever runs the repository. |
 | `connectors/<name>/` | Everything about one external system this package talks to. |
 | `assets/` | Every figure the README and the guides use. |
@@ -54,6 +54,14 @@ summary: How a release is cut — changesets bump package.json, plugin.json and 
 ---
 ```
 
+A composition document carries one key more — `claims:`, the files it
+documents — and nothing else. Both are held by a check: the summary by
+`npm run check:docs-index`, the claims by `npm run check:harness`. Keys beyond
+those two are not the grammar here, and were dropped when the composition
+documents arrived: an unheld `sources:` or `last-reviewed:` is a second list of
+the same kind of fact with no guard on it, which goes stale exactly as quietly
+as a hand-maintained index does.
+
 It is not decoration. `scripts/generate-docs-index.mjs` builds `INDEX.md` and
 `docs/index.md` out of these lines, so the summary is what an agent reads when
 deciding whether to open the file. A document without one **fails
@@ -61,7 +69,7 @@ deciding whether to open the file. A document without one **fails
 someone deciding whether this is the document they want, not as a title
 restated.
 
-## 4. The exception
+## 4. The exceptions
 
 `skills/`, `references/`, `agents/`, `hooks/` and `scripts/` do not follow any
 of this. They are resolved by path at runtime through the plugin root, so
@@ -69,3 +77,12 @@ their names are a published interface rather than an organising choice, and
 `references/` in particular is normative protocol that stays at the root.
 The reasoning is [ADR 2](../adr/0002-plugin-contract-folder-names.md); read it
 before tidying them.
+
+`guidelines/composition/` is the second, and the only folder under `docs/` that
+is one. A deployment's claims check reads those documents out of the package it
+installed, to learn which files the package already claims, so their folder and
+their filenames are an address somebody else resolves — the same promise
+`references/` makes, and the same cost to break. They are listed in
+`CONSUMER_IMPORTS` and held by `npm run check:reference-paths`; moving or
+renaming one is a release, not a tidy-up. Everything else about them is
+ordinary: frontmatter, a summary, and §2's rule that a rule has one home.

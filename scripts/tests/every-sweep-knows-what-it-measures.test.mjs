@@ -166,6 +166,10 @@ const FIXTURE_ONLY = new Map([
     'one path handed to `absences`, to prove it reports a file outside the plugin surface',
   ],
   [
+    'scripts/tests/harness-claims.test.mjs',
+    'the four assembled directories it asserts the check names, and the component files it plants inside a packaged `src` in a temporary directory of its own and deletes after',
+  ],
+  [
     'scripts/tests/rpc-arguments.test.mjs',
     'a `src/lib` it creates inside a temporary directory of its own and deletes after',
   ],

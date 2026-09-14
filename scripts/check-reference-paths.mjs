@@ -29,7 +29,7 @@
  * tree, not a working directory.
  *
  * THE SUBJECT IS THE PUBLISHED INTERFACE — the `commit` subject of `sweep.mjs`,
- * narrowed to `references/` and `skills/`, which is where this interface lives.
+ * narrowed to the roots this interface lives under.
  * That module holds the listing and the reason it is what a commit would carry
  * rather than the index alone (#180, #181, in its header): a reference file
  * written and checked before `git add` is one the next commit ships, and reading
@@ -111,6 +111,30 @@ export const CONSUMER_IMPORTS = [
   'render-walk/playwright.config.ts',
   'render-walk/sample-board.spec.ts',
   'render-walk/annotation-drag.spec.ts',
+
+  // The composition documents. Not imported either — READ, out of this
+  // package's installed tree, by the deployment's own copy of
+  // `check-harness-claims.mjs`: they are what claims the files this package
+  // ships, so a deployment holds no claim for a module it does not own. The
+  // folder is a published path for exactly that reason, and a document that
+  // moves or vanishes without a deployment's config moving with it turns that
+  // check red one pin later, over a surface nobody touched.
+  //
+  // They reach a deployment because `package.json` states no `files` allowlist
+  // and an install therefore carries the whole tree. Adding one later without
+  // these paths in it would leave every consumer's claims check reading a
+  // folder that is not there — a break with no local signal, which is the
+  // reason this is written beside the list rather than left to be rediscovered.
+  'docs/guidelines/composition/agent-session.md',
+  'docs/guidelines/composition/canvas.md',
+  'docs/guidelines/composition/compare.md',
+  'docs/guidelines/composition/cover-page.md',
+  'docs/guidelines/composition/dialogs-sheets-and-forms.md',
+  'docs/guidelines/composition/entity-panels.md',
+  'docs/guidelines/composition/mobile-shell.md',
+  'docs/guidelines/composition/overview.md',
+  'docs/guidelines/composition/sidebar.md',
+  'docs/guidelines/composition/slice-view.md',
 ]
 
 /**
@@ -120,15 +144,26 @@ export const CONSUMER_IMPORTS = [
  * path exactly as it reaches a reference or a skill body — the difference is
  * that Playwright opens it rather than Vite, which changes nothing about what
  * moving it costs.
+ *
+ * The composition folder is the fourth, and is the one root under `docs/`. It
+ * is here for the same reason and not for its own: a deployment's claims check
+ * reads these documents out of the installed package to learn what the package
+ * already claims, so the folder is an address somebody else resolves. The rest
+ * of `docs/` is prose this package writes for its own readers, and stays out.
  */
-const INTERFACE_ROOTS = ['references/', 'skills/', 'render-walk/']
+const INTERFACE_ROOTS = [
+  'references/',
+  'skills/',
+  'render-walk/',
+  'docs/guidelines/composition/',
+]
 
 /** The roots as the refusal says them, so the sentence cannot drift off the list. */
 const ROOTS_PHRASE = `${INTERFACE_ROOTS.slice(0, -1).join(', ')} or ${INTERFACE_ROOTS.at(-1)}`
 
 /**
- * The interface as the commit carries it: the sweep over `references/` and
- * `skills/`, whose `files` answer "is this path in the commit" and whose `read`
+ * The interface as the commit carries it: the sweep over the interface roots,
+ * whose `files` answer "is this path in the commit" and whose `read`
  * answers "is the file there" — null for a path the tree does not have.
  */
 export function interfaceSweep(root = process.cwd()) {
@@ -136,7 +171,7 @@ export function interfaceSweep(root = process.cwd()) {
     subject: 'commit',
     root,
     where: (path) => INTERFACE_ROOTS.some((interfaceRoot) => path.startsWith(interfaceRoot)),
-    what: 'file under references/ or skills/ that a commit would carry',
+    what: `file under ${ROOTS_PHRASE} that a commit would carry`,
   })
 }
 

@@ -35,6 +35,7 @@ in [docs/index.md](./docs/index.md); what the folders mean is in
 | Why do skills/, references/, agents/, hooks/ and scripts/ sit at the root? | docs/adr/0002-plugin-contract-folder-names.md |
 | Why does a service own its journey but share the catalog of tools and actors? | docs/adr/0003-a-service-owns-its-journey-and-shares-the-catalog.md |
 | May I move a file under references/ or skills/? | docs/adr/0004-reference-paths-are-a-published-interface.md |
+| May I move a document a deployment reads out of this package? | docs/adr/0023-a-document-a-deployment-resolves-is-a-published-path.md |
 | Where does state shared across surfaces live? | docs/adr/0005-cross-surface-state-is-a-module-store.md |
 | When may a surface I am adding stop showing its skeleton? | docs/adr/0007-the-canvas-and-the-shell-run-on-separate-clocks.md |
 | Does switching a still-open view remount the canvas? | docs/adr/0010-open-views-stay-mounted.md |
@@ -51,6 +52,7 @@ in [docs/index.md](./docs/index.md); what the folders mean is in
 | How does a deployment consume this template? | docs/adr/0020-the-deployment-imports-the-template.md |
 | Who owns the canvas agent, and how may a deployment tune it? | docs/adr/0021-the-template-owns-the-agent.md |
 | What decisions have been recorded, and under which numbers? | docs/adr/overview.md |
+| Which document owns this assembled surface, and who writes its claim? | docs/guidelines/composition/overview.md |
 | Add or move a document | docs/guidelines/documentation.md |
 | Propose a change; what a commit and a pull request carry | docs/guidelines/contributing.md |
 | See what is already being worked on | GitHub issues — the queue is not in this repo |
@@ -78,4 +80,4 @@ in [docs/index.md](./docs/index.md); what the folders mean is in
   docs/engineering/checks.md, with docs/adr/ before anything that renames.
 - **An agent, any task** — AGENTS.md (auto-loaded) → CONTEXT.md → this table.
 
-37 protocol documents are indexed in [docs/index.md](./docs/index.md).
+48 protocol documents are indexed in [docs/index.md](./docs/index.md).
