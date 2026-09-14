@@ -26,6 +26,7 @@ import { basename, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { readAppFile } from './app-source.mjs'
+import { toolSources } from './tool-sources.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 export const MANIFEST_PATH = 'identifiers.json'
@@ -145,11 +146,13 @@ function hookNames(root) {
  * no answer to give, and `readAppFile` says so, naming both roots it looked in.
  */
 function agentToolNames(root) {
-  const source = readAppFile(root, 'src/lib/agent/tools/specs.ts')
+  // The spec table and the definitions folder together — a tool that moved
+  // from a spec beside a switch case to one definition is the same tool.
+  const source = toolSources(root)
   const names = [...source.matchAll(/^\s*name: '([a-z_]+)',$/gm)]
     .map((match) => match[1])
     .sort()
-  if (names.length === 0) throw new Error('no tool names in src/lib/agent/tools/specs.ts')
+  if (names.length === 0) throw new Error('no tool names in the agent tool sources')
   return names
 }
 
