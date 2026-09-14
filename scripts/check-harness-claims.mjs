@@ -136,7 +136,17 @@ export function resolveDocuments(layers, documents) {
   return [...found.values()].sort((a, b) => a.name.localeCompare(b.name))
 }
 
-/** Frontmatter, with support for the one block-list key this reads. */
+/**
+ * Frontmatter, with support for the one block-list key this reads.
+ *
+ * `generate-docs-index.mjs` parses frontmatter too, and reads it flat — every
+ * value a string — which is the right shape for the one key it wants and the
+ * wrong one for `claims:`. Reaching for it would also put a relative import to
+ * a module this package does not publish inside a file a deployment holds
+ * byte-identical, which the shared-script fence refuses for the reason it
+ * gives. So the two parsers coexist, each answering the question its caller
+ * asks, and neither is the other's base case.
+ */
 export function frontmatter(text) {
   const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)
   if (!match) return {}
