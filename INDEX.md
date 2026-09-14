@@ -45,7 +45,7 @@ in [docs/index.md](./docs/index.md); what the folders mean is in
 | May I edit a file under src/components/ui/? | docs/adr/0014-vendored-primitives-stay-pristine.md |
 | Does focusing a scenario unmount the rest of the board? | docs/adr/0015-the-board-is-always-fully-mounted.md |
 | Why do queries never refetch on focus? | docs/adr/0016-reads-never-refetch-on-their-own.md |
-| Why are the large editor components not split? | docs/adr/0017-large-component-splits-wait-for-an-end-to-end-round.md |
+| When may a large editor component be split? | docs/adr/0017-large-component-splits-wait-for-an-end-to-end-round.md |
 | What does featured mean on a resource? | docs/adr/0018-featured-is-one-column-two-verbs.md |
 | Is this repo a fork of a deployment, or the canonical template? | docs/adr/0019-the-deployment-is-a-deployment-of-the-template.md |
 | How does a deployment consume this template? | docs/adr/0020-the-deployment-imports-the-template.md |

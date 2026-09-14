@@ -32,7 +32,14 @@ type PanelRole = keyof typeof FORMER_PANEL_TEXT
 const FORMER_SITE_COUNTS: Readonly<
   Record<string, Partial<Record<PanelRole, number>>>
 > = {
-  'components/blueprint/BlueprintCellDetailPanel.tsx': { title: 3, value: 1 },
+  // The cell panel's four sites moved with the split of its body: its three
+  // titles are each the heading of one drawer surface, and its value is the
+  // summary paragraph in the overview. Same four sites, same four class
+  // lists, re-addressed to the files they now stand in.
+  'components/blueprint/CellDetailDifferencesSurface.tsx': { title: 1 },
+  'components/blueprint/CellDetailDraftSurface.tsx': { title: 1 },
+  'components/blueprint/CellDetailEmptySurface.tsx': { title: 1 },
+  'components/blueprint/CellDetailOverview.tsx': { value: 1 },
   'components/blueprint/CellContentSection.tsx': {
     sectionLabel: 1,
     value: 1,

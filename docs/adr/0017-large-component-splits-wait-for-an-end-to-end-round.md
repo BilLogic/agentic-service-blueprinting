@@ -1,5 +1,5 @@
 ---
-summary: Three components are long enough to be worth splitting and are deliberately not split, because the tests that would catch a split going wrong do not exist yet — the hold has an exit condition, not an excuse.
+summary: Three components were long enough to be worth splitting and were deliberately not split until the tests that would catch a split going wrong existed — the hold had an exit condition, not an excuse, and it has now been met: all three flows have CI slices, and the cell detail panel is split.
 ---
 
 # 17. Large component splits wait for an end-to-end round
@@ -315,5 +315,37 @@ made the layer's var-ramp exemption stale within the same commit that moved
 it. That is a check noticing a file moved, which is what a path-pinned
 exemption is for.
 
-Two components remain, each with its own slice: the cell panel and the agent
-panel.
+Two components remained at that point, each with its own slice: the cell
+panel, whose split is the amendment below, and the agent panel.
+
+## Amended 2026-09-14: the cell panel is split, and its slice says nothing moved
+
+The second of the three splits this record held is done.
+`src/components/blueprint/BlueprintCellDetailPanel.tsx` went from 1481 lines
+to 553, and its body — one function from line 223 to the end — is nine
+modules beside it: the facts a cell is read from (`cellDetailFacts.ts`), the
+overview and its readings, the tab row, the breadcrumb, the three sibling
+surfaces the drawer can show instead of a cell, the surface switcher, and the
+panel's agent commands. What stayed is the drawer: which surface, how wide,
+what closes it, and the footer the one save portals into.
+
+**Nothing moved with it, and the slice is why anybody can say so.** `npm run
+slice:cell-edit` was run before the first move and after every one of them,
+green each time and with no assertion edited — which is the whole point of a
+pure refactor having an instrument: the test had no way to notice, because
+there was nothing to notice. The same holds for the 285 tests over
+`src/components/blueprint` and for the suite as a whole. The PostgREST form
+was not run here: no machine in this estate carries a PostgREST binary and
+this work downloaded none, so `npm run slice:cell-edit:postgrest` is CI's
+proof, exactly as the amendment above anticipated.
+
+**What the split is NOT is a redesign.** No class, no `data-` attribute, no
+aria label and no test id changed; the one save still writes the same columns
+in the same shape; every section that derived its fields from
+`src/lib/cellFields.ts` still derives them from there, through the same
+`CellPanelEditor` it always did. The interfaces between the new modules are
+the cell's facts, the selection, and the callbacks the panel owns — no module
+takes a prop from outside the panel that the panel did not already hold.
+
+**`src/components/editor/AgentPanel.tsx` is the one still to do**, with its
+own slice standing ready as the instrument.
