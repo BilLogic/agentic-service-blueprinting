@@ -293,7 +293,7 @@ dialog at all. The sessions list with its row and its ledger count, the chat
 view with its composer, the transcript's rows and its fold, the rule that
 decides which rows fold, the two session dialogs and the ⚙ rail button are
 modules under `src/components/editor/agent/`, none larger than the chat view's
-651 lines. What crosses each new seam is what the code already
+647 lines. What crosses each new seam is what the code already
 passed around — a session or the list of them, the transcript's events, a
 callback — and no prop was invented; no persisted row shape moved, and no
 class, test id or aria attribute changed.
