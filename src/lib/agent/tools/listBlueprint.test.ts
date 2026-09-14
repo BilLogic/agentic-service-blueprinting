@@ -4,8 +4,13 @@ import type { Database } from '@/types/database'
 import { listBlueprint } from '@/lib/agent/tools/read'
 import { sampleListBlueprint } from '@/lib/agent/tools/sampleRead'
 import { GRANULARITY_LEVELS } from '@/lib/agent/tools/format'
-import { dispatchTool } from '@/lib/agent/tools/registry'
-import { LANE_ROLE_FILTER_PARAM, TOOL_SPECS } from '@/lib/agent/tools/specs'
+import { runTool } from '@/lib/agent/tools/definition'
+import {
+  LANE_ROLE_FILTER_DESCRIPTION,
+  listBlueprintTool,
+} from '@/lib/agent/tools/definitions/blueprint'
+import { fakeToolContext } from '@/lib/agent/tools/definitions/testContext'
+import { TOOL_SPECS } from '@/lib/agent/tools/specs'
 import type { ServiceScope } from '@/lib/agent/tools/serviceScope'
 import {
   SAMPLE_BLUEPRINTS_BY_SCENARIO,
@@ -414,29 +419,39 @@ describe('list_blueprint service scope', () => {
   it('the tool call narrows by its service argument and covers all without one', async () => {
     const { client } = fakeDb(BOARD)
     expect(
-      await dispatchTool(client, 'session', 'list_blueprint', {
-        granularity: ['phase'],
-        service: 'Sales Pipeline',
-      }),
+      await runTool(
+        listBlueprintTool,
+        {
+          granularity: ['phase'],
+          service: 'Sales Pipeline',
+        },
+        fakeToolContext({ client }),
+      ),
     ).toBe(lines('1 of 1:', '[phase] "Prospecting" · Prospecting (ph-3)'))
-    const everywhere = await dispatchTool(client, 'session', 'list_blueprint', {
-      granularity: ['phase'],
-    })
+    const everywhere = await runTool(
+      listBlueprintTool,
+      { granularity: ['phase'] },
+      fakeToolContext({ client }),
+    )
     expect(everywhere.split('\n')[0]).toBe('3 of 3:')
   })
 
   it('passes every argument the spec offers through to the read', async () => {
     const { client } = fakeDb(BOARD)
     expect(
-      await dispatchTool(client, 'session', 'list_blueprint', {
-        granularity: ['cell'],
-        phase: 'intake',
-        scenario: 'Report a fault',
-        kind: 'happy',
-        lane_role: 'customer_actions',
-        limit: 1,
-        service: 'Support Desk',
-      }),
+      await runTool(
+        listBlueprintTool,
+        {
+          granularity: ['cell'],
+          phase: 'intake',
+          scenario: 'Report a fault',
+          kind: 'happy',
+          lane_role: 'customer_actions',
+          limit: 1,
+          service: 'Support Desk',
+        },
+        fakeToolContext({ client }),
+      ),
     ).toBe(
       lines(
         '1 of 2 (clipped — raise limit or narrow the filters):',
@@ -546,41 +561,13 @@ describe('the no-database twin', () => {
     expect(sampleListBlueprint(options)).toBe(await listBlueprint(client, options))
   })
 
-  it('serves the trial through the same dispatch, with the same refusals', async () => {
+  it('serves the trial through the same run, with the same refusals', async () => {
     expect(
-      await dispatchTool(null, 'session', 'list_blueprint', { granularity: ['path'] }),
+      await runTool(listBlueprintTool, { granularity: ['path'] }, fakeToolContext()),
     ).toBe(sampleListBlueprint({ granularity: ['path'] }))
     await expect(
-      dispatchTool(null, 'session', 'list_blueprint', { granularity: ['nope'] }),
+      runTool(listBlueprintTool, { granularity: ['nope'] }, fakeToolContext()),
     ).rejects.toThrow(/Unknown granularity: nope/)
-  })
-})
-
-describe('list_scenarios, the one-release alias', () => {
-  const spec = (name: string) => TOOL_SPECS.find((entry) => entry.name === name)!
-
-  it('says it is an alias, of what, and for how long', () => {
-    const alias = spec('list_scenarios')
-    expect(alias.description).toMatch(/alias of list_blueprint/i)
-    expect(alias.description).toContain('granularity ["phase","scenario"]')
-    expect(alias.description).toMatch(/one release/i)
-    expect(Object.keys(alias.parameters.properties ?? {})).toEqual(['service'])
-  })
-
-  it('answers exactly what list_blueprint answers at phase and scenario', async () => {
-    const { client } = fakeDb(BOARD)
-    for (const service of [undefined, 'Sales Pipeline']) {
-      const scope = service ? { service } : {}
-      expect(await dispatchTool(client, 'session', 'list_scenarios', scope)).toBe(
-        await dispatchTool(client, 'session', 'list_blueprint', {
-          granularity: ['phase', 'scenario'],
-          ...scope,
-        }),
-      )
-    }
-    expect(await dispatchTool(null, 'session', 'list_scenarios', {})).toBe(
-      sampleListBlueprint({ granularity: ['phase', 'scenario'] }),
-    )
   })
 })
 
@@ -588,7 +575,7 @@ describe('the list_blueprint spec', () => {
   it('offers the shared lane-role filter and the shared service filter', () => {
     const properties = TOOL_SPECS.find((entry) => entry.name === 'list_blueprint')!
       .parameters.properties as Record<string, unknown>
-    expect(properties.lane_role).toBe(LANE_ROLE_FILTER_PARAM)
+    expect(properties.lane_role).toEqual({ type: 'string', description: LANE_ROLE_FILTER_DESCRIPTION })
     // The spec writes the rungs out rather than importing them; hold it to them.
     const granularity = properties.granularity as { description: string }
     for (const level of GRANULARITY_LEVELS) expect(granularity.description).toContain(level)

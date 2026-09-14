@@ -29,16 +29,8 @@ import {
 import type { SliceKind } from '@/lib/sliceValidation'
 import { asUpdatedAtToken } from '@/lib/optimisticConcurrency'
 import { setSharedCanvasMode } from '@/contexts/canvasModeContext'
-import {
-  agentUiCommandMutates,
-  listAgentUiCommands,
-  runAgentUiCommand,
-} from '@/lib/agent/uiCommands'
-import {
-  describeChange,
-  sessionSnapshot,
-  setAgentAttribution,
-} from '@/lib/authoringSession'
+import { agentUiCommandMutates, runAgentUiCommand } from '@/lib/agent/uiCommands'
+import { setAgentAttribution } from '@/lib/authoringSession'
 import {
   updateCellContent,
   type CellContentUpdate,
@@ -67,40 +59,9 @@ import {
   agentSetSidebar,
   collectAgentUiContext,
 } from '@/lib/agent/uiBridge'
-import type { DeletableKind } from '@/lib/deletionSafety'
-import {
-  getBlueprint,
-  getBusinessModel,
-  getCompareDiff,
-  getDeletionImpact,
-  getEvidence,
-  getSession,
-  listCellDependencies,
-  listEvidence,
-  listLanes,
-  listOwnerTags,
-  listBlueprint,
-  listReferences,
-  listSessions,
-  listSlices,
-  listStakeholders,
-  readReference,
-} from '@/lib/agent/tools/read'
-import type { BlueprintListOptions } from '@/lib/agent/tools/format'
-import { SCOPE_ALL, resolveServiceScope } from '@/lib/agent/tools/serviceScope'
+import { SCOPE_ALL } from '@/lib/agent/tools/serviceScope'
 import { resolveActiveServiceId } from '@/lib/service'
-import {
-  sampleGetBlueprint,
-  sampleGetCompareDiff,
-  sampleGetSlice,
-  sampleListCellDependencies,
-  sampleListLanes,
-  sampleListBlueprint,
-  sampleListOwnerTags,
-  sampleListSlices,
-} from '@/lib/agent/tools/sampleRead'
 import { SAMPLE_TRIAL_TOOL_NAMES } from '@/lib/agent/tools/specs'
-import { searchBlueprint } from '@/lib/agent/tools/search'
 import type { AgentSearchIndex } from '@/deploymentConfig'
 import { runTool, type ToolContext } from '@/lib/agent/tools/definition'
 import { findToolDefinition } from '@/lib/agent/tools/definitions'
@@ -171,40 +132,6 @@ async function laneBudgetKind(
   if (error || !data) return cellBudgetKindForLane(null)
   return cellBudgetKindForLane({ name: data.name, role: data.lane_role })
 }
-
-/**
- * The scope one read covers: the tool's own `service` argument, or every
- * service in the deployment when it names none. Resolved per call rather than
- * cached, because a deployment's roster of services can change under it.
- */
-function readScope(client: Client, args: Record<string, unknown>) {
-  return resolveServiceScope(client, { serviceArg: s(args, 'service') })
-}
-
-/**
- * A `list_blueprint` call's words, read once for both dispatchers — the live
- * read and the no-database trial take the same arguments and refuse the same
- * ones, so what each argument means is decided here and nowhere else.
- */
-function listBlueprintArgs(args: Record<string, unknown>): BlueprintListOptions {
-  return {
-    granularity: Array.isArray(args.granularity)
-      ? args.granularity.filter((value): value is string => typeof value === 'string')
-      : [],
-    phase: s(args, 'phase'),
-    scenario: s(args, 'scenario'),
-    pathKind: s(args, 'kind'),
-    laneRole: s(args, 'lane_role'),
-    limit: typeof args.limit === 'number' ? args.limit : undefined,
-  }
-}
-
-/**
- * What `list_scenarios` answers: `list_blueprint` at the orientation levels.
- * The old name stays for one release as an alias, and this is the whole of
- * what distinguishes it — same read, same text.
- */
-const SCENARIO_LEVELS = ['phase', 'scenario'] as const
 
 /**
  * What one session may reach that another may not.
@@ -281,165 +208,8 @@ export async function dispatchTool(
   // No-database trial: the read tools answer from the bundled sample, and
   // the roster the panel registered contains nothing else. A call from
   // outside it can only be a model inventing a name — say so plainly.
-  if (client === null) return dispatchSampleTool(agentSessionId, name, args)
+  if (client === null) return dispatchSampleTool(name, args)
   switch (name) {
-    case 'get_reference':
-      return readReference(need(args, 'name'))
-    case 'list_blueprint':
-      return listBlueprint(client, {
-        ...listBlueprintArgs(args),
-        scope: await readScope(client, args),
-      })
-    case 'list_scenarios':
-      return listBlueprint(client, {
-        granularity: SCENARIO_LEVELS,
-        scope: await readScope(client, args),
-      })
-    case 'search_blueprint':
-      return searchBlueprint(client, {
-        query: need(args, 'query'),
-        granularity: Array.isArray(args.granularity)
-          ? args.granularity.filter(
-              (value): value is string => typeof value === 'string',
-            )
-          : undefined,
-        phase: s(args, 'phase'),
-        scenario: s(args, 'scenario'),
-        pathKind: s(args, 'kind'),
-        laneRole: s(args, 'lane_role'),
-        limit: typeof args.limit === 'number' ? args.limit : undefined,
-        scope: await readScope(client, args),
-        meaning: context.meaning ?? null,
-        signal: context.signal,
-      })
-    case 'get_blueprint':
-      return getBlueprint(client, need(args, 'scenario_id'))
-    case 'compare_blueprint': {
-      const pathIds = Array.isArray(args.path_ids)
-        ? args.path_ids.filter(
-            (value): value is string => typeof value === 'string',
-          )
-        : undefined
-      return getCompareDiff(client, need(args, 'scenario_id'), pathIds)
-    }
-    case 'measure_deletion_impact': {
-      const kind = s(args, 'kind')
-      // `lane` and `step` were withheld here because their counts did not
-      // match their deletes. The predicates now address what each delete
-      // takes, so all five are offered — `step` still needs its path, because
-      // the delete is path-scoped and there is no true count without it.
-      const kinds = ['scenario', 'path', 'step', 'lane', 'slice']
-      if (!kind || !kinds.includes(kind)) {
-        throw new Error(`kind must be one of ${kinds.join(', ')}.`)
-      }
-      if (kind === 'step' && !s(args, 'scope_id')) {
-        throw new Error(
-          'A step impact needs scope_id = the path id — deleting a step removes only the cells on ONE path, so without it there is no true number to quote.',
-        )
-      }
-      return getDeletionImpact(
-        client,
-        kind as DeletableKind,
-        need(args, 'target_id'),
-        s(args, 'scope_id'),
-      )
-    }
-    case 'list_slices':
-      return listSlices(client)
-    case 'list_owner_tags':
-      return listOwnerTags(client)
-    case 'list_stakeholders':
-      return listStakeholders(client, await readScope(client, args))
-    case 'list_lanes':
-      return listLanes(client)
-    case 'list_references':
-      return listReferences()
-    case 'list_cell_dependencies':
-      return listCellDependencies(client, s(args, 'cell_id'))
-    case 'list_evidence':
-      return listEvidence(client, s(args, 'cell_id'))
-    case 'get_evidence': {
-      const ids = Array.isArray(args.evidence_ids)
-        ? args.evidence_ids.filter(
-            (value): value is string => typeof value === 'string',
-          )
-        : []
-      return getEvidence(client, ids)
-    }
-    case 'get_business_model':
-      return getBusinessModel(client)
-    case 'list_sessions':
-      return listSessions(agentSessionId)
-    case 'get_session':
-      return getSession(need(args, 'session_id'))
-    case 'get_ui_state': {
-      const context = collectAgentUiContext()
-      return context || 'No UI state is being reported right now.'
-    }
-    case 'get_change_history': {
-      const limit =
-        typeof args.limit === 'number' && args.limit > 0 ? args.limit : 30
-      const entries = [...sessionSnapshot()].reverse().slice(0, limit)
-      if (entries.length === 0)
-        return 'No changes recorded in this browser session yet.'
-      return entries
-        .map((entry) => {
-          const who =
-            entry.author === 'agent'
-              ? `agent${entry.agentSessionId === agentSessionId ? ' (this session)' : ''}`
-              : 'user'
-          const when = new Date(entry.at).toISOString().slice(11, 19)
-          return `[${when} UTC] ${who}: ${describeChange(entry)}${entry.revert ? '' : ' (not revertible)'}`
-        })
-        .join('\n')
-    }
-    case 'get_slice': {
-      const sliceId = need(args, 'slice_id')
-      const { data, error } = await client
-        .from('slices')
-        .select('id, title, summary, kind, actor, authorship, slides(id, position, title, caption, cell_ids)')
-        .eq('id', sliceId)
-        .maybeSingle()
-      if (error) throw new Error(error.message)
-      if (!data) throw new Error(`No slice with id ${sliceId}.`)
-      const slides = [...(data.slides ?? [])]
-        .sort((a, b) => a.position - b.position)
-        .map(
-          (slide, index) =>
-            `slide ${index + 1}: cells [${(slide.cell_ids ?? []).join(', ')}]${slide.title ? ` title "${slide.title}"` : ''}${slide.caption ? ` caption "${slide.caption}"` : ''}`,
-        )
-      return `slice "${data.title}" (${data.id}) type=${data.kind}${data.actor ? ` actor=${data.actor}` : ''}\n${slides.join('\n') || '(no slides)'}`
-    }
-    case 'list_findings': {
-      const filter = s(args, 'status') ?? 'open'
-      const forCell = s(args, 'cell_id')
-      let query = client
-        .from('audit_findings')
-        .select('id, source, check_key, severity, summary, status, cell_ids, created_at')
-        .order('created_at', { ascending: false })
-        .limit(100)
-      if (filter !== 'all')
-        query = query.eq('status', filter)
-      // `cell_ids` is an array, so "which findings cite this cell" is a
-      // containment test. Without it a finding was reachable only by reading
-      // the whole ledger, and the ledger is capped.
-      if (forCell) query = query.contains('cell_ids', [forCell])
-      const { data, error } = await query
-      if (error) throw new Error(error.message)
-      if (!data || data.length === 0) {
-        if (forCell)
-          return `No ${filter === 'all' ? '' : `${filter} `}findings touch cell ${forCell}.`
-        return filter === 'all'
-          ? 'No findings recorded yet.'
-          : `No ${filter} findings.`
-      }
-      return data
-        .map(
-          (row) =>
-            `${row.id} [${row.severity}] ${row.check_key} (${row.source}, ${row.status}, ${row.created_at.slice(0, 10)}) cells:${(row.cell_ids ?? []).length}${row.summary ? ` — ${row.summary}` : ''}`,
-        )
-        .join('\n')
-    }
     // UI control + navigation: drives the interface, changes no data — no
     // attribution, no ledger entry. Same gestures the human has.
     case 'open_phase':
@@ -448,8 +218,6 @@ export async function dispatchTool(
       return agentOpenScenario(need(args, 'scenario_id'))
     case 'focus_cell':
       return agentFocusCell(need(args, 'cell_id'))
-    case 'list_ui_commands':
-      return listAgentUiCommands()
     case 'ui_command': {
       const command = need(args, 'command')
       // A command the registry marks `[changes data]` runs under the same
@@ -962,59 +730,19 @@ export async function dispatchTool(
 }
 
 /**
- * Trial dispatch — sample data in, compact text out, no client anywhere.
- *
- * Shares the UI/navigation cases with the database path (they drive the
- * canvas, which is rendering the same sample content) and routes every
- * data read to `sampleRead.ts`. Writes are unreachable by construction:
- * `SAMPLE_TRIAL_TOOL_NAMES` is what the loop registers, and anything else
- * lands on the closing refusal rather than on a mutation.
+ * Trial dispatch — what is left of it. Every data read is a definition now
+ * and answers from the sample through its own `run`; what remains here is
+ * the navigation the trial shares with the database path (it drives the
+ * canvas, which is rendering the same sample content) and the refusal.
+ * Writes are unreachable by construction: `SAMPLE_TRIAL_TOOL_NAMES` is what
+ * the loop registers, and anything else lands on the closing refusal rather
+ * than on a mutation.
  */
 async function dispatchSampleTool(
-  agentSessionId: string,
   name: string,
   args: Record<string, unknown>,
 ): Promise<string> {
   switch (name) {
-    case 'get_reference':
-      return readReference(need(args, 'name'))
-    case 'list_blueprint':
-      return sampleListBlueprint(listBlueprintArgs(args))
-    case 'list_scenarios':
-      return sampleListBlueprint({ granularity: SCENARIO_LEVELS })
-    case 'get_blueprint':
-      return sampleGetBlueprint(need(args, 'scenario_id'))
-    case 'compare_blueprint': {
-      const pathIds = Array.isArray(args.path_ids)
-        ? args.path_ids.filter(
-            (value): value is string => typeof value === 'string',
-          )
-        : undefined
-      return sampleGetCompareDiff(need(args, 'scenario_id'), pathIds)
-    }
-    case 'list_slices':
-      return sampleListSlices()
-    case 'get_slice':
-      return sampleGetSlice(need(args, 'slice_id'))
-    case 'list_owner_tags':
-      return sampleListOwnerTags()
-    case 'list_lanes':
-      return sampleListLanes()
-    case 'list_cell_dependencies':
-      return sampleListCellDependencies(s(args, 'cell_id'))
-    // Neither of these ever had a database behind it — the rulebook is
-    // bundled and the session store is the browser's — so the trial serves
-    // the same implementation the live app does, not a stand-in.
-    case 'list_references':
-      return listReferences()
-    case 'list_sessions':
-      return listSessions(agentSessionId)
-    case 'get_session':
-      return getSession(need(args, 'session_id'))
-    case 'get_ui_state': {
-      const context = collectAgentUiContext()
-      return context || 'No UI state is being reported right now.'
-    }
     case 'open_phase':
       return agentOpenPhase(need(args, 'phase_id'))
     case 'open_scenario':

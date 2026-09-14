@@ -72,10 +72,15 @@ describe('every argument a tool advertises is an argument it reads', () => {
 
 describe('reading the two files', () => {
   it('finds every tool on both sides', () => {
+    // The subject is every tool that is still a spec beside a switch case.
+    // Tools that are one definition are not here — their two ends are one
+    // zod schema, and a compiler compares them — so the count shrinks as
+    // they move; what must hold is that the two sides name the same tools.
     const declared = declaredArguments(specs)
     const read = readArguments(registry)
-    expect(declared.size).toBeGreaterThan(40)
+    expect(declared.size).toBeGreaterThan(0)
     expect([...declared.keys()].filter((tool) => !read.has(tool))).toEqual([])
+    expect([...read.keys()].filter((tool) => !declared.has(tool))).toEqual([])
   })
 
   it('reads a properties object written on one line', () => {
@@ -89,17 +94,42 @@ describe('reading the two files', () => {
   })
 
   it('credits an argument read through a helper', () => {
-    // `list_scenarios` never says `s(args, 'service')`. It calls
-    // `readScope(client, args)`, which does.
-    expect(readArguments(registry).get('list_scenarios')?.has('service')).toBe(
-      true,
-    )
+    // A case that never says `s(args, 'service')` but calls a local helper
+    // that does is credited with the key the helper reads.
+    const helped = `
+      function readScope(client, args) { return s(args, 'service') }
+      case 'list_things':
+        return listThings(client, await readScope(client, args))
+    `
+    expect(readArguments(helped).get('list_things')?.has('service')).toBe(true)
+  })
+
+  it('stops a case body where its function ends', () => {
+    // The last case of one switch must not run on into the next function's
+    // signature: a function taking \`args\` there would lend the case every
+    // key it reads, and accuse it of reading names it never saw.
+    const twoFunctions = `
+export async function dispatch(name, args) {
+  switch (name) {
+    case 'update_thing':
+      return update(need(args, 'thing_id'))
+  }
+}
+
+async function dispatchOther(name, args) {
+  switch (name) {
+    case 'open_other':
+      return open(need(args, 'other_id'))
+  }
+}
+`
+    expect([...(readArguments(twoFunctions).get('update_thing') ?? [])]).toEqual(['thing_id'])
   })
 
   it('unions the two dispatchers rather than letting the later one win', () => {
-    // `dispatchSampleTool` has its own `case 'list_scenarios'`, one line long
-    // and taking no arguments. Overwriting made the tool look like it ignored
-    // the argument the live arm reads.
+    // The sample dispatcher used to carry a second `case` for the same tool,
+    // one line long and taking no arguments. Overwriting made the tool look
+    // like it ignored the argument the live arm reads.
     const twoArms = `
       function readScope(client, args) { return s(args, 'service') }
       case 'list_scenarios':

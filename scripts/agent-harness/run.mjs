@@ -531,12 +531,6 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
           ? await realListBlueprint(listArgs(args))
           : sampleListBlueprint(listArgs(args))
         return record.result
-      // The one-release alias: the same read at the orientation levels.
-      case 'list_scenarios':
-        record.result = HAS_DB
-          ? await realListBlueprint({ granularity: ['phase', 'scenario'] })
-          : sampleListBlueprint({ granularity: ['phase', 'scenario'] })
-        return record.result
       case 'get_blueprint':
         record.result = HAS_DB
           ? await realGetBlueprint(args.scenario_id)
