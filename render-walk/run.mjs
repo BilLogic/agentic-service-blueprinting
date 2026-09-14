@@ -70,13 +70,42 @@
  * still reach Playwright, and so do the environment variables the README
  * documents (`RENDER_WALK_PORT`, `RENDER_WALK_INJECT_CONSOLE_ERROR`).
  *
+ * ── AND WHY THE PORT IS CHOSEN HERE ────────────────────────────────────────
+ *
+ * The walk previews on a port and asserts against what answers there, so the
+ * port is part of the subject. A fixed one makes the walk a thing only one
+ * tree on a machine may run: a second checkout walking at the same time, or a
+ * preview somebody left up, holds 4173, and the run that finds it held has
+ * nothing honest to do but abort — a red that reads like a regression in the
+ * application and is a fact about somebody else's shell.
+ *
+ * So the port is decided per run, here, before Playwright is started: the
+ * default if it is free, and the next free one above it otherwise. Two walks
+ * started in the same second get 4173 and 4174 and each walks its own build.
+ * `RENDER_WALK_PORT` still names a port outright, and is then the ONE fixed
+ * port left in the arrangement — so a held one is refused by name here rather
+ * than walked, because the caller asked for that port and not for another.
+ *
+ * The choice is passed on as `RENDER_WALK_PORT` itself, which is the config's
+ * own override and the only thing it reads; nothing new crosses the seam.
+ *
  * Run: node node_modules/agentic-service-blueprinting/render-walk/run.mjs
  *      (or, by the bin the package installs: npx render-walk)
  * Here: npm run check:render-walk
  */
 import { spawnSync } from 'node:child_process'
-import { cpSync, existsSync, realpathSync, rmSync } from 'node:fs'
+import {
+  cpSync,
+  existsSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { createRequire } from 'node:module'
+import { connect } from 'node:net'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -136,7 +165,217 @@ export function playwrightCli(root) {
   return null
 }
 
-function main() {
+/** The port the walk previews on when nothing else holds it. */
+export const DEFAULT_PORT = 4173
+
+/**
+ * How many ports up from the default one run will try before it gives up.
+ *
+ * A bound rather than a scan: a machine where thirty-two consecutive ports are
+ * all held is not a machine with a busy preview on it, and a walk that keeps
+ * climbing would eventually settle on a port belonging to something else's
+ * arrangement. Thirty-two is more concurrent walks than a checkout will ever
+ * have and few enough that exhausting them is worth saying out loud.
+ */
+export const PORT_WINDOW = 32
+
+/**
+ * How long a port has to refuse a connection before it counts as nobody's.
+ *
+ * It is a per-port cost on a machine where ports go quiet rather than refusing
+ * — a sandbox that drops SYNs answers nothing — so the window above is also
+ * this many seconds at worst: thirty-two probes, half a second each, and then
+ * a refusal that names the range rather than a walk into a socket.
+ */
+const ANSWER_TIMEOUT = 500
+
+/** Connect errors that mean nobody is there, as opposed to nobody answering. */
+const NOBODY_THERE = new Set(['ECONNREFUSED', 'ECONNRESET'])
+
+/**
+ * Whether anything answers on `port` — asked at `localhost`, which is the
+ * address the walk's own `baseURL` names.
+ *
+ * ASKED BY CONNECTING, NOT BY BINDING, and the difference is the whole hazard
+ * this file is about. A bind test asks "may I have this port", and on macOS
+ * the answer is yes while a stranger is holding it: a server on the IPv6
+ * wildcard leaves `127.0.0.1` bindable, so the preview comes up on one family,
+ * `localhost` resolves to the other, and the walk asserts against the
+ * stranger's build — the exact green-over-somebody-else's-dist this whole
+ * arrangement exists to prevent. There is no single address a bind test can
+ * ask about that covers every way a port can be held. Connecting to the name
+ * the walk itself uses covers all of them, because a port that answers the
+ * walk is a port the walk would have walked.
+ *
+ * A port that accepts nothing within `ANSWER_TIMEOUT` counts as held rather
+ * than free: something is there, and guessing otherwise is how a run ends up
+ * previewing into a socket somebody else owns.
+ */
+export function portIsFree(port) {
+  return new Promise((resolve) => {
+    const probe = connect({ port, host: 'localhost' })
+    const answer = (free) => {
+      probe.destroy()
+      resolve(free)
+    }
+    probe.setTimeout(ANSWER_TIMEOUT, () => answer(false))
+    probe.once('connect', () => answer(false))
+    // Refused is the only error that means free. Anything else — a name that
+    // will not resolve, an address the run may not reach — is a port this run
+    // cannot ask about, and a port it cannot ask about is not one to preview
+    // on; the window running out says so by name.
+    probe.once('error', (error) => answer(NOBODY_THERE.has(error.code)))
+  })
+}
+
+/**
+ * Where a run says that a port is spoken for.
+ *
+ * Per USER rather than per machine — `tmpdir()` is `$TMPDIR` on macOS and a
+ * container's own directory in CI — which is the scope the collision has: two
+ * checkouts of one person's, walking at once. Another user's walk is arbitrated
+ * by the probe above, which asks the port itself.
+ */
+export const claimPath = (port) => join(tmpdir(), `render-walk-port-${port}`)
+
+/** Whether the run that wrote a claim is still running. */
+function claimIsLive(path) {
+  let pid
+  try {
+    pid = Number(readFileSync(path, 'utf8'))
+  } catch {
+    return false
+  }
+  if (!Number.isInteger(pid) || pid < 1) return false
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error) {
+    // Alive and owned by somebody else is still alive.
+    return error.code === 'EPERM'
+  }
+}
+
+/**
+ * Take this run's claim on `port`, or answer false because another run holds it.
+ *
+ * FREE IS NOT YET TAKEN, and the gap is the whole reason this exists. Between
+ * the bind test above and the moment Vite binds for real there are a couple of
+ * seconds of Playwright starting up, and two walks launched together spend
+ * them both believing 4173 is theirs. Then one of them loses `--strictPort`
+ * and reports a preview that would not start. The claim closes that window:
+ * `wx` is one atomic create, so exactly one of the two runs gets it.
+ *
+ * A claim is removed on the way out, and one left behind by a run that was
+ * killed is taken over rather than believed — the pid in it is a process that
+ * no longer exists, and a file in the temporary directory must never be able
+ * to make a port permanently unwalkable.
+ */
+export function claimPort(port) {
+  const path = claimPath(port)
+  const write = () => writeFileSync(path, String(process.pid), { flag: 'wx' })
+  try {
+    write()
+  } catch (error) {
+    if (error.code !== 'EEXIST') throw error
+    if (claimIsLive(path)) return false
+    try {
+      unlinkSync(path)
+      write()
+    } catch {
+      // Another run took over the same stale claim first. It holds the port.
+      return false
+    }
+    // Unlink and create are two steps, so two runs meeting the same stale
+    // claim can both get through them — the second unlinking the first's
+    // fresh claim. Whoever is not in the file at the end of it does not hold
+    // the port, and moves along to the next one.
+    try {
+      if (readFileSync(path, 'utf8') !== String(process.pid)) return false
+    } catch {
+      return false
+    }
+  }
+  process.on('exit', () => {
+    try {
+      unlinkSync(path)
+    } catch {
+      // Already gone, or never ours to remove.
+    }
+  })
+  return true
+}
+
+/**
+ * The port this run will preview on: the first inside the window that nothing
+ * is listening on and no other run has claimed — or null if the window is used
+ * up, which is a refusal rather than a thirty-third try.
+ */
+export async function choosePort(from = DEFAULT_PORT, window = PORT_WINDOW) {
+  for (let port = from; port < from + window && port <= 65535; port += 1) {
+    if ((await portIsFree(port)) && claimPort(port)) return port
+  }
+  return null
+}
+
+/** Whether `asked` spells a port, as opposed to a typo the config will refuse. */
+const isPort = (asked) => Number.isInteger(asked) && asked >= 1 && asked <= 65535
+
+/**
+ * The port to hand Playwright, or null after saying why there is none.
+ *
+ * The two answers are the two honest outcomes. A port nobody holds means a
+ * walk over THIS tree's build. A port the caller named and somebody else holds
+ * means a refusal that says which port and how to find out whose it is —
+ * never a reuse, because what is on the other end is somebody else's dist and
+ * a green walk over it would be a lie about this working tree.
+ *
+ * Whether `RENDER_WALK_PORT` is a number at all is the config's refusal and
+ * not this one's: it is the file that reads the variable, and one place to say
+ * "that is not a port" is enough. This one answers only whether the port is
+ * free.
+ */
+export async function portForThisRun(asked = process.env.RENDER_WALK_PORT) {
+  if (asked !== undefined && asked !== '') {
+    const port = Number(asked)
+    // A port that is not a port falls through to the config, which refuses it
+    // by name; what is answered here is only whether the port can be walked.
+    if (isPort(port)) {
+      const held = !(await portIsFree(port))
+      // Claimed as well as tested, and for the same reason the chooser claims:
+      // a named port inside the window is a port a concurrent walk would
+      // otherwise pick while this one is still starting Playwright up.
+      if (held || !claimPort(port)) {
+        console.error(
+          `The render walk was asked for port ${port} — RENDER_WALK_PORT — and ` +
+            (held ? 'something is already listening there.' : 'another render walk is using it.') +
+            `\nIt will not walk a preview it did not start: what is on that port serves some ` +
+            `other build, and a walk over it says nothing about this tree.\n\n` +
+            `  lsof -i :${port}    # names what is holding it, on macOS and Linux\n\n` +
+            `Stop that, or leave RENDER_WALK_PORT unset and the walk will find a free port ` +
+            `itself.\n`,
+        )
+        return null
+      }
+    }
+    return asked
+  }
+
+  const chosen = await choosePort()
+  if (chosen === null) {
+    console.error(
+      `The render walk found no free port between ${DEFAULT_PORT} and ` +
+        `${DEFAULT_PORT + PORT_WINDOW - 1}, so it has nowhere to preview this build.\n` +
+        `Stop whatever is holding them — on macOS and Linux \`lsof -i :${DEFAULT_PORT}\` names ` +
+        `the first — or name a port yourself, with RENDER_WALK_PORT=5273 in front of the ` +
+        `command you just ran.\n`,
+    )
+    return null
+  }
+  return String(chosen)
+}
+
+async function main() {
   const root = process.cwd()
 
   const cli = playwrightCli(root)
@@ -149,6 +388,19 @@ function main() {
     )
     process.exit(1)
   }
+
+  // Before anything is staged or started: a run with no port to preview on is
+  // a run that must not reach the specs at all, since a walk that collected
+  // its tests and then failed to start a server reads as a broken application.
+  const port = await portForThisRun()
+  if (port === null) process.exit(1)
+  process.env.RENDER_WALK_PORT = port
+  // Said out loud because nothing downstream says it: Playwright does not
+  // surface the preview's own banner, and a person reading a trace or a
+  // `--headed` run is looking at an address they did not pick. Not said for a
+  // RENDER_WALK_PORT that is not a port — the config is about to refuse it,
+  // and a line claiming to be previewing on `banana` would arrive first.
+  if (isPort(Number(port))) console.log(`render-walk: previewing on http://localhost:${port}`)
 
   stage(root)
 
@@ -181,4 +433,4 @@ const startedAs = (() => {
     return ''
   }
 })()
-if (startedAs === fileURLToPath(import.meta.url)) main()
+if (startedAs === fileURLToPath(import.meta.url)) await main()
