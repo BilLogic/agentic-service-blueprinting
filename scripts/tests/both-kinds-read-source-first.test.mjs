@@ -81,6 +81,9 @@ const TEACHING_SURFACES = [
  */
 const TARGET_FIRST = [
   /the target must already be true/i,
+  // The read tool's spelling of the same inversion: "the other" is the target
+  // when the sentence is about "this cell" (#755).
+  /the other must already be true/i,
   /target\s+must\s+exist\s+(?:first|before)/i,
   /enables[^.]{0,40}\btarget\s+enables\s+(?:the\s+)?source/i,
 ]
@@ -157,6 +160,9 @@ test('the matcher catches the sentence that shipped, and clears the fix', () => 
 
   assert.equal(offendingLines('x', shipped, TARGET_FIRST[0]).length, 1)
   assert.equal(offendingLines('x', fixed, TARGET_FIRST[0]).length, 0)
+  const listShipped =
+    '`leads_to` means this cell makes the other one happen; `enables` means the other must already be true'
+  assert.equal(offendingLines('x', listShipped, TARGET_FIRST[1]).length, 1)
 
   // And it is not a sweep for the word "target": the correct sentence uses it.
   assert.equal(
