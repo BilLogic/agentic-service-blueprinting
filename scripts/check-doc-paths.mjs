@@ -68,7 +68,7 @@
  *   1. it exists at the repository root;
  *   2. it exists relative to the document that names it;
  *   3. it is a segment-aligned SUFFIX of a tracked path. This is what lets
- *      prose name `adapters/fixture.ts` or a bare `validate_ir.py` without
+ *      prose name `agent/persistence.ts` or a bare `validate_ir.py` without
  *      spelling the whole path every time — the docs do this constantly and
  *      the reader resolves it fine. A suffix that matches nothing is the
  *      failure this check is for;

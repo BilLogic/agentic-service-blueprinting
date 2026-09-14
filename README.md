@@ -132,15 +132,15 @@ That partition is not a stance in a comment any more; it is two generated files 
 
 All three are generated. Edit a migration and run `npm run generate:portable-core` and `npm run generate:portable-schema`; a hand-edit is reverted by CI. Another host writes its own recipe against the same core and is exactly as conformant — that is what the partition is for.
 
-**What the app actually needs** is the repository interfaces in [`src/lib/backend/ports.ts`](./src/lib/backend/ports.ts): domain operations like `getBlueprint(pathId)`, each declaring whether it reads, is atomic, or converges on re-run. Any store that answers them can serve this app.
+**What the app actually reads and writes through** is the generated database type, [`src/types/database.ts`](./src/types/database.ts) — every table, column and RPC signature the core declares, emitted from the migrations and re-checked by CI. That is the seam that varies between this template and a deployment, and it is the one the compiler holds: change the core, regenerate the type, and every call site that no longer agrees stops building.
 
-**What decides whether yours does** is [`src/lib/backend/conformance.ts`](./src/lib/backend/conformance.ts) — a suite you run from your own runner against your own store. It has two levels: **Transactional**, where atomic operations are all-or-nothing, and **Idempotent**, where they may tear provided re-running converges and a repair pass can resolve what tore. The second level is why a store with no transactions at all can still serve this correctly.
+**What a store has to answer** to serve this app live — every operation, and the guarantee on each — is [references/adapter-contract.md](./references/adapter-contract.md) § Live backend surface.
 
-**What you get to copy**: the portable core ([supabase/generated/portable-core.generated.sql](./supabase/generated/portable-core.generated.sql) + [docs/erd.mmd](./docs/erd.mmd)), applied to a stock Postgres in CI; the normative spec in [references/adapter-contract.md](./references/adapter-contract.md); and two working implementations of the interfaces to read.
+**What you get to copy**: the portable core ([supabase/generated/portable-core.generated.sql](./supabase/generated/portable-core.generated.sql) + [docs/erd.mmd](./docs/erd.mmd)), applied to a stock Postgres in CI; the normative spec in [references/adapter-contract.md](./references/adapter-contract.md); and the shipped Supabase call sites to read as the worked example.
 
 **What we don't provide** — stated as a boundary rather than a list of apologies, so you know where your work starts:
 
-- **No auth beyond the anon / authenticated split.** The identity port asks one question — what tier is this session — and leaves how you answer it to you. Supabase Auth is the shipped recipe, not the requirement.
+- **No auth beyond the anon / authenticated split.** The tier reader ([`src/lib/identity.ts`](./src/lib/identity.ts)) asks the database one question — what may this session do — and leaves how you answer it to you. Supabase Auth is the shipped recipe, not the requirement.
 - **No multi-tenancy.** One blueprint workspace per database. There is no tenant column, and RLS does not scope by one.
 - **No backup or restore.** Your host's problem, and the reason `supabase/migrations/` is append-only: an undo is a new migration.
 - **No migration ops beyond the shipped chain.** `db push` and `db reset` are supported; anything past that — branching, squashing, multi-environment promotion — is yours. The one operational failure we do own is desync, with a runbook: [docs/connectors/supabase/database.md § Migration desync](./docs/connectors/supabase/database.md).
