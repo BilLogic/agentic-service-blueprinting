@@ -85,7 +85,7 @@ export function persistEvent(
         session_id: sessionId,
         seq,
         kind: event.kind,
-        payload: event as unknown as Json,
+        payload: event as unknown as NonNullable<Json>,
       },
       { onConflict: 'session_id,seq' },
     )

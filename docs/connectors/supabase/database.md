@@ -751,9 +751,39 @@ const { data } = await supabase
 ## Local commands
 
 ```bash
-npm run supabase:reset          # migrations + seed
-npm run supabase:types:local    # regenerate src/types/database.ts
+npm run supabase:reset             # migrations + seed
+npm run generate:database-types    # regenerate src/types/database.ts
 ```
+
+`generate:database-types` needs a reachable Postgres and permission to create a
+database, and nothing else: it stands up the portable core and the recipe on a
+fresh database of its own, generates the whole file from that, and drops it.
+There is no linked project and no hand-written section to paste back — the enum
+unions at the bottom are read off the CHECK constraints that close each
+vocabulary. `npm run check:database-types` is the same run, diffed against what
+is committed.
+
+## For a deployment: the types have to be a superset
+
+A deployment generates its own `src/types/database.ts` however it does — the
+Supabase CLI against its project, or this generator against its own core — and
+the two files are not the same file. A deployment has tables, columns and
+vocabulary members of its own and is entitled to all of them. What it cannot
+have is fewer: the application it compiles is this package's, and every column
+that application reads and every member its unions name come from this core.
+
+So a deployment runs the superset check in its own CI, against its own file:
+
+```bash
+node node_modules/agentic-service-blueprinting/scripts/check-database-types-superset.mjs \
+  src/types/database.ts
+```
+
+It exits 0 when the deployment's file holds everything the template's declares,
+and lists what is missing — tables, columns, unions, members, grouped — when it
+does not. A missing table is usually a migration that was never run there; a
+missing column, a types file that was not regenerated after one; a missing
+member, a constraint widened in the template and not in the project.
 
 ## Hosted seed
 

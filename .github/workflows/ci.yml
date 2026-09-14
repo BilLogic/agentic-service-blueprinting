@@ -253,6 +253,13 @@ jobs:
           psql -v ON_ERROR_STOP=1 -d portable_core \
             -f supabase/generated/supabase-recipe.generated.sql
 
+      # The types are generated from this stack, whole — body and the derived
+      # tail of enum unions — so a migration that changes a shape the committed
+      # file does not carry, or a hand edit to that file, fails here. The
+      # generator stands up a database of its own from the same two halves.
+      - name: The app's types are what the built database generates
+        run: npm run check:database-types
+
       - name: The app's types describe the database the two halves built
         run: |
           set -euo pipefail

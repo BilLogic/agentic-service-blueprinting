@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { recordChange } from '@/lib/authoringSession'
 import { toAuthoringError } from '@/lib/authoringErrors'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
-import type { Database, Json } from '@/types/database'
+import type { Database } from '@/types/database'
 import { invalidateQueries } from '@/lib/queryClient'
 import { queryKeys } from '@/lib/queryKeys'
 
@@ -57,8 +57,8 @@ export async function updateLaneSpec(
     .from('lanes')
     .update({
       owner_team: update.ownerTeam.trim() || null,
-      kpis: kpis as unknown as Json,
-      tools: tools as unknown as Json,
+      kpis,
+      tools,
       stakeholder_id: update.stakeholderId,
     })
     .in('id', laneIds)

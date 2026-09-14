@@ -19,6 +19,15 @@
  * the same question drifts from the first within a month, and the six path
  * values were already saying it in a name prefix nothing could query.
  */
+import type { EntityStatus } from '@/types/database'
+
+/**
+ * The vocabulary, in the order the panel shows it. The TYPE is the database's:
+ * `EntityStatus` is derived from the `entity_status` domain when the types are
+ * generated, so a value added there is a value this list has to carry before
+ * the build is green — `satisfies` holds each entry to the union, and the
+ * label record below holds the list to the whole of it.
+ */
 export const ENTITY_STATUS = [
   'proposed',
   'planned',
@@ -26,9 +35,9 @@ export const ENTITY_STATUS = [
   'live',
   'at_risk',
   'deprecated',
-] as const
+] as const satisfies readonly EntityStatus[]
 
-export type EntityStatus = (typeof ENTITY_STATUS)[number]
+export type { EntityStatus }
 
 /** What a row gets when nobody has said otherwise. */
 export const DEFAULT_ENTITY_STATUS: EntityStatus = 'live'

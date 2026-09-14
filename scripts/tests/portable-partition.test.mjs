@@ -18,7 +18,6 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { readAppFile } from '../app-source.mjs'
 import {
   applyRename,
   generate,
@@ -29,7 +28,6 @@ import {
   CORE_FILE,
   RECIPE_FILE,
 } from '../generate-portable-core.mjs'
-import { compare, parseGeneratedTypes, parseInventory } from '../check-schema-inventory.mjs'
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url))
 
@@ -38,8 +36,9 @@ const ROOT = fileURLToPath(new URL('../../', import.meta.url))
  *
  * The generated schema and the recipe are THIS tree's — a deployment applies
  * its own migrations — so they stay a plain path off the repository root.
- * The generated types are not: they describe the database the APPLICATION
- * compiles against, and they travel with it.
+ * Nothing here reads the application: the inventory check's own fixtures moved
+ * to `schema-inventory.test.mjs`, where the file they read about is the
+ * subject rather than a lodger.
  */
 const read = (path) => readFileSync(join(ROOT, path), 'utf8')
 
@@ -209,27 +208,3 @@ test('both generated files say they are generated, in their first lines', () => 
   }
 })
 
-test('the inventory reads psql tab output and ignores blank lines', () => {
-  const tables = parseInventory('cells\tid\ncells\tcontent\n\nphases\tid\n')
-  assert.deepEqual([...tables.get('cells')].sort(), ['content', 'id'])
-  assert.deepEqual([...tables.get('phases')], ['id'])
-})
-
-test('drift is reported in the direction that tells you what to do', () => {
-  const types = new Map([['cells', new Set(['id', 'ghost'])]])
-  const actual = new Map([
-    ['cells', new Set(['id', 'content'])],
-    ['agent_sessions', new Set(['id'])],
-  ])
-  assert.deepEqual(compare(types, actual), [
-    'the schema builds public.agent_sessions; the generated types do not describe it',
-    'public.cells.content exists in the database and not in the types',
-    'public.cells.ghost is in the types and not in the database',
-  ])
-})
-
-test('the generated types still parse into tables and columns', () => {
-  const tables = parseGeneratedTypes(readAppFile(ROOT, 'src/types/database.ts'))
-  assert.ok(tables.size > 10, 'expected the app schema, got ' + tables.size + ' tables')
-  assert.ok(tables.get('cells')?.has('id'))
-})

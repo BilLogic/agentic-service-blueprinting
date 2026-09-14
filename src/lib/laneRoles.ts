@@ -7,6 +7,8 @@
  * a null role (e.g. an actor lane such as "现场技术员" or "Field Crew") renders
  * as a generic swimlane.
  */
+import type { LaneRole } from '@/types/database'
+
 export const CUSTOMER_ACTIONS_ROLE = 'customer_actions'
 export const FRONTSTAGE_ACTIONS_ROLE = 'frontstage_actions'
 export const BACKSTAGE_ACTIONS_ROLE = 'backstage_actions'
@@ -32,9 +34,21 @@ export const CANONICAL_LANE_ROLES = [
   BACKSTAGE_TOUCHPOINTS_ROLE,
   SUPPORT_ACTIONS_ROLE,
   STORYBOARD_ROLE,
-] as const
+] as const satisfies readonly LaneRole[]
 
 export type CanonicalLaneRole = (typeof CANONICAL_LANE_ROLES)[number]
+
+/**
+ * "Held identical to the CHECK constraint" is a type error now rather than a
+ * sentence: `LaneRole` is derived from `lanes_lane_role_check` when the types
+ * are generated, `satisfies` above holds every entry to it, and this holds
+ * the list to the whole of it — a role the schema accepts and this list omits
+ * leaves `Exclude` non-empty and the assignment red.
+ */
+const _everyRoleIsListed: Exclude<LaneRole, CanonicalLaneRole> extends never ? true : never =
+  true
+// Read once: `noUnusedLocals` would otherwise refuse the proof for being one.
+void _everyRoleIsListed
 
 /**
  * Legacy magic-name → role mapping for content that predates `lane_role`

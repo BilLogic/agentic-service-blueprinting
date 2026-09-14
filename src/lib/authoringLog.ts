@@ -147,7 +147,14 @@ export function supabaseAuthoringLogWriter(
   client: SupabaseClient<Database>,
 ): AuthoringLogWriter {
   return async (row) => {
-    const { error } = await client.rpc('record_authoring_change', row)
+    // The function defaults `revert` and `agent_session_id` to null, so an
+    // argument left out and one sent as null are the same call; the generated
+    // types spell an optional argument as absent, and this is that spelling.
+    const { error } = await client.rpc('record_authoring_change', {
+      ...row,
+      revert: row.revert ?? undefined,
+      agent_session_id: row.agent_session_id ?? undefined,
+    })
     if (error) throw error
   }
 }
