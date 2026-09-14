@@ -98,6 +98,31 @@ export function parseInventory(tsv) {
  * runtime 42703 that no build catches.
  */
 export function parseGeneratedTypes(source) {
+  const tables = new Map()
+  for (const [table, columns] of parseGeneratedColumns(source)) {
+    tables.set(table, new Set(columns.keys()))
+  }
+  return tables
+}
+
+/**
+ * The same `Row` blocks, keeping each column's declared TYPE beside its name.
+ *
+ * The inventory above compares against a database, which knows its columns by
+ * name and not by how TypeScript spells them, so it reads the names alone. The
+ * deployment check compares two of these files against each other, where the
+ * spelling is half of what there is to compare, and a second regex over the
+ * same block would be a second answer to what this format means. So the
+ * fuller read is the one that exists and the narrower one is derived from it.
+ *
+ * A type is everything after the colon, which is usually the rest of that one
+ * line — both generators emit a `Row` member per line — but need not be: a
+ * file that has been through a formatter wraps a long union onto lines of its
+ * own. Deeper-indented lines belong to the member above them, and are folded
+ * back onto it, because a column whose type this reader dropped would be
+ * reported as a column the deployment has not got.
+ */
+export function parseGeneratedColumns(source) {
   const tablesBlock = /^    Tables: \{$([\s\S]*?)^    Views: \{$/m.exec(source)
   if (!tablesBlock) throw new Error('could not find the Tables block in database.ts')
   const tables = new Map()
@@ -105,10 +130,22 @@ export function parseGeneratedTypes(source) {
     /^      (\w+): \{\n        Row: \{\n([\s\S]*?)^        \}$/gm,
   )
   for (const [, table, body] of entries) {
-    const columns = new Set()
+    const columns = new Map()
+    let open = null
     for (const line of body.split('\n')) {
-      const column = /^          (\w+)\??:/.exec(line)
-      if (column) columns.add(column[1])
+      const column = /^          (\w+)\??:\s*(.*?)\s*$/.exec(line)
+      if (column) {
+        open = column[1]
+        columns.set(open, column[2])
+        continue
+      }
+      const wrapped = /^ {11,}(\S.*?)\s*$/.exec(line)
+      if (open && wrapped) {
+        const so_far = columns.get(open)
+        columns.set(open, so_far === '' ? wrapped[1] : `${so_far} ${wrapped[1]}`)
+        continue
+      }
+      open = null
     }
     tables.set(table, columns)
   }

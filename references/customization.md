@@ -100,10 +100,15 @@ already and are listed so the table is the whole answer.
 | `sample.nav` | `src/data/sampleNav.ts` — the board shown before a database answers | Read by the editor context as the slides shown before the first fetch answers (`fallbackSlides`); the template's generated sample stands in only when the field is absent. |
 | `sample.blueprints` | `src/data/blueprintFallbacks.ts` — the CONTENT those nav rows resolve to | The registry every offline lookup goes through: `DeploymentConfigProvider` writes it onto that module with `configureSampleBlueprints` while it renders, because the board reads the module as it draws. Supply it WITH `sample.nav` — see § The offline board is two fields. |
 
-The generated database types (`src/types/database.ts`) are the one file a
-deployment keeps in its tree on purpose: a deployment generates its own against
-its own project and holds it to the template's with the superset check
-(`scripts/check-database-types-superset.mjs`); see `docs/connectors/supabase/database.md`.
+The generated database types are the one file a deployment keeps in its tree
+on purpose, and since the overlay they are not part of the application there:
+`@/types/database` resolves into the package, so a deployment's own file is the
+DECLARATION of the database its project has — what its live schema check and
+its agent-account generator read — rather than what anything compiles. A
+deployment generates it against its own project and holds it to the template's
+with `scripts/check-database-types-superset.mjs`, which asks whether every
+column this package's application reads is described on the tables the
+deployment does build; see `docs/connectors/supabase/database.md`.
 
 `src/deploymentOwnedContent.test.ts` is the inventory behind this table — it
 fails when a module appears in the template's content directories without a
