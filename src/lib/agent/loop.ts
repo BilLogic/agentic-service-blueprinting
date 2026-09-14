@@ -15,6 +15,16 @@ import { agentSearchPlan } from '@/lib/agent/searchPlan'
 import { toolSpec } from '@/lib/agent/tools/definition'
 import { findToolDefinition } from '@/lib/agent/tools/definitions'
 import { sessionRoster, toolEnabled } from '@/lib/agent/tools/roster'
+import {
+  MOBILE_SHELL_REFUSAL,
+  NO_SEARCH_REFUSAL,
+  SAMPLE_TRIAL_REFUSAL,
+  VIEW_ONLY_REFUSAL,
+  BATCH_LIMIT_REFUSAL,
+  BATCH_PAUSED_STATUS,
+  WRITE_BATCH_LIMIT,
+  noSuchToolRefusal,
+} from '@/lib/agent/tools/refusals'
 import { isMobileViewport } from '@/hooks/useMobileShell'
 import { collectAgentUiContext } from '@/lib/agent/uiBridge'
 import { agentUiCommandMutates } from '@/lib/agent/uiCommands'
@@ -387,11 +397,11 @@ export async function sendToAgent(input: {
   // the default title).
   autoNameSession(sessionId, text)
 
-  // Batch etiquette, enforced rather than hoped for: after 8 writes in one
-  // send, further writes bounce with a check-in instruction. The counter
-  // resets per user message — sending "keep going" IS the check-in.
+  // Batch etiquette, enforced rather than hoped for: after the limit's worth
+  // of writes in one send, further writes bounce with a check-in
+  // instruction. The counter resets per user message — sending "keep going"
+  // IS the check-in.
   let writesThisSend = 0
-  const WRITE_BATCH_LIMIT = 8
 
   // No database, no writes — not "refused writes", ABSENT ones. The roster
   // is the definitions that may run without one, and the paragraph below
@@ -539,7 +549,7 @@ export async function sendToAgent(input: {
             type: 'tool_result',
             toolCallId: call.id,
             name: call.name,
-            result: `There is no ${call.name} tool in this session.`,
+            result: noSuchToolRefusal(call.name),
             isError: true,
           })
           continue
@@ -549,8 +559,7 @@ export async function sendToAgent(input: {
             type: 'tool_result',
             toolCallId: call.id,
             name: call.name,
-            result:
-              'No database is connected — this session reads the bundled sample blueprint and has no write tools. Describe the change instead; authoring needs a connected database.',
+            result: SAMPLE_TRIAL_REFUSAL,
             isError: true,
           })
           continue
@@ -560,8 +569,7 @@ export async function sendToAgent(input: {
             type: 'tool_result',
             toolCallId: call.id,
             name: call.name,
-            result:
-              'The mobile shell is view-only — only the reading and navigation tools exist here. Editing happens on desktop; describe the change instead.',
+            result: MOBILE_SHELL_REFUSAL,
             isError: true,
           })
           continue
@@ -576,8 +584,7 @@ export async function sendToAgent(input: {
             type: 'tool_result',
             toolCallId: call.id,
             name: call.name,
-            result:
-              'There is no search_blueprint tool in this session. Use list_blueprint for what exists at a level, and get_blueprint for one scenario.',
+            result: NO_SEARCH_REFUSAL,
             isError: true,
           })
           continue
@@ -587,8 +594,7 @@ export async function sendToAgent(input: {
             type: 'tool_result',
             toolCallId: call.id,
             name: call.name,
-            result:
-              'This session is view-only (not a service account) — no write tools exist here. Describe the change for a service account instead.',
+            result: VIEW_ONLY_REFUSAL,
             isError: true,
           })
           continue
@@ -598,17 +604,14 @@ export async function sendToAgent(input: {
             type: 'tool_result',
             toolCallId: call.id,
             name: call.name,
-            result: `Batch limit: ${WRITE_BATCH_LIMIT} writes already landed this turn. Stop now, summarize what you did, and let the user say "continue" before the next batch.`,
+            result: BATCH_LIMIT_REFUSAL,
             isError: true,
           })
           // One status row per round, however many calls bounced — six
           // identical "Paused" rows read as a stutter, not a pause.
           if (!batchPauseAnnounced) {
             batchPauseAnnounced = true
-            push(sessionId, {
-              kind: 'status',
-              text: `Paused after ${WRITE_BATCH_LIMIT} writes — reply "continue" for the next batch.`,
-            })
+            push(sessionId, { kind: 'status', text: BATCH_PAUSED_STATUS })
           }
           continue
         }

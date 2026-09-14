@@ -88,9 +88,19 @@ test('harness imports the app tool specs instead of forking them', () => {
   )
   assert.match(
     harness,
-    /\{\s*TOOL_SPECS,\s*TOOL_DEFINITIONS,\s*WRITE_TOOL_NAMES,\s*MOBILE_READ_TOOL_NAMES,\s*renderCanvasAdapter\s*\}\s*=\s*surface/,
-    'run.mjs no longer destructures the rosters from the bundled surface',
+    /\{\s*TOOL_SPECS,\s*TOOL_DEFINITIONS,\s*WRITE_TOOL_NAMES,\s*MOBILE_READ_TOOL_NAMES,\s*BATCH_LIMIT_REFUSAL,\s*MOBILE_SHELL_REFUSAL,\s*VIEW_ONLY_REFUSAL,\s*WRITE_BATCH_LIMIT,\s*renderCanvasAdapter,?\s*\}\s*=\s*surface/,
+    'run.mjs no longer destructures the rosters and refusals from the bundled surface',
   )
+  // The refusals the harness answers gates with are the loop's, re-exported
+  // from refusals.ts — not sentences of the harness's own.
+  assert.match(
+    surfaceEntry,
+    /export\s*\{\s*BATCH_LIMIT_REFUSAL,\s*MOBILE_SHELL_REFUSAL,\s*VIEW_ONLY_REFUSAL,\s*WRITE_BATCH_LIMIT,?\s*\}\s*from\s*'@\/lib\/agent\/tools\/refusals'/,
+    'app-surface.entry.ts no longer re-exports the refusals from refusals.ts',
+  )
+  for (const copy of [/view-only \(not a service account\)/, /mobile shell is view-only/, /Batch limit:/]) {
+    assert.doesNotMatch(harness, copy, `run.mjs carries its own copy of a loop refusal: ${copy}`)
+  }
   // And no fork crept back: a local spec array would re-declare tool
   // objects (`name: '...'` entries) and a local write set would shadow the
   // imported roster.
