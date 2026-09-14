@@ -75,3 +75,46 @@ export type {
   CoverServicesTab,
   CoverTab,
 } from './components/cover/coverModel'
+/**
+ * The offline board's two halves, named.
+ *
+ * `sample.nav` takes a `NavItem[]` and `sample.blueprints` a
+ * {@link SampleBlueprintRegistry} — the two a deployment has to write down to
+ * hold its own generated content in a module of its own. Without them here the
+ * only spelling left is a path into `src/data/…`, which exists in a tree that
+ * has its own `src` and in no other, so a deployment either reached for a path
+ * it does not have or rebuilt the shape out of `DeploymentConfig` by hand.
+ * `SlideViewType` comes with the nav because it is what a row's `layout` is.
+ *
+ * Types only, and that is the seam rather than a shortcoming: the registry is
+ * HANDED to the config, never registered by calling anything, so the lookups
+ * it feeds stay internal the way every other reader here does.
+ */
+export type { SampleBlueprintRegistry } from './data/blueprintFallbacks'
+export type { NavItem, SlideViewType } from './types/nav'
+/**
+ * And what a board is made of, down to the cell.
+ *
+ * `BlueprintData` alone is enough to annotate a whole generated board, because
+ * a literal of the right shape satisfies it structurally. It is not enough to
+ * write the helper that BUILDS one — a function taking a lane, a step or a
+ * cell has to name that type in its signature, and a deployment reshaping an
+ * export of its own board writes exactly those functions.
+ *
+ * The closed vocabularies underneath — a path's kind, a cell's touchpoint role
+ * — stop here on purpose: they are string unions any literal satisfies, they
+ * belong to other seams of this package, and a deployment that needs one in a
+ * signature indexes for it (`BlueprintPath['kind']`) rather than importing a
+ * second name that could drift from the first.
+ */
+export type {
+  BlueprintCell,
+  BlueprintCellDependency,
+  BlueprintData,
+  BlueprintLane,
+  BlueprintPath,
+  BlueprintStep,
+  CellResource,
+  CellTouchpoint,
+  ResourceKind,
+} from './types/blueprint'
