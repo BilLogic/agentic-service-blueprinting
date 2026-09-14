@@ -1,5 +1,169 @@
 # Changelog
 
+## 1.44.11
+
+**The three large components are split, and their slices said nothing moved.**
+ADR 0017 held the annotation layer, the cell detail panel and the agent panel
+unsplit until each flow had an end-to-end instrument; 1.44.10 lifted the hold,
+and this release does the three splits as pure refactors — the layer from
+2229 lines to 943, the panel from 1481 to 537, the agent panel from 1462 to
+60 — with every slice run before the first move and after every one, no
+assertion edited, and no class, attribute, aria label or test id changed. The
+fourth change lets a deployment name the offline board it supplies by package
+name, with the generator writing both halves for a tree that has no `src`.
+
+**Upgrading a deployment:**
+
+- Nothing to take: the splits are internal to the package and the overlay
+  resolves the new modules like any other. A deployment that held a resident
+  copy of any of the three files would keep the old one; none does.
+- A generated registry or nav module can now import
+  `SampleBlueprintRegistry`, `NavItem` and the board's shapes from
+  `agentic-service-blueprinting`; `scripts/generate_fallbacks.py --registry-out
+  … --nav-out …` writes both halves as standalone modules outside `src`.
+
+### Patch Changes
+
+- e099551: **The agent panel is a state machine and nine modules, and the slice says
+  nothing moved.** `src/components/editor/AgentPanel.tsx` held the sessions list,
+  the chat view with its transcript rows, tool rows and folded step blocks, two
+  dialogs and the ⚙ rail button around one session state machine — 1462 lines and
+  twelve `useState` calls. It is 60 lines now, with none: what is left is which
+  session is open, the persistence the panel attaches, and the choice between the
+  two views. Everything else is a module under `src/components/editor/agent/` —
+  `AgentSessionsView`, `SessionRow`, `ChangeCount` with the hook behind it,
+  `AgentChatView`, `TranscriptRow`, `TranscriptStepsBlock`, the React-free
+  `transcriptBlocks` that decides which rows fold, `SessionDialogs`, and
+  `AgentSettingsRailButton`.
+
+  A person sees nothing: opening the panel, starting a session, sending a
+  message, reading a tool row, renaming and deleting sessions are the same
+  components in the same order, with the same classes, labels and test ids. What
+  crosses each new seam is the session, the events and the callbacks — no prop
+  was invented, and no persisted row shape changed.
+
+  **The instrument is the reason this was a safe change to make.** `npm run
+slice:agent-session` was run before the first move and after every one of them,
+  and it passes with no assertion edited, including the transcript read back out
+  of `agent_messages` after the panel is closed and reopened. The agent harness
+  smoke is unchanged. Three guards that read the panel BY PATH were re-pointed at
+  the modules the code moved into — the monospace register roster and the
+  editor-shell type ladder, whose batch also learned to read the panel's own
+  folder one level down, so the surface it used to assert about is still
+  asserted about.
+
+  ADR 0017 records the outcome under its hold-lift amendment: this is the first
+  of the three held components to be split, and it is the one whose slice landed
+  first.
+
+- e039639: **The canvas annotation layer is split, and a person drawing, dragging,
+  resizing, styling and capturing marks sees no difference.**
+  `src/components/editor/CanvasAnnotationLayer.tsx` was 2229 lines holding four
+  unrelated jobs at once: the pointer, drag, resize and selection machine; three
+  floating style bars; three annotation node components; and the geometry every
+  one of them divides by. It is 943 lines now, and it holds the machine and the
+  composition alone.
+
+  The pieces sit beside it, which is how this tree names a split module — the
+  geometry in `canvasAnnotationGeometry.ts`, the pickers in
+  `CanvasAnnotationSwatches.tsx`, the corner grips in
+  `CanvasAnnotationResizeHandles.tsx`, the bars in
+  `AnnotationShapeStyleBar.tsx`, `AnnotationStickyStyleBar.tsx` and
+  `AnnotationTextStyleBar.tsx` over a shared `CanvasAnnotationBarChrome.tsx`, and the nodes in `ShapeAnnotationNode.tsx`,
+  `StickyAnnotationNode.tsx` and `TextAnnotationNode.tsx`. The textarea focus
+  hook every editable node wanted is in `src/hooks/` with the rest of them.
+
+  The one thing that is not a move: the plate the three bars float on was
+  written out three times, and all three copies had to agree on the anchor
+  arithmetic and on the two attributes the layer's own click-outside rule looks
+  for. It is `AnnotationStyleBarFrame` now, one element with the same
+  attributes, classes and handlers it had in each of the three.
+
+  **This is the first split ADR 0017 held back, and the record was the point.**
+  The hold was lifted when the annotation-drag slice and the browser drag case
+  landed; both were run before the first move and after every move since, on the
+  same assertions, and no assertion was edited anywhere in the suite. One test
+  file changed and it is not one of theirs: `tokenDiscipline.test.ts` pins its
+  colour exemptions to a path, and the line-style preview swatch the layer's
+  exemption was written for is in `AnnotationShapeStyleBar.tsx` now, so the entry
+  follows
+  it. That list refuses an exemption matching no offender, which is how the move
+  announced itself. What the interface between the
+  layer and a node is — `MovableProps` — was already the interface; the split
+  wrote it down. No new prop reaches the layer from outside it. The ADR carries
+  the outcome.
+
+- 98a6ebf: **The cell detail panel's body is nine modules, and the cell-edit slice says
+  nothing moved.** The panel was 1481 lines, of which 1258 were one function:
+  the read-only rows, the form over the cell fields, the specs, the
+  dependencies, the resources, the three other surfaces the same drawer can
+  show, and the save, all in the order they happened to be written. A person
+  looking for what a cell IS had to read past what the drawer DOES.
+
+  It is 553 lines now. `cellDetailFacts.ts` answers one question — given a
+  selection (or a draft) and the boards in memory, what is there to show — and
+  answers it once, for everybody: the connections, the lane, the placement and
+  its reading, the arrows a cell owns and the ones it may point at, the
+  storyboard strip. `CellDetailOverview.tsx` takes those facts and renders the
+  top of the details surface, with the dozen readings it depends on beside it
+  rather than a hundred lines above. `CellDetailTabs.tsx` owns the three tabs.
+  `CellDetailBreadcrumb.tsx` says where the cell sits. Differences, a draft cell
+  and nothing-selected are each their own module, because they are siblings of
+  the details view and not stages of it. `PanelSurfaceSwitcher.tsx` and the
+  panel's agent commands come out with them.
+
+  What stayed in the panel is the drawer, which is the thing the panel is: which
+  surface is showing, how wide it is, what closes it, and the one footer that
+  every Save in it portals into.
+
+  **No behaviour changed, and the instrument is the reason that is a claim
+  rather than a hope.** `npm run slice:cell-edit` ran before the first move and
+  after every one of them, green each time with no assertion edited, as did the
+  285 tests over `src/components/blueprint`. No class, no `data-` attribute, no
+  aria label, no test id. The one save still writes the same columns in the same
+  shape, and every section that derived its fields from `src/lib/cellFields.ts`
+  still derives them from there.
+
+  This is the first of the three splits ADR 0017 held, and that record gains its
+  outcome line. The annotation layer and the agent panel are still to do.
+
+- a3a7ae4: **A deployment can name the offline board it supplies.** `sample.blueprints`
+  has always taken a `SampleBlueprintRegistry` and `sample.nav` a `NavItem[]`,
+  and the package index exported neither. The only spellings left were a path
+  into `src/data/…`, which exists in a tree that has its own `src` and in no
+  other, or rebuilding the shape out of `DeploymentConfig` by hand —
+  `NonNullable<NonNullable<DeploymentConfig['sample']>['blueprints']>`, which is
+  what the first deployment to supply a board actually wrote (#771). Both are
+  exported now, with `SlideViewType` beside the nav and the board's own shapes
+  under the registry — `BlueprintData` and the `BlueprintPath`, `BlueprintLane`,
+  `BlueprintStep`, `BlueprintCell`, `BlueprintCellDependency`, `CellTouchpoint`,
+  `CellResource` and `ResourceKind` it is made of, because annotating a whole
+  generated board needs only the first and writing the function that builds one
+  needs the rest. Types only — the registry is handed to the config, never
+  registered by a call, so the lookups it feeds stay internal.
+
+  **`references/customization.md` § The offline board is two fields showed an
+  import nobody outside this repository could write.** Its example read
+  `PACKAGE_SAMPLE_BLUEPRINTS` out of `./data/blueprintFallbacks`, a relative path
+  into a `src` a deployment does not have; the deployment reading that page is
+  the one reader who cannot follow it. The example is a consumer's now — types by
+  package name, content from the deployment's own generated modules — and the
+  page says where those modules go and what their first lines import.
+
+  **`scripts/generate_fallbacks.py` can generate for a deployment's tree, not
+  only for this one.** `--register` rewrites marker blocks inside
+  `src/data/blueprintFallbacks.ts` and `src/data/sampleNav.ts`, which a
+  deployment has no copy of; it refused an `--out` outside `src/` and had nothing
+  else to offer. `--registry-out` and `--nav-out` write the two halves as
+  standalone modules that name their types by package name, and the generated
+  data module beside them names `BlueprintData` the same way, so a deployment's
+  own files carry no `@/…` path at all. The two flags are required together,
+  because the nav lists the scenarios and the registry draws them and one without
+  the other is rows over an empty canvas; they are refused alongside `--register`,
+  which generates for a different tree; and an `--out` under a `src` is refused,
+  because a deployment that grows one captures every `@/…` import the application
+  makes of itself.
+
 ## 1.44.10
 
 **The first deployment enrolled in 1.44.9, and this release is what it found.**
@@ -6681,8 +6845,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                    ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                    "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                      ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                      "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
