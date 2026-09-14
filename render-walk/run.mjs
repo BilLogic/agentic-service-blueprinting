@@ -26,7 +26,7 @@
  * exactly as it holds for the config — so there is no arrangement of
  * `testDir`, `testIgnore` or loader flags under which the published path runs
  * in place. That instruction was published for a release and no deployment
- * could follow it (#752); the deployment that met it first wrote this staging
+ * could follow it; the deployment that met it first wrote this staging
  * by hand, which is a script the package should have shipped rather than a
  * workaround every adopter re-derives.
  *
