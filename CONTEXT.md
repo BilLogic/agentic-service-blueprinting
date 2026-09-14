@@ -34,7 +34,16 @@ generated from the list CI acts on.
 Published and installable, and the one codebase every deployment runs.
 
 **Deployment** — an installation of the template that supplies its own content,
-brand and data through its config, and carries no application code of its own.
+brand and data through its config, and authors no application code of its own
+beyond the residents it still holds.
+
+**Overlay** — the deployment's source tree laid over the package's, per path:
+for a path under the application alias, the deployment's copy if it exists,
+else the package's.
+
+**Resident** — a file still in a deployment's source tree, standing for the
+package's file at the same path. Every resident is listed with a reason —
+owned, or diverged with a ticket.
 
 ## The blueprint
 

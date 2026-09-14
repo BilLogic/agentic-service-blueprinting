@@ -70,6 +70,10 @@ const FIXTURE_ONLY = new Map([
     'scripts/tests/sample-content.test.mjs',
     'the marker table and the `isScanned` cases, arguments to the extraction rather than reads of a tree',
   ],
+  [
+    'scripts/tests/the-overlay-answers-per-path.test.mjs',
+    'the two layers it builds inside a temporary directory of its own — a `src` overlay and a packaged `src` beneath it — and deletes after',
+  ],
 ])
 
 /** Every script, including the suites — `FIXTURE_ONLY` names the exceptions. */

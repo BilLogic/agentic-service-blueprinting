@@ -16,6 +16,10 @@
       "default": "./src/bootstrap.ts"
     },
     "./styles.css": "./src/styles/tailwind.config.css",
+    "./overlay": {
+      "types": "./scripts/overlay.d.mts",
+      "default": "./scripts/overlay.mjs"
+    },
     "./*": "./*"
   },
   "scripts": {

@@ -8,7 +8,10 @@ summary: The deployment consumes the canonical template by importing it as a pin
 BilLogic/plus-uno-blueprint ADR 0013 on 2026-09-10 (#551); the number
 here is this repository's. After the move, "ADR 0013" in this folder is
 [TypeScript owns layout numbers](./0013-typescript-owns-layout-numbers.md);
-the record that used that number in the deployment is this one.
+the record that used that number in the deployment is this one. Amended
+2026-09-13 (#700): the deployment overlays the package per path and a residents
+list is the gate on the way there; see
+[ADR 0022](./0022-the-deployment-overlays-the-package-per-path.md).
 **Context** `src/deploymentConfig.ts`,
 [ADR 0019](./0019-the-deployment-is-a-deployment-of-the-template.md)
 
@@ -122,6 +125,12 @@ be the most legible line in the system, not the most magic.
   seam without changing this decision.
 
 ## What the reconciled set covers on the way there
+
+*Superseded 2026-09-13 (#700) — the reconciled set gives way to the residents
+list of [ADR 0022](./0022-the-deployment-overlays-the-package-per-path.md),
+which asks why a copy exists rather than whether it still matches. The rule
+argued below is what a resident's reason is drawn from, so it stands here as it
+was written.*
 
 The import is the last step, and until it lands the drift gate
 (`scripts/reconciled-files.mjs` in the deployment) is what holds the two
