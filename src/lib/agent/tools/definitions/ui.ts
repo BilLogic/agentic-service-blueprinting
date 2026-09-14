@@ -1,12 +1,10 @@
 import { z } from 'zod'
 import { defineTool } from '@/lib/agent/tools/definition'
-import { listAgentUiCommands } from '@/lib/agent/uiCommands'
 
 /**
  * The interface, read. Two reads that report what the canvas is doing and
  * which controls exist right now; they touch neither the canvas nor a row.
- * The interface calls that DRIVE the canvas — open, focus, ui_command —
- * arrive here as their switch cases move.
+ * The calls that DRIVE the canvas are `interface.ts`.
  */
 
 export const getUiStateTool = defineTool({
@@ -28,5 +26,5 @@ export const listUiCommandsTool = defineTool({
   // Not offered on mobile, whose shell owns none of the desktop surfaces
   // these commands drive, and not in the trial's roster either.
   availability: { sample: false, mobile: false },
-  run: async () => listAgentUiCommands(),
+  run: async (_args, ctx) => ctx.ui.listCommands(),
 })

@@ -11,6 +11,16 @@ import {
 import { getCellTool, listCellDependenciesTool } from '@/lib/agent/tools/definitions/cells'
 import { getEvidenceTool, listEvidenceTool } from '@/lib/agent/tools/definitions/evidence'
 import { listFindingsTool } from '@/lib/agent/tools/definitions/findings'
+import {
+  annotateCellsTool,
+  focusCellTool,
+  openCellPanelTool,
+  openPhaseTool,
+  openScenarioTool,
+  setCanvasModeTool,
+  setSidebarTool,
+  uiCommandTool,
+} from '@/lib/agent/tools/definitions/interface'
 import { getReferenceTool, listReferencesTool } from '@/lib/agent/tools/definitions/references'
 import { getBusinessModelTool } from '@/lib/agent/tools/definitions/service'
 import {
@@ -55,6 +65,16 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   listUiCommandsTool,
   measureDeletionImpactTool,
   listFindingsTool,
+  // The interface: the calls that drive the canvas, in the order the model
+  // was always offered them.
+  openPhaseTool,
+  openScenarioTool,
+  focusCellTool,
+  uiCommandTool,
+  openCellPanelTool,
+  setCanvasModeTool,
+  setSidebarTool,
+  annotateCellsTool,
 ]
 
 const byName = new Map(TOOL_DEFINITIONS.map((tool) => [tool.name, tool]))
