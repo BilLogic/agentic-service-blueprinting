@@ -96,16 +96,39 @@ badge.
 `npm run check:render-walk` runs `render-walk/run.mjs`, the same runner a
 deployment calls out of its `node_modules` — it stages this directory into
 `.render-walk-staged/` and hands Playwright the copy, so the enrolled path is
-exercised here on every run. It starts its own preview on port 4173 and stops it
-again (`reuseExistingServer: false`, so a preview left running from an older
-build cannot be mistaken for this one). That plus `--strictPort` means a busy
-4173 **aborts the run** rather than reusing what is there — deliberately, since
-what is there is usually an older `dist` — so stop your own `npm run preview`
-first, or move the walk:
+exercised here on every run. It starts its own preview and stops it again
+(`reuseExistingServer: false`, so a preview left running from an older build
+cannot be mistaken for this one).
+
+## How the port is chosen
+
+The walk asserts against whatever answers on its port, so the port is part of
+the subject rather than a detail. It is decided once per run, by the runner,
+before Playwright starts:
+
+- **No `RENDER_WALK_PORT`** — 4173 if nothing is listening there and no other
+  walk has claimed it, otherwise the next free port above it, up to 4204. So
+  your own `npm run preview` on 4173, or a second checkout walking at the same
+  moment, moves this run along instead of stopping it: two walks started
+  together take 4173 and 4174 and each walks its own `dist`. The run says
+  which port it chose before it opens anything, and a machine with all
+  thirty-two held is a refusal naming the range.
+- **`RENDER_WALK_PORT=4273`** — that port and no other. You named it, so a walk
+  elsewhere would not be the walk you asked for: if something is already
+  listening there the runner **refuses by name**, tells you how to find out
+  whose it is (`lsof -i :4273`), and starts nothing.
 
 ```bash
 RENDER_WALK_PORT=4273 npm run check:render-walk
 ```
+
+Either way the walk never reuses a server it did not start. What is already on
+a port is somebody else's `dist` — an older build of this tree, or another
+tree's altogether — and a green walk over it would be a statement about code
+that is not in your working directory. Pointing Playwright at the config by
+hand rather than through the runner keeps the fixed 4173, where
+`reuseExistingServer: false` plus `--strictPort` makes a held port an abort
+that names it and collects no tests.
 
 Output — one screenshot per view, plus
 Playwright's own artifacts — lands in `render-walk-output/`, which is
@@ -175,8 +198,10 @@ What your side has to provide:
 - **A build made with the Supabase variables cleared**, for the reason above.
 - **A `preview` script that takes `--port` and `--strictPort`** — Vite's own
   does, since the config invokes it as
-  `npm run preview -- --port <port> --strictPort`. Set `RENDER_WALK_PORT` if
-  4173 is taken on your runner; a busy port aborts rather than reuses.
+  `npm run preview -- --port <port> --strictPort`. You need no free port of
+  your own: the runner finds one, as § How the port is chosen describes.
+  `RENDER_WALK_PORT` still names one outright, and a port you name that is
+  already held is refused rather than reused.
 - **Both halves of your own offline board on the config** — `sample.nav` AND
   `sample.blueprints`. The walk reads its inventory off the rendered page, so
   what it opens is whatever your build shows: nav rows with no registry behind

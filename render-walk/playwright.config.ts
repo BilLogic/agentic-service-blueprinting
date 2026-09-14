@@ -53,9 +53,22 @@ import { defineConfig, devices } from '@playwright/test'
  * an earlier build serves an earlier `dist`, and a walk over a stale bundle is
  * a green run that says nothing about the code in the working tree. With
  * `--strictPort` beside it that makes a busy port an ABORT rather than a
- * reuse: if something else already holds 4173, the run says so instead of
- * quietly walking whatever that something is serving. `RENDER_WALK_PORT`
- * moves the walk to a free one.
+ * reuse: if something else already holds the port, the run says so instead of
+ * quietly walking whatever that something is serving.
+ *
+ * ── WHERE THE PORT COMES FROM ──────────────────────────────────────────────
+ *
+ * `RENDER_WALK_PORT`, and this file does not choose. `run.mjs` decides the
+ * port before it starts Playwright — the default below if nothing holds it,
+ * the next free port above it otherwise — and sets the variable to what it
+ * chose, so two walks running at once preview on ports of their own rather
+ * than fighting over one. Its header says why that belongs to the runner.
+ *
+ * The constant below is therefore the FALLBACK, for the one path the runner is
+ * not on: Playwright pointed at this config by hand. That path keeps a fixed
+ * port, and the abort above is what a held one gets there — named, with no
+ * test collected, which is the honest end of a walk that has nowhere to
+ * preview.
  *
  * The deployment's `preview` script has to accept `--port` and `--strictPort`,
  * which Vite's own does; see `render-walk/README.md` § Enrolling a deployment.
