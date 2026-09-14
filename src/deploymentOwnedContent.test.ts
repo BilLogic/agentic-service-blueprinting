@@ -173,7 +173,7 @@ describe('what arrives through the deployment config', () => {
    * half that used to have no home. The nav replaces rather than merges, so a
    * deployment that supplied one and nothing else drew its own rows over this
    * template's registry — which answers none of its ids — and got an empty
-   * canvas (#754). The registry is carried by reference, the way the cover is.
+   * canvas. The registry is carried by reference, the way the cover is.
    */
   it('carries the offline board behind that navigation', () => {
     const resolved = resolveDeploymentConfig({ sample: { nav, blueprints } })
