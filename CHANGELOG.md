@@ -3,7 +3,8 @@
 ## 1.44.10
 
 **The first deployment enrolled in 1.44.9, and this release is what it found.**
-`plus-uno-blueprint` took the 1.44.9 pin and ran every published instruction;
+The deployment this template was generalised from took the 1.44.9 pin and ran
+every published instruction;
 seven of them were wrong or short, and each is fixed here at the source rather
 than worked around there. The rest of the release is the two flows ADR 0017 was
 still holding — an agent session and the annotation drag — each now a CI slice,
