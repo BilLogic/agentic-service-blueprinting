@@ -1,5 +1,101 @@
 # Changelog
 
+## 1.44.13
+
+**A seam nobody crossed is gone, and the browser walk chooses its own port.**
+The repository interface and its two hypothetical adapters, which no runtime
+call dispatched through, are deleted; the identity and tier readers keep their
+callers from a home that says what they are, and the adapter contract states
+the operations in prose. The render walk's runner now picks a free port per
+run and refuses a held one by name, so two walks on one machine never assert
+against each other's build. Also corrected: the mobile-shell document named
+the sidebar primitive's constant as the shell gate; the shell forks on its own
+hook's query.
+
+**Upgrading a deployment:**
+
+- Nothing to take. If a file of yours imported `src/lib/backend/ports` for the
+  `Tier` type, import it from `src/lib/identity.ts`; the adapters and the
+  conformance suite have no replacement.
+- `npx render-walk` needs no port from you; set `RENDER_WALK_PORT` only to
+  pin one, and expect a refusal if that port is held.
+
+### Patch Changes
+
+- 61896c1: The backend ports are deleted; the identity and tier readers stay
+
+  The application declared a repository interface — one port per aggregate,
+  guarantees and round trips annotated per operation — and nothing ever
+  dispatched through it. The two implementations behind it were a read-only
+  fixture over the bundled sample and an in-memory store, and the conformance
+  suite that held them equivalent proved two hypothetical stores equal to each
+  other and to nothing that ships: the live call sites talk to PostgREST
+  directly. A seam no caller crosses is a description of an architecture rather
+  than an architecture, and this one had begun to be cited as though it were the
+  contract.
+
+  So the port types, both adapters, the two conformance levels as code and the
+  suite are gone. What actually varies between this template and a deployment is
+  the database type (`src/types/database.ts`, generated from the migrations and
+  re-checked by CI); the portable core is the contract and
+  `references/adapter-contract.md` is where the operations a backend must answer
+  are now stated, in prose, with their guarantees intact.
+
+  The identity and tier readers stay, in a home that says what they are:
+  `src/lib/identity.ts` carries the `Tier` vocabulary and `readTier`, which asks
+  the database `is_service_account()` rather than inferring the tier from a JWT
+  claim. `src/contexts/SupabaseProvider.tsx` calls it exactly as before.
+  `src/lib/backend/schemaVersion.ts` stays where it is — it is the TypeScript
+  half of the version list `references/ir-schema.json` owns, held equal by its
+  own test.
+
+  **A deployment that imported the ports**: none is known. This is a patch
+  because semver here is scoped to the plugin contract — the identifier lane —
+  and refactoring the template app is outside it however much of it moves; a
+  consumer forks that surface and takes the change as a visible merge conflict.
+  The package's `exports` do carry `"./*"`, so these files WERE reachable by
+  subpath; a deployment that imported `src/lib/backend/ports` for the `Tier` type
+  imports it from `src/lib/identity.ts` instead, and one that imported the
+  adapters or the conformance suite has no replacement in the template and should
+  vendor the deleted files from the previous tag — the honest answer for code
+  that was a hypothetical seam here too.
+
+  `Tier` loses its `authoring` member on the way. Nothing produced it and nothing
+  branched on it: a backend that had answered it would have been read as writing
+  nothing, so a backend that draws that line answers with the writing tier and
+  enforces the narrower one itself.
+
+- 73175bf: The render walk chooses a port nothing holds, and refuses one you named that is held
+
+  The walk previewed on a fixed 4173, so the port was a thing only one tree on a
+  machine could use. A second checkout walking at the same moment, or a preview
+  somebody left running, held it — and the run that found it held aborted, a red
+  that reads like a regression in the application and is a fact about somebody
+  else's shell.
+
+  `render-walk/run.mjs` now decides the port before Playwright starts: 4173 if
+  nothing is listening there and no other walk has claimed it, otherwise the next
+  free port above it, up to 4204. Two walks started together take 4173 and 4174
+  and each walks its own `dist`. The choice is passed on as `RENDER_WALK_PORT`,
+  which is the config's own override, so nothing new crosses that seam; the
+  constant in `playwright.config.ts` is now the fallback for the one path the
+  runner is not on, Playwright pointed at the config by hand.
+
+  A port is claimed as well as tested, because free is not yet taken: between the
+  test and the moment Vite binds there are a couple of seconds of Playwright
+  starting up, and two runs launched together would otherwise both believe the
+  same port is theirs. The claim is one atomic file create under the temporary
+  directory, removed on the way out, and one left by a killed run is taken over
+  rather than believed.
+
+  `RENDER_WALK_PORT` still names a port outright and is the one fixed port left
+  in the arrangement: if something is already listening there the runner refuses
+  by name, says how to find out whose it is, and starts nothing. Nothing is ever
+  reused — what is already on a port is another build, and a green walk over it
+  would be a statement about code that is not in the working tree.
+
+  A deployment needs no free port of its own and no change to enrol.
+
 ## 1.44.12
 
 **The package owns the claims for the files it ships, and a deployment's
@@ -20,7 +116,7 @@ takes a loader so the registry lands in its own chunk.
   document for those. Repair inbound links that pointed at the deleted
   documents; the customization reference says how prose is overridden.
 - Hand `sample.blueprints` a loader — `() => import('./data/sampleBlueprints')
-  .then((m) => m.SAMPLE_BLUEPRINTS)` — and the registry leaves your main
+.then((m) => m.SAMPLE_BLUEPRINTS)` — and the registry leaves your main
   chunk; the eager value keeps working.
 
 ### Patch Changes
@@ -6941,8 +7037,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                        ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                        "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                          ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                          "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
