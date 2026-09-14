@@ -1,5 +1,5 @@
 ---
-summary: The browser render walk — Chromium over the built distribution in no-database mode, every phase, every scenario, every path and every layout the scenario offers, plus the annotation-drag case that draws, drags and captures a mark with real mouse moves, failing on a console error and filing one screenshot per view; what it borrows from the app's markup, how this repository runs it, and how a deployment enrols by pointing Playwright at these same files inside its node_modules.
+summary: The browser render walk — Chromium over the built distribution in no-database mode, every phase, every scenario, every path and every layout the scenario offers, plus the annotation-drag case that draws, drags and captures a mark with real mouse moves, failing on a console error and filing one screenshot per view; what it borrows from the app's markup, how this repository runs it, and how a deployment enrols by running the runner that ships beside them out of its own node_modules.
 ---
 
 # The browser render walk
@@ -93,7 +93,10 @@ walk then measures somebody's rows rather than the bundled sample. The walk
 refuses that run: its first assertion is that the app shows the `sample data`
 badge.
 
-`npm run check:render-walk` starts its own preview on port 4173 and stops it
+`npm run check:render-walk` runs `render-walk/run.mjs`, the same runner a
+deployment calls out of its `node_modules` — it stages this directory into
+`.render-walk-staged/` and hands Playwright the copy, so the enrolled path is
+exercised here on every run. It starts its own preview on port 4173 and stops it
 again (`reuseExistingServer: false`, so a preview left running from an older
 build cannot be mistaken for this one). That plus `--strictPort` means a busy
 4173 **aborts the run** rather than reusing what is there — deliberately, since
@@ -123,26 +126,41 @@ exit, then once for real.
 These files are a published path, the same kind of promise as
 `references/` and `skills/` —
 [ADR 0004](../docs/adr/0004-reference-paths-are-a-published-interface.md), and
-`CONSUMER_IMPORTS` in `scripts/check-reference-paths.mjs` lists the config and
-both specs so a move here fails this repository's build rather than yours. There is no `files` field
-in `package.json`, so nothing filters them out of the package, and `exports`
-carries `"./*"`, so they are reachable by path.
+`CONSUMER_IMPORTS` in `scripts/check-reference-paths.mjs` lists the runner, the
+config and both specs so a move here fails this repository's build rather than
+yours. There is no `files` field in `package.json`, so nothing filters them out
+of the package, and `exports` carries `"./*"`, so they are reachable by path.
 
-From the root of a deployment that installs this package:
+From the root of a deployment that installs this package, one command:
 
 ```bash
-npx playwright test \
-  -c node_modules/agentic-service-blueprinting/render-walk/playwright.config.ts
+node node_modules/agentic-service-blueprinting/render-walk/run.mjs
 ```
 
-Nothing is copied and nothing is configured. The config's `testDir` is its own
-directory, so the specs that run are the ones that shipped with the version you
-pinned — and that works from inside `node_modules` without any `testIgnore`
-setting: Playwright's default `testIgnore` is empty, and its `node_modules`
-skip only refuses to *recurse into* a directory of that name below `testDir`;
-a `testDir` that is itself under `node_modules` is walked normally. The
-`webServer` runs `npm run preview` in **your** working directory, so the
-preview serves your `dist`.
+`npx render-walk` is the same thing through the bin the install links; put
+either in your own `package.json` as `check:render-walk` and arguments pass
+through (`npm run check:render-walk -- --headed`).
+
+**You need no staging script of your own, and this is not the command earlier
+releases gave.** Up to 1.44.9 the instruction was `npx playwright test -c
+node_modules/…/render-walk/playwright.config.ts`, and it cannot work: neither
+loader will compile a TypeScript file that lives under `node_modules`.
+Playwright's transform hook declines any path with a `node_modules` segment, so
+Node is handed raw TypeScript and throws `ERR_UNKNOWN_FILE_EXTENSION`; Node's
+own type stripping refuses the same file with
+`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`. Neither rule is configurable and
+both cover the specs as well as the config. So `run.mjs` copies this directory
+out of `node_modules` into `.render-walk-staged/` at your root, byte for byte,
+and points Playwright at the copy. It is rewritten from the installed package
+on every run and read by nothing else, so it cannot drift from the version you
+pinned — **add `.render-walk-staged/` to your `.gitignore`**. It is left behind
+after the run because Playwright's trace viewer resolves a failing step back to
+the spec file it ran.
+
+The runner resolves Playwright out of **your** `node_modules` rather than
+through `npx`, so a tree without it is told which version to install instead of
+silently downloading some other one. The `webServer` runs `npm run preview` in
+your working directory, so the preview serves your `dist`.
 
 The walk's inventory — phases, scenarios, paths — is read off the rendered
 page, never imported from `src/data/sampleBlueprint.ts`. Your sample board is
@@ -169,7 +187,9 @@ What your side has to provide:
   shape.
 
 A deployment that wants this in its own CI can copy the `render-walk` job out
-of `.github/workflows/ci.yml`; the only line that changes is the config path.
+of `.github/workflows/ci.yml`; nothing in it changes — the job already calls
+`npm run check:render-walk`, and this repository's own runs through the same
+runner, so the enrolled path is the one CI here exercises.
 
 ## What the walk reads off the app
 

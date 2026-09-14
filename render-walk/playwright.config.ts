@@ -21,31 +21,30 @@ import { defineConfig, devices } from '@playwright/test'
  *
  * `render-walk/` is a published path (`docs/adr/0004-reference-paths-are-a-
  * published-interface.md`, and `CONSUMER_IMPORTS` in
- * `scripts/check-reference-paths.mjs` lists both files). A deployment that
- * installs this package enrols by pointing Playwright at this file inside its
- * own `node_modules` and running it from its own root:
+ * `scripts/check-reference-paths.mjs` lists all four of its files). A
+ * deployment that installs this package enrols by running `run.mjs` beside
+ * this file, from its own root:
  *
- *   npx playwright test -c \
- *     node_modules/agentic-service-blueprinting/render-walk/playwright.config.ts
+ *   node node_modules/agentic-service-blueprinting/render-walk/run.mjs
  *
- * `testDir` is THIS file's own directory rather than a root, because the spec
- * that travels with this config is the subject wherever the config is read
- * from — a `rootDir` would name the deployment's tree and find nothing.
+ * That runner copies this directory out of `node_modules` first and hands
+ * Playwright the copy, because NEITHER LOADER WILL COMPILE A TYPESCRIPT FILE
+ * THAT LIVES UNDER `node_modules` — Playwright's transform hook declines the
+ * path and Node's type stripping refuses it outright, neither is configurable,
+ * and both rules cover the specs as well as this file. `run.mjs` carries that
+ * account in full; what matters here is that the config is read from the copy,
+ * at the root of the tree being walked.
  *
- * Nothing else is needed for that, and an earlier version of this comment said
- * otherwise. Playwright 1.62's default `testIgnore` is the empty list
- * (`node_modules/playwright/lib/common/index.js`, where the project's
- * `testIgnore` falls back to `[]`), and the `node_modules` skip lives in the
- * directory walk: `collectFiles` refuses to RECURSE INTO a child directory
- * named `node_modules`, and never looks at the name of `testDir` itself. A
- * `testDir` that sits inside `node_modules` is therefore walked normally, and
- * the enrolled run collects this spec with no setting at all.
+ * `testDir` is THIS file's own directory rather than a root, because the specs
+ * that travel with this config are the subject wherever the config is read
+ * from — staged beside it, or here in this repository — and a `rootDir` would
+ * name the deployment's tree and find nothing.
  *
  * ── WHAT THE PREVIEW SERVES ────────────────────────────────────────────────
  *
- * `cwd: process.cwd()` — the run's own root, not this file's package. A
- * deployment's `npm run preview` serves the deployment's `dist`, so the walk
- * reads ITS sample board rather than ours. The walk derives every phase,
+ * `cwd: process.cwd()` — the run's own root, not the directory this config was
+ * staged from. A deployment's `npm run preview` serves its own `dist`, so the
+ * walk reads ITS sample board rather than ours. It derives every phase,
  * scenario and path from the rendered page for the same reason: importing
  * `src/data/sampleBlueprint.ts` would hold every deployment to this
  * repository's content.

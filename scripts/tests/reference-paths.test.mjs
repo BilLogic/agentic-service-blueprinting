@@ -27,14 +27,14 @@ test('every path the deployment imports exists and the commit carries it', () =>
   )
 })
 
-test('the list is eighteen references, four skill bodies and the render walk in three files', () => {
+test('the list is eighteen references, four skill bodies and the render walk in four files', () => {
   const skills = CONSUMER_IMPORTS.filter((path) => path.endsWith('/SKILL.md'))
   const renderWalk = CONSUMER_IMPORTS.filter((path) => path.startsWith('render-walk/'))
   assert.equal(skills.length, 4)
-  // Three files, and only three: the config a deployment names on the command
-  // line and the two specs that travel beside it — the view walk and the
-  // annotation-drag case.
-  assert.equal(renderWalk.length, 3)
+  // Four files, and only four: the runner a deployment names on the command
+  // line, the config it stages and hands to Playwright, and the two specs that
+  // travel beside it — the view walk and the annotation-drag case.
+  assert.equal(renderWalk.length, 4)
   assert.equal(CONSUMER_IMPORTS.length - skills.length - renderWalk.length, 18)
   assert.equal(new Set(CONSUMER_IMPORTS).size, CONSUMER_IMPORTS.length)
 })

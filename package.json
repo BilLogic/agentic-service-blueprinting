@@ -26,6 +26,9 @@
     },
     "./*": "./*"
   },
+  "bin": {
+    "render-walk": "./render-walk/run.mjs"
+  },
   "scripts": {
     "predev": "node scripts/sync-cover-assets.mjs",
     "dev": "vite",
@@ -74,7 +77,7 @@
     "check:dependency-kinds": "node scripts/check-dependency-kinds.mjs",
     "check:doc-paths": "node scripts/check-doc-paths.mjs",
     "check:reference-paths": "node scripts/check-reference-paths.mjs",
-    "check:render-walk": "playwright test -c render-walk/playwright.config.ts",
+    "check:render-walk": "node render-walk/run.mjs",
     "check:budget": "node scripts/check-router-budget.mjs",
     "check:negation": "node scripts/check-negation-ratchet.mjs",
     "check:pointers": "node scripts/check-pointers.mjs",
