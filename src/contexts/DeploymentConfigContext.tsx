@@ -13,6 +13,7 @@ import {
 } from '@/deploymentConfig'
 import { ORG_NAME } from '@/config'
 import type { CoverContent } from '@/components/cover/coverModel'
+import { configureSampleBlueprints } from '@/data/blueprintFallbacks'
 import { applyBrandAccent } from '@/lib/brandAccent'
 import { configureCellBudget } from '@/lib/cellContentLimits'
 import { configureAgentSearch } from '@/lib/agent/searchPlan'
@@ -52,6 +53,29 @@ export function DeploymentConfigProvider({
   // module-level config rather than an inline literal: a literal is a new
   // object every render, the memo misses, and every reader re-renders.
   const resolved = useMemo(() => resolveDeploymentConfig(config), [config])
+
+  /**
+   * The offline board's CONTENT onto the fallback module, WHILE THIS RENDERS
+   * — the one config field that cannot wait for an effect, not even a layout
+   * one.
+   *
+   * Every other field below is written after the tree below has rendered,
+   * which is soon enough because each of them is read later still: a colour
+   * before the browser paints, a budget under a field somebody types in, a
+   * tool roster assembled when a message is sent. This one is read DURING
+   * that render — the board asks `getBlueprintFallback` for its lanes and
+   * cells as it draws them — and a module write re-renders nobody. Written in
+   * an effect it would land after a keyless board had already drawn the
+   * package's content, or nothing, with no second render to correct it.
+   *
+   * A write during render is legitimate here for the same reason it is
+   * unusual: it is idempotent, it touches no React state, and it is a parent
+   * settling a module the children below it read. Inside the memo, so it
+   * happens once per distinct config object rather than on every render.
+   */
+  useMemo(() => {
+    configureSampleBlueprints(resolved.sample.blueprints)
+  }, [resolved.sample.blueprints])
 
   /**
    * `brand.accent` onto the root, as a LAYOUT effect: React runs these after

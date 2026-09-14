@@ -20,6 +20,10 @@
       "types": "./scripts/overlay.d.mts",
       "default": "./scripts/overlay.mjs"
     },
+    "./vite-imports": {
+      "types": "./scripts/vite-imports.d.mts",
+      "default": "./scripts/vite-imports.mjs"
+    },
     "./*": "./*"
   },
   "scripts": {
