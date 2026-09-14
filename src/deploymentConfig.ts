@@ -95,6 +95,7 @@ import type { CoverContent } from '@/components/cover/coverModel'
 import {
   PACKAGE_SAMPLE_BLUEPRINTS,
   type SampleBlueprintRegistry,
+  type SampleBlueprintRegistryLoader,
 } from '@/data/blueprintFallbacks'
 import { SAMPLE_NAV } from '@/data/sampleNav'
 import type { LaneSetEntry } from '@/lib/authoringRpc'
@@ -252,7 +253,16 @@ export type DeploymentConfig = {
    */
   sample?: {
     nav?: NavItem[]
-    blueprints?: SampleBlueprintRegistry
+    /**
+     * The registry itself, or a LOADER for it — see
+     * {@link SampleBlueprintRegistryLoader}. The two forms differ in one way
+     * that matters to a deployment and in nothing else: a value is carried in
+     * every build, and a loader is fetched only in the builds that draw an
+     * offline board. A deployment whose registry is an export of a real board
+     * wants the loader; a clone of this template, whose sample is already part
+     * of the package, has nothing to defer.
+     */
+    blueprints?: SampleBlueprintRegistry | SampleBlueprintRegistryLoader
   }
   /**
    * Path names pinned to a colour/dash slot in the open set, rather than left
@@ -399,12 +409,30 @@ export type ResolvedDeploymentConfig = {
     nav: NavItem[]
     /**
      * Guaranteed the same way `nav` is, and read the same way: the
-     * deployment's registry when it supplied one, the package's otherwise.
-     * `DeploymentConfigProvider` writes it onto the fallback module with
-     * `configureSampleBlueprints` while it renders — not in an effect, because
-     * the board reads that module during its own render.
+     * deployment's registry when it supplied one, the package's otherwise —
+     * and the ONE FIELD ON THIS TYPE A READER MUST BRANCH ON, because a
+     * deployment may also hand over a loader for it and a loader passes
+     * through uncalled.
+     *
+     * Calling it here would defeat the whole point: resolution is synchronous
+     * and runs in every build, database or not, and what decides whether those
+     * bytes are wanted is `isBundledSampleActive()` plus the ability to wait —
+     * neither of which this function has. `DeploymentConfigProvider` has both,
+     * so it is the single reader that narrows this, and it writes what it
+     * settles onto the fallback module with `configureSampleBlueprints` while
+     * it renders — not in an effect, because the board reads that module
+     * during its own render.
+     *
+     * A UNION AND NOT TWO SETTLED FIELDS (`blueprints` beside a
+     * `blueprintsLoader`, resolution guaranteeing exactly one). Two fields
+     * would restore this type's usual promise in wording only: a reader would
+     * still have to ask which one it got, so the branch moves rather than
+     * goes, and the pair makes two states representable — both set, neither
+     * set — that the union forbids by construction. A field whose two forms
+     * are exclusive is a union; the guarantee that survives is that it is
+     * never absent.
      */
-    blueprints: SampleBlueprintRegistry
+    blueprints: SampleBlueprintRegistry | SampleBlueprintRegistryLoader
   }
   /**
    * Guaranteed a map, the way `sample.nav` is guaranteed an array: the
@@ -598,6 +626,36 @@ function mergeAgentSearch(
  * having to restate `brand.name`. An absent or `null` config resolves to the
  * defaults unchanged. The result is a fresh object every call.
  */
+/**
+ * The offline board a deployment stated, or the package's own.
+ *
+ * Carried by REFERENCE, the way the cover is and unlike the nav: a registry is
+ * a generated content document, read-only from the moment it evaluates, and
+ * copying a board of every cell of every path on every resolution would buy
+ * nothing. Empty reads as "nothing to say", the same as an empty nav.
+ *
+ * A LOADER PASSES THROUGH UNTOUCHED, because the only way to ask whether IT is
+ * empty is to call it, which is exactly the fetch the form exists to defer.
+ * `configureSampleBlueprints` applies the same emptiness reading to whatever
+ * it resolves to, so the two forms end in one rule rather than two — and
+ * therefore in the same asymmetry, stated here rather than left to be
+ * discovered: a loader that REJECTS is loud (the provider throws), and a
+ * loader that RESOLVES EMPTY is silent (the package's own board stands, as an
+ * empty value does). The two are not the same event. A rejection is a build
+ * that could not fetch what it named; an empty registry is a value a
+ * deployment may legitimately mean, and the template has read it that way
+ * since before this field took a loader at all.
+ */
+function settleSampleBlueprints(
+  supplied: SampleBlueprintRegistry | SampleBlueprintRegistryLoader | undefined,
+): SampleBlueprintRegistry | SampleBlueprintRegistryLoader {
+  if (typeof supplied === 'function') return supplied
+  if (supplied && Object.keys(supplied.blueprintsByScenario).length > 0) {
+    return supplied
+  }
+  return PACKAGE_SAMPLE_BLUEPRINTS
+}
+
 export function resolveDeploymentConfig(
   config?: DeploymentConfig | null,
 ): ResolvedDeploymentConfig {
@@ -621,21 +679,11 @@ export function resolveDeploymentConfig(
     ? { ...agentRest, ...(search ? { search } : {}) }
     : undefined
   const overlaidNav = config?.sample?.nav
-  const overlaidBlueprints = config?.sample?.blueprints
   const sample = {
     nav: [
       ...(overlaidNav?.length ? overlaidNav : (asbDefaultConfig.sample?.nav ?? [])),
     ],
-    // Carried by REFERENCE, the way the cover is and unlike the nav: a
-    // registry is a generated content document, read-only from the moment it
-    // evaluates, and copying a board of every cell of every path on every
-    // resolution would buy nothing. Empty reads as "nothing to say", the same
-    // as an empty nav.
-    blueprints:
-      overlaidBlueprints &&
-      Object.keys(overlaidBlueprints.blueprintsByScenario).length > 0
-        ? overlaidBlueprints
-        : PACKAGE_SAMPLE_BLUEPRINTS,
+    blueprints: settleSampleBlueprints(config?.sample?.blueprints),
   }
   const pathColorPins = {
     ...present(asbDefaultConfig.pathColorPins),

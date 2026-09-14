@@ -181,8 +181,11 @@ describe('what arrives through the deployment config', () => {
     expect(resolved.sample.blueprints).toBe(blueprints)
 
     // And the module every reader goes through answers the deployment's ids
-    // rather than this template's, once the provider has written it.
-    configureSampleBlueprints(resolved.sample.blueprints)
+    // rather than this template's, once the provider has written it. The
+    // fixture rather than the field, because the field may also hold a LOADER
+    // for a registry and this module takes the registry itself; the line above
+    // is what says the two are the same object.
+    configureSampleBlueprints(blueprints)
     expect(hasBlueprintFallback('acme-intake')).toBe(true)
     expect(getFallbackPathsForScenario('acme-intake')).toHaveLength(1)
     expect(getBlueprintFallback('acme-intake')?.cells[0]?.content).toBe(
