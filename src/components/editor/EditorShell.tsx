@@ -19,7 +19,7 @@ import {
 } from '@/components/editor/EditorChrome'
 import { AgentDock, AgentDockDivider } from '@/components/editor/AgentDock'
 import { EditorRail, type SidebarPanel } from '@/components/editor/EditorRail'
-import { AgentSettingsRailButton } from '@/components/editor/AgentPanel'
+import { AgentSettingsRailButton } from '@/components/editor/agent/AgentSettingsRailButton'
 import { ThemeToggle } from '@/components/editor/ThemeToggle'
 import { StoryboardWalkthroughShell } from '@/components/blueprint/StoryboardWalkthroughShell'
 import { CanvasModeProvider } from '@/components/editor/CanvasModeProvider'

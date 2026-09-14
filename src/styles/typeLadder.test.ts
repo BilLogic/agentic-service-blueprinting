@@ -362,7 +362,7 @@ describe('the display floor', () => {
   it('passes xs on editor chrome', () => {
     const sites = classListsIn(
       `<span className="text-xs font-medium text-muted-foreground">Sessions</span>`,
-      'components/editor/AgentPanel.tsx',
+      'components/editor/agent/AgentSessionsView.tsx',
     )
     expect(sites.some((site) => isPresentationSurface(site.file))).toBe(false)
     expect(sites.some((site) => atOrBelowXs(site.classes))).toBe(true)

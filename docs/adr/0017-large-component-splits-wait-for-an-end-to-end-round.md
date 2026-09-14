@@ -1,5 +1,5 @@
 ---
-summary: Three components were long enough to be worth splitting and were deliberately not split until the tests that would catch a split going wrong existed — the hold had an exit condition, not an excuse, and it has now been met: all three flows have CI slices, and the cell detail panel is split.
+summary: Three components long enough to be worth splitting waited for the tests that would catch a split going wrong; the hold had an exit condition rather than an excuse, all three flows now have one, and what each split did is recorded at the end.
 ---
 
 # 17. Large component splits wait for an end-to-end round
@@ -11,7 +11,10 @@ per flow — each held component's flow has a CI slice, and each slice unblocks
 that component's split — and the cell-edit flow is covered; see the end.
 Amended again 2026-09-14 (#747): the annotation-drag flow is covered too — as a
 jsdom slice and as a browser case in the render walk — and the annotation
-layer's split is unblocked; see the end.
+layer's split is unblocked; see the end. Amended again 2026-09-14 (#770): all
+three flows are covered, so the hold is lifted. Amended again 2026-09-14
+(#774): the agent panel is split, and the record now carries an outcome per
+component; see the end.
 **Context** `src/components/editor/CanvasAnnotationLayer.tsx`,
 `src/components/blueprint/BlueprintCellDetailPanel.tsx`,
 `src/components/editor/AgentPanel.tsx`
@@ -347,5 +350,36 @@ in the same shape; every section that derived its fields from
 the cell's facts, the selection, and the callbacks the panel owns — no module
 takes a prop from outside the panel that the panel did not already hold.
 
-**`src/components/editor/AgentPanel.tsx` is the one still to do**, with its
-own slice standing ready as the instrument.
+**`src/components/editor/AgentPanel.tsx` was the one still to do** at that
+point; its split is the amendment below.
+
+## Amended 2026-09-14: the agent panel is split, and the slice held
+
+The third of the three splits this record held is done, and with it every
+component this record named.
+
+**`src/components/editor/AgentPanel.tsx` — split 2026-09-14.** 1462 lines and
+twelve `useState` calls became 60 lines and none (the table at the top of this
+record says 13, which is what a grep for the word returns: it counts the import
+too): the panel file now holds the
+session state machine and the composition (which session is open, the
+persistence it attaches, the choice between the two views) and no view, row or
+dialog at all. The sessions list with its row and its ledger count, the chat
+view with its composer, the transcript's rows and its fold, the rule that
+decides which rows fold, the two session dialogs and the ⚙ rail button are
+modules under `src/components/editor/agent/`, none larger than the chat view's
+647 lines. What crosses each new seam is what the code already
+passed around — a session or the list of them, the transcript's events, a
+callback — and no prop was invented; no persisted row shape moved, and no
+class, test id or aria attribute changed.
+
+The instrument said so: `npm run slice:agent-session` was run before the first
+move and after every one of them, and it passes with no assertion edited —
+including the read-back from `agent_messages` after the panel is closed and
+reopened, which is the assertion a split that dropped a write would fail. The
+harness smoke is unchanged at 13/13. What did have to change is the three
+guards that read the panel BY PATH — the monospace roster and the editor-shell
+type ladder — and that is worth stating as the cost of a split rather than a
+defect: a guard that names a file names it again after the file divides, and
+the shell ladder's batch had to learn to read one folder down or it would have
+stopped asserting anything about this surface at all.
