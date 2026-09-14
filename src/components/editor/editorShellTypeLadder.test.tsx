@@ -64,7 +64,10 @@ function isEditorShell(file: string): boolean {
   if (MENU_PRIMITIVES.has(file)) return true
   if (!file.startsWith('components/editor/')) return false
   const base = file.slice('components/editor/'.length)
-  if (base.includes('/')) return false
+  // `agent/` is the panel's own folder — shell chrome that happens to sit one
+  // level down, so the batch reads it as it read the panel file it came out
+  // of. Any other subfolder is still somebody else's batch.
+  if (base.includes('/')) return base.startsWith('agent/')
   return !SLICE_PRESENTATION.has(base)
 }
 
@@ -257,8 +260,8 @@ describe('surviving leading-* names the geometry that needs it', () => {
 
 describe('the agent panel reseats chrome below UI text', () => {
   it('keeps the Sessions eyebrow on xs and the row title on sm', () => {
-    const source = sourceOf('components/editor/AgentPanel.tsx')
-    const sites = classListsIn(source, 'components/editor/AgentPanel.tsx')
+    const view = 'components/editor/agent/AgentSessionsView.tsx'
+    const sites = classListsIn(sourceOf(view), view)
 
     // The eyebrow's rung is not in this file any more, and that is the point:
     // it is `Eyebrow`, spelled once, after twenty-odd call sites had written
@@ -284,7 +287,8 @@ describe('the agent panel reseats chrome below UI text', () => {
     expect(register?.classes).toContain('text-xs')
     expect(register?.classes).not.toContain('text-sm')
 
-    const rowTitle = sites.find((site) =>
+    const rowFile = 'components/editor/agent/SessionRow.tsx'
+    const rowTitle = classListsIn(sourceOf(rowFile), rowFile).find((site) =>
       classListHas(site.classes, [
         'truncate',
         'group-hover/session:text-sidebar-accent-foreground',

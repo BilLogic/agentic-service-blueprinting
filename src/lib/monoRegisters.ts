@@ -50,8 +50,12 @@ export const REGISTER_1: readonly NamedSurface[] = [
     because: 'error payload shown as the stored text it is',
   },
   {
-    file: 'components/editor/AgentPanel.tsx',
+    file: 'components/editor/agent/TranscriptRow.tsx',
     because: 'tool names, arguments and result blocks',
+  },
+  {
+    file: 'components/editor/agent/AgentChatView.tsx',
+    because: 'the recognized /command, in the composer and in its menu',
   },
   {
     file: 'components/editor/AgentProviderFields.tsx',
@@ -158,7 +162,7 @@ export const TABULAR_WITHOUT_MONO: readonly NamedSurface[] = [
     because: 'picked-cell count on a prose button, not a numeral column',
   },
   {
-    file: 'components/editor/AgentPanel.tsx',
+    file: 'components/editor/agent/ChangeCount.tsx',
     because: 'session change count next to an icon, not a numeral column',
   },
   {
