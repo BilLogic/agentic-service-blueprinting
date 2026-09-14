@@ -4,12 +4,16 @@ import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { resolveDeploymentConfig } from './deploymentConfig'
 import {
+  configureSampleBlueprints,
   getBlueprintFallback,
   getFallbackPathsForScenario,
   hasBlueprintFallback,
+  SAMPLE_SCENARIO_ID,
+  type SampleBlueprintRegistry,
 } from './data/blueprintFallbacks'
 import { agentDoctrine, configureAgentDoctrine } from './lib/agent/doctrine'
 import { configureAgentReferences, readReference, referenceNames } from './lib/agent/tools/references'
+import type { BlueprintData } from './types/blueprint'
 import type { CoverContent } from './components/cover/coverModel'
 import type { NavItem } from './types/nav'
 
@@ -56,7 +60,7 @@ const VERDICTS: Record<string, Verdict> = {
   'config.ts': 'config',
   'content/coverContent.ts': 'config',
   'data/sampleNav.ts': 'config',
-  'data/blueprintFallbacks.ts': 'bundled sample',
+  'data/blueprintFallbacks.ts': 'config',
   'data/sliceFallbacks.ts': 'bundled sample',
   'data/sampleBlueprint.ts': 'bundled sample',
   'types/database.ts': 'compile time only',
@@ -97,12 +101,41 @@ describe('what arrives through the deployment config', () => {
     { id: 'acme-intake', index: 1, label: 'Intake', summary: 'How work arrives.' },
   ]
 
+  const acmeBoard: BlueprintData = {
+    path: {
+      id: 'acme-intake-usual',
+      name: 'The usual way',
+      summary: null,
+      note: null,
+      kind: 'happy',
+      status: 'live',
+    },
+    lanes: [{ id: 'acme-lane', name: 'Client', role: 'customer', position: 1 }],
+    steps: [{ id: 'acme-step', name: 'Ask', position: 1 }],
+    cells: [
+      {
+        id: 'acme-cell',
+        lane_id: 'acme-lane',
+        step_id: 'acme-step',
+        content: 'The ask arrives',
+        frame: null,
+        summary: null,
+      },
+    ],
+    dependencies: [],
+  }
+
+  const blueprints: SampleBlueprintRegistry = {
+    blueprintsByScenario: { 'acme-intake': [acmeBoard] },
+  }
+
   // Two of the readers below hold module-level state the config provider sets
   // at boot; each test leaves it the way it found it, whatever the assertions
   // did — the same reset the agent reference tests make.
   afterEach(() => {
     configureAgentDoctrine(undefined)
     configureAgentReferences(undefined)
+    configureSampleBlueprints(undefined)
   })
 
   /**
@@ -133,6 +166,29 @@ describe('what arrives through the deployment config', () => {
     const resolved = resolveDeploymentConfig({ sample: { nav } })
 
     expect(resolved.sample.nav).toEqual(nav)
+  })
+
+  /**
+   * `data/blueprintFallbacks.ts`: the CONTENT behind that navigation, and the
+   * half that used to have no home. The nav replaces rather than merges, so a
+   * deployment that supplied one and nothing else drew its own rows over this
+   * template's registry — which answers none of its ids — and got an empty
+   * canvas (#754). The registry is carried by reference, the way the cover is.
+   */
+  it('carries the offline board behind that navigation', () => {
+    const resolved = resolveDeploymentConfig({ sample: { nav, blueprints } })
+
+    expect(resolved.sample.blueprints).toBe(blueprints)
+
+    // And the module every reader goes through answers the deployment's ids
+    // rather than this template's, once the provider has written it.
+    configureSampleBlueprints(resolved.sample.blueprints)
+    expect(hasBlueprintFallback('acme-intake')).toBe(true)
+    expect(getFallbackPathsForScenario('acme-intake')).toHaveLength(1)
+    expect(getBlueprintFallback('acme-intake')?.cells[0]?.content).toBe(
+      'The ask arrives',
+    )
+    expect(hasBlueprintFallback(SAMPLE_SCENARIO_ID)).toBe(false)
   })
 
   /**
@@ -174,22 +230,22 @@ describe('what arrives through the deployment config', () => {
   })
 
   /**
-   * All four at once, and nothing under `src` to carry any of them: the org
-   * name, the role, the references and the sample navigation are the four
-   * files a deployment kept inside the application tree, and each has a home
-   * on the config now. This is the shape a deployment with no residents
-   * supplies.
+   * All five at once, and nothing under `src` to carry any of them: the org
+   * name, the role, the references and the two halves of the offline board are
+   * what a deployment kept inside the application tree, and each has a home on
+   * the config now. This is the shape a deployment with no residents supplies.
    */
-  it('carries the four owned inputs together, with no file in the application tree', () => {
+  it('carries the owned inputs together, with no file in the application tree', () => {
     const resolved = resolveDeploymentConfig({
       brand: { name: 'Acme Service Design' },
       agent: { doctrine: 'House rules.', references: { blueprint: '# Acme' } },
-      sample: { nav },
+      sample: { nav, blueprints },
     })
     expect(resolved.brand.name).toBe('Acme Service Design')
     expect(resolved.agent?.doctrine).toBe('House rules.')
     expect(resolved.agent?.references).toEqual({ blueprint: '# Acme' })
     expect(resolved.sample.nav).toEqual(nav)
+    expect(resolved.sample.blueprints).toBe(blueprints)
   })
 })
 
@@ -282,12 +338,15 @@ describe('the modules that still read the template’s own name', () => {
 
 describe('the bundled sample', () => {
   /**
-   * The three sample modules have no field on the config, and need none. Every
-   * lookup into them is keyed by an identifier, and the identifiers are this
-   * template's own — generated for its meta-blueprint. A deployment's scenario
-   * and path ids are not among them, so the registry answers a deployment the
-   * same way an empty one would, on every surface that consults it without
-   * first asking whether a database exists.
+   * The two content modules under the registry have no field of their own, and
+   * need none: they are what the registry the config CARRIES is made of, and a
+   * deployment that supplies `sample.blueprints` never reaches them. What holds
+   * for a deployment that supplies nothing is the sentence below. Every lookup
+   * into the package's registry is keyed by an identifier, and the identifiers
+   * are this template's own — generated for its meta-blueprint. A deployment's
+   * scenario and path ids are not among them, so the registry answers a
+   * deployment the same way an empty one would, on every surface that consults
+   * it without first asking whether a database exists.
    *
    * That second clause is the load-bearing one, and it is why this is a test
    * rather than a sentence. Most readers of these modules do ask — the board,
@@ -310,9 +369,7 @@ describe('the bundled sample', () => {
    * And it answers something to its own, so the test above is a statement
    * about the keys rather than about an empty registry.
    */
-  it('answers its own', async () => {
-    const { SAMPLE_SCENARIO_ID } = await import('./data/blueprintFallbacks')
-
+  it('answers its own', () => {
     expect(hasBlueprintFallback(SAMPLE_SCENARIO_ID)).toBe(true)
     expect(getFallbackPathsForScenario(SAMPLE_SCENARIO_ID).length).toBeGreaterThan(0)
   })

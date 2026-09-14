@@ -45,6 +45,11 @@ else the package's.
 package's file at the same path. Every resident is listed with a reason —
 owned, or diverged with a ticket.
 
+**Sample registry** — the offline board's content: every path of every
+scenario, keyed by scenario id, read whenever no database is configured. A
+deployment supplies its own on `sample.blueprints`, beside the `sample.nav`
+that lists those scenarios; omitted, the package's own stands.
+
 **Subject** — a named tree a check measures, with its rule: where its root is,
 which files are its, and what "cannot see the subject" means there — a skip
 said out loud, or a failure. The sweep answers eight (the application, the
