@@ -6,7 +6,9 @@ summary: Three components are long enough to be worth splitting and are delibera
 
 **Status** Accepted — 2026-08-26. Moved into this repository from
 BilLogic/plus-uno-blueprint ADR 0008 on 2026-09-10 (#551); the number
-here is this repository's.
+here is this repository's. Amended 2026-09-13 (#699): the exit condition is
+per flow — each held component's flow has a CI slice, and each slice unblocks
+that component's split — and the cell-edit flow is covered; see the end.
 **Context** `src/components/editor/CanvasAnnotationLayer.tsx`,
 `src/components/blueprint/BlueprintCellDetailPanel.tsx`,
 `src/components/editor/AgentPanel.tsx`
@@ -64,6 +66,9 @@ looks right, the guards are green, and the thing is broken in the browser.
 
 ## The exit condition
 
+*Superseded 2026-09-13 (#699) — the exit is per flow now; see the amendment at
+the end. The original condition stands here as it was written.*
+
 Split them when a green end-to-end round covers the three flows they own —
 annotation drag, an agent session, and a cell edit with its revert. That round
 is the prerequisite, not a nice-to-have, and it is worth doing on its own merits
@@ -77,3 +82,31 @@ structural split of the whole file.
 
 This is not a claim that the files are fine. They are long, and the length
 costs. It is a claim about ordering: the instrument comes before the surgery.
+
+## Amended 2026-09-13: the exit is per flow, and one flow is covered
+
+The exit condition above asked for one green end-to-end round over all three
+flows before any of the three files could be split. That made the first slice
+worth nothing until the last landed, which is how a prerequisite becomes an
+excuse. The condition is now per flow: **each held component's flow has a CI
+slice, and each slice unblocks that component's split.** A slice is a test that
+drives the flow through the real code at every layer the split would move,
+fails on a wrong read-back, and runs on every pull request.
+
+**Cell edit with revert — covered.** `src/slices/cellEditRevert.slice.test.tsx`
+edits a cell from the real panel over the real cell-detail provider, saves
+through the one save and the real content and spec mutations, reverts each
+change from the real change sheet through the real `executeRevert`, and reads
+the row back column for column. CI runs it as `npm run slice:cell-edit` (and
+inside `npm test`). The database is an in-memory table behind the calls the
+flow makes, and two leaf reads the panel makes (value audiences, registry
+placements) are stubbed — the fallback #699 named. The primary form, the same
+flow against standalone PostgREST over the CI Postgres with the dev authoring
+key, was not attempted: the stack carries no PostgREST binary and mints no
+service claim, so building it is its own piece of work, and it is filed as
+#734 with the runtime measurement as its first step. What the fake cannot see
+— a grant, a policy — `check:seed-load` asks the real database, as the author,
+for every column this slice writes. The cell panel's split is unblocked.
+
+**Annotation drag** and **an agent session** — not covered; those two files
+stay held until their slices land.

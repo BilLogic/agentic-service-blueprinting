@@ -70,6 +70,11 @@ jobs:
       # The agent harness's keyless rehearsal: the loop's gates and the
       # sample reads through the bundled app surface, no provider involved.
       - run: npm run agent:harness:smoke
+      # The cell-edit-with-revert slice: the real panel edits a cell, the real
+      # save and ledger land and revert it, and the row reads back as it was,
+      # over an in-memory table. Also part of `npm test`; named here so a red
+      # run says which flow broke.
+      - run: npm run slice:cell-edit
       # The write tools post their
       # arguments BY NAME, and PostgREST resolves an RPC by matching those
       # names to a function's parameters. A key the function does not have is

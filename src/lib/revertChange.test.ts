@@ -1,4 +1,3 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import {
@@ -9,7 +8,7 @@ import {
   type SessionEntry,
 } from '@/lib/authoringSession'
 import { executeRevert } from '@/lib/revertChange'
-import type { Database } from '@/types/database'
+import { inMemoryDatabase, type Row } from '@/test/inMemoryDatabase'
 
 /**
  * The first undo of a first summary.
@@ -26,59 +25,10 @@ import type { Database } from '@/types/database'
  * thing three times rather than once: the empty string is the value, and the
  * write that clears the column actually runs.
  */
-type Row = Record<string, unknown>
-
+/** The one in-memory fake, keyed by the table each case writes. */
 function fakeClient(table: string, rows: Row[]) {
-  const updates: Array<{ table: string; patch: Row; filters: Row }> = []
-  /** Every RPC the revert issued, in order, with the arguments it sent. */
-  const calls: Array<{ fn: string; args: Row }> = []
-
-  const client = {
-    rpc(fn: string, args: Row) {
-      calls.push({ fn, args })
-      // `sync_cell_touchpoints` answers with what it removed; nothing here
-      // removes anything, and a revert's own sync must not record a second
-      // inverse anyway.
-      return Promise.resolve({ data: { removed: [] }, error: null })
-    },
-    from(from: string) {
-      return {
-        update(patch: Row) {
-          const filters: Row = {}
-          let selected = false
-          const api = {
-            eq(column: string, value: unknown) {
-              filters[column] = value
-              return api
-            },
-            select(_columns?: string) {
-              selected = true
-              return api
-            },
-            then(onFulfilled: (value: unknown) => unknown) {
-              const hit =
-                from === table
-                  ? rows.filter((row) =>
-                      Object.entries(filters).every(
-                        (entry) => row[entry[0]] === entry[1],
-                      ),
-                    )
-                  : []
-              for (const row of hit) Object.assign(row, patch)
-              updates.push({ table: from, patch, filters })
-              return Promise.resolve({
-                data: selected ? hit : null,
-                error: null,
-              }).then(onFulfilled)
-            },
-          }
-          return api
-        },
-      }
-    },
-  } as unknown as SupabaseClient<Database>
-
-  return { client, updates, calls }
+  const { client, updates, rpcs } = inMemoryDatabase({ [table]: rows })
+  return { client, updates, calls: rpcs }
 }
 
 /**
