@@ -1,14 +1,14 @@
 ---
 audience: designers, developers
-summary: The icon rail's two groups, the one disclosure vocabulary every twisty in the sidebar obeys, the slices section, where path selection went and what it kept, the single persisted width shared by all three surfaces, and the narrow-viewport posture where the panel floats over the canvas.
-sources: src/components/editor/EditorRail.tsx, src/components/editor/SidebarNav.tsx, src/components/editor/PathSelectorMenu.tsx, src/components/editor/SlicesSidebarSection.tsx, src/lib/layoutTokens.ts, src/lib/canvasChromeResize.ts, src/hooks/useSidebarOverlay.ts
+summary: The icon rail's two groups, the one disclosure vocabulary every twisty in the sidebar obeys, the slices section, where path selection went and what it kept, the single persisted width shared by all three surfaces, and the collapse that never moves the camera.
+sources: src/components/editor/EditorRail.tsx, src/components/editor/SidebarNav.tsx, src/components/editor/PathSelectorMenu.tsx, src/components/editor/SlicesSidebarSection.tsx, src/lib/layoutTokens.ts, src/lib/canvasChromeResize.ts
 claims:
   - src/components/editor/EditorRail.tsx
   - src/components/editor/EditorSidebarRail.tsx
   - src/components/editor/SidebarNav.tsx
   - src/components/editor/SlicesSidebarSection.tsx
   - src/components/editor/StructureRowMenu.tsx
-last-reviewed: 2026-08-26
+last-reviewed: 2026-09-14
 ---
 
 # Sidebar
