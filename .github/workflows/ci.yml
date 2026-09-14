@@ -75,6 +75,15 @@ jobs:
       # over an in-memory table. Also part of `npm test`; named here so a red
       # run says which flow broke.
       - run: npm run slice:cell-edit
+      # The agent-session slice: a person opens the real agent panel, sends a
+      # message, and the real loop — driven by the scripted provider #694
+      # introduced, no network and no key — runs a read tool and then a write
+      # tool. The panel renders the turn and each call's result, the write
+      # lands on the ledger with the session's attribution and is reverted
+      # from the real change sheet, and the transcript survives a close and
+      # reopen. Same in-memory table as the step above. Also part of
+      # `npm test`; named here so a red run says which flow broke.
+      - run: npm run slice:agent-session
       # The write tools post their
       # arguments BY NAME, and PostgREST resolves an RPC by matching those
       # names to a function's parameters. A key the function does not have is

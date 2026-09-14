@@ -296,6 +296,27 @@ export async function hydrateAgentTranscript(sessionId: string): Promise<void> {
 }
 
 /**
+ * Forget a session's in-process run — its transcript events, its
+ * provider-side messages, and its once-per-load hydrate mark.
+ *
+ * The app never calls this: a session stays in memory for the life of the
+ * tab, which is why reopening one from the sessions list re-renders the run
+ * it already has rather than reading anything back. That makes it the seam a
+ * test needs to prove PERSISTENCE rather than memory — forget the run and
+ * the next open is where another browser starts from: nothing here,
+ * everything in `agent_messages`, through `hydrateAgentTranscript`.
+ */
+export function forgetAgentRun(sessionId: string): void {
+  runs.delete(sessionId)
+  snapshots.delete(sessionId)
+  hydrated.delete(sessionId)
+  pendingHydrates.delete(sessionId)
+  hydratingTranscripts.delete(sessionId)
+  emit()
+  notifyTranscriptHydration()
+}
+
+/**
  * Transcript-row detail text. Capped: a row is a reviewer's peek at the
  * payload, not a place to hold a megabyte of tool output in memory.
  */

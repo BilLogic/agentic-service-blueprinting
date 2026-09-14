@@ -44,6 +44,7 @@
     "check:pinned-shapes": "node scripts/check-pinned-shapes.mjs",
     "test:ir": "bash scripts/tests/run_tests.sh",
     "slice:cell-edit": "vitest run src/slices/cellEditRevert.slice.test.tsx",
+    "slice:agent-session": "vitest run src/slices/agentSession.slice.test.tsx",
     "slice:cell-edit:postgrest": "node scripts/run-slice-over-postgrest.mjs --prove",
     "version": "changeset version && node scripts/check-version-agreement.mjs --write",
     "preview": "vite preview",
