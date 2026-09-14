@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import type { StickyAnnotation } from '@/lib/canvasAnnotations'
 import { useFocusTextarea } from '@/hooks/useFocusTextarea'
 import { ResizeHandles } from '@/components/editor/CanvasAnnotationResizeHandles'
-import { StickyStyleBar } from '@/components/editor/StickyStyleBar'
+import { AnnotationStickyStyleBar } from '@/components/editor/AnnotationStickyStyleBar'
 import type { MovableProps } from '@/components/editor/canvasAnnotationNodeProps'
 
 /** A sticky note: a coloured square that is a textarea all the way through. */
@@ -35,7 +35,7 @@ export function StickyAnnotationNode({
   return (
     <>
       {showChrome ? (
-        <StickyStyleBar
+        <AnnotationStickyStyleBar
           sticky={annotation}
           zoom={zoom}
           onChange={onUpdate}

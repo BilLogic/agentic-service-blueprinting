@@ -306,9 +306,9 @@ test('nothing outside the ramp-owning layers reaches a ramp step through var()',
  *
  * One file that measured as an offender is fixed rather than listed:
  * `CanvasAnnotationLayer.tsx` spelled absolute white all through the
- * annotation bars — `ShapeStyleBar.tsx` and its two siblings now, which is
- * also where the one var-ramp exemption below sits — while `semantic.css`
- * already declared the mode-invariant ink
+ * annotation bars — `AnnotationShapeStyleBar.tsx` and its two siblings now,
+ * which is also where the one var-ramp exemption below sits — while
+ * `semantic.css` already declared the mode-invariant ink
  * ladder those bars sit on (`--foreground-annotation-chrome` and its rungs),
  * every rung the same white at an alpha the call sites already carried. It
  * consumes the ladder now, which is a rename rather than a retune.
@@ -346,7 +346,7 @@ const VAR_PRIMITIVE_EXEMPT_FILES: ReadonlyArray<{
   because: string
 }> = [
   {
-    file: 'components/editor/ShapeStyleBar.tsx',
+    file: 'components/editor/AnnotationShapeStyleBar.tsx',
     because:
       'the line-style preview swatch, shown at `--color-gray-700` until a stroke colour is chosen — it stands in for a swatch the user has not picked yet, so it is one member of the swatch set rather than a role',
   },

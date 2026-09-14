@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import type { TextAnnotation } from '@/lib/canvasAnnotations'
 import { useFocusTextarea } from '@/hooks/useFocusTextarea'
 import { ResizeHandles } from '@/components/editor/CanvasAnnotationResizeHandles'
-import { TextStyleBar } from '@/components/editor/TextStyleBar'
+import { AnnotationTextStyleBar } from '@/components/editor/AnnotationTextStyleBar'
 import type { MovableProps } from '@/components/editor/canvasAnnotationNodeProps'
 
 /** Bare type on the board, which shows its editor until it holds something. */
@@ -45,7 +45,7 @@ export function TextAnnotationNode({
   return (
     <>
       {showChrome ? (
-        <TextStyleBar
+        <AnnotationTextStyleBar
           text={annotation}
           zoom={zoom}
           width={approxWidth}

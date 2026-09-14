@@ -22,14 +22,14 @@ import {
 } from '@/components/ui/popover'
 import {
   AnnotationStyleBarFrame,
-  ShapeToolbarDivider,
-  ShapeToolbarTooltip,
+  AnnotationBarDivider,
+  AnnotationBarTooltip,
 } from '@/components/editor/CanvasAnnotationBarChrome'
 import {
-  SHAPE_TOOLBAR_ICON_BUTTON_CLASS,
-  SHAPE_TOOLBAR_ITEM_CLASS,
-  SHAPE_TOOLBAR_MENU_CLASS,
-  SHAPE_TOOLBAR_TRIGGER_CLASS,
+  ANNOTATION_BAR_ICON_BUTTON_CLASS,
+  ANNOTATION_BAR_ITEM_CLASS,
+  ANNOTATION_BAR_MENU_CLASS,
+  ANNOTATION_BAR_TRIGGER_CLASS,
 } from '@/components/editor/canvasAnnotationChromeStyles'
 import {
   ColorSwatch,
@@ -38,7 +38,7 @@ import {
 import { cn } from '@/lib/utils'
 
 /** Compact Figma-style shape controls: type · fill · stroke · delete. */
-export function ShapeStyleBar({
+export function AnnotationShapeStyleBar({
   shape,
   zoom,
   onChange,
@@ -63,25 +63,25 @@ export function ShapeStyleBar({
       zoom={zoom}
     >
       <DropdownMenu>
-        <ShapeToolbarTooltip label="Shape">
+        <AnnotationBarTooltip label="Shape">
           <DropdownMenuTrigger
             aria-label="Shape"
-            className={SHAPE_TOOLBAR_TRIGGER_CLASS}
+            className={ANNOTATION_BAR_TRIGGER_CLASS}
           >
             <ShapeIcon className="size-4" strokeWidth={2} aria-hidden />
             <ChevronDown className="size-3 opacity-80" aria-hidden />
           </DropdownMenuTrigger>
-        </ShapeToolbarTooltip>
+        </AnnotationBarTooltip>
         <DropdownMenuContent
           align="start"
           side="top"
           sideOffset={8}
-          className={cn('min-w-36', SHAPE_TOOLBAR_MENU_CLASS)}
+          className={cn('min-w-36', ANNOTATION_BAR_MENU_CLASS)}
           data-annotation-chrome=""
         >
           <DropdownMenuItem
             onClick={() => onChange({ type: 'rect' })}
-            className={SHAPE_TOOLBAR_ITEM_CLASS}
+            className={ANNOTATION_BAR_ITEM_CLASS}
           >
             <Square className="size-4" aria-hidden />
             Rectangle
@@ -91,7 +91,7 @@ export function ShapeStyleBar({
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => onChange({ type: 'ellipse' })}
-            className={SHAPE_TOOLBAR_ITEM_CLASS}
+            className={ANNOTATION_BAR_ITEM_CLASS}
           >
             <Circle className="size-4" aria-hidden />
             Ellipse
@@ -102,13 +102,13 @@ export function ShapeStyleBar({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <ShapeToolbarDivider />
+      <AnnotationBarDivider />
 
       <Popover open={fillOpen} onOpenChange={setFillOpen}>
-        <ShapeToolbarTooltip label="Fill">
+        <AnnotationBarTooltip label="Fill">
           <PopoverTrigger
             aria-label="Fill"
-            className={SHAPE_TOOLBAR_TRIGGER_CLASS}
+            className={ANNOTATION_BAR_TRIGGER_CLASS}
           >
             <span
               className={cn(
@@ -120,12 +120,12 @@ export function ShapeStyleBar({
             />
             <ChevronDown className="size-3 opacity-80" aria-hidden />
           </PopoverTrigger>
-        </ShapeToolbarTooltip>
+        </AnnotationBarTooltip>
         <PopoverContent
           align="center"
           side="top"
           sideOffset={8}
-          className={cn('w-auto min-w-0 p-2.5', SHAPE_TOOLBAR_MENU_CLASS)}
+          className={cn('w-auto min-w-0 p-2.5', ANNOTATION_BAR_MENU_CLASS)}
           data-annotation-chrome=""
           onMouseDown={(e) => e.preventDefault()}
         >
@@ -158,13 +158,13 @@ export function ShapeStyleBar({
         </PopoverContent>
       </Popover>
 
-      <ShapeToolbarDivider />
+      <AnnotationBarDivider />
 
       <Popover open={strokeOpen} onOpenChange={setStrokeOpen}>
-        <ShapeToolbarTooltip label="Line style">
+        <AnnotationBarTooltip label="Line style">
           <PopoverTrigger
             aria-label="Line style"
-            className={SHAPE_TOOLBAR_TRIGGER_CLASS}
+            className={ANNOTATION_BAR_TRIGGER_CLASS}
           >
             <span
               className="flex size-4 flex-col items-center justify-center gap-[2.5px]"
@@ -185,12 +185,12 @@ export function ShapeStyleBar({
             </span>
             <ChevronDown className="size-3 opacity-80" aria-hidden />
           </PopoverTrigger>
-        </ShapeToolbarTooltip>
+        </AnnotationBarTooltip>
         <PopoverContent
           align="center"
           side="top"
           sideOffset={8}
-          className={cn('w-auto min-w-0 p-2.5', SHAPE_TOOLBAR_MENU_CLASS)}
+          className={cn('w-auto min-w-0 p-2.5', ANNOTATION_BAR_MENU_CLASS)}
           data-annotation-chrome=""
           onMouseDown={(e) => e.preventDefault()}
         >
@@ -247,18 +247,18 @@ export function ShapeStyleBar({
         </PopoverContent>
       </Popover>
 
-      <ShapeToolbarDivider />
+      <AnnotationBarDivider />
 
-      <ShapeToolbarTooltip label="Delete">
+      <AnnotationBarTooltip label="Delete">
         <button
           type="button"
           aria-label="Delete shape"
           onClick={onDelete}
-          className={SHAPE_TOOLBAR_ICON_BUTTON_CLASS}
+          className={ANNOTATION_BAR_ICON_BUTTON_CLASS}
         >
           <Trash2 className="size-3.5" aria-hidden />
         </button>
-      </ShapeToolbarTooltip>
+      </AnnotationBarTooltip>
     </AnnotationStyleBarFrame>
   )
 }

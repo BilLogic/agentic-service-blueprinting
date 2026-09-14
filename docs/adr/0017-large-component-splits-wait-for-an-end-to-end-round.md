@@ -295,7 +295,7 @@ hook, which goes to `src/hooks/` with the rest of them:
 | the colour and stroke-weight pickers | `CanvasAnnotationSwatches.tsx` |
 | the four corner grips | `CanvasAnnotationResizeHandles.tsx` |
 | the plate, rule and tooltip the bars share | `CanvasAnnotationBarChrome.tsx`, over `canvasAnnotationChromeStyles.ts` |
-| the three style bars | `ShapeStyleBar.tsx`, `StickyStyleBar.tsx`, `TextStyleBar.tsx` |
+| the three style bars | `AnnotationShapeStyleBar.tsx`, `AnnotationStickyStyleBar.tsx`, `AnnotationTextStyleBar.tsx` |
 | the three annotation nodes | `ShapeAnnotationNode.tsx`, `StickyAnnotationNode.tsx`, `TextAnnotationNode.tsx` |
 | what passes between the layer and a node | `canvasAnnotationNodeProps.ts` |
 

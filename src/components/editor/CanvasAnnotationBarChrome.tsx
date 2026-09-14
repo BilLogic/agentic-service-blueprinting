@@ -39,7 +39,7 @@ export function AnnotationStyleBarFrame({
   )
 }
 
-export function ShapeToolbarDivider() {
+export function AnnotationBarDivider() {
   return (
     <div
       className="mx-0.5 h-4 w-px shrink-0 bg-(--border-annotation-chrome-divider)"
@@ -55,7 +55,7 @@ export function ShapeToolbarDivider() {
  * repainted to match — the one place in the app that overrides the tooltip
  * surface, and the reason `IconTooltip` takes a className at all.
  */
-export function ShapeToolbarTooltip({
+export function AnnotationBarTooltip({
   label,
   children,
 }: {

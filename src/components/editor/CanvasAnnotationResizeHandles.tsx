@@ -14,7 +14,8 @@ const RESIZE_CURSOR: Record<ResizeHandle, string> = {
   se: 'nwse-resize',
 }
 
-export function ResizeHandles({  onResizeStart,
+export function ResizeHandles({
+  onResizeStart,
 }: {
   onResizeStart: (
     handle: ResizeHandle,

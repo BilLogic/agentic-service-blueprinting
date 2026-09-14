@@ -15,19 +15,19 @@ import {
 } from '@/components/ui/popover'
 import {
   AnnotationStyleBarFrame,
-  ShapeToolbarDivider,
-  ShapeToolbarTooltip,
+  AnnotationBarDivider,
+  AnnotationBarTooltip,
 } from '@/components/editor/CanvasAnnotationBarChrome'
 import {
-  SHAPE_TOOLBAR_ICON_BUTTON_CLASS,
-  SHAPE_TOOLBAR_MENU_CLASS,
-  SHAPE_TOOLBAR_TRIGGER_CLASS,
+  ANNOTATION_BAR_ICON_BUTTON_CLASS,
+  ANNOTATION_BAR_MENU_CLASS,
+  ANNOTATION_BAR_TRIGGER_CLASS,
 } from '@/components/editor/canvasAnnotationChromeStyles'
 import { ColorSwatch } from '@/components/editor/CanvasAnnotationSwatches'
 import { cn } from '@/lib/utils'
 
 /** FigJam-style sticky controls: color · size · bold · strike · delete. */
-export function StickyStyleBar({
+export function AnnotationStickyStyleBar({
   sticky,
   zoom,
   onChange,
@@ -50,10 +50,10 @@ export function StickyStyleBar({
       zoom={zoom}
     >
       <Popover open={colorOpen} onOpenChange={setColorOpen}>
-        <ShapeToolbarTooltip label="Color">
+        <AnnotationBarTooltip label="Color">
           <PopoverTrigger
             aria-label="Color"
-            className={SHAPE_TOOLBAR_TRIGGER_CLASS}
+            className={ANNOTATION_BAR_TRIGGER_CLASS}
           >
             <span
               className="size-4 rounded-full border border-(--border-annotation-chrome)"
@@ -62,12 +62,12 @@ export function StickyStyleBar({
             />
             <ChevronDown className="size-3 opacity-80" aria-hidden />
           </PopoverTrigger>
-        </ShapeToolbarTooltip>
+        </AnnotationBarTooltip>
         <PopoverContent
           align="center"
           side="top"
           sideOffset={8}
-          className={cn('w-auto min-w-0 p-2.5', SHAPE_TOOLBAR_MENU_CLASS)}
+          className={cn('w-auto min-w-0 p-2.5', ANNOTATION_BAR_MENU_CLASS)}
           data-annotation-chrome=""
           onMouseDown={(e) => e.preventDefault()}
         >
@@ -91,23 +91,23 @@ export function StickyStyleBar({
         </PopoverContent>
       </Popover>
 
-      <ShapeToolbarDivider />
+      <AnnotationBarDivider />
 
       <Popover open={sizeOpen} onOpenChange={setSizeOpen}>
-        <ShapeToolbarTooltip label="Text size">
+        <AnnotationBarTooltip label="Text size">
           <PopoverTrigger
             aria-label="Text size"
-            className={cn(SHAPE_TOOLBAR_TRIGGER_CLASS, 'min-w-[4.75rem]')}
+            className={cn(ANNOTATION_BAR_TRIGGER_CLASS, 'min-w-[4.75rem]')}
           >
             <span className="text-sm font-medium tracking-tight">{sizeLabel}</span>
             <ChevronDown className="size-3 opacity-80" aria-hidden />
           </PopoverTrigger>
-        </ShapeToolbarTooltip>
+        </AnnotationBarTooltip>
         <PopoverContent
           align="center"
           side="top"
           sideOffset={8}
-          className={cn('w-auto min-w-36 p-1', SHAPE_TOOLBAR_MENU_CLASS)}
+          className={cn('w-auto min-w-36 p-1', ANNOTATION_BAR_MENU_CLASS)}
           data-annotation-chrome=""
           onMouseDown={(e) => e.preventDefault()}
         >
@@ -133,50 +133,50 @@ export function StickyStyleBar({
         </PopoverContent>
       </Popover>
 
-      <ShapeToolbarDivider />
+      <AnnotationBarDivider />
 
-      <ShapeToolbarTooltip label="Bold">
+      <AnnotationBarTooltip label="Bold">
         <button
           type="button"
           aria-label="Bold"
           aria-pressed={Boolean(sticky.bold)}
           onClick={() => onChange({ bold: !sticky.bold })}
           className={cn(
-            SHAPE_TOOLBAR_TRIGGER_CLASS,
+            ANNOTATION_BAR_TRIGGER_CLASS,
             sticky.bold && 'bg-(--wash-annotation-chrome-strong)',
           )}
         >
           <Bold className="size-3.5" aria-hidden />
         </button>
-      </ShapeToolbarTooltip>
+      </AnnotationBarTooltip>
 
-      <ShapeToolbarTooltip label="Strikethrough">
+      <AnnotationBarTooltip label="Strikethrough">
         <button
           type="button"
           aria-label="Strikethrough"
           aria-pressed={Boolean(sticky.strike)}
           onClick={() => onChange({ strike: !sticky.strike })}
           className={cn(
-            SHAPE_TOOLBAR_TRIGGER_CLASS,
+            ANNOTATION_BAR_TRIGGER_CLASS,
             sticky.strike && 'bg-(--wash-annotation-chrome-strong)',
           )}
         >
           <Strikethrough className="size-3.5" aria-hidden />
         </button>
-      </ShapeToolbarTooltip>
+      </AnnotationBarTooltip>
 
-      <ShapeToolbarDivider />
+      <AnnotationBarDivider />
 
-      <ShapeToolbarTooltip label="Delete">
+      <AnnotationBarTooltip label="Delete">
         <button
           type="button"
           aria-label="Delete sticky"
           onClick={onDelete}
-          className={SHAPE_TOOLBAR_ICON_BUTTON_CLASS}
+          className={ANNOTATION_BAR_ICON_BUTTON_CLASS}
         >
           <Trash2 className="size-3.5" aria-hidden />
         </button>
-      </ShapeToolbarTooltip>
+      </AnnotationBarTooltip>
     </AnnotationStyleBarFrame>
   )
 }
