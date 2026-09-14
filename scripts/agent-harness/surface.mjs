@@ -13,39 +13,21 @@
  * write roster its trace checks count against. An ES module evaluates once, so
  * two importers still pay for one bundle.
  */
-import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { appLayers, sweep } from '../sweep.mjs'
-
 /**
- * Vite's `?raw` import, for the bundler that is not Vite. The app reads its
- * reference documents as text this way, and a tool definition carries its
- * `run` beside its spec — so the spec table now reaches the readers, and the
- * readers reach the documents. Without this, the surface bundle fails on the
- * first `.md?raw` it meets; with it, the document is the string it is in the
- * browser.
+ * Vite's `?raw` and asset imports, for the bundler that is not Vite — the
+ * published loader, imported BY PACKAGE NAME the way `vite.config.ts` imports
+ * the overlay, so this run proves the module a consumer's harness is handed.
+ * The app reads its reference documents as text that way, and a tool
+ * definition carries its `run` beside its spec, so the spec table reaches the
+ * readers and the readers reach the documents; the cell-budget module reads
+ * the deployment config, which names the cover's figures. Without the loader
+ * the surface bundle fails on the first `.md?raw` it meets.
  */
-const RAW_SUFFIX = '?raw'
-/**
- * Vite's asset imports, likewise. The cell-budget module reads the
- * deployment config, and the config names the cover's figures — SVGs the
- * harness never draws. Each is the URL string it would be in the browser,
- * which is what an asset import evaluates to there.
- */
-const ASSET = /\.(?:svg|png|jpe?g|gif|webp|woff2?)$/
-const viteImports = {
-  name: 'vite-imports',
-  load(id) {
-    if (id.endsWith(RAW_SUFFIX)) {
-      const text = readFileSync(id.slice(0, -RAW_SUFFIX.length), 'utf8')
-      return `export default ${JSON.stringify(text)}`
-    }
-    if (ASSET.test(id)) return `export default ${JSON.stringify(id)}`
-    return null
-  },
-}
+import { viteImportsPlugin } from 'agentic-service-blueprinting/vite-imports'
 
 /** The tree the harness runs in: the working directory — never this file's location; `sweep.mjs` says why. */
 const ROOT = process.cwd()
@@ -71,7 +53,7 @@ async function loadAppSurface() {
     input: ENTRY,
     // Honor tsconfig's `@/*` path alias, on whichever root holds the application.
     resolve: { alias: { '@': firstLayer } },
-    plugins: [viteImports],
+    plugins: [viteImportsPlugin()],
     logLevel: 'silent',
   })
   const { output } = await bundle.generate({ format: 'esm' })

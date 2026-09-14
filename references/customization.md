@@ -15,6 +15,7 @@ migration in the same change.
 - Scale
 - Agent account
 - Agent search
+- Bundling the agent's tool definitions
 - Portfolio conventions (consultants / agencies)
 - Template upgrade recipe (⚠ compat check required)
 
@@ -242,6 +243,55 @@ question, in the browser, with the person's key. The function contract and the
 Adding a second provider later is a config and data change — build the index,
 add the entry. No template change is needed, because the OpenAI embed path
 ships here already.
+
+## Bundling the agent's tool definitions
+
+A deployment that runs its own eval harness bundles the template's tool
+surface out of `node_modules` — `src/lib/agent/tools/specs.ts`, the definitions
+under `src/lib/agent/tools/definitions/`, the rosters derived from them. That
+bundle needs a `?raw` loader, and the template ships one.
+
+The tool surface reaches the rulebook: a definition carries its `run` beside
+its schema, the reference tools read `src/lib/agent/tools/referenceDocs.ts`,
+and that module imports eighteen markdown documents as TEXT the way Vite reads
+them — `import checkFeeVisibility from '…/check-fee-visibility.md?raw'`. The
+application is a Vite application and those documents are its content, so the
+import form stays. A bundler that does not know it stops on the first one:
+
+```
+[UNLOADABLE_DEPENDENCY] Could not load
+  node_modules/agentic-service-blueprinting/src/lib/agent/skill/references/check-fee-visibility.md?raw
+```
+
+That is a missing loader, not a broken graph. Install it from the package
+rather than keeping a copy — one import, in whatever rollup-family bundler the
+harness already uses (rolldown, rollup, Vite's own build):
+
+```js
+import { viteImportsPlugin } from 'agentic-service-blueprinting/vite-imports'
+
+const bundle = await rolldown({
+  input: harnessEntry,
+  // The application's `@/…` alias, pointed at the package's source.
+  resolve: { alias: { '@': resolve(packageRoot, 'src') } },
+  plugins: [viteImportsPlugin()],
+})
+```
+
+It answers two import forms and returns null for the rest: `…?raw` evaluates
+to the file's contents as a string, as it does in the browser, and an asset
+(`.svg`, `.png`, `.jpg`, `.gif`, `.webp`, `.woff`/`.woff2`) evaluates to a URL
+string, as it does there — the cell-budget module reads the deployment config,
+and the config names the cover's figures. It is `scripts/vite-imports.mjs`,
+published as the `./vite-imports` subpath, and this repo's own harness
+(`scripts/agent-harness/surface.mjs`) imports the same module, so the loader a
+deployment is handed is the one every harness run here proves.
+
+Reading the documents off disk instead is a second copy of the rulebook's
+paths — those paths are a published interface
+(`docs/adr/0004-reference-paths-are-a-published-interface.md`), and a harness
+that resolves them itself drifts from what the app imports the moment one
+moves. The loader keeps one list, in the app.
 
 ## Portfolio conventions (consultants / agencies)
 
