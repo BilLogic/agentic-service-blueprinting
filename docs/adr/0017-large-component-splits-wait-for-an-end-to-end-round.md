@@ -110,3 +110,22 @@ for every column this slice writes. The cell panel's split is unblocked.
 
 **Annotation drag** and **an agent session** — not covered; those two files
 stay held until their slices land.
+
+## Amended 2026-09-13: the cell-edit slice has its primary form
+
+The paragraph above named the in-memory table as the fallback and filed the
+primary form — the same flow against standalone PostgREST over the CI Postgres
+— as #734. It exists now. `npm run slice:cell-edit:postgrest` builds the stack
+`check:seed-load` builds, starts a pinned PostgREST release on it, mints the
+service claim the recipe's restrictive policies read, and runs the same slice
+file through `supabase-js` as a signed-in author, editing a row the seed holds;
+with `--prove` it revokes UPDATE on one written column and requires the slice
+to go red. What the fake could not see — a grant, a policy — the primary form
+sees, so the two questions `check:seed-load` answered for it are now answered
+by the flow itself. The in-memory form stays as the fast local one, and the two
+cases that are about the fake run only there. The runtime is printed on every
+run. No developer machine here carries a PostgREST binary, so the service-claim
+write path was proved by hand against the stack and the end-to-end run, with
+the measurement the ticket asked for, is CI's — its first run measured 3.9 seconds for the slice and 4.4 for the
+proof, about ten seconds for the step with the release cached — and this
+record is amended again if it stops being near a minute.

@@ -277,6 +277,36 @@ jobs:
       - name: The generated seed loads on a fresh core and renders as anon
         run: npm run check:seed-load
 
+      # The cell-edit slice's PRIMARY form (#734). `npm run slice:cell-edit`
+      # in the check job drives the flow over an in-memory table, which cannot
+      # see a grant or a policy. This runs the same file over standalone
+      # PostgREST on a scratch database the runner builds from the same stack
+      # the step above applied — through supabase-js, as
+      # a signed-in author carrying the service claim the recipe's restrictive
+      # policies ask for — so a grant the recipe forgot on a column the panel
+      # writes fails the slice, not only the seed-load check. `--prove`
+      # revokes one such grant and requires the slice to go red, then puts it
+      # back. The binary is a pinned release, checked against its published
+      # digest, and cached: PostgREST is not an npm package.
+      - name: Cache the PostgREST release
+        id: postgrest
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/postgrest
+          key: postgrest-v16.3-linux-static-x86-64
+      - name: Fetch PostgREST
+        if: steps.postgrest.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.cache/postgrest
+          curl -fsSL -o /tmp/postgrest.tar.xz \
+            https://github.com/PostgREST/postgrest/releases/download/v16.3/postgrest-v16.3-linux-static-x86-64.tar.xz
+          echo "4eb414eb948c8800863cc8c9896a17b611b2dccf9ff581f4d57f42ec9ccee40d  /tmp/postgrest.tar.xz" | sha256sum -c -
+          tar -xJf /tmp/postgrest.tar.xz -C ~/.cache/postgrest
+          chmod +x ~/.cache/postgrest/postgrest
+      - name: The cell-edit slice runs over PostgREST, and goes red when a grant is revoked
+        run: POSTGREST_BIN="$HOME/.cache/postgrest/postgrest" npm run slice:cell-edit:postgrest
+
       # The one class of defect a dump cannot show and a catalogue sweep only
       # sees when the word is already retired: a `language sql` body naming a
       # relation a later rename moved. The body is text, resolved at call time,
