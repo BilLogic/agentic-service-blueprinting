@@ -1,5 +1,351 @@
 # Changelog
 
+## 1.44.10
+
+**The first deployment enrolled in 1.44.9, and this release is what it found.**
+The deployment this template was generalised from took the 1.44.9 pin and ran
+every published instruction;
+seven of them were wrong or short, and each is fixed here at the source rather
+than worked around there. The rest of the release is the two flows ADR 0017 was
+still holding — an agent session and the annotation drag — each now a CI slice,
+so the hold on all three large-component splits is lifted; one real bug the
+browser walk shook out (Escape on a mark also zoomed the board out); and a
+tool description that taught the dependency direction backwards.
+
+**Upgrading a deployment:**
+
+- Run the browser walk as `npx render-walk` (a published bin that stages the
+  walk out of `node_modules`, since neither Playwright nor Node compiles
+  TypeScript there); delete any staging script of your own. Supply the offline
+  board's content beside its nav — `sample: { nav, blueprints }`, both from one
+  `scripts/generate_fallbacks.py --register` run — or the walk has no board to
+  find.
+- A harness that bundles the tool definitions imports `viteImportsPlugin` from
+  `agentic-service-blueprinting/vite-imports` instead of carrying a `?raw`
+  loader of its own.
+- `check:database-types-superset` now reads your `types/database.ts` as the
+  declaration of your database: tables you never migrated are information,
+  `string` for a vocabulary the package narrows passes, a missing column on a
+  shared table still fails. Wire it into your CI.
+- Take `vite.config.ts` byte-identical again (it asks for `import.meta.dirname`
+  now, and the Vite warning is gone). `scripts/tests/authoring-log.test.mjs` and
+  `scripts/authoring-archivers.mjs` join the shared list; enrol both. If you
+  hold a copy of `both-kinds-read-source-first`, take the widened pattern.
+
+### Patch Changes
+
+- 885778b: **`scripts/tests/authoring-log.test.mjs` spells its fixture series where no
+  tree claims it, so a deployment can enrol the file.** The suite built the
+  sweep's shape out of `21000101000000_one.sql` and `21000102000000_two.sql`,
+  which read as members of a migration series — and the two repositories do not
+  share one, so a member of either resolves in at most one tree. The gate that
+  decides whether a deployment may hold a shared file is line-based over bytes
+  and cannot tell a fixture from an address, so the file sat byte-identical and
+  unenrolled. The members are now spelled under `notes/`, the way the router
+  suite's fixture paths are, and the header says why.
+
+  The test and `scripts/authoring-archivers.mjs`, every line of logic it reaches
+  through a relative import, join the published shared list, so the same fence
+  that keeps a `docs/` path out of the other eleven now holds over these two.
+
+- 644568d: **An agent session now runs end to end on every pull request, from the panel a
+  person types into down to the row in the database.** #694 drove the loop from a
+  fake provider through a tool to its result in a node test. What no test had
+  seen is the PANEL: whether a person who opens the agent surface, starts a
+  session and sends a sentence gets the turn, the tool row and the result on
+  screen; whether the write the agent makes is attributed where a reviewer reads
+  attribution; whether the conversation survives closing the session.
+
+  `npm run slice:agent-session` (`src/slices/agentSession.slice.test.tsx`) asks
+  all three. It renders the real `AgentPanel`, clicks ＋ for a new session, types
+  into the composer and presses Send. The loop is the real `sendToAgent`; the
+  model is the scripted provider adapter #694 introduced, so there is no network
+  and no key beyond the string that unlocks the send. The script calls one read
+  tool and then one write tool — `get_cell`, then `update_cell` — over the real
+  definitions, the real one save, and the real content and spec mutations.
+
+  Then it reads everything back. The transcript renders the person's message,
+  the narration between the calls and the answer; each tool row discloses the
+  arguments the agent sent and the tool's own sentence back. The row holds both
+  halves of the edit and nothing else moved. The ledger holds one entry per write
+  path, each wearing that session's agent attribution, and the real
+  `SessionChangesSheet` shows a ✦ per row. Both reverts from that sheet put the
+  row back column for column. And the transcript READS BACK from the persisted
+  rows after the panel is closed and reopened: the slice checks the close really
+  emptied the screen, forgets the in-process run, and lets the reopen hydrate
+  `agent_messages` the way a session reopened in another browser does — then
+  asserts what those rows carry (the message, the narrations, the answer, the
+  tool names) and what they do not (the tool row's arguments and result, which
+  are stripped before persisting).
+
+  **It has been watched go red, twice, and both reds are cases in the file.** One
+  drops a written column the way a forgotten grant does: the tool still reports
+  success, the panel still shows the row green, and the read-back no longer
+  holds. The other mocks the one module that hands a tool its session into
+  running the write unattributed: the write still lands and the panel still says
+  so, and the ledger's author, its session id and the sheet's ✦ all go. What the
+  in-memory table cannot see — a grant, a policy — `check:seed-load` asks the
+  real database for every column this flow writes, and the cell-edit slice's
+  PostgREST form asks of the same two writes.
+
+  `src/test/inMemoryDatabase.ts` grew `upsert`, `delete` and a numeric-aware
+  `order` to answer it, generically: the agent panel's transcript write-through
+  is real here, so one `agent_messages` row per event — ordered by its numeric
+  `seq` — is what the reopen reads back.
+
+  This is the per-flow exit condition ADR 0017 names for
+  `src/components/editor/AgentPanel.tsx`, and it unblocks that file's split.
+
+- a9b72b2: **Escape on a selected or editing annotation no longer also returns the canvas
+  to the overview.** The annotation layer cleared the mark's selection or editor
+  on Escape without claiming the key, so the canvas's own Escape — the animated
+  return to the overview — fired on the same keystroke whenever the editor's
+  textarea had not yet taken focus, and the board zoomed out from under a mark
+  the person was still working on. The layer now calls `preventDefault` when the
+  Escape is its to handle, which is the signal the canvas handler already waits
+  for.
+
+  The browser walk's annotation-drag case met the same race one run in six —
+  its Escape landed before the new mark's editor had focus, the board zoomed
+  out, and the drag that followed pressed on empty canvas. It now waits for the
+  editor to be focused before dismissing it, and for the capture menu to close
+  before handing the page back; watched pass twenty runs in a row.
+
+- 0ea8a6e: **The annotation-drag flow has a CI slice and a browser case, and the annotation
+  layer's split is unblocked.** `src/slices/annotationDrag.slice.test.tsx` opens
+  annotation mode from the real toolbar, draws a box across two cells of a board
+  through the real `CanvasAnnotationLayer` — the real pointer sequence, the real
+  camera un-projection, the real frame-batched drag queue — drags it onto a third
+  cell, and reads it back through the real capture menu: the captured payload names
+  the cells the box covers, the two it was drawn over before the drag and the one
+  it was dragged onto after it, and taking the layer off the page and mounting it
+  again under the same provider leaves the mark where the drag left it (the marks
+  are the provider's state, so a layer remount keeps them and a provider remount
+  would not). CI runs it as `npm run slice:annotation-drag`.
+
+  **There is no persistence; the read-back is the capture, and the issue's word was
+  wrong.** The cell-edit slice reads a cell back because a cell is a row; an
+  annotation never becomes one. Annotations are deliberately not persisted —
+  saving every stroke would turn markup into a record, and costing nothing is the
+  point of the scratch layer — and nothing in this flow is stored anywhere. The
+  capture is an in-memory hand-off to the composer (`setPendingAgentAttachment`),
+  and it is the read-back because it is the one thing the flow produces: each mark
+  resolved to the cells it overlaps, in board space, which is exactly the answer a
+  bad split of a two-thousand-line drag-and-geometry file would get wrong.
+
+  What is stubbed is geometry, at the smallest seam, because jsdom lays nothing
+  out: `getBoundingClientRect` on the layer and on each cell, `offsetWidth`/
+  `offsetHeight` on the layer, and `setPointerCapture`/`releasePointerCapture`,
+  which jsdom does not implement. The stubbed camera is deliberately not zoom 1 —
+  the layer is twice as wide in its own units as on screen, and offset — so a
+  split that dropped the scale term goes red instead of dividing by one, and
+  frames are faked and turned by hand so the drag queue is watched publishing
+  mid-gesture rather than only at the `pointerup` flush. Two cases watch the guard
+  fail: one drops the drag's position write, one moves under `DRAG_THRESHOLD` and
+  requires the mark not to move.
+
+  **The three stubs are the three things jsdom cannot do at all, so they are
+  covered in a browser.** `render-walk/annotation-drag.spec.ts` runs beside the
+  sample-board walk under the same config: it opens the bundled sample board,
+  draws a box across two cells of one lane with real mouse moves under the
+  canvas's live CSS-transform camera, drags it onto a third under a real pointer
+  capture, and asserts the captured cell ids out of the capture menu's own
+  `Save N marks` download — nothing was added to the app to make that observable.
+  `npm run check:render-walk` now runs two cases, both under the walk's
+  console-error rule.
+
+  ADR 0017 now marks annotation drag covered and names
+  `src/components/editor/CanvasAnnotationLayer.tsx`'s split as unblocked. An agent
+  session is the one flow still uncovered, and `AgentPanel.tsx` stays held.
+
+- 8c99b76: **Every Vite command is quiet again.** `vite.config.ts` reached for
+  `__dirname` to name the three roots it resolves — this repository's `src`, the
+  package's `src` inside `node_modules`, and the deployment root — and Vite
+  answered each `npm run dev`, `npm run build` and `npm test` with a warning
+  that `configLoader: 'native'`, the loader planned to become the default, does
+  not support it. The file now asks for `import.meta.dirname`, which is the same
+  directory by another name and the one the native loader can give. Node has
+  carried it since 20.11 and this repository runs 22.
+
+  The file is one a deployment holds byte-identical, so the warning was not this
+  repository's alone: every deployment printed it too, and none of them could
+  have fixed it — editing the file there is the thing the reconciled set
+  forbids. It leaves here, in a release, and a deployment takes the quiet on its
+  next pin.
+
+  Nothing else in the tree had the same problem. The build configuration is the
+  only code Vite's config loader reads; the `fileURLToPath(import.meta.url)`
+  elsewhere is in plain Node scripts and in tests, which Node runs directly and
+  which the loader never sees.
+
+- 7697d3e: **The deployment types check asks what a deployment's own `database.ts`
+  actually is: the declaration of its database, not what its application
+  compiles.** Since a deployment reads the application out of this package,
+  `@/types/database` resolves into the package and the application is
+  typechecked against the copy that ships beside it. The check had been written
+  before that flip and still said the deployment's file was the compile subject,
+  so it failed on facts rather than defects — at the deployment that reported
+  this, two tables its database legitimately lacks because it never ran those
+  migrations, and three unions (`LaneRole`, `EntityStatus`, `StakeholderKind`)
+  that only this template's generator narrows, where the Supabase CLI its own
+  docs send it to emits `string`. It was never wired into that CI.
+
+  It now asks, for every table BOTH files describe, whether every column this
+  package's application reads is described there too. A table this package has
+  and the deployment does not is printed as information and does not fail: a
+  deployment is entitled to carry the part of this core its service uses. A
+  column absent from a table it DID build still fails, because the application
+  will read that column out of that database. Column types are compared for
+  contradiction rather than width — `string` and a narrowed vocabulary are one
+  text column at two precisions, `Json` and `NonNullable<Json>` one jsonb column
+  disagreeing about null, `string` against `number` two files that cannot both
+  be right. The unions in the tail are not compared at all: they are this
+  package's aliases, read by this package's code out of this package's copy, no
+  `Row` column is typed as one on either side, and the vocabulary they close is
+  a CHECK constraint, which a file is not the place to read from.
+
+  It passes on the reporting deployment's file now, naming the two tables it has
+  not migrated and exiting 0. `docs/connectors/supabase/database.md`,
+  `docs/engineering/checks.md` and `references/customization.md` say all of this;
+  the parser that reads a column's declared type beside its name is
+  `check-schema-inventory.mjs`'s, so there is still one answer to what that
+  generated file means.
+
+- 9a0802a: **A deployment's offline board now has a config home for its CONTENT, beside
+  the one its navigation already had.** `sample.nav` is the phases and scenarios
+  a build shows before a database answers, and it replaces rather than merges —
+  so a deployment that supplied its own nav drew those rows over the template's
+  fallback registry, which is keyed by the template's own scenario and path ids
+  and answers none of a deployment's. The result was a sidebar of real rows above
+  an empty canvas in every no-database build, and a render walk that failed on
+  the first board it asserted (#754).
+
+  The board's content is `sample.blueprints`, taking a `SampleBlueprintRegistry`
+  — scenario id to that scenario's paths — in exactly the shape
+  `scripts/generate_fallbacks.py --register` already writes into
+  `src/data/blueprintFallbacks.ts`. So a deployment hands the config what its own
+  import pipeline produced, both halves from the one run:
+
+  ```ts
+  sample: { nav: SAMPLE_NAV, blueprints: PACKAGE_SAMPLE_BLUEPRINTS }
+  ```
+
+  Supplied, that registry is what every offline lookup reads; omitted, the
+  package's own stands, and a clone of this repository runs exactly as it did.
+  `DeploymentConfigProvider` writes it onto the fallback module while it renders
+  rather than in an effect — the board asks for its lanes and cells during its
+  own render, and a module write re-renders nobody, so an effect would leave the
+  first paint with nothing to correct it.
+
+  `src/contexts/deploymentSampleBoard.test.tsx` holds it at the level the failure
+  appeared: a provider handed a deployment's config and nothing else, and the
+  hook the canvas reads returning that deployment's paths, lanes and cells — and
+  the template's own scenario answering nothing while it is in force.
+  `references/customization.md` § The offline board is two fields names both, and
+  the render walk's enrolment list says a deployment's walk needs them.
+
+- 8f2e4db: **A consumer bundling the tool definitions is handed the `?raw` loader rather
+  than writing one.** `src/lib/agent/tools/specs.ts` reaches the rulebook —
+  a definition carries its `run` beside its schema, and `referenceDocs.ts`
+  imports eighteen markdown documents as text the way Vite reads them — so a
+  plain Node bundle of the tool surface stopped on the first document it met:
+  `[UNLOADABLE_DEPENDENCY] Could not load …/check-fee-visibility.md?raw`. A
+  deployment's eval harness met that as a hard stop and answered it with a copy
+  of this repo's ten-line plugin.
+
+  The loader is now `scripts/vite-imports.mjs`, published as the
+  `./vite-imports` subpath, and `references/customization.md` § Bundling the
+  agent's tool definitions is the documented route. This repo's own harness
+  imports the same module by package name, so the loader a consumer is handed is
+  the one every harness run here proves. The import form stays in the app,
+  because the documents are the app's content and their paths are a published
+  interface a second reader would drift from (#759).
+
+- ec38824: **`list_cell_dependencies` no longer teaches the dependency direction
+  backwards.** Its description said `enables` "means the other must already be
+  true", which makes the target the precondition — `depends_on` semantics wearing
+  the word `enables` — and contradicted `create_cell_dependency` in the same
+  file, which says the precondition is the source. The read tool now says what
+  the write tool says: both kinds read source-first, and `enables` means the
+  source makes the target possible without causing it.
+
+  `both-kinds-read-source-first` missed it because its matcher spelled the
+  inversion as "the target must already be true" and this sentence said "the
+  other". The pattern now covers that spelling, and the test holds the sentence
+  that shipped as a case it goes red on. Found while enrolling a deployment in
+  v1.44.9 (#755).
+
+- a61d475: **The token model now reads the application the build assembles, not the
+  package it happens to live in.** `src/lib/tokenModel.ts` found its stylesheets
+  and its TypeScript by resolving `src/` from its own file location and walking
+  it. That is right in this tree and wrong in every deployment: a consumer
+  installs this package under `node_modules`, so the walk opened the PACKAGE's
+  `src/styles` and never the deployment's own. Every rule riding the model —
+  `styles/tokens.test.ts`, `lib/tokenModel.test.ts`, `lib/tokenDiscipline.test.ts`
+  — then judged the package inside a consumer and passed, having measured nothing
+  about the application that consumer builds, which is where a deployment's token
+  dials actually live.
+
+  Both walkers are now the `app` subject of `scripts/sweep.mjs`: the CSS set and
+  the TypeScript set are filtered out of `sweep({ subject: 'app' }).files`, and
+  every read goes through the sweep's `read`. That is the same overlay rule the
+  build applies — a deployment's `src` over the package's, per path — so the
+  model reads the deployment's stylesheet wherever the deployment has one and the
+  package's everywhere else. The module drops `node:fs`, `node:path` and
+  `node:url` and no longer knows where it is installed; the root is the tree the
+  run is in, which is the rule `sweep.mjs` states for every check.
+
+  The two tests follow. `tokenModel.test.ts` opens the raw file through the same
+  sweep rather than through a path resolved from its own location, so it agrees
+  with the model in a deployment instead of only here. `tokenDiscipline.test.ts`
+  keeps its independent second walk — a file whose whole point is that there
+  should be one model still needs a counterpart the model cannot talk it into
+  agreeing — but takes its enumeration from the sweep too: which files the
+  application HAS is the build's rule, and only the filter and the comparison
+  were ever this test's to own.
+
+  No file set moved in this repository: the sweep lists the same fifteen
+  stylesheets and the same 476 non-test sources the old walk found.
+
+- 113d08b: **The render walk ships its own runner, and a deployment enrols with one
+  command that works.** From the root of a tree that installs this package:
+
+  ```bash
+  node node_modules/agentic-service-blueprinting/render-walk/run.mjs
+  ```
+
+  `npx render-walk` is the same thing through the bin the install links, and
+  arguments pass through, so a deployment's own `check:render-walk` is that line
+  and nothing else.
+
+  **The command 1.44.9 published could not be run by anybody.** It pointed
+  Playwright straight at `render-walk/playwright.config.ts` inside
+  `node_modules`, and neither loader will compile a TypeScript file that lives
+  there: Playwright's transform hook declines any path carrying a `node_modules`
+  segment, so Node is handed raw TypeScript and throws
+  `ERR_UNKNOWN_FILE_EXTENSION`, and Node's own type stripping refuses the same
+  file with `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`. Neither rule is
+  configurable, and both cover the specs as much as the config, so no arrangement
+  of `testDir` or loader flags makes that instruction work. The first deployment
+  to meet it wrote the staging by hand — a script the package should have shipped
+  rather than one every adopter re-derives (#752).
+
+  `render-walk/run.mjs` is that script, published. It copies the directory it
+  ships in out of `node_modules` into `.render-walk-staged/` at the root of the
+  tree being walked, byte for byte and from scratch on every run, and hands
+  Playwright the copy; the copy is read by nothing else, so it cannot drift from
+  the version you pinned. Add `.render-walk-staged/` to your `.gitignore`. It
+  resolves Playwright out of your own `node_modules` rather than through `npx`,
+  which would download a version this walk is not pinned to and then say nothing
+  about it, and a tree without Playwright is told which version to install.
+
+  The runner is the fourth published path under `render-walk/`, listed in
+  `CONSUMER_IMPORTS` beside the config and the two specs, so moving it is a
+  release rather than a refactor. This repository's own
+  `npm run check:render-walk` goes through it too: the path a deployment runs is
+  the path CI here exercises. A deployment holding a staging script of its own
+  can delete it once its pin reaches this version.
+
 ## 1.44.9
 
 **The hot paths are deep modules now: agent tools, service scope, cell fields,
@@ -6335,8 +6681,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                  ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                  "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                    ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                    "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
