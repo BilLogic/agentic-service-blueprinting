@@ -763,27 +763,48 @@ unions at the bottom are read off the CHECK constraints that close each
 vocabulary. `npm run check:database-types` is the same run, diffed against what
 is committed.
 
-## For a deployment: the types have to be a superset
+## For a deployment: what its own types file is, and what is held to what
 
-A deployment generates its own `src/types/database.ts` however it does — the
+A deployment generates its own `types/database.ts` however it does — the
 Supabase CLI against its project, or this generator against its own core — and
-the two files are not the same file. A deployment has tables, columns and
-vocabulary members of its own and is entitled to all of them. What it cannot
-have is fewer: the application it compiles is this package's, and every column
-that application reads and every member its unions name come from this core.
+since a deployment reads the application out of this package, that file is not
+what anything compiles. `@/types/database` resolves into the package, and the
+application is typechecked against the copy that ships beside it. A
+deployment's own file is the DECLARATION of the database its project actually
+has: the subject of its live schema check and of `npm run agent-account`.
 
-So a deployment runs the superset check in its own CI, against its own file:
+What is worth holding, then, is the database and not the file. The check asks,
+for every table BOTH files describe, whether every column this package's
+application reads is described there too:
 
 ```bash
 node node_modules/agentic-service-blueprinting/scripts/check-database-types-superset.mjs \
-  src/types/database.ts
+  types/database.ts
 ```
 
-It exits 0 when the deployment's file holds everything the template's declares,
-and lists what is missing — tables, columns, unions, members, grouped — when it
-does not. A missing table is usually a migration that was never run there; a
-missing column, a types file that was not regenerated after one; a missing
-member, a constraint widened in the template and not in the project.
+It exits 0 when it is, and lists the columns that are missing — and any column
+the two files describe so differently that they cannot both be about one
+column — when it is not. A missing column on a table the deployment does build
+is usually a types file that was not regenerated after a migration.
+
+Two things it deliberately does not fail on:
+
+- **A table this package describes and the deployment does not.** That is a
+  migration the deployment has not run, and a deployment is entitled to carry
+  the part of this core its service uses. The absent tables are printed as
+  information and the exit code stays 0.
+- **A column's width.** `string` and a narrowed vocabulary are one text column
+  described at two precisions, and `Json` and `NonNullable<Json>` are one jsonb
+  column disagreeing about null. Neither side is wrong. `string` against
+  `number` is, and that is what the comparison is for.
+
+The enum unions in the tail are not compared. They are this package's aliases,
+imported by this package's code, which reads them out of this package's copy
+wherever it runs; no `Row` column is typed as one on either side, and the
+vocabulary they close is a CHECK constraint — a fact about a database, which
+this file is not the place to read it from. The CLI above emits no such tail,
+so a deployment following the documented path used to fail here for doing
+exactly what it was told.
 
 ## Hosted seed
 

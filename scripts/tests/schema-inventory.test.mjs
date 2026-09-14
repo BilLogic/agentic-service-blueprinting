@@ -23,6 +23,7 @@ import {
   compare,
   declaredVocabularies,
   parseEnumUnions,
+  parseGeneratedColumns,
   parseGeneratedTypes,
   parseInventory,
 } from '../check-schema-inventory.mjs'
@@ -178,6 +179,37 @@ test('a union over a vocabulary the database never closes is reported against th
     compare(types, parseInventory('')).includes(
       'PathKind is the union over public.paths.kind; the database closes no such vocabulary',
     ),
+  )
+})
+
+test('a column whose type was wrapped onto lines of its own is read whole, not lost', () => {
+  // A deployment's file may have been through a formatter, and a column this
+  // reader dropped would be reported to it as a column its database has not got.
+  const wrapped = [
+    'export type Database = {',
+    '  public: {',
+    '    Tables: {',
+    '      paths: {',
+    '        Row: {',
+    '          kind:',
+    "            | 'happy'",
+    "            | 'variant'",
+    '          id: string',
+    '        }',
+    '        Insert: {',
+    '          x: string',
+    '        }',
+    '      }',
+    '    }',
+    '    Views: {',
+    '    }',
+    '  }',
+    '}',
+    '',
+  ].join('\n')
+  assert.deepEqual(
+    [...parseGeneratedColumns(wrapped).get('paths')],
+    [['kind', "| 'happy' | 'variant'"], ['id', 'string']],
   )
 })
 
