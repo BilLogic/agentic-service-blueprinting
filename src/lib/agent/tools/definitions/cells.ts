@@ -41,7 +41,7 @@ export const getCellTool = defineTool({
 export const listCellDependenciesTool = defineTool({
   name: 'list_cell_dependencies',
   description:
-    'The dependencies: which cell sets off, or depends on, which other cell. `leads_to` means this cell makes the other one happen (drawn as an arrow); `enables` means the other must already be true (recorded, never drawn). Pass cell_id to get just the edges touching one cell — the whole graph is large. These are the same arrows the user sees on the canvas, and the read half of create_cell_dependency.',
+    'The dependencies: which cell leads to, or enables, which other cell. BOTH kinds read source-first. `leads_to` means the source makes the target happen (drawn as an arrow); `enables` means the source makes the target possible without causing it (recorded, never drawn) — the PRECONDITION is the source. Pass cell_id to get just the edges touching one cell — the whole graph is large. These are the same arrows the user sees on the canvas, and the read half of create_cell_dependency.',
   surface: 'read',
   args: z.object({
     cell_id: arg.optionalText(
