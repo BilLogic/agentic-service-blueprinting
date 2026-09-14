@@ -34,14 +34,13 @@
  *
  * Run: node scripts/check-router-budget.mjs   (also: npm run check:budget)
  */
-import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { ALWAYS_LOADED, TIER_NOUN } from './always-loaded.mjs'
 import { repoConfig } from './repo-config.mjs'
+import { sweep } from './sweep.mjs'
 
-const REPO_ROOT = resolve(new URL('..', import.meta.url).pathname)
 
 /** The ceiling, in characters. Lower it whenever the tier lands well under. */
 export const BUDGET = repoConfig.router.budget
@@ -57,12 +56,21 @@ const withCommas = (n) => n.toLocaleString('en-US')
  * Exported so a test can measure a throwaway tree rather than the repository,
  * which is the only way to prove the failing branches without editing the real
  * router.
+ *
+ * The bytes come from the `docs` subject — the tier is prose, and a root
+ * document is the first thing that sweep lists — so nothing here resolves a
+ * root of its own or decides what an absent file means. `files` stays a
+ * parameter: which files the tier holds is `always-loaded.mjs`'s answer.
  */
-export function measure(root = REPO_ROOT, files = ALWAYS_LOADED) {
-  const counted = files.map((rel) => ({
-    file: rel,
-    chars: readFileSync(join(root, rel), 'utf8').length,
-  }))
+export function measure(root = process.cwd(), files = ALWAYS_LOADED) {
+  const tier = sweep({ subject: 'docs', root, what: 'document' })
+  const counted = files.map((rel) => {
+    const text = tier.read(rel)
+    // Counting an absent file as zero chars is a tier that reads as further
+    // under budget the more of it goes missing.
+    if (text === null) throw new Error(`no ${rel} under ${tier.base}: the ${TIER_NOUN} lost a file`)
+    return { file: rel, chars: text.length }
+  })
   return { counted, total: counted.reduce((sum, one) => sum + one.chars, 0) }
 }
 

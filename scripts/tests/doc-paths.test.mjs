@@ -30,7 +30,6 @@ import {
   resolves,
   staleAbsences,
   surfaceDocs,
-  trackedPaths,
 } from '../check-doc-paths.mjs'
 
 const ROOT = resolve(new URL('../..', import.meta.url).pathname)
@@ -101,8 +100,20 @@ test('every exemption in either list carries a reason worth reading', () => {
   }
 })
 
-test('this repository has a subject, and the script names what it swept', () => {
-  assert.ok(surfaceDocs(trackedPaths()).length > 50)
+test('a claim is resolved against the listing it is handed, by segment-aligned suffix', () => {
+  // How the documents actually write: `validate_ir.py`, not the whole path.
+  // The listing is the whole universe here — the files are handed in, and the
+  // walk that produces them is the sweep's, tested in the sweep's own suite.
+  const tracked = ['hooks/listed_only_here.py', 'docs/guide/listed-only-here.md']
+  assert.equal(resolves('listed_only_here.py', 'docs/engineering', tracked), true)
+  assert.equal(resolves('guide/listed-only-here.md', 'docs', tracked), true)
+  // A suffix that is not segment-aligned is not a path anybody can follow.
+  assert.equal(resolves('nly-here.md', 'docs', tracked), false)
+  // And nothing resolves against a listing that does not name it.
+  assert.equal(resolves('listed_only_here.py', 'docs/engineering', []), false)
+})
+
+test('end-to-end smoke test: the check runs over this repository and names what it swept', () => {
   const run = spawnSync(process.execPath, [join(ROOT, 'scripts', 'check-doc-paths.mjs')], {
     cwd: ROOT,
     encoding: 'utf8',

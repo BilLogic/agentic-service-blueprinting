@@ -12,6 +12,7 @@
  */
 import { afterEach, test } from 'vitest'
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -49,7 +50,7 @@ const scratch = (files) => {
   return root
 }
 
-test('the seven subjects are the seven, and a name that is not one is refused', () => {
+test('the subjects are the seven the plan named and the commit, and a name that is not one is refused', () => {
   assert.deepEqual(SUBJECTS, [
     'app',
     'docs',
@@ -58,6 +59,7 @@ test('the seven subjects are the seven, and a name that is not one is refused', 
     'references',
     'reference-docs',
     'deployment-seed',
+    'commit',
   ])
   assert.throws(() => sweep({ subject: 'source', root: scratch({}) }), /not a subject: source/)
 })
@@ -194,11 +196,18 @@ test('the migrations are the .sql files of this tree’s series, and none is a f
   assert.throws(() => sweep({ subject: 'migrations', root: scratch({ 'src/a.ts': '' }) }), /no supabase\/migrations/)
 })
 
-test('the references are this tree’s published surface, and a tree without one says so', () => {
-  const root = scratch({ 'references/a.md': '', 'references/ir-schema.json': '' })
+test('the references are this tree’s published surface, the skills’ own included, and a tree without one says so', () => {
+  const root = scratch({
+    'references/a.md': '',
+    'references/ir-schema.json': '',
+    'skills/audit/references/check-x.md': '',
+    'skills/audit/SKILL.md': '',
+    'skills/audit/scripts/tool.py': '',
+  })
   assert.deepEqual(sweep({ subject: 'references', root }).files, [
     'references/a.md',
     'references/ir-schema.json',
+    'skills/audit/references/check-x.md',
   ])
   const { said, io } = sinks()
   const none = sweep({ subject: 'references', root: scratch({ 'src/a.ts': '' }), io })
@@ -279,6 +288,31 @@ test('no sibling, or several, is a skip said out loud with the reason', () => {
     'me',
   )
   assert.match(several.skip, /2 checkouts beside this one .*\(a, b\)/)
+})
+
+// ── commit ─────────────────────────────────────────────────────────────────
+
+test('the commit is what git would carry: tracked, and untracked but not ignored', () => {
+  const root = scratch({
+    'README.md': '#',
+    'src/a.ts': '',
+    '.gitignore': 'ignored.txt\n',
+    'ignored.txt': 'x',
+  })
+  execFileSync('git', ['init', '-q'], { cwd: root })
+  execFileSync('git', ['add', 'README.md'], { cwd: root })
+  // README is tracked, src/a.ts and .gitignore are untracked and would be
+  // carried, ignored.txt would not.
+  const commit = sweep({ subject: 'commit', root })
+  assert.deepEqual(commit.files, ['.gitignore', 'README.md', 'src/a.ts'])
+  assert.equal(commit.read('README.md'), '#')
+  assert.equal(commit.base, root)
+})
+
+test('a commit with nothing in it is a failure', () => {
+  const root = scratch({ '.gitignore': '*\n' })
+  execFileSync('git', ['init', '-q'], { cwd: root })
+  assert.throws(() => sweep({ subject: 'commit', root }), /git lists no file under/)
 })
 
 // ── the shared rules ───────────────────────────────────────────────────────

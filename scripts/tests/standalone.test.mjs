@@ -124,7 +124,13 @@ test('a listing every predicate rejects is refused, not swept as clean', () => {
     mkdirSync(join(root, 'src/lib/agent/skill/references'), { recursive: true })
     writeFileSync(join(root, 'src/lib/agent/skill/references/a.md'), 'fine\n')
     git('add', '-A')
-    assert.throws(() => scannedFiles(root), /no scanned file under .*: git listed 1 path/)
+    // The refusal is the sweep's now — `sweep.mjs`'s `commit` subject — and it
+    // names what this check was looking for, which is what makes the message
+    // one its reader can act on.
+    assert.throws(
+      () => scannedFiles(root),
+      /no scanned file a commit would carry under .*: this walk has no subject/,
+    )
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
@@ -194,39 +200,31 @@ test('a sweep whose listed file is unreadable for another reason still fails', (
   }
 })
 
-test('the sweep reads the whole tree, not a handful of directories', () => {
+test('the walk reads every file it is handed, wherever in the tree it sits', () => {
   // The breadth, because the skip above is safe only while something counts
-  // what came back. A walk that had quietly stopped descending — or one
-  // skipping every file it could not open — looks exactly like a clean tree,
-  // right up until a reintroduced reference lands in the part it stopped
-  // reading.
+  // what came back: a loop that had quietly stopped part-way — or one skipping
+  // every file it could not open — looks exactly like a clean tree, right up
+  // until a reintroduced reference lands in the part it stopped reading.
   //
-  // THE DIRECTORIES ARE DISCOVERED RATHER THAN NAMED. A list written here is a
-  // list of THIS tree's folders, and this file is one a deployment holds
-  // byte-identical: `src/` is not there when the application is read out of
-  // the package, `skills/` is not there in a tree with no plugin surface, and
-  // a test asserting either would fail on a tree that is not wrong. What holds
-  // everywhere is that every directory git reports a scannable file in is a
-  // directory the sweep reached.
-  const listed = execFileSync(
-    'git',
-    ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
-    { cwd: REPO_ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 },
+  // THE FILES ARE HANDED IN. This test used to re-list the repository with its
+  // own `git ls-files` and compare the directories against `scannedFiles()`,
+  // which held the sweep's `commit` subject rather than this walk — the listing
+  // is the sweep's now and is tested once, in the sweep's own suite. What is
+  // this walk's to hold is that nothing the sweep hands it goes unread, and
+  // that holds on a listing nobody's tree has to contain: a root document, and
+  // one file under each of four directories a deployment may or may not keep.
+  const files = [
+    'AGENTS.md',
+    'docs/engineering/checks.md',
+    'hooks/guard.py',
+    'scripts/thing.mjs',
+    'src/lib/thing.ts',
+  ]
+  const walk = { files, read: (path) => `a first line\nthe PLUS workspace, in ${path}\n` }
+  assert.deepEqual(
+    violationsUnder('/nowhere', walk).map(({ path, line, label }) => `${path}:${line} — ${label}`),
+    files.map((path) => `${path}:2 — PLUS (case-sensitive)`),
   )
-    .split('\0')
-    .filter((path) => path !== '')
-  assert.ok(listed.length > 0, 'git listed no file at all, so there is no tree to sweep')
-
-  const files = scannedFiles()
-  assert.ok(files.length > 0, 'the sweep came back empty, which is not a clean tree')
-
-  const directories = new Set(
-    listed.filter(isScanned).filter((path) => path.includes('/')).map((path) => `${path.split('/')[0]}/`),
-  )
-  assert.ok(directories.size > 3, `only ${directories.size} directories in the subject`)
-  for (const dir of [...directories].sort()) {
-    assert.ok(files.some((path) => path.startsWith(dir)), `${dir} is not in the subject`)
-  }
 })
 
 test('the application is in the subject wherever this tree keeps its own', () => {

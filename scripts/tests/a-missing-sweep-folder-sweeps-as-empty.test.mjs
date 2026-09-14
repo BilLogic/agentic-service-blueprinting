@@ -8,16 +8,19 @@
  * take down every guard that reads prose, over a fact about the tree rather
  * than a defect in it.
  *
- * The folder list is passed explicitly rather than read from the config, so
- * the case holds the same in every repository whatever its own list says.
+ * Every tree here is built in a temporary directory and holds only the files
+ * named, so each case is about the RULE rather than about this repository —
+ * which is what lets the same cases hold in every repository that carries the
+ * `docs` subject, whatever its own folder list says.
  */
-import { test } from 'vitest'
+import { afterEach, test } from 'vitest'
 import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
-import { rootDocs, sweptDocs } from '../swept-docs.mjs'
+import { sweep } from '../sweep.mjs'
+import { forgetUnverified } from '../unverified.mjs'
 
 /** A throwaway tree holding exactly the files named. */
 function tree(files) {
@@ -33,13 +36,11 @@ function tree(files) {
  * The root documents these throwaway trees hold, in the order the walk
  * returns them.
  *
- * Named here rather than imported, because the module DISCOVERS the root
- * documents now: importing its answer would make each assertion below a
+ * Named here rather than imported, because the sweep DISCOVERS the root
+ * documents: importing its answer would make each assertion below a
  * restatement of the walk rather than a claim about it.
  */
 const ROOT_FILES = ['AGENTS.md', 'CONTEXT.md', 'README.md']
-
-const PLUGIN_DIRS = ['docs', 'references', 'skills', 'agents']
 
 /**
  * A sink that keeps the announcement out of this run's annotations.
@@ -51,10 +52,17 @@ const PLUGIN_DIRS = ['docs', 'references', 'skills', 'agents']
  */
 const QUIET = { env: {}, write: () => {}, append: () => {} }
 
+/** The docs of one throwaway tree, quietly. */
+const sweptDocs = (root) => sweep({ subject: 'docs', root, io: QUIET }).files
+
+// Each fixture is missing folders on purpose, and the announcement is said
+// once per process: forgetting between cases is what keeps every case its own.
+afterEach(() => forgetUnverified())
+
 test('a tree with docs/ and no plugin surface sweeps its docs and nothing else', () => {
   const t = tree([...ROOT_FILES, 'docs/guide.md', 'docs/engineering/checks.md', 'docs/adr/0001-a.md'])
   try {
-    assert.deepEqual(sweptDocs(t.root, PLUGIN_DIRS, QUIET), [
+    assert.deepEqual(sweptDocs(t.root), [
       ...ROOT_FILES,
       'docs/engineering/checks.md',
       'docs/guide.md',
@@ -67,7 +75,7 @@ test('a tree with docs/ and no plugin surface sweeps its docs and nothing else',
 test('a tree with none of the swept folders sweeps its root docs alone', () => {
   const t = tree(ROOT_FILES)
   try {
-    assert.deepEqual(sweptDocs(t.root, PLUGIN_DIRS, QUIET), ROOT_FILES)
+    assert.deepEqual(sweptDocs(t.root), ROOT_FILES)
   } finally {
     t.done()
   }
@@ -76,7 +84,7 @@ test('a tree with none of the swept folders sweeps its root docs alone', () => {
 test('a folder that exists is still swept beside one that does not', () => {
   const t = tree([...ROOT_FILES, 'skills/map/SKILL.md'])
   try {
-    assert.deepEqual(sweptDocs(t.root, PLUGIN_DIRS, QUIET), [...ROOT_FILES, 'skills/map/SKILL.md'])
+    assert.deepEqual(sweptDocs(t.root), [...ROOT_FILES, 'skills/map/SKILL.md'])
   } finally {
     t.done()
   }
@@ -89,14 +97,14 @@ test('a root document nobody listed is swept; the changelog is the one that is n
   // tomorrow is swept tomorrow, and the single exclusion carries its reason.
   const t = tree([...ROOT_FILES, 'SETUP.md', 'SECURITY.md', 'CHANGELOG.md', 'docs/guide.md'])
   try {
-    assert.deepEqual(rootDocs(t.root), [
+    assert.deepEqual(sweptDocs(t.root), [
       'AGENTS.md',
       'CONTEXT.md',
       'README.md',
       'SECURITY.md',
       'SETUP.md',
+      'docs/guide.md',
     ])
-    assert.equal(sweptDocs(t.root, PLUGIN_DIRS, QUIET).includes('CHANGELOG.md'), false)
   } finally {
     t.done()
   }

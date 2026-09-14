@@ -41,14 +41,14 @@ export const repoConfig = {
 
   /**
    * Folders whose markdown every prose sweep reads, beside the root docs
-   * (`swept-docs.mjs`). A folder this repository does not have sweeps as
+   * (the sweep's `docs` subject, `sweep.mjs`). A folder this repository does not have sweeps as
    * empty, so a misspelt name here sweeps nothing: check it against the tree.
    */
   sweptDirs: ['docs', 'references', 'skills', 'agents'],
 
   /**
    * Trees whose markdown keeps the words of the day it was written, so no
-   * sweep rewrites it (`swept-docs.mjs`). Decision records are the whole of
+   * sweep rewrites it (the sweep's `docs` subject, `sweep.mjs`). Decision records are the whole of
    * it here: rewriting one is falsifying it. Prefixes, matched against the
    * repo-relative path.
    */

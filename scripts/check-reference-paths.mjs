@@ -23,10 +23,18 @@
  *
  *   node scripts/check-reference-paths.mjs
  *
- * A path has to be BOTH tracked and present on disk. Tracked alone is the
- * index, which still holds the old name after a bare `mv`; present alone is a
- * file a git-URL install would never ship, because the consumer installs a
- * git tree, not a working directory.
+ * A path has to be BOTH in the commit and present on disk. The listing alone is
+ * the commit, which still holds the old name after a bare `mv`; present alone is
+ * a file a git-URL install would never ship, because the consumer installs a git
+ * tree, not a working directory.
+ *
+ * THE SUBJECT IS THE PUBLISHED INTERFACE — the `commit` subject of `sweep.mjs`,
+ * narrowed to `references/` and `skills/`, which is where this interface lives.
+ * That module holds the listing and the reason it is what a commit would carry
+ * rather than the index alone (#180, #181, in its header): a reference file
+ * written and checked before `git add` is one the next commit ships, and reading
+ * the index alone would have failed it here. What a git install would NOT ship
+ * is what this check still refuses — a path the listing does not name at all.
  *
  * Renaming one of these is not forbidden — it is a release. Move the file,
  * update this list, bump the version, and land the matching import change in
@@ -34,12 +42,10 @@
  * check went red, without that consumer change, converts a break in this
  * repo now into a break in the consumer at its next upgrade.
  */
-import { execFileSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
+import { sweep } from './sweep.mjs'
+
 
 /**
  * The paths the deployment imports from this repo, verbatim, minus the
@@ -94,16 +100,27 @@ export const CONSUMER_IMPORTS = [
 /** The two roots this interface covers. A path outside them is a mistake. */
 const INTERFACE_ROOTS = ['references/', 'skills/']
 
-/** Every tracked path, once. */
-export function trackedPaths() {
-  return execFileSync('git', ['ls-files'], { cwd: REPO_ROOT, encoding: 'utf8' })
-    .split('\n')
-    .filter(Boolean)
+/**
+ * The interface as the commit carries it: the sweep over `references/` and
+ * `skills/`, whose `files` answer "is this path in the commit" and whose `read`
+ * answers "is the file there" — null for a path the tree does not have.
+ */
+export function interfaceSweep(root = process.cwd()) {
+  return sweep({
+    subject: 'commit',
+    root,
+    where: (path) => INTERFACE_ROOTS.some((interfaceRoot) => path.startsWith(interfaceRoot)),
+    what: 'file under references/ or skills/ that a commit would carry',
+  })
 }
 
 /**
  * The imported paths that are not there, each with what is wrong with it.
- * `tracked` is a Set; `onDisk` answers whether a repo-relative path exists.
+ *
+ * A PURE JUDGEMENT over handed-in sets: `tracked` is the Set of paths the
+ * commit carries and `onDisk` answers whether a repo-relative path is there.
+ * Neither is looked up here, so the rule can be driven from a fixture — which
+ * is how the three shapes below are held apart without a repository in each.
  */
 export function absences(paths, tracked, onDisk) {
   const out = []
@@ -124,9 +141,11 @@ export function absences(paths, tracked, onDisk) {
 }
 
 function main() {
-  const tracked = new Set(trackedPaths())
-  const missing = absences(CONSUMER_IMPORTS, tracked, (path) =>
-    existsSync(join(REPO_ROOT, path)),
+  const walk = interfaceSweep()
+  const missing = absences(
+    CONSUMER_IMPORTS,
+    new Set(walk.files),
+    (path) => walk.read(path) !== null,
   )
 
   if (missing.length > 0) {

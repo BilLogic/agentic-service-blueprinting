@@ -23,14 +23,12 @@
  * "(none)" costs the reader the open anyway, so the index would be lying
  * about its own usefulness. The failure names every offending file.
  */
-import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
-import { join, relative, resolve, sep } from 'node:path'
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { basename, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { repoConfig } from './repo-config.mjs'
-
-const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
-const DOCS = join(REPO_ROOT, 'docs')
+import { sweep } from './sweep.mjs'
 
 /** Generated, so never read as an input. */
 const GENERATED_BASENAME = 'index.md'
@@ -51,34 +49,51 @@ export function frontmatter(source) {
   return out
 }
 
-/** Every markdown file under `docs/`, minus the ones this script writes. */
-function docFiles(docsRoot = DOCS) {
-  const found = []
-  const walk = (abs) => {
-    const entries = readdirSync(abs, { withFileTypes: true }).sort((a, b) =>
-      a.name.localeCompare(b.name),
-    )
-    for (const entry of entries) {
-      const full = join(abs, entry.name)
-      if (entry.isDirectory()) walk(full)
-      else if (entry.name.endsWith('.md') && entry.name !== GENERATED_BASENAME) {
-        found.push(relative(docsRoot, full).split(sep).join('/'))
-      }
-    }
-  }
-  if (existsSync(docsRoot)) walk(docsRoot)
-  return found
+/**
+ * Every markdown file under `docs/`, minus the ones this script writes, as
+ * paths under `docs/`.
+ *
+ * THE SUBJECT IS THE COMMIT, not the prose sweep, and the difference is the
+ * decision records. This index lists EVERY document under `docs/` — the
+ * twenty-four ADRs included, which is what the `What decisions have been
+ * recorded` row sends a reader to — while the `docs` subject deliberately
+ * leaves the dated records out, because a sweep that rewrites a decision
+ * record falsifies it. Naming that subject here would silently drop a third of
+ * the table. `commit` is the honest one for "every document this tree ships
+ * under docs/": tracked, plus untracked and not ignored, so a document written
+ * and indexed before `git add` is in the table the way its author sees it.
+ */
+function docFiles(sweptDocs) {
+  return sweptDocs.files.map((path) => path.slice('docs/'.length))
+}
+
+/** The documents this index is built out of, for `root`. */
+export function sweptDocs(root = process.cwd()) {
+  return sweep({
+    subject: 'commit',
+    root,
+    what: `markdown under docs/ other than the generated ${GENERATED_BASENAME}`,
+    where: (path) =>
+      path.startsWith('docs/') && path.endsWith('.md') && basename(path) !== GENERATED_BASENAME,
+  })
 }
 
 /**
- * `{ protocol, problems }` for one docs tree. `problems` is the reason this
- * script can fail: a document that states no summary.
+ * `{ protocol, problems }` out of an already-swept subject — the judgement,
+ * with no walk in it. `problems` is the reason this script can fail: a document
+ * that states no summary.
+ *
+ * Paths are joined with a forward slash rather than the platform's separator:
+ * what a sweep hands back is repo-relative and slash-separated, and what it
+ * takes back is the same spelling.
  */
-export function collect(docsRoot = DOCS) {
+export function collectFrom(swept) {
   const protocol = []
   const problems = []
-  for (const path of docFiles(docsRoot)) {
-    const fm = frontmatter(readFileSync(join(docsRoot, path), 'utf8'))
+  for (const path of docFiles(swept)) {
+    const source = swept.read(`docs/${path}`)
+    if (source === null) continue // listed, then gone before this read
+    const fm = frontmatter(source)
     if (!fm.summary) {
       problems.push({ path, missing: 'summary' })
       continue
@@ -86,6 +101,16 @@ export function collect(docsRoot = DOCS) {
     protocol.push({ path, summary: fm.summary })
   }
   return { protocol, problems }
+}
+
+/**
+ * `{ protocol, problems }` for the docs tree under `root` — the working
+ * directory by default, because this script's own location says nothing about
+ * which tree it is indexing. `swept` is the subject to read, so a caller that
+ * already has one hands it in rather than asking for a second walk.
+ */
+export function collect(root = process.cwd(), swept = sweptDocs(root)) {
+  return collectFrom(swept)
 }
 
 function rootIndex({ protocol }) {
@@ -153,15 +178,16 @@ function report(problems) {
 }
 
 function main() {
-  const collected = collect()
+  const root = process.cwd()
+  const collected = collect(root)
   if (collected.problems.length > 0) {
     report(collected.problems)
     process.exit(1)
   }
 
   const targets = [
-    [join(REPO_ROOT, 'INDEX.md'), rootIndex(collected), 'INDEX.md'],
-    [join(DOCS, GENERATED_BASENAME), docsIndex(collected), 'docs/index.md'],
+    [join(root, 'INDEX.md'), rootIndex(collected), 'INDEX.md'],
+    [join(root, 'docs', GENERATED_BASENAME), docsIndex(collected), 'docs/index.md'],
   ]
 
   if (process.argv.includes('--check')) {

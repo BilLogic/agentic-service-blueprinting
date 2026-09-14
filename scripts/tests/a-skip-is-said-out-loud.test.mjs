@@ -20,7 +20,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { forgetUnverified, unverified } from '../unverified.mjs'
-import { sweptDocs, unsweptDirs } from '../swept-docs.mjs'
+import { repoConfig } from '../repo-config.mjs'
+import { sweep } from '../sweep.mjs'
 
 /**
  * The root documents these throwaway trees hold, in the order the walk
@@ -94,13 +95,28 @@ function tree(files) {
   return { root, done: () => rmSync(root, { recursive: true, force: true }) }
 }
 
+/** The docs of one tree, with the sinks the case reads. */
+const sweptDocs = (root, io) => sweep({ subject: 'docs', root, io }).files
+
+/** The folders the running repository names as swept, in its own order. */
+const SWEPT = repoConfig.sweptDirs
+
+/** One file inside each swept folder, so a tree can have all of them. */
+const inEachSweptFolder = SWEPT.map((dir) => `${dir}/a-document.md`)
+
 test('a swept folder this tree does not have is named', () => {
-  const t = tree([...ROOT_FILES, 'docs/guide.md'])
+  // The announcement is the only place the missing folders are said, so it is
+  // where they are asserted: a tree with the first swept folder and none of
+  // the rest names exactly the rest.
+  const t = tree([...ROOT_FILES, `${SWEPT[0]}/a-document.md`])
+  const s = sinks()
   try {
-    assert.deepEqual(unsweptDirs(t.root, ['docs', 'references', 'skills']), [
-      'references',
-      'skills',
-    ])
+    sweptDocs(t.root, s.io)
+    assert.equal(s.written.length, 1)
+    assert.match(
+      s.written[0],
+      new RegExp(`^::warning::unverified — the prose under ${SWEPT.slice(1).join(', ')}\\.`),
+    )
   } finally {
     t.done()
   }
@@ -109,30 +125,29 @@ test('a swept folder this tree does not have is named', () => {
 test('every folder misspelt collapses the corpus to the root docs, loudly', () => {
   // The whole reason this is a warning rather than a count: the root
   // documents are prepended whatever the folders do, so the result is never
-  // empty and a refusal on emptiness would never fire. Four misspelt names
-  // take the corpus down to the root alone and every prose guard goes on
-  // passing.
-  const t = tree([...ROOT_FILES, 'docs/guide.md', 'skills/map/SKILL.md'])
+  // empty and a refusal on emptiness would never fire. A tree whose swept
+  // folders are all misspelt — here, on disk, which is the same fact from the
+  // sweep's side as a misspelling in the config — takes the corpus down to the
+  // root alone, and every prose guard goes on passing.
+  const t = tree([...ROOT_FILES, 'doc/guide.md', 'skils/map/SKILL.md'])
   const s = sinks()
   try {
-    const swept = sweptDocs(t.root, ['doc', 'skils'], s.io)
-    assert.deepEqual(swept, ROOT_FILES)
+    assert.deepEqual(sweptDocs(t.root, s.io), ROOT_FILES)
     assert.equal(s.written.length, 1)
-    assert.match(s.written[0], /^::warning::unverified — the prose under doc, skils\./)
+    assert.match(
+      s.written[0],
+      new RegExp(`^::warning::unverified — the prose under ${SWEPT.join(', ')}\\.`),
+    )
   } finally {
     t.done()
   }
 })
 
 test('a tree that has every swept folder says nothing', () => {
-  const t = tree([...ROOT_FILES, 'docs/guide.md', 'skills/map/SKILL.md'])
+  const t = tree([...ROOT_FILES, ...inEachSweptFolder])
   const s = sinks()
   try {
-    assert.deepEqual(sweptDocs(t.root, ['docs', 'skills'], s.io), [
-      ...ROOT_FILES,
-      'docs/guide.md',
-      'skills/map/SKILL.md',
-    ])
+    assert.deepEqual(sweptDocs(t.root, s.io), [...ROOT_FILES, ...[...inEachSweptFolder].sort()])
     assert.deepEqual(s.written, [])
   } finally {
     t.done()
@@ -141,6 +156,7 @@ test('a tree that has every swept folder says nothing', () => {
 
 test('this repository sweeps every folder its own config names', () => {
   const ROOT = new URL('../..', import.meta.url).pathname
-  assert.deepEqual(unsweptDirs(ROOT), [])
-  assert.ok(sweptDocs(ROOT).length > 20)
+  const s = sinks()
+  assert.ok(sweptDocs(ROOT, s.io).length > 20)
+  assert.deepEqual(s.written, [], 'a folder this repository names as swept is not in the tree')
 })

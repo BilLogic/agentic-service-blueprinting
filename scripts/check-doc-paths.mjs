@@ -91,16 +91,13 @@
  * its kind here gives — an exemption nobody can reach is a hole nobody is
  * watching.
  */
-import { execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { dirname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { readListed } from './read-listed.mjs'
 import { repoConfig } from './repo-config.mjs'
 import { sweep } from './sweep.mjs'
 
-const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
 /**
  * The application, swept — the second place a claimed path can be.
@@ -119,7 +116,20 @@ const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
  * names `src/…` is measured against nothing there.
  */
 let swept = null
-const application = () => (swept ??= sweep({ subject: 'app', root: REPO_ROOT }))
+const application = () => (swept ??= sweep({ subject: 'app', root: process.cwd() }))
+
+/**
+ * This repository's prose, swept — the documents this check reads.
+ *
+ * The `docs` subject is the same corpus this check described for itself: the
+ * root documents but the changelog, and the markdown under the folders
+ * `repo-config.mjs` names, less the dated records. So the walk, the missing
+ * folder and the file that vanished between the listing and the read are the
+ * sweep's, and what is left here is `isPackagedProse` — which of those
+ * documents this check holds to the tree — and the judgement on each path.
+ */
+let prose = null
+const documents = () => (prose ??= sweep({ subject: 'docs', root: process.cwd() }))
 
 /**
  * The trees this package packs and its reader reads out of it.
@@ -139,7 +149,7 @@ const PACKAGED_TREES = ['skills/', 'references/', 'agents/', 'hooks/', 'docs/']
  * holding a released entry to today's tree would mean editing what happened.
  *
  * DECISION RECORDS. `repoConfig.datedRecords` is the same rule one tree over,
- * and `swept-docs.mjs` already states it: a decision record keeps the words of
+ * and the `docs` subject of `sweep.mjs` already states it: a decision record keeps the words of
  * the day it was written, and rewriting one is falsifying it. Four of them
  * name a path this tree does not have — a file in the DEPLOYMENT's repository,
  * an instance's override, a workspace artifact and the ADR filename template —
@@ -245,27 +255,26 @@ export function staleAbsences(claims, list = ABSENT_BY_DESIGN) {
  * exactly when the application is not in it — and the two lists are the same
  * list in a tree that keeps its own `src`, which is why this went unnoticed.
  *
- * AN EMPTY LISTING IS A FAILURE. Every claim in every document resolves
- * against this, so a listing that came back empty turns the check into one
- * that reports every path stale, and a subject that is only the application
- * turns it into one that cannot see its own documents.
+ * AN EMPTY LISTING IS A FAILURE, and the `commit` subject is where that
+ * refusal lives now: every claim in every document resolves against this, so a
+ * listing that came back empty turns the check into one that reports every
+ * path stale, and a subject that is only the application turns it into one
+ * that cannot see its own documents. The listing is what a COMMIT would carry
+ * — tracked, plus untracked and not ignored — for the reason `sweep.mjs`
+ * gives: a file written and checked before `git add` is one a reader can
+ * already follow.
  */
 export function trackedPaths() {
-  const listed = execFileSync('git', ['ls-files'], { cwd: REPO_ROOT, encoding: 'utf8' })
-    .split('\n')
-    .filter(Boolean)
-  if (listed.length === 0) {
-    throw new Error(`git lists no file under ${REPO_ROOT}: this check has no subject`)
-  }
+  const listed = sweep({ subject: 'commit', root: process.cwd() }).files
   return [...new Set([...listed, ...application().files])].sort()
 }
 
 /**
- * The documents this check holds: `isPackagedProse` over the listing.
+ * The documents this check holds: `isPackagedProse` over the swept prose.
  *
  * AN EMPTY RESULT IS A FAILURE, and the refusal belongs here rather than one
- * level up. `trackedPaths` already refuses an empty listing — but the listing
- * is not what this check sweeps. A FILTER stands between them, and a filter
+ * level up. The `docs` subject already refuses a sweep that finds nothing — but
+ * the sweep is not what this check reads. A FILTER stands between them, and a filter
  * that matches nothing empties the subject just as completely as a listing
  * that came back empty: the loop runs zero times, no claim is resolved, and
  * the report says `every path named by 0 packaged documents resolves` in the
@@ -276,7 +285,7 @@ export function surfaceDocs(tracked) {
   const found = tracked.filter(isPackagedProse)
   if (found.length === 0) {
     throw new Error(
-      `no markdown at the root or under ${PACKAGED_TREES.join(', ')} in ${REPO_ROOT}: ` +
+      `no markdown at the root or under ${PACKAGED_TREES.join(', ')} in ${process.cwd()}: ` +
         `this check has no subject, which is a failure and not a pass`,
     )
   }
@@ -338,7 +347,7 @@ export function resolves(token, docDir, tracked) {
 
   for (const candidate of candidates) {
     if (candidate.includes('*')) continue
-    if (existsSync(join(REPO_ROOT, candidate))) return true
+    if (existsSync(join(process.cwd(), candidate))) return true
     // An application path is asked of the application, which is where the
     // overlay says the file is — a resident, or the package's copy under it.
     if (/^src(?:\/|$)/.test(candidate) && existsSync(application().locate(candidate))) return true
@@ -358,11 +367,11 @@ function main() {
   const tracked = trackedPaths()
   const unresolved = []
 
-  const docs = surfaceDocs(tracked)
+  const docs = surfaceDocs(documents().files)
   let read = 0
   for (const doc of docs) {
     const docDir = dirname(doc)
-    const source = readListed(join(REPO_ROOT, doc))
+    const source = documents().read(doc)
     if (source === null) continue // listed, then gone before this read
     read += 1
     for (const { token, line } of claimedPaths(source)) {
@@ -372,7 +381,7 @@ function main() {
   const failures = unresolved.filter(({ doc, token }) => !isAbsentByDesign(doc, token))
   const stale = staleAbsences(unresolved)
 
-  // The breadth assertion `read-listed.mjs` asks each of its callers for: the
+  // The breadth assertion the sweep's `read` asks each of its callers for: the
   // skip above is right for a file that went away mid-run and wrong as an
   // account of the whole subject, so a sweep where every read skipped is a
   // sweep that measured nothing.

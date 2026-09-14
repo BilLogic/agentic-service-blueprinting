@@ -45,11 +45,11 @@
  *
  *   node scripts/check-dependency-kinds.mjs
  */
-import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative, resolve } from 'node:path'
+import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
+import { sweep } from './sweep.mjs'
+
 
 const SCHEMA = 'supabase/generated/portable-core.generated.sql'
 const DATA_MODEL = 'references/data-model.md'
@@ -208,25 +208,31 @@ export function differences(documented, enforced) {
   }
 }
 
-/** Every rulebook markdown file, repo-relative. */
-function rulebookFiles(root) {
-  const out = []
-  const walk = (dir) => {
-    for (const entry of readdirSync(dir).sort()) {
-      const full = join(dir, entry)
-      if (statSync(full).isDirectory()) walk(full)
-      else if (entry.endsWith('.md')) out.push(relative(root, full))
-    }
-  }
-  for (const tree of RULEBOOK) walk(join(root, tree))
-  return out
+/**
+ * The rulebook, swept: this repository's prose, narrowed to `RULEBOOK`.
+ *
+ * THE SUBJECT IS `docs` — the prose sweep — because every tree in `RULEBOOK`
+ * is markdown and every one of them is a folder that sweep already reads:
+ * `references`, `skills` and `agents` are named as swept, and `docs/guide` and
+ * `docs/engineering` are inside `docs`. The dated records it leaves out are not
+ * in `RULEBOOK` either, for the same reason twice over.
+ */
+function rulebook(root) {
+  return sweep({
+    subject: 'docs',
+    root,
+    what: `rulebook markdown under ${RULEBOOK.join(', ')}`,
+    where: (path) => RULEBOOK.some((tree) => path.startsWith(`${tree}/`)),
+  })
 }
 
 /** `{ file, line, found, instead }` for every retired word still in the rulebook. */
 export function retiredMentions(files, read) {
   const hits = []
   for (const file of files) {
-    read(file)
+    const text = read(file)
+    if (text === null) continue // listed, then gone before this read
+    text
       .split('\n')
       .forEach((text, index) => {
         for (const [pattern, found, instead] of RETIRED) {
@@ -238,19 +244,28 @@ export function retiredMentions(files, read) {
   return hits
 }
 
-/** Every bare-sweep file, repo-relative — not only the markdown. */
-function bareFiles(root) {
-  const out = []
-  const walk = (dir) => {
-    for (const entry of readdirSync(dir).sort()) {
-      const full = join(dir, entry)
-      if (statSync(full).isDirectory()) walk(full)
-      else if (BARE_EXTENSIONS.some((ext) => entry.endsWith(ext)))
-        out.push(relative(root, full))
-    }
-  }
-  for (const tree of BARE_TREES) walk(join(root, tree))
-  return out
+/**
+ * The bare-word subject, swept — not only the markdown.
+ *
+ * THE SUBJECT IS `commit`, and it is the honest one for these four trees. The
+ * prose sweep reads markdown alone, and half of what this assertion was
+ * written for is a JSON eval set and a Python comment; the `references`
+ * subject reads every file but only under `references/` and each skill's own,
+ * which is neither all of `skills/` nor any of `evals/`; and `evals/` is in no
+ * narrower subject at all. What every one of these files has in common is that
+ * this commit carries it, so that is the subject named — and `BARE_TREES` plus
+ * `BARE_EXTENSIONS` narrow it to the trees and the extensions the assertion
+ * documents above.
+ */
+function bare(root) {
+  return sweep({
+    subject: 'commit',
+    root,
+    what: `${BARE_EXTENSIONS.join(', ')} files under ${BARE_TREES.join(', ')}`,
+    where: (path) =>
+      BARE_TREES.some((tree) => path.startsWith(`${tree}/`)) &&
+      BARE_EXTENSIONS.some((ext) => path.endsWith(ext)),
+  })
 }
 
 /** Whether `BARE_ALLOWED` documents a reason to leave this line alone. */
@@ -271,7 +286,9 @@ export function allowedBare(file, text) {
 export function bareMentions(files, read) {
   const hits = []
   for (const file of files) {
-    read(file)
+    const text = read(file)
+    if (text === null) continue // listed, then gone before this read
+    text
       .split('\n')
       .forEach((text, index) => {
         if (allowedBare(file, text)) return
@@ -287,12 +304,25 @@ export function bareMentions(files, read) {
   return hits
 }
 
-export function compare(root = REPO_ROOT) {
-  const read = (path) => readFileSync(join(root, path), 'utf8')
+export function compare(root = process.cwd()) {
+  const prose = rulebook(root)
+  const everything = bare(root)
+  // The two files this check names by hand, and neither may be missing: an
+  // absent schema or reference is a fact about the tree, not a file that
+  // vanished mid-run, and comparing against nothing is the failure the whole
+  // file is against. A sweep answers for any path under it, named or swept.
+  const stated = (sweeps, path) => {
+    const text = sweeps.read(path)
+    if (text === null) throw new Error(`no ${path} under ${sweeps.base}: nothing to compare against`)
+    return text
+  }
   return {
-    ...differences(documentedKinds(read(DATA_MODEL)), enforcedKinds(read(SCHEMA))),
-    retired: retiredMentions(rulebookFiles(root), read),
-    bare: bareMentions(bareFiles(root), read),
+    ...differences(
+      documentedKinds(stated(prose, DATA_MODEL)),
+      enforcedKinds(stated(everything, SCHEMA)),
+    ),
+    retired: retiredMentions(prose.files, prose.read),
+    bare: bareMentions(everything.files, everything.read),
   }
 }
 

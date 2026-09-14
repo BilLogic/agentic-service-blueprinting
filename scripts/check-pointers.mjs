@@ -59,14 +59,13 @@
  *
  * Run: node scripts/check-pointers.mjs   (also: npm run check:pointers)
  */
-import { readFileSync, existsSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { ALWAYS_LOADED } from './always-loaded.mjs'
+import { ALWAYS_LOADED, TIER_NOUN } from './always-loaded.mjs'
 import { sweep as sweepSubject } from './sweep.mjs'
 
-export const REPO_ROOT = resolve(new URL('..', import.meta.url).pathname)
 
 /** The always-loaded routers. */
 export const SUBJECTS = ALWAYS_LOADED
@@ -122,6 +121,23 @@ function application(root) {
 }
 
 /**
+ * This repository's prose under `root`, swept once per root.
+ *
+ * The routers are prose — `AGENTS.md` is a root document — and so is nearly
+ * everything a pointer aims at, so the `docs` subject is what hands this check
+ * its bytes: a document that went away between the listing and the read comes
+ * back null, which is the one case this file used to have no answer for on the
+ * non-application side and a `readFileSync` would have thrown over.
+ *
+ * MEMOISED PER ROOT for the reason the application is: several reads, one walk.
+ */
+const proseTrees = new Map()
+function prose(root, io) {
+  if (!proseTrees.has(root)) proseTrees.set(root, sweepSubject({ subject: 'docs', root, io }))
+  return proseTrees.get(root)
+}
+
+/**
  * Does a pointer resolve to something?
  *
  * The application answers for itself, out of the files it swept rather than off
@@ -150,7 +166,7 @@ const stripFences = (text) => text.replace(/```[\s\S]*?```/g, '')
  * bare-filename and glob cases live, and they are the ones a re-implementation
  * in a test would get wrong.
  */
-export function pointersIn(text, root = REPO_ROOT) {
+export function pointersIn(text, root = process.cwd()) {
   const out = []
   for (const match of stripFences(text).matchAll(POINTER)) {
     const rel = match[1]
@@ -229,12 +245,15 @@ export function headingExists(fileText, heading) {
     )
 }
 
-export function sweep(root = REPO_ROOT, subjects = SUBJECTS) {
+export function sweep(root = process.cwd(), subjects = SUBJECTS, io) {
   const failures = []
   let pointers = 0
   let triggers = 0
   for (const rel of subjects) {
-    const text = readFileSync(join(root, rel), 'utf8')
+    const text = prose(root, io).read(rel)
+    // The routers are a fixed list, not a listing: one that is not there is a
+    // fact about the tree, and a run over the rest would pass it in green.
+    if (text === null) throw new Error(`no ${rel} under ${prose(root, io).base}: the ${TIER_NOUN} lost a file`)
     for (const pointer of pointersIn(text, root)) {
       pointers += 1
       if (!pointerResolves(root, pointer.rel)) {
@@ -245,7 +264,7 @@ export function sweep(root = REPO_ROOT, subjects = SUBJECTS) {
       if (pointer.rel.endsWith('/')) continue
       const target = intoApplication(pointer.rel)
         ? application(root).read(pointer.rel)
-        : readFileSync(join(root, pointer.rel), 'utf8')
+        : prose(root, io).read(pointer.rel)
       if (target === null) continue // gone between the listing and the read
       if (pointer.section && !headingExists(target, pointer.section)) {
         failures.push(

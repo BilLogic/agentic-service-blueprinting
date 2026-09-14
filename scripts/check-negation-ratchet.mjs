@@ -56,14 +56,13 @@
  *
  * Run: node scripts/check-negation-ratchet.mjs   (also: npm run check:negation)
  */
-import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { ALWAYS_LOADED, TIER_NOUN } from './always-loaded.mjs'
 import { repoConfig } from './repo-config.mjs'
+import { sweep } from './sweep.mjs'
 
-const REPO_ROOT = resolve(new URL('..', import.meta.url).pathname)
 
 /** The five tokens, in one place, so the regex and the label cannot drift apart. */
 export const PROHIBITION_TOKENS = ['never', "don't", 'do not', 'cannot', 'must not']
@@ -85,12 +84,26 @@ const stripQuoted = (text) => text.replace(/"[^"\n]*"/g, '""').replace(/`[^`\n]*
  */
 export const countProhibitions = (text) => (stripQuoted(text).match(PROHIBITION) || []).length
 
-/** The tier's census: one entry per file that scores, plus the total. */
-export function measure(root = REPO_ROOT, files = ALWAYS_LOADED) {
+/**
+ * The tier's census: one entry per file that scores, plus the total.
+ *
+ * The bytes come from the `docs` subject — the tier is prose, and a root
+ * document is the first thing that sweep lists — so this file neither joins a
+ * path onto a root of its own nor decides what an absent one means. `files`
+ * stays a parameter, because which files the tier holds is
+ * `always-loaded.mjs`'s answer and a test hands its own list.
+ */
+export function measure(root = process.cwd(), files = ALWAYS_LOADED) {
   const counts = {}
   let total = 0
+  const tier = sweep({ subject: 'docs', root, what: 'document' })
   for (const rel of files) {
-    const n = countProhibitions(readFileSync(join(root, rel), 'utf8'))
+    const text = tier.read(rel)
+    // A tier file that is not there is the shrink this ratchet fails on, said
+    // where the reader can see which file: counting it as zero would report a
+    // smaller, greener number instead.
+    if (text === null) throw new Error(`no ${rel} under ${tier.base}: the ${TIER_NOUN} lost a file`)
+    const n = countProhibitions(text)
     if (n > 0) counts[rel] = n
     total += n
   }

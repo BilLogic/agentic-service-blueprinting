@@ -13,8 +13,9 @@
  * files, and contains only its judgement.
  *
  * A SUBJECT is a named tree and its rule: where its root is, which files are
- * its, and what "cannot see the subject" means there. There are seven, and
- * the answers differ in ways that matter:
+ * its, and what "cannot see the subject" means there. There are eight — the
+ * seven the plan named and the commit — and the answers differ in ways that
+ * matter:
  *
  *   app              The application — a deployment's `src` laid over the
  *                    package's, per path (the Overlay; `overlay.mjs` is the
@@ -37,9 +38,12 @@
  *                    scripts is a FAILURE.
  *   migrations       `supabase/migrations/`, the `.sql` files, this tree's. None is a
  *                    FAILURE.
- *   references       `references/`, the published surface of THIS
- *                    repository. A repository without one is a SKIP SAID OUT
- *                    LOUD, for the reason `docs` gives.
+ *   references       The published reference surface of THIS repository:
+ *                    `references/` and every `skills/<skill>/references/`,
+ *                    every file — the schemas are addressed by filename, so
+ *                    they are as much the surface as the prose. A repository
+ *                    without one is a SKIP SAID OUT LOUD, for the reason
+ *                    `docs` gives.
  *   reference-docs   The PACKAGE's `references/`, read and never written —
  *                    what a check holds this tree's own documents against,
  *                    out of the installed package in a deployment and out of
@@ -51,6 +55,14 @@
  *                    not another checkout of this package. None, or several,
  *                    is a SKIP SAID OUT LOUD with the reason, because both
  *                    mean "nothing to run against".
+ *   commit           Everything a commit of this tree would carry: the
+ *                    tracked files and the untracked ones git would not
+ *                    ignore, as `git ls-files` lists them. The eighth
+ *                    subject, beyond the seven the plan named, because two
+ *                    checks read the whole commit for a word or a value that
+ *                    names nothing in particular, and "everything" is a
+ *                    subject only git can list. A listing with nothing in it
+ *                    is a FAILURE.
  *
  * WHAT COMES BACK is the same shape for every subject: the files as a
  * finding prints them (repo-relative, forward slashes, sorted), the base
@@ -72,6 +84,7 @@
  * the subject and the root it swept so the message is the one a reader needs.
  * A subject that skips is the exception, and says so first.
  */
+import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 // By package name, not relative: a deployment enrols this module byte-identical
@@ -94,6 +107,7 @@ export const SUBJECTS = [
   'references',
   'reference-docs',
   'deployment-seed',
+  'commit',
 ]
 
 /** Directory names no walk descends into. */
@@ -260,6 +274,60 @@ function filesIn(root, dir, subject) {
 }
 
 /**
+ * The reference surface: `references/` and every folder named `references`
+ * under `skills/`, at whatever depth, every file. The depth matters: the
+ * identifier manifest used to find these by walking `skills/` for the name,
+ * and a skill that keeps its references one folder down is a skill whose
+ * names would otherwise drop out of the manifest with nothing said.
+ */
+function referenceFiles(root) {
+  const dirs = [resolve(root, 'references')].filter((dir) => existsSync(dir))
+  const named = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    )) {
+      if (!entry.isDirectory() || entry.name.startsWith('.') || NEVER_WALKED.has(entry.name)) continue
+      const full = join(dir, entry.name)
+      if (entry.name === 'references') dirs.push(full)
+      else named(full)
+    }
+  }
+  const skills = resolve(root, 'skills')
+  if (existsSync(skills)) named(skills)
+  return dirs
+    .flatMap((dir) => filesUnder(dir))
+    .map((path) => slashed(relative(root, path)))
+    .sort()
+}
+
+/**
+ * Everything a commit would carry: tracked, plus untracked and not ignored.
+ * Tracked alone was a trap — a changeset written and checked locally before
+ * `git add` was invisible to the sweep and failed CI the moment it was
+ * committed — so the listing is what a commit would see, not what the index
+ * holds today.
+ */
+function commitFiles(root) {
+  let listed
+  try {
+    listed = execFileSync(
+      'git',
+      ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
+      { cwd: root, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] },
+    )
+  } catch (error) {
+    // No git, or no checkout under `root`: the listing is what was wanted and
+    // neither can give it, so the failure names both rather than surfacing as
+    // a bare `Command failed`.
+    const reason = String(error.stderr ?? error.message).trim().split('\n')[0]
+    throw new Error(`no commit to list under ${root}: git ls-files failed (${reason})`)
+  }
+  const files = [...new Set(listed.split('\0').filter(Boolean))].sort()
+  if (files.length === 0) throw new Error(`git lists no file under ${root}: this tree has no commit`)
+  return files
+}
+
+/**
  * The package's root: the installed package in a deployment, this tree here.
  * Decided by whether the package is installed, not by whether it ships the
  * folder asked for — an installed package with no `references/` is a failure
@@ -313,7 +381,7 @@ function deploymentSeedFiles(root, io) {
  * The files for one subject.
  *
  * @param {{
- *   subject: 'app' | 'docs' | 'scripts' | 'migrations' | 'references' | 'reference-docs' | 'deployment-seed',
+ *   subject: 'app' | 'docs' | 'scripts' | 'migrations' | 'references' | 'reference-docs' | 'deployment-seed' | 'commit',
  *   root?: string,
  *   where?: (path: string) => boolean,
  *   what?: string,
@@ -360,8 +428,11 @@ export function sweep({ subject, root = process.cwd(), where = () => true, what,
         files = []
         seen = false
       } else {
-        files = filesIn(repo, 'references', 'references')
+        files = referenceFiles(repo)
       }
+      break
+    case 'commit':
+      files = commitFiles(repo)
       break
     case 'reference-docs':
       base = packageBase(repo)
