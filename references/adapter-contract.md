@@ -241,22 +241,30 @@ arrives.
   a scenario's paths; read one path's whole grid — lanes, steps, cells, edges
   — and answer *absent* rather than *error* for a path that does not exist.
   Structural authoring goes through the RPC roster below.
-- **Slices.** List them, read one, create one (atomic: a slice with no slides
-  is a slice nobody can read and nobody knows to delete), replace a slice's
-  slides wholesale (atomic), delete one (converging — deleting a slice that is
-  already gone is success, because callers retry). A store that cannot write
-  atomically owes a repair pass instead; see the two levels below.
+- **Slices.** List them; read one, answering *absent* rather than *error* for
+  a slice that is not there; create one (atomic: a slice with no slides is a
+  slice nobody can read and nobody knows to delete); replace a slice's slides
+  wholesale (atomic — the old slides go only once the new ones land); delete
+  one (converging — deleting a slice that is already gone is success, because
+  callers retry). A store that cannot write atomically owes a repair pass
+  instead; see the two levels below.
 - **Findings.** List them by status; record a batch, skipping any whose
   fingerprint is already open (converging — the audit re-runs constantly and
   must not breed duplicates, and deduplication is by fingerprint, not by row
-  id); set a status (converging — setting the status a row already has is
-  success). § 5 below has the dedupe semantics in full.
+  id), and answer with the findings that were actually new; set a status
+  (converging — setting the status a row already has is success). § 5 of the
+  Supabase rendering below has the dedupe semantics in full.
 - **Identity**, separate from data, answering one question — *what may this
-  session do?* — in three tiers (`anon`, `authoring`, `service`). It never
-  exposes a token or a claim name, so an adopter can run Supabase auth, their
-  own OIDC, or a single-user desktop build without either side learning about
-  the other. It is a UI-level answer; the backend still enforces it. The
-  shipped reader is `src/lib/identity.ts`.
+  session do?* — in the two tiers this app branches on: `anon` writes nothing,
+  `service` writes. It never exposes a token or a claim name, so an adopter can
+  run Supabase auth, their own OIDC, or a single-user desktop build without
+  either side learning about the other. It is a UI-level answer; the backend
+  still enforces it. A backend that splits its authors from its automation
+  answers with the writing tier and enforces the narrower line itself, which is
+  the only place it is enforceable — a third tier lived in this vocabulary for
+  a while, nothing produced it, and a backend that had answered it would have
+  been read here as writing nothing. `src/lib/identity.ts` is the Supabase
+  rendering, and the only one shipped.
 
 These were once TypeScript interfaces with adapters behind them. Nothing
 dispatched through the interfaces, so what they added over this section was a
@@ -280,6 +288,11 @@ at all and conforms here. The cost is real and stated rather than hidden: an
 interrupted write can leave a slice with no slides until that pass runs, and
 the app has to tell the user such a pass exists and when it runs.
 
+**A backend states which level it meets**, and states it where an adopter
+reads it rather than leaving it to be discovered — along with anything else it
+admits about itself, such as a read-only store saying so. One that stays quiet
+gets write buttons that fail at the point of use.
+
 This is the decision that makes "any backend" true rather than a marketing
 line. A contract that demanded transactions would be the Supabase requirement
 again, wearing a different word.
@@ -291,12 +304,13 @@ There was one — framework-free, run from an adopter's own runner — and the t
 implementations it held equivalent were a read-only fixture over the bundled
 sample and an in-memory store. Neither was a database, and neither served the
 app: the shipped call sites talk to PostgREST directly, so the suite's green
-was two hypothetical stores agreeing with each other. Proving an
-implementation against § 1–§ 5 below, and against the checklist at the end of
-this document, is what an adopter actually has: the operations are named, the
-guarantees are named, and the shipped Supabase rendering is the worked
-example. A suite earns its place back on the day a second real backend needs
-it.
+was two hypothetical stores agreeing with each other. What an adopter
+actually has is this section — the operations are named and so is the guarantee
+on each — plus § How the Supabase adapter renders it below as the worked
+example, and the checklist at the end of this document for the import half. A
+suite earns its place back on the day a second real backend needs it; until
+then a passing suite would be making the deleted one's claim again, which was
+that two stores nobody runs agree with each other.
 
 ### How the Supabase adapter renders it
 

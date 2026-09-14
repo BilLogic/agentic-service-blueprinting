@@ -29,11 +29,18 @@ claim. `src/contexts/SupabaseProvider.tsx` calls it exactly as before.
 half of the version list `references/ir-schema.json` owns, held equal by its
 own test.
 
-**A deployment that imported the ports**: none is known, and none could be
-importing them by a published path — `src/lib/backend/` is not among the paths
-`check:reference-paths` guards, so nothing a deployment imports by fixed path
-moved. A deployment that reached into `src/lib/backend/ports.ts` anyway for the
-`Tier` type imports it from `src/lib/identity.ts` instead; one that used the
+**A deployment that imported the ports**: none is known. This is a patch
+because semver here is scoped to the plugin contract — the identifier lane —
+and refactoring the template app is outside it however much of it moves; a
+consumer forks that surface and takes the change as a visible merge conflict.
+The package's `exports` do carry `"./*"`, so these files WERE reachable by
+subpath; a deployment that imported `src/lib/backend/ports` for the `Tier` type
+imports it from `src/lib/identity.ts` instead, and one that imported the
 adapters or the conformance suite has no replacement in the template and should
-vendor the deleted files from the previous tag, which is the honest answer for
-code that was a hypothetical seam here too.
+vendor the deleted files from the previous tag — the honest answer for code
+that was a hypothetical seam here too.
+
+`Tier` loses its `authoring` member on the way. Nothing produced it and nothing
+branched on it: a backend that had answered it would have been read as writing
+nothing, so a backend that draws that line answers with the writing tier and
+enforces the narrower one itself.

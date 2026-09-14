@@ -134,7 +134,7 @@ All three are generated. Edit a migration and run `npm run generate:portable-cor
 
 **What the app actually reads and writes through** is the generated database type, [`src/types/database.ts`](./src/types/database.ts) — every table, column and RPC signature the core declares, emitted from the migrations and re-checked by CI. That is the seam that varies between this template and a deployment, and it is the one the compiler holds: change the core, regenerate the type, and every call site that no longer agrees stops building.
 
-There was a second seam here for a while — a set of repository interfaces kept beside the code, with an in-memory and a fixture implementation behind them, and a conformance suite holding the two equivalent. No call site ever dispatched through it. It described a dispatch that did not exist, and a suite proved two implementations equal to each other and to nothing that ships, so it is gone; what it was really claiming — that a store which can answer these operations can serve this app — is the adapter contract's job, and [references/adapter-contract.md](./references/adapter-contract.md) is where it is said.
+**What a store has to answer** to serve this app live — every operation, and the guarantee on each — is [references/adapter-contract.md](./references/adapter-contract.md) § Live backend surface.
 
 **What you get to copy**: the portable core ([supabase/generated/portable-core.generated.sql](./supabase/generated/portable-core.generated.sql) + [docs/erd.mmd](./docs/erd.mmd)), applied to a stock Postgres in CI; the normative spec in [references/adapter-contract.md](./references/adapter-contract.md); and the shipped Supabase call sites to read as the worked example.
 

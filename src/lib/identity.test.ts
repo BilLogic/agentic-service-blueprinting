@@ -46,7 +46,7 @@ function signedIn(role?: string) {
   }
 }
 
-describe('the Supabase identity tier', () => {
+describe('the tier a session is in, as the database answers it', () => {
   it('answers anon for a visitor with no session, without asking', async () => {
     const ask: Ask = { calls: 0 }
     // The seam's permissive default answers `true` to anyone who calls it,

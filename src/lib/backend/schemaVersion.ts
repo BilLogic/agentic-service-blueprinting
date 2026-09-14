@@ -1,5 +1,5 @@
 /**
- * What shape a target carries, and whether this template can talk to it.
+ * Which shapes this template speaks, as TypeScript carries the list.
  *
  * The adapter contract has always required "a compatible `schema_version`".
  * Until the database grew a `schema_version` table the value lived only in an

@@ -1,12 +1,13 @@
 /**
  * What may this session do? — asked of the database, not inferred.
  *
- * Identity is deliberately separate from data, and it answers one question in
- * the only terms this app acts on. It never exposes a token, a claim name or a
- * JWT, so a deployment may run Supabase auth, its own OIDC, or a single-user
- * desktop build where the answer is a constant. This is a UI-level answer: the
- * database still enforces it, and a client that lies here changes what buttons
- * render and nothing else.
+ * This is the SUPABASE rendering of that question, and the only one shipped: a
+ * deployment on its own OIDC, or a single-user desktop build where the answer
+ * is a constant, writes its own reader and keeps the `Tier` vocabulary below.
+ * What travels is the vocabulary, not this function. What it answers with is
+ * never a token, a claim name or a JWT — only what the session may do — and it
+ * is a UI-level answer: the database still enforces it, and a client that lies
+ * here changes what buttons render and nothing else.
  *
  * The seam it asks is `is_service_account()`, a database function every write
  * RPC asserts in its own body and every restrictive write policy ANDs with. It
@@ -29,17 +30,10 @@
  * Asking costs one round trip on sign-in and is right in both postures,
  * including the one where an adopter deletes the recipe outright.
  *
- * Two things this deliberately does NOT do:
- *
- *   * It does not read the claim as a fallback. A session carrying
- *     `role: 'service'` against a database that says no is a viewer, because
- *     the database is what refuses the write. A fallback would restore the
- *     disagreement this exists to end.
- *   * It does not answer `authoring`. That tier means "writes the records
- *     about the board but not its structure", and this backend has no such
- *     session: one predicate gates the structure RPCs, the spec columns, the
- *     slices and the evidence alike. A signed-in session outside the tier
- *     writes nothing, which is `anon`.
+ * One thing this deliberately does NOT do: it does not read the claim as a
+ * fallback. A session carrying `role: 'service'` against a database that says
+ * no is a viewer, because the database is what refuses the write. A fallback
+ * would restore the disagreement this exists to end.
  *
  * A failed ask answers `anon`. The database is the wall either way, so the
  * only thing at stake is which buttons render, and rendering a save that
@@ -48,19 +42,28 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 
-/** Who is asking, in the only terms this app acts on. */
+/**
+ * Who is asking, in the only terms this app acts on.
+ *
+ * Two members, because two is what anything branches on. There was a third —
+ * `authoring`, for a session that writes the records about the board but not
+ * its structure — and this backend has no such session: one predicate gates
+ * the structure RPCs, the spec columns, the slices and the evidence alike.
+ * Nothing produced it and nothing handled it, so a backend that did split its
+ * authors from its automation would have been read here as writing nothing.
+ * A backend that draws that line answers with the writing tier and enforces
+ * the narrower one itself, which is where it is enforceable.
+ */
 export type Tier =
   /**
-   * Writes nothing. Not signed in — or signed in and outside every writing
+   * Writes nothing. Not signed in — or signed in and outside the writing
    * tier, which a backend that splits `authenticated` in two answers for
    * about half its accounts. The defining property is the write, not the
    * sign-in: what a session may READ is a separate question, and so is
    * whether it may open the agent.
    */
   | 'anon'
-  /** Signed in. Writes the records about the board: slices, slides, findings, evidence. */
-  | 'authoring'
-  /** Trusted automation. Writes structure as well. */
+  /** Writes: the board's structure, its spec, and the records about it. */
   | 'service'
 
 /** The tier seam, as the database exposes it over the Data API. */
