@@ -28,10 +28,11 @@ import { coverContent } from '@/content/coverContent'
  *
  * A deployment that mounts this package stops keeping a copy of the
  * application and reads it out of the package instead — `@/…` finds the
- * package once its own `src` is gone. That leaves its OWN files with nowhere
- * to go: its config module, its content, whatever else it authors. They
- * cannot go back into `src`, because the first root that exists wins and a
- * half-populated `src` would capture every `@/…` import in the package.
+ * package, laid under whatever its own `src` still holds (its residents; see
+ * the overlay block below). That leaves its OWN files with nowhere to go: its
+ * config module, its content, whatever else it authors. They are not
+ * residents — a file in `src` stands for a package file of the same path, and
+ * a file that stands for nothing is a resident with no reason.
  *
  * So they go in `deployment/`, and the three build files name it: an alias
  * that is not the application's, a TypeScript include, and a test glob. All
@@ -116,14 +117,16 @@ function mountThePackage(scratch: string): void {
  * deployment installs. This installs.
  *
  * `src` and `docs` both, because an install ships the published tree and the
- * application reaches out of `src` for the figures it draws. Nothing else is
- * needed: what a test puts in the tree after this is what that test is about.
+ * application reaches out of `src` for the figures it draws; and `scripts`,
+ * because the config imports the overlay out of the package's `scripts/` the
+ * moment the package is there. Nothing else is needed: what a test puts in the
+ * tree after this is what that test is about.
  */
 function installThePackage(scratch: string): string {
   const installed = path.join(scratch, 'node_modules', 'agentic-service-blueprinting')
   mkdirSync(installed, { recursive: true })
   copyFileSync(path.join(repoRoot, 'package.json'), path.join(installed, 'package.json'))
-  for (const directory of ['src', 'docs']) {
+  for (const directory of ['src', 'docs', 'scripts']) {
     cpSync(path.join(repoRoot, directory), path.join(installed, directory), {
       recursive: true,
     })
@@ -296,6 +299,102 @@ describe('a deployment that brings its own source root', () => {
     )
 
     expect(output).toContain('workspaceName.test.ts')
+    expect(output).toMatch(/Test Files\s+1 passed \(1\)/)
+  }, 180_000)
+})
+
+/**
+ * The Overlay, end to end: a deployment that still holds a resident or two.
+ *
+ * The rule used to be all or nothing — the alias pointed at the first root
+ * that existed, so a `src` with one file in it captured every `@/…` import
+ * and resolved none of the rest. Now the package is the application whenever
+ * it is installed, and the deployment's `src` lies over it PER PATH: the
+ * deployment's copy where it has one, the package's everywhere else. This
+ * stages exactly the tree the old rule broke on — the package mounted, a
+ * `src` holding two files, one of them nested — and runs a test in it that
+ * imports a resident, a resident's neighbour that only the package has, and
+ * a module in a directory the deployment never touched.
+ *
+ * The decision that the deployment overlays the package per path records
+ * this; `scripts/overlay.mjs` is the rule.
+ */
+describe('a deployment that keeps residents in its src', () => {
+  const RESIDENT = 'lib/blueprintLaneCollapse.ts'
+  const NESTED_RESIDENT = 'lib/agent/role.md'
+
+  function stageDeploymentWithResidents(): string {
+    const scratch = stageBuildFiles()
+    mountThePackage(scratch)
+
+    // Both residents stand for files the package has at the same paths.
+    for (const resident of [RESIDENT, NESTED_RESIDENT]) {
+      expect(existsSync(path.join(repoRoot, 'src', resident))).toBe(true)
+    }
+    const residents = path.join(scratch, 'src')
+    mkdirSync(path.dirname(path.join(residents, NESTED_RESIDENT)), { recursive: true })
+    writeFileSync(
+      path.join(residents, RESIDENT),
+      "export const WHO_ANSWERED = 'the resident'\n",
+    )
+    writeFileSync(path.join(residents, NESTED_RESIDENT), '# the resident role\n')
+
+    const deployment = path.join(scratch, DEPLOYMENT_ROOT_DIRNAME)
+    mkdirSync(deployment)
+    writeFileSync(
+      path.join(deployment, 'overlay.test.ts'),
+      [
+        "import { expect, it } from 'vitest'",
+        // The resident, under the application's alias: a name the package's
+        // file of that path does not export.
+        `import { WHO_ANSWERED } from '@/${RESIDENT.replace(/\.ts$/, '')}'`,
+        // The nested resident, as text, the way the application reads it.
+        `import role from '@/${NESTED_RESIDENT}?raw'`,
+        // A neighbour of the nested resident that only the package has.
+        "import { stopAgent } from '@/lib/agent/loop'",
+        // A module in a directory the deployment never touched.
+        "import { ORG_NAME } from '@/config'",
+        '',
+        "it('reads each path from the layer that holds it', () => {",
+        "  expect(WHO_ANSWERED).toBe('the resident')",
+        "  expect(role).toBe('# the resident role\\n')",
+        "  expect(typeof stopAgent).toBe('function')",
+        '  expect(ORG_NAME.length).toBeGreaterThan(0)',
+        '})',
+        '',
+      ].join('\n'),
+    )
+
+    return scratch
+  }
+
+  it('points the alias at the package and loads the overlay', async () => {
+    const scratch = stageDeploymentWithResidents()
+    const config = await resolveConfig(
+      { configFile: path.join(scratch, 'vite.config.ts'), root: scratch },
+      'serve',
+    )
+    const app = aliasEntries(config.resolve.alias).find((entry) => entry.find === '@')
+    // The config resolves its own directory to its real path; so does this.
+    expect(app?.replacement).toBe(
+      path.join(realpathSync(scratch), 'node_modules', 'agentic-service-blueprinting', 'src'),
+    )
+    expect(config.plugins.map((plugin) => plugin.name)).toContain('asb:overlay')
+  })
+
+  it('resolves a resident to the deployment and everything else to the package', () => {
+    const scratch = stageDeploymentWithResidents()
+    const output = execFileSync(
+      path.join(repoRoot, 'node_modules', '.bin', 'vitest'),
+      ['run', '--reporter=verbose'],
+      {
+        cwd: scratch,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' },
+      },
+    )
+    expect(output).toContain('overlay.test.ts')
     expect(output).toMatch(/Test Files\s+1 passed \(1\)/)
   }, 180_000)
 })

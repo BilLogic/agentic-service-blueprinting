@@ -23,10 +23,18 @@
  * tree nobody ships, and a walk that starts at a root that is not there
  * measures nothing at all and reports it in green.
  *
- * `src` is ALL OR NOTHING. TypeScript's `paths` falls back per MODULE and this
- * falls back per ROOT, so the two agree exactly when `src` is wholly present
- * or wholly absent, and can disagree on a tree that is half-vendored. Do not
- * half-vendor one.
+ * THE ALL-OR-NOTHING RULE IS WITHDRAWN. `src` used to be all or nothing — one
+ * root won and the other was never consulted — and the decision that the deployment overlays the package per path replaces that with
+ * an overlay: the build resolves a path through `scripts/overlay.mjs`'s
+ * `resolveOverlaid`, taking the deployment's copy if it has one and the
+ * package's otherwise, which is what TypeScript's `paths` has always done per
+ * module. This module still answers with the FIRST ROOT THAT EXISTS. That
+ * agrees with the overlay at both ends — this repository, which has one root;
+ * a deployment with no residents, where the package answers every path; and
+ * the deployment as it stands, where every file is still a resident and `src`
+ * answers every path — and disagrees only in between, once the first resident
+ * is deleted. The sweep module (#703) takes the shared resolver before that
+ * deletion, and this paragraph goes with it.
  *
  * IT REFUSES WHEN NEITHER ROOT IS THERE rather than handing back the first. A
  * tree with no application is not a tree with an empty application: an alias

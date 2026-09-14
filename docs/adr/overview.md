@@ -56,6 +56,7 @@ that repository's 0013 is the import decision, which lives here as 0020.
 | [0019](0019-the-deployment-is-a-deployment-of-the-template.md) | The deployment is a deployment of the template, not a fork of it |
 | [0020](0020-the-deployment-imports-the-template.md) | The deployment imports the template, and never edits it |
 | [0021](0021-the-template-owns-the-agent.md) | The template owns the agent; a deployment configures it like the UI |
+| [0022](0022-the-deployment-overlays-the-package-per-path.md) | The deployment overlays the package per path, and a residents list is the gate |
 
 ## Moved here from BilLogic/plus-uno-blueprint (#551)
 
