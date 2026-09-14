@@ -203,6 +203,12 @@ async function captureCoveredCells(page: Page): Promise<string[][]> {
   const downloadPromise = page.waitForEvent('download')
   await save.click()
   const download = await downloadPromise
+  // The download starts inside the item's click handler, before the menu has
+  // gone. The menu is modal while it is mounted — the page under it takes no
+  // pointer — so a press sent before it unmounts lands on nothing, and the
+  // drag that follows this read-back would silently not start. Wait for the
+  // menu to be gone before handing the page back.
+  await expect(save, 'the capture menu has closed').toBeHidden()
 
   const stream = await download.createReadStream()
   const chunks: Buffer[] = []
@@ -212,6 +218,7 @@ async function captureCoveredCells(page: Page): Promise<string[][]> {
   }
   return payload.marks.map((mark) => mark.overlaps)
 }
+
 
 test.describe('the annotation layer, in a browser', () => {
   test('a box drawn across two cells drags onto a third, and the capture says so', async ({
@@ -265,8 +272,16 @@ test.describe('the annotation layer, in a browser', () => {
       { x: first.x + first.width - 6, y: first.y + 6 },
       { x: second.x + 6, y: first.y + first.height - 6 },
     )
-    // A new mark opens in text-edit; a drag starts only once that is
-    // dismissed, which is what Escape is for.
+    // A new mark opens in text-edit, and a drag starts only once that is
+    // dismissed. The editor takes focus a frame
+    // later. Escape belongs to whichever surface is up: with the editor
+    // focused it closes the editor; sent before that, it reaches the canvas
+    // as the return to the overview, and the board zooms out from under the
+    // mark. Wait for the editor before dismissing it.
+    await expect(
+      page.locator('[data-canvas-annotation-layer] [data-annotation-id] textarea'),
+      'the new mark opened its editor and took focus',
+    ).toBeFocused()
     await page.keyboard.press('Escape')
 
     const mark = page.locator('[data-canvas-annotation-layer] [data-annotation-id]')

@@ -1556,6 +1556,12 @@ export function CanvasAnnotationLayer({ zoom = 1 }: { zoom?: number }) {
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        // This Escape is the layer's: it clears the mark's selection or its
+        // editor. Claim it, or the canvas's own Escape — the animated return
+        // to the overview — fires on the same keystroke whenever the editor's
+        // textarea has not taken focus yet, and the board zooms out from
+        // under a mark the person is still working on.
+        event.preventDefault()
         clearSelection()
         return
       }
