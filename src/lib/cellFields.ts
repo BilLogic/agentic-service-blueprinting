@@ -1,6 +1,7 @@
-import { asEntityStatus } from '@/lib/entityStatus'
+import { asEntityStatus, DEFAULT_ENTITY_STATUS, type EntityStatus } from '@/lib/entityStatus'
+import { parseValueProps, type ValueProp } from '@/lib/valueProps'
 import type { BlueprintCell } from '@/types/blueprint'
-import type { Database } from '@/types/database'
+import type { Database, Json } from '@/types/database'
 
 /**
  * The Cell field list: one descriptor per column the board reads for a cell.
@@ -18,12 +19,12 @@ import type { Database } from '@/types/database'
  * column the schema does not have is a type error, and against the
  * normalized cell, so every field the list names has somewhere to land.
  *
- * What is derived from the list today: the cells block of the board select
- * and the normalized cell. The panel's fields, the read-only rows, the
- * agent's argument schema and the one save are the next derivations; each
- * moves on its own, which is why the descriptors already carry the label,
- * the hint, the write route, the agent argument name and the budget those
- * derivations will read. Nothing reads them yet except a person.
+ * What is derived from the list: the cells block of the board select, the
+ * normalized cell, the panel's form state and rendered fields, the
+ * read-only panel's rows, the one save's routing (`cellSave.ts`), the
+ * interface map's cell rows and the panel write surface's cell columns. The
+ * agent's argument schema is the next derivation; the descriptors already
+ * carry the argument name it will read.
  */
 
 export type CellRow = Database['public']['Tables']['cells']['Row']
@@ -88,7 +89,30 @@ export type CellFieldDescriptor<K extends CellFieldKey = CellFieldKey> = {
    * retype (`value_props`).
    */
   normalize?: (value: CellRow[K] | null | undefined) => BlueprintCell[K]
+  /**
+   * The control the panel edits the field with, where a person may edit it
+   * from the panel. A field with no `editor` is not in the form — structure
+   * moves on the board, the frame through its own affordance — and is not a
+   * row of the interface map either, because no panel says its label.
+   */
+  editor?: CellEditor
+  /**
+   * Why the label and the column name differ, where they do. The interface
+   * map (`references/interface-schema-map.md`) prints it beside the row, and
+   * requires it: a divergence with no reason written down is the defect that
+   * map exists to end.
+   */
+  because?: string
 }
+
+/** How the panel edits one field. */
+export type CellEditor =
+  | { control: 'input' }
+  | { control: 'textarea'; rows: number }
+  | { control: 'status' }
+  /** `row`: fields naming the same row share one in the form, side by side. */
+  | { control: 'ownerTag'; row: 'owners' }
+  | { control: 'valueProps' }
 
 export type AnyCellField = { [K in CellFieldKey]: CellFieldDescriptor<K> }[CellFieldKey]
 
@@ -144,6 +168,7 @@ export const CELL_FIELDS = [
     required: true,
     agentArg: 'content',
     budget: 'canvas',
+    editor: { control: 'input' },
   },
   {
     key: 'frame',
@@ -161,6 +186,7 @@ export const CELL_FIELDS = [
     writeRoute: 'content',
     required: false,
     agentArg: 'summary',
+    editor: { control: 'textarea', rows: 3 },
   },
   {
     key: 'status',
@@ -173,6 +199,7 @@ export const CELL_FIELDS = [
     // check constraint, and a value the renderer has no treatment for reads
     // as shipped rather than as an unrecognised marker.
     normalize: (value) => asEntityStatus(value),
+    editor: { control: 'status' },
   },
   {
     key: 'function',
@@ -182,6 +209,7 @@ export const CELL_FIELDS = [
     writeRoute: 'spec',
     required: false,
     agentArg: 'function',
+    editor: { control: 'textarea', rows: 2 },
   },
   {
     key: 'form',
@@ -191,6 +219,7 @@ export const CELL_FIELDS = [
     writeRoute: 'spec',
     required: false,
     agentArg: 'form',
+    editor: { control: 'textarea', rows: 2 },
   },
   {
     key: 'value_props',
@@ -203,6 +232,9 @@ export const CELL_FIELDS = [
     // The column is jsonb; the cell type names the shape the panel renders.
     // Absent rather than empty, so "unset" and "set to nothing" stay apart.
     normalize: (value) => (value ?? undefined) as BlueprintCell['value_props'],
+    editor: { control: 'valueProps' },
+    because:
+      '`props` abbreviates this exact phrase and no other. A label is read once and a name is typed daily, so the panel spells out what the schema shortens.',
   },
   {
     key: 'owner',
@@ -212,6 +244,7 @@ export const CELL_FIELDS = [
     writeRoute: 'content',
     required: false,
     agentArg: 'owner',
+    editor: { control: 'ownerTag', row: 'owners' },
   },
   {
     key: 'perceived_owner',
@@ -221,6 +254,7 @@ export const CELL_FIELDS = [
     writeRoute: 'content',
     required: false,
     agentArg: 'perceived_owner',
+    editor: { control: 'ownerTag', row: 'owners' },
   },
 ] as const satisfies readonly AnyCellField[]
 
@@ -290,4 +324,88 @@ export function cellFieldsFromRow(
       : (raw ?? null)
   }
   return values as CellFieldValues
+}
+
+/* ------------------------------------------------------------- the form */
+
+/** A descriptor the panel edits: one with an `editor`. */
+export type EditableCellField = Extract<CellField, { editor: CellEditor }>
+export type CellEditKey = EditableCellField['key']
+
+/**
+ * The editable fields, in the order the panel shows them: what the cell
+ * says and who it belongs to first, then what it is like. Within a group
+ * the list's order holds, which puts the owner pair after status and the
+ * value propositions last.
+ */
+export const EDITABLE_CELL_FIELDS: readonly EditableCellField[] = (
+  ['content', 'spec'] as const
+).flatMap((group) =>
+  CELL_FIELDS.filter(
+    (descriptor): descriptor is EditableCellField =>
+      'editor' in descriptor && descriptor.group === group,
+  ),
+)
+
+/**
+ * The value a field holds while it is being edited: text for the text
+ * controls, the status value for the status control, and the parsed list
+ * for the value propositions. Empty text means "not specified"; the write
+ * stores it as null.
+ */
+export type CellEditValue<K extends CellEditKey> = K extends 'status'
+  ? EntityStatus
+  : K extends 'value_props'
+    ? ValueProp[]
+    : string
+
+/** The form's state for a cell: every editable field, keyed by column. */
+export type CellEdits = { [K in CellEditKey]: CellEditValue<K> }
+
+/**
+ * The edits a cell starts from — its columns as the board holds them, in
+ * the form's shape — or, for a cell that does not exist yet, the empty form
+ * with the status column's own default, so a cell created without touching
+ * the control reads the same as one the importer wrote.
+ */
+export function cellEditsFromCell(cell: BlueprintCell | null): CellEdits {
+  const edits: Record<string, unknown> = {}
+  for (const descriptor of EDITABLE_CELL_FIELDS) {
+    const value = cell?.[descriptor.key]
+    switch (descriptor.editor.control) {
+      case 'status':
+        edits[descriptor.key] = value ?? DEFAULT_ENTITY_STATUS
+        break
+      case 'valueProps':
+        edits[descriptor.key] = parseValueProps((value ?? null) as Json | null)
+        break
+      default:
+        edits[descriptor.key] = value ?? ''
+    }
+  }
+  return edits as CellEdits
+}
+
+/**
+ * Whether two edits of one field are the same value — as the write would
+ * store them: text is compared trimmed, because the mutations trim before
+ * writing and a change of surrounding whitespace would be a write that
+ * changes nothing; the list is compared by value.
+ */
+export function sameCellEdit<K extends CellEditKey>(
+  key: K,
+  left: CellEditValue<K>,
+  right: CellEditValue<K>,
+): boolean {
+  if (key === 'value_props') return JSON.stringify(left) === JSON.stringify(right)
+  return typeof left === 'string' && typeof right === 'string'
+    ? left.trim() === right.trim()
+    : left === right
+}
+
+/** The editable fields whose value differs between two edits. */
+export function changedCellFields(after: CellEdits, before: CellEdits): EditableCellField[] {
+  return EDITABLE_CELL_FIELDS.filter(
+    (descriptor) => !sameCellEdit(descriptor.key, after[descriptor.key], before[descriptor.key]),
+  )
 }

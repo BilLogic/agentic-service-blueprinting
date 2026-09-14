@@ -19,12 +19,8 @@
  * disagree about what the map says. What can still disagree is the rendering,
  * which is what the last pair of tests in this file watches.
  *
- * FOUR RULES MAKE IT NON-VACUOUS, and each is a way the map could rot:
+ * TWO RULES MAKE IT NON-VACUOUS, and each is a way the map could rot:
  *
- *   1. Every panel label is in the map. A label nobody bound to a name is the
- *      whole defect, so a new one fails until somebody says what it names.
- *   2. Every row is a label some panel actually says. A row for a label that
- *      no longer exists is a map of an interface that is gone.
  *   3. Every row names something the schema has. A label cannot be "fixed"
  *      by pointing it at a second word that is also not there.
  *   4. A divergent row carries a reason and an aligned row does not. The
@@ -37,6 +33,23 @@
  * Each is proved to go red, in the shape `scripts/tests/retired-copy.test.mjs`
  * argues for: a planted fixture the rule must flag, next to a neighbour it
  * must leave alone.
+ *
+ * RULES 1 AND 2 ARE GONE, and they kept their numbers on the way out because
+ * the two that remain are cited by number elsewhere. They scanned the app's
+ * `.tsx` for label props — rule 1 held every scanned label to a row of the
+ * map, rule 2 held every row to a label some panel still said — and the scan
+ * was the only thing that knew what words the cell panel says. It no longer
+ * does: since #696 the cell panel's labels and hints are the CELL FIELD
+ * DESCRIPTORS in `src/lib/cellFields.ts`, read out of `EDITABLE_CELL_FIELDS`
+ * rather than spelled into JSX, and the map's cell rows are read from those
+ * same descriptors by `scripts/interface-schema-map.mjs`. So a scan of the
+ * panels would find a `{field.label}` expression where the word used to be,
+ * and the defect it was built to catch — a label nobody bound to a name —
+ * cannot arise for a cell field at all: the descriptor that carries the word
+ * IS the binding, and its key is typed against the generated `cells` row. A
+ * rule nobody can fail is a rule nobody reads, so both are deleted rather
+ * than narrowed. What is left holds the map to the schema it names and to the
+ * reasons it records.
  *
  * TWO LABELS ARE RENAMED HERE RATHER THAN REASONED ABOUT, which is the other
  * half of the ask — "a reason, or a rename". The panel said **Text** where the
@@ -57,27 +70,13 @@
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { join, relative, resolve } from 'node:path'
+import { resolve } from 'node:path'
 import { LABEL_COLUMNS } from '../interface-schema-map.mjs'
 import { parseGeneratedTypes } from '../check-schema-inventory.mjs'
-import { appFiles, appPackageRoot, readAppFile } from '../app-source.mjs'
+import { readAppFile } from '../app-source.mjs'
 
 const ROOT = resolve(new URL('../..', import.meta.url).pathname)
 
-/**
- * The package the application sits in, which is what a finding names its file
- * relative to.
- *
- * The map and the document are THIS repository's — `scripts/` and
- * `references/` are the reading tree's own, and stay resolved off `ROOT`. The
- * panels and the generated types are the application's, and a deployment
- * keeps those in `node_modules/agentic-service-blueprinting`. A finding still
- * reads `src/components/…` on either side, because it is relative to the
- * application's root's parent rather than to whichever tree ran the check.
- */
-const APP_PACKAGE = appPackageRoot(ROOT)
-const GUARD_FILE = relative(ROOT, new URL(import.meta.url).pathname).split('\\').join('/')
-const GUARD_SOURCE = readFileSync(new URL(import.meta.url), 'utf8')
 const RERUN = 'npm test -- scripts/tests/labels-name-their-columns.test.mjs'
 /** Where the map itself lives, since #137 — a row's failure names its row. */
 const MAP_FILE = 'scripts/interface-schema-map.mjs'
@@ -96,124 +95,18 @@ export function guardFailure(location, message) {
   return `${location}: ${message}\nRun: ${RERUN}`
 }
 
-const PANEL_LABELS_LOCATION = `${GUARD_FILE}:${sourceLine(
-  GUARD_SOURCE,
-  GUARD_SOURCE.indexOf('export function panelLabels'),
-)}`
-
 test('guard diagnostics name a source line and the focused rerun command', () => {
   assert.equal(
-    guardFailure('src/Panel.tsx:7', 'A label is not mapped.'),
-    `src/Panel.tsx:7: A label is not mapped.\nRun: ${RERUN}`,
+    guardFailure(`${MAP_FILE}:7`, 'A row names nothing.'),
+    `${MAP_FILE}:7: A row names nothing.\nRun: ${RERUN}`,
   )
 })
-
-/* ----------------------------------------------------------- the subject */
-
-/**
- * The components that put a field's name in front of a reader.
- *
- * `Field` labels an editable field in the cell panel's one form;
- * `SpecSection` heads one of the three spec blocks in the panel's overview;
- * `OwnerCell` labels the read-only owner pair; `DependencyGroup` heads one
- * group of rows in the Dependencies tab. Nothing else in the app labels a
- * field or a relation.
- *
- * ELEMENT-SHAPED RATHER THAN FILE-SHAPED, on purpose: a panel written next
- * week is inside the subject without anybody remembering to add it. That is
- * also why the subject is components rather than "words on screen" — the
- * annotation toolbar says `label: 'Text'` about a drawing tool, and a rule
- * that reached it would flag copy that is right.
- */
-const LABEL_COMPONENTS = [
-  'Field',
-  'PanelTextareaField',
-  'PanelSectionLabel',
-  'SpecSection',
-  'StringListField',
-  'OwnerCell',
-  'DependencyGroup',
-]
-
-/*
-  `StringListField` and `PanelTextareaField` are the argument for keeping this
-  subject element-shaped rather than file-shaped. Both WRAP `Field` and forward
-  the label through, so the words they carry — "KPIs", "Tools", every textarea
-  label on the entity panels — reached readers from outside every check that
-  had ever looked, not because anybody excluded them but because the wrappers
-  were written after the list was.
-*/
-const LABEL_ELEMENT = new RegExp(
-  `<(${LABEL_COMPONENTS.join('|')})\\b([^>]*)>([^<{]*)`,
-  'g',
-)
-const LABEL_PROP = /\b(label|title)\s*=\s*"([^"]*)"/
-
-/**
- * The panel's tab row, which is a label surface no JSX prop can see.
- *
- * `PANEL_TABS` is a table of `{ value, label, icon }` that the panel maps
- * over, so the words reach the reader through `{label}` rather than through
- * an attribute. Keyed on the TABLE'S NAME rather than on the file holding
- * it: a fourth tab added to that table is inside the subject the moment it
- * is written, and the annotation toolbar's own `label:` entries — which name
- * drawing tools, not fields — stay outside it.
- */
-const TAB_TABLE = 'const PANEL_TABS'
-
-/**
- * Every panel `.tsx` in the application, with its source.
- *
- * `appFiles` sweeps whichever root holds the application and REFUSES to come
- * back empty. That refusal is the point: every assertion below reports what it
- * did not find, so a walk of a `src` that is not there agrees with a clean
- * interface exactly, and goes on agreeing.
- */
-export function panelSources() {
-  return appFiles(
-    ROOT,
-    (path) => /\.tsx$/.test(path) && !path.includes('.test.'),
-    'panel .tsx',
-  ).map((file) => ({ file, code: readFileSync(join(APP_PACKAGE, file), 'utf8') }))
-}
-
-/** Every panel label in the app, with where it is written. */
-export function panelLabels(sources) {
-  const out = []
-  for (const { file, code } of sources) {
-    for (const element of code.matchAll(LABEL_ELEMENT)) {
-      // A label arrives as a prop or as children. `PanelSectionLabel` is the
-      // second shape — it names a section with nothing behind it, and a
-      // prop-only reader saw a panel that had gone quiet rather than one that
-      // simply labels its sections a different way.
-      const prop = LABEL_PROP.exec(element[2])
-      const children = element[3]?.trim()
-      const label = prop ? prop[2] : children
-      if (!label) continue
-      const at = prop ? element.index + element[0].indexOf(prop[0]) : element.index
-      out.push({ file, line: sourceLine(code, at), component: element[1], label })
-    }
-    const start = code.indexOf(TAB_TABLE)
-    if (start < 0) continue
-    const end = code.indexOf('\n]', start)
-    const table = code.slice(start, end < 0 ? code.length : end)
-    for (const row of table.matchAll(/\blabel:\s*'([^']*)'/g)) {
-      out.push({
-        file,
-        line: sourceLine(code, start + row.index),
-        component: 'PANEL_TABS',
-        label: row[1],
-      })
-    }
-  }
-  return out
-}
 
 /* --------------------------------------------------------------- the map */
 
 /**
  * The map itself is `scripts/interface-schema-map.mjs`, re-exported here so
- * the four rules below and their fixtures read the way they always have.
+ * the two rules below and their fixtures read the way they always have.
  *
  * It moved out of this file in #137, for the reason the document it renders
  * gives: the half a person reads is now generated from the half CI acts on,
@@ -257,117 +150,6 @@ export function aligns(label, name) {
 export function divergentNames(row) {
   return row.names.filter((name) => !aligns(row.label, name))
 }
-
-/* ---------------------------------------- rule 1: no label is unmapped */
-
-/** Panel labels the map says nothing about. */
-export function labelsMissingFromMap(labels, map = LABEL_COLUMNS) {
-  const mapped = new Set(map.map((row) => canonical(row.label)))
-  const seen = new Map()
-  for (const entry of labels) {
-    if (mapped.has(canonical(entry.label))) continue
-    if (!seen.has(entry.label)) {
-      seen.set(entry.label, {
-        label: entry.label,
-        file: entry.file,
-        line: entry.line,
-      })
-    }
-  }
-  return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label))
-}
-
-test('every panel label is a word the map binds to the schema', () => {
-  const labels = panelLabels(panelSources())
-  // The extraction, asserted before its result is trusted: a walker that
-  // found no labels would pass exactly as loudly as an interface that is
-  // clean.
-  assert.ok(
-    labels.length > 15,
-    guardFailure(PANEL_LABELS_LOCATION, `only ${labels.length} panel labels found — the extraction is wrong`),
-  )
-  for (const component of [...LABEL_COMPONENTS, 'PANEL_TABS']) {
-    assert.ok(
-      labels.some((one) => one.component === component),
-      guardFailure(
-        PANEL_LABELS_LOCATION,
-        `no ${component} label was found — either it is gone or the extraction missed it`,
-      ),
-    )
-  }
-  const found = labelsMissingFromMap(labels)
-  const rendered = found.map(
-    (entry) => `"${entry.label}" (${entry.file}:${entry.line})`,
-  )
-  assert.deepEqual(
-    found,
-    [],
-    guardFailure(
-      found[0] ? `${found[0].file}:${found[0].line}` : PANEL_LABELS_LOCATION,
-      'A panel label is bound to nothing. This is #89 exactly: not that the word ' +
-        'differs from its column, but that no document says which column it is, so ' +
-        'nobody downstream can tell a decision from an accident. Add a row to ' +
-        'LABEL_COLUMNS in scripts/interface-schema-map.mjs — with a reason if the two ' +
-        `words differ — then run \`npm run interface-map\`:\n${rendered.join('\n')}`,
-    ),
-  )
-})
-
-test('the unmapped-label check goes red on a label nobody bound', () => {
-  const planted = [
-    {
-      file: 'src/components/blueprint/Planted.tsx',
-      code: [
-        '<Field label="Cadence" hint="How often this repeats." />',
-        // Already mapped, and must not be reported: the check is about words
-        // with no row, not about words it dislikes.
-        '<Field label="Content" />',
-        '<DependencyGroup title="Enables">',
-        // Case and spacing are the label's business, not the map's.
-        '<OwnerCell label="perceived owner" />',
-        "const PANEL_TABS = [",
-        "  { value: 'evidence', label: 'Evidence' },",
-        "  { value: 'costs', label: 'Costs' },",
-        ']',
-      ].join('\n'),
-    },
-  ]
-  assert.deepEqual(labelsMissingFromMap(panelLabels(planted)), [
-    { label: 'Cadence', file: 'src/components/blueprint/Planted.tsx', line: 1 },
-    { label: 'Costs', file: 'src/components/blueprint/Planted.tsx', line: 7 },
-  ])
-})
-
-/* ---------------------------------------- rule 2: no row is a fossil */
-
-/** Rows for labels no panel says any more. */
-export function rowsNoPanelSays(labels, map = LABEL_COLUMNS) {
-  const said = new Set(labels.map((entry) => canonical(entry.label)))
-  return map.filter((row) => !said.has(canonical(row.label))).map((row) => row.label)
-}
-
-test('every row of the map is a label some panel still says', () => {
-  const found = rowsNoPanelSays(panelLabels(panelSources()))
-  assert.deepEqual(
-    found,
-    [],
-    guardFailure(
-      mapRowLocation(found[0] ?? 'Content'),
-      `The map describes an interface that is gone: ${found.join(', ')}. A stale row is ` +
-        'worse than a missing one — a reader looking the word up finds an answer, and ' +
-        'the answer is about a panel nobody can open. Delete the row, or restore the label.',
-    ),
-  )
-})
-
-test('the fossil check goes red on a row no panel says', () => {
-  const map = [
-    { label: 'Content', names: ['cells.content'], because: '' },
-    { label: 'Text', names: ['cells.content'], because: '' },
-  ]
-  const labels = [{ file: 'src/x.tsx', component: 'Field', label: 'Content' }]
-  assert.deepEqual(rowsNoPanelSays(labels, map), ['Text'])
-})
 
 /* ------------------------------- rule 3: every row names something real */
 

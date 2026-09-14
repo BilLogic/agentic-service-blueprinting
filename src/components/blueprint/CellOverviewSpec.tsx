@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import { useBlueprintCell } from '@/hooks/useBlueprintCell'
+import { EDITABLE_CELL_FIELDS, type EditableCellField } from '@/lib/cellFields'
 import { parseValueProps } from '@/lib/valueProps'
+import type { Json } from '@/types/database'
 
 /**
  * One spec block: its label, and what is under it.
@@ -37,10 +39,16 @@ type CellOverviewSpecProps = {
   cellId: string | null
 }
 
+/** The spec group of the cell field list, in its order: function, form, value proposition. */
+const SPEC_FIELDS: readonly EditableCellField[] = EDITABLE_CELL_FIELDS.filter(
+  (field) => field.group === 'spec',
+)
+
 /**
- * FUNCTION / FORM / VALUE PROPOSITION spec block in the panel's inline overview,
- * read-only. Sections render only when authored, from the board already in
- * memory; a cell with no spec renders nothing at all.
+ * The spec block in the panel's inline overview, read-only: the spec-group
+ * fields of the cell field list, each under the descriptor's label. Sections
+ * render only when authored, from the board already in memory; a cell with
+ * no spec renders nothing at all.
  *
  * Editing lives in `CellPanelEditor` — the panel's one form, one Save.
  */
@@ -52,19 +60,16 @@ export function CellOverviewSpec({ cellId }: CellOverviewSpecProps) {
   // query of its own, so that it did not grow and then collapse on every cell
   // switch; the board carries the spec columns now, and this renders in the
   // same commit as the panel around it.
-  const functionText = spec?.function?.trim() ?? ''
-  const formText = spec?.form?.trim() ?? ''
-  const valueProps = parseValueProps(spec?.value_props ?? null)
-  const hasAnySpec =
-    functionText.length > 0 || formText.length > 0 || valueProps.length > 0
-  if (!hasAnySpec) return null
-
-  return (
-    <div className="flex flex-col gap-3 animate-in fade-in duration-(--motion-fade)">
-      {functionText ? <SpecSection title="Function" text={functionText} /> : null}
-      {formText ? <SpecSection title="Form" text={formText} /> : null}
-      {valueProps.length > 0 ? (
-        <SpecSection title="Value proposition">
+  // Read by control, not by key: the value-props control holds the jsonb
+  // list and the text controls hold text. The checker cannot carry that
+  // correlation from the descriptor to the cell's field, so each branch
+  // names the type the list types it as.
+  const sections = SPEC_FIELDS.flatMap((field) => {
+    if (field.editor.control === 'valueProps') {
+      const valueProps = parseValueProps((spec?.[field.key] ?? null) as Json | null)
+      if (valueProps.length === 0) return []
+      return [
+        <SpecSection key={field.key} title={field.label}>
           <ul className="flex flex-col gap-1">
             {valueProps.map((entry, index) => (
               <li key={index} className="text-sm text-foreground">
@@ -74,8 +79,18 @@ export function CellOverviewSpec({ cellId }: CellOverviewSpecProps) {
               </li>
             ))}
           </ul>
-        </SpecSection>
-      ) : null}
+        </SpecSection>,
+      ]
+    }
+    const text = ((spec?.[field.key] ?? '') as string).trim()
+    if (!text) return []
+    return [<SpecSection key={field.key} title={field.label} text={text} />]
+  })
+  if (sections.length === 0) return null
+
+  return (
+    <div className="flex flex-col gap-3 animate-in fade-in duration-(--motion-fade)">
+      {sections}
     </div>
   )
 }
