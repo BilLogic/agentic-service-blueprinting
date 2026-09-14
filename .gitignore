@@ -40,6 +40,12 @@ public/cover/
 # it is a published path a deployment runs by name; only its output is not.
 render-walk-output/
 
+# The walk's own files, copied out of the installed package so a loader will
+# compile them — `render-walk/run.mjs` writes it from scratch on every run and
+# nothing else reads it. A deployment ignores the same name for the same
+# reason; here the source and the copy sit in one tree.
+.render-walk-staged/
+
 # Agent scratch files. These leaked into the 0.2.2 package twice (9b3adc2,
 # then again by 695cd12) — every file here ships to every adopter, so the
 # ignore is the fix, not the deletion.

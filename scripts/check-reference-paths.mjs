@@ -99,11 +99,15 @@ export const CONSUMER_IMPORTS = [
   'skills/whatif/references/whatif-playbook.md',
 
   // The browser render walk. Not imported — RUN, by path: a deployment enrols
-  // by pointing Playwright at this config inside its own `node_modules` and
-  // walking its own sample board with the specs that travel beside it
-  // (`render-walk/README.md`). Same promise as the documents above, and the
-  // same failure without it: a move lands green here and surfaces at the
-  // deployment's next pin as a run that collects no tests.
+  // by running this runner out of its own `node_modules` and walking its own
+  // sample board with the config and the specs that travel beside it
+  // (`render-walk/README.md`). The runner is the path a deployment NAMES, and
+  // the other three are the files it stages and hands to Playwright, so all
+  // four are the interface. Same promise as the documents above, and the same
+  // failure without it: a move lands green here and surfaces at the
+  // deployment's next pin as a command that is not there, or a run that
+  // collects no tests.
+  'render-walk/run.mjs',
   'render-walk/playwright.config.ts',
   'render-walk/sample-board.spec.ts',
   'render-walk/annotation-drag.spec.ts',
