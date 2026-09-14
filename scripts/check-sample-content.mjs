@@ -117,10 +117,11 @@ import { join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { SAMPLE_ID_PREFIX } from './check-content-coupling.mjs'
 import { resolveSeedFiles } from './check-deployment-seed-loads.mjs'
-import { readListed } from './read-listed.mjs'
+import { readFileSync } from 'node:fs'
 import { sweep } from './sweep.mjs'
 
-const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const REPO_ROOT = process.cwd()
 
 /**
  * The offline half of a deployment's content — see the header.
@@ -291,29 +292,35 @@ export function findings(files) {
 /**
  * The content surfaces of one tree, opened: `[{ path, text }]`, seed first.
  *
- * The two halves are opened by whoever knows where they are: the board through
- * the sweep, which resolves a `src/data/…` path to the layer that holds it, and
- * the seed against this tree's own root, because a deployment's seed is its own.
+ * The board is opened through the `app` sweep, which resolves a `src/data/…`
+ * path to the layer that holds it, and a null read is a file that went between
+ * the listing and here. The seed is opened as `seed-list.mjs` listed it: that
+ * module has already stated each file is there (`RESOLVES_TO_NOTHING` is its
+ * refusal when one is not), so a seed file that cannot be read now is not a
+ * skip but a failure, and it is left to throw with the path in it. No sweep
+ * lists "this tree's seed" — the `deployment-seed` subject is a SIBLING's — and
+ * a listing through the commit would have made a static report of a checkout
+ * that is not a git repository throw, which this report never did. A bare
+ * catch is still the wrong shape either side: it would take a permission the
+ * checkout should not have and a directory where a file belongs, and a sweep
+ * that skips every file it cannot open reports nothing and looks exactly like
+ * a clean tree — the one answer this report must not give quietly.
  */
 export function contentFromTree(root = REPO_ROOT, board = boardFiles(root)) {
   const files = contentFiles(root, board.files)
   const out = []
   let read = 0
   for (const path of files) {
-    // ENOENT alone, either way. A bare catch also took a permission the
-    // checkout should not have and a directory where a file belongs, and a
-    // sweep that skips every file it cannot open reports nothing and looks
-    // exactly like a clean tree — which for this report is the one answer it
-    // must not give quietly.
-    const text = isBoard(path) ? board.swept.read(path) : readListed(resolve(root, path))
+    const text = isBoard(path) ? board.swept.read(path) : readFileSync(resolve(root, path), 'utf8')
     if (text === null) continue // removed between the listing and here
     read += 1
     if (text.includes('\0')) continue // binary without a listed extension
     out.push({ path, text })
   }
-  // The breadth assertion `read-listed.mjs` asks of each of its callers. The
-  // listing is refused when it is empty; this is the other end of the same
-  // claim, over the files that were actually opened.
+  // The breadth assertion the sweep's read asks of each of its callers: what
+  // skips cannot be allowed to shrink the subject quietly. The listing is
+  // refused when it is empty; this is the other end of the same claim, over the
+  // files that were actually opened.
   if (read === 0) {
     throw new Error(
       `${files.length} content file(s) were listed under ${root} and none could be read, ` +

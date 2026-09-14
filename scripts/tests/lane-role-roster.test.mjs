@@ -35,9 +35,12 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { schemaInventory } from '../check-instance-vocabulary.mjs'
-import { readAppFile } from '../app-source.mjs'
+import { sweep } from '../sweep.mjs'
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url))
+
+/** The application, wherever this tree keeps it. */
+const app = sweep({ subject: 'app', root: ROOT })
 
 /**
  * A file of THIS repository, read: the dump, the IR schema, the validator.
@@ -50,7 +53,11 @@ const ROOT = fileURLToPath(new URL('../../', import.meta.url))
 const read = (path) => readFileSync(join(ROOT, path), 'utf8')
 
 /** A file of the APPLICATION, read, whether this tree holds it or the package does. */
-const readApp = (path) => readAppFile(ROOT, path)
+const readApp = (path) => {
+  const text = app.read(path)
+  assert.ok(text !== null, `no ${path} under ${app.base}: this test has no subject`)
+  return text
+}
 
 /** The values `lanes_lane_role_check` accepts, read off the committed dump. */
 function constraintRoles() {

@@ -60,7 +60,8 @@ import { fileURLToPath } from 'node:url'
 
 import { sweep } from './sweep.mjs'
 
-const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const REPO_ROOT = process.cwd()
 
 /**
  * The caller is APPLICATION source and the schema dump is the tree's own.

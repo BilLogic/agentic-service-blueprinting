@@ -54,7 +54,7 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
 
-import { appSourceRoot } from '../app-source.mjs'
+import { appLayers, sweep } from '../sweep.mjs'
 
 const REPO_ROOT = process.cwd()
 
@@ -63,11 +63,11 @@ const REPO_ROOT = process.cwd()
  *
  * A deployment that reads the application out of the package has no `src` of
  * its own, and a walk that starts at `src` there sweeps nothing — which is a
- * PASS, forever, on a check nobody has turned off. `scripts/app-source.mjs`
- * holds the same two roots the build resolves `@/…` through, so this walk and
- * the bundle are looking at one tree.
+ * PASS, forever, on a check nobody has turned off. `appLayers` in
+ * `scripts/sweep.mjs` holds the same two roots the build resolves `@/…`
+ * through, overlay first, so this walk and the bundle are looking at one tree.
  */
-const APP_SOURCE = appSourceRoot(REPO_ROOT)
+const APP_SOURCE = appLayers(REPO_ROOT)[0]
 
 /**
  * What a path in a finding is relative to: the application's own root's
@@ -359,7 +359,7 @@ test('a nested element in a prop does not end the tag', () => {
  * are the same directory in a repository that keeps the application in its own
  * `src`, and in no other kind — a deployment's root holds no `src`, so mounting
  * IT under the package's name stages a tree with an application in neither
- * root, and `appSourceRoot` refuses it. That is this test failing in precisely
+ * root, which the sweep refuses. That is this test failing in precisely
  * the arrangement it exists to model, which is worse than not having it: it
  * asserts its premise everywhere the premise is false. `APP_PACKAGE` is
  * whatever directory the application's `src` actually sits in, so what gets
@@ -375,7 +375,7 @@ test('a nested element in a prop does not end the tag', () => {
  * asks, and says so where it does it.
  */
 function treeThatMountsThePackage() {
-  const root = mkdtempSync(join(tmpdir(), 'app-source-'))
+  const root = mkdtempSync(join(tmpdir(), 'app-root-'))
   mkdirSync(join(root, 'node_modules'))
   symlinkSync(APP_PACKAGE, join(root, 'node_modules', 'agentic-service-blueprinting'))
   return { root, done: () => rmSync(root, { recursive: true, force: true }) }
@@ -394,7 +394,7 @@ test('a tree that reads the application out of the package walks the same call s
       `${tree.root} has a src of its own, so it is not the arrangement this ` +
         `test is about`,
     )
-    const mounted = appSourceRoot(tree.root)
+    const [mounted] = appLayers(tree.root)
     assert.equal(
       mounted,
       join(tree.root, 'node_modules', 'agentic-service-blueprinting', 'src'),
@@ -409,9 +409,9 @@ test('a tree that reads the application out of the package walks the same call s
 })
 
 test('a tree with neither root refuses instead of guessing', () => {
-  const root = mkdtempSync(join(tmpdir(), 'app-source-'))
+  const root = mkdtempSync(join(tmpdir(), 'app-root-'))
   try {
-    assert.throws(() => appSourceRoot(root), /no application source/)
+    assert.throws(() => sweep({ subject: 'app', root }), /no application source/)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
@@ -421,11 +421,11 @@ test('a walk that finds nothing fails', () => {
   // The failure mode this check cannot be allowed to have. A root that exists
   // and holds no call site is the shape an empty sweep takes, and an empty
   // sweep reports success every run after the one that broke it.
-  const root = mkdtempSync(join(tmpdir(), 'app-source-'))
+  const root = mkdtempSync(join(tmpdir(), 'app-root-'))
   mkdirSync(join(root, 'src'))
   writeFileSync(join(root, 'src', 'notes.md'), 'not a call site\n')
   try {
-    assert.throws(() => applicationSources(appSourceRoot(root)), /no \.tsx/)
+    assert.throws(() => applicationSources(appLayers(root)[0]), /no \.tsx/)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

@@ -212,8 +212,8 @@ export function violationsIn(source) {
  * A path the listing named and the tree no longer has is skipped, because the
  * listing was taken a moment before the read and `git ls-files` reports the
  * index. Every other read failure throws; the sweep's `read` applies that rule
- * — `read-listed.mjs` holds the argument for it — so this walk states it
- * nowhere. The skip cannot quietly shrink the subject: `standalone.test.mjs`
+ * — `sweep.mjs` holds the argument for it, once, for every walk — so this walk
+ * states it nowhere. The skip cannot quietly shrink the subject: `standalone.test.mjs`
  * counts what came back.
  *
  * `walk` is the sweep to read, so a caller that has already asked for one —

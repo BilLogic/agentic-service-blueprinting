@@ -47,7 +47,10 @@ const viteImports = {
   },
 }
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+/** The tree the harness runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const ROOT = process.cwd()
+/** The entry is this module's own neighbour, so it is the one path found from here. */
+const ENTRY = resolve(dirname(fileURLToPath(import.meta.url)), 'app-surface.entry.ts')
 
 async function loadAppSurface() {
   const { rolldown } = await import('rolldown')
@@ -65,7 +68,7 @@ async function loadAppSurface() {
   // only the package has fails at bundle time rather than quietly.
   const [firstLayer] = appLayers(ROOT)
   const bundle = await rolldown({
-    input: resolve(ROOT, 'scripts/agent-harness/app-surface.entry.ts'),
+    input: ENTRY,
     // Honor tsconfig's `@/*` path alias, on whichever root holds the application.
     resolve: { alias: { '@': firstLayer } },
     plugins: [viteImports],

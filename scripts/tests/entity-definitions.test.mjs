@@ -25,25 +25,29 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, relative, resolve } from 'node:path'
-import { appSourceRoot, appPackageRoot, readAppFile } from '../app-source.mjs'
+import { resolve } from 'node:path'
+import { sweep } from '../sweep.mjs'
 
 const ROOT = resolve(new URL('../..', import.meta.url).pathname)
 
 /**
- * The application's own root, and the directory a finding is relative to.
+ * The application, and every TypeScript file in it.
  *
  * `resolve(ROOT, 'src')` was a directory a deployment does not have, and the
- * walk below would have read it as an application with no files in it — every
- * assertion here reports what it did NOT find, so a subject of nothing is a
- * green run that stays green. `appSourceRoot` answers with whichever of the
- * two roots the build resolves through actually exists, and refuses when
- * neither does. Paths stay `src/…` either way, because they are relative to
- * the application's root's parent rather than to this tree.
+ * walk this file used to keep would have read it as an application with no
+ * files in it — every assertion here reports what it did NOT find, so a
+ * subject of nothing is a green run that stays green. The `app` sweep walks
+ * whichever roots hold the application, a deployment's residents over the
+ * installed package's copies, and REFUSES an empty result. Paths stay `src/…`
+ * either way, because they hang off the application's own base rather than off
+ * this tree.
  */
-const SRC = appSourceRoot(ROOT)
-const APP_PACKAGE = appPackageRoot(ROOT)
+const app = sweep({
+  subject: 'app',
+  root: ROOT,
+  where: (path) => /\.tsx?$/.test(path),
+  what: '.ts or .tsx',
+})
 
 /* --------------------------------------------------------------- the tree */
 
@@ -54,62 +58,46 @@ export function stripComments(source) {
     .replace(/(^|[^:])\/\/.*$/gm, '$1')
 }
 
-function walk(dir) {
-  return readdirSync(dir).flatMap((entry) => {
-    const path = join(dir, entry)
-    // A vanished entry is skipped — see `appSources` for whose file it is and
-    // why it vanishes mid-walk.
-    let directory
-    try {
-      directory = statSync(path).isDirectory()
-    } catch {
-      return []
-    }
-    if (directory) return walk(path)
-    if (!/\.tsx?$/.test(entry)) return []
-    return [path]
-  })
-}
-
 /**
- * Every TypeScript source under `src`, comments stripped.
+ * Every TypeScript source in the application, comments stripped.
  *
- * A file listed by the walk and gone by the time it is read is SKIPPED, not
+ * A file the sweep listed and gone by the time it is read is SKIPPED, not
  * thrown on. A test that writes a probe component under `src/` and deletes it
  * again, to prove its own check goes red, runs in parallel with this one — so
- * the walk can see a path that no longer exists. The subject is every file
- * that IS there.
+ * the listing can name a path that no longer exists. The subject is every file
+ * that IS there, and `read` answers null for exactly that case and throws for
+ * every other, so this body does not have to say which is which.
  */
 export function appSources() {
-  const found = walk(SRC)
-    .map((path) => {
-      try {
-        return {
-          file: relative(APP_PACKAGE, path).split('\\').join('/'),
-          code: stripComments(readFileSync(path, 'utf8')),
-        }
-      } catch {
-        return null
-      }
+  const found = app.files
+    .map((file) => {
+      const code = app.read(file)
+      return code === null ? null : { file, code: stripComments(code) }
     })
     .filter((one) => one !== null)
-    .sort((a, b) => a.file.localeCompare(b.file))
-  // A WALK THAT FINDS NOTHING THROWS — `appFiles` says why. What this walk
-  // keeps its own body for is the READ: `appFiles` hands back paths, and the
-  // probe above can vanish between that listing and the `readFileSync` here.
-  // Both skip a vanished entry at the stat; only this one also survives it at
-  // the read.
+  // A SWEEP THAT FINDS NOTHING THROWS, and it has already run — but every file
+  // it listed can still vanish before the reads above, and a subject of nothing
+  // is a green run that stays green whichever half emptied it.
   if (found.length === 0) {
     throw new Error(
-      `no .ts or .tsx under ${SRC}: this walk has no subject, which is a ` +
+      `no .ts or .tsx under ${app.base}: this walk has no subject, which is a ` +
         `failure and not a pass`,
     )
   }
   return found
 }
 
-/** One named application file, read, wherever the application is. */
-const read = (path) => stripComments(readAppFile(ROOT, path))
+/**
+ * One named application file, read, wherever the application is.
+ *
+ * A file this check names by hand is its subject, so a `read` that answers null
+ * is the subject's absence and is said with the path.
+ */
+const read = (path) => {
+  const text = app.read(path)
+  assert.ok(text !== null, `no ${path} under ${app.base}: this test has no subject`)
+  return stripComments(text)
+}
 
 /* ------------------------------------- 1. every kind defines itself */
 

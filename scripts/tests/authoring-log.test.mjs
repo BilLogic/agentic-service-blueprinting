@@ -29,13 +29,11 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
 import {
   archivingFunctions,
   archivingFunctionsIn,
 } from '../authoring-archivers.mjs'
+import { sweep } from '../sweep.mjs'
 // Through the alias, not up two directories. The client half of this seam is
 // APPLICATION source, and a deployment that reads the application out of the
 // package has no `src` to walk up into — `../../src/lib/…` is a file that is
@@ -44,17 +42,16 @@ import {
 import { ARCHIVED_BY_THE_DATABASE } from '@/lib/authoringLog.ts'
 
 /**
- * The SQL half is the READING repository's own, and stays a plain path.
+ * The SQL half is the READING repository's own, and comes off the subject.
  *
  * The application is shared and the migration series is not: two repositories
  * running this application apply their own migrations, so the question this
  * test asks — does the client skip exactly what THIS database archives — is
- * asked of the local series against the mounted client.
+ * asked of the local series against the mounted client. That is the sweep's
+ * default root, the tree the suite was run in, and naming the subject says so
+ * without this file computing a directory from where it happens to live.
  */
-const MIGRATIONS = resolve(
-  new URL('../..', import.meta.url).pathname,
-  'supabase/migrations',
-)
+const migrations = () => sweep({ subject: 'migrations', what: 'migration' })
 
 /** One archiving function, in the shape all six actually have. */
 const archiver = (name, kind) => `
@@ -73,7 +70,8 @@ $$;
 `
 
 test('the client skips exactly the SQL functions that archive', () => {
-  const archivers = archivingFunctionsIn(MIGRATIONS)
+  const swept = migrations()
+  const archivers = archivingFunctionsIn(swept)
   // Both halves are asserted present before they are compared, because the
   // one thing this assertion cannot notice on its own is having nothing to
   // compare: an empty skip set and an empty sweep agree perfectly, and the
@@ -84,21 +82,31 @@ test('the client skips exactly the SQL functions that archive', () => {
   )
   assert.ok(
     archivers.length > 0,
-    `no archiving function in ${MIGRATIONS}, so this comparison holds nothing`,
+    `no archiving function in ${swept.base}, so this comparison holds nothing`,
   )
   assert.deepEqual([...ARCHIVED_BY_THE_DATABASE].sort(), archivers)
 })
 
-test('a migration directory with nothing in it is a failure, not an empty set', () => {
+test('a swept series with nothing in it is a failure, not an empty set', () => {
   // The shape the assertion above cannot see from the inside: a sweep that
-  // read the wrong directory reports no archivers, and no archivers matches a
-  // client that skips nothing.
-  const empty = mkdtempSync(join(tmpdir(), 'migrations-'))
-  try {
-    assert.throws(() => archivingFunctionsIn(empty), /no \.sql files/)
-  } finally {
-    rmSync(empty, { recursive: true, force: true })
+  // read the wrong tree reports no archivers, and no archivers matches a
+  // client that skips nothing. The subject is handed in, so the empty case is
+  // a fixture of the sweep's shape rather than a directory on disk.
+  const empty = { base: '/nowhere/supabase/migrations', files: [], read: () => null }
+  assert.throws(() => archivingFunctionsIn(empty), /no \.sql files in \/nowhere/)
+})
+
+test('the union is taken over the files the subject handed in', () => {
+  // The sweep's shape, as a fixture: two members, one of which vanished
+  // between the listing and the read. A union over a series tolerates that —
+  // the empty case above is the one that must not pass.
+  const swept = {
+    base: '/deployment/supabase/migrations',
+    files: ['21000101000000_one.sql', '21000102000000_two.sql', 'notes.txt'],
+    read: (path) =>
+      path === '21000101000000_one.sql' ? archiver('delete_cell', 'cell') : null,
   }
+  assert.deepEqual(archivingFunctionsIn(swept), ['delete_cell'])
 })
 
 test('a seventh archiving function is reported, not absorbed', () => {

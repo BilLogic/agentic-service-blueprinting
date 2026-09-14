@@ -148,8 +148,7 @@
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { resolve } from 'node:path'
-import { scannedFiles } from '../check-standalone.mjs'
-import { readListed } from '../read-listed.mjs'
+import { scannedSweep } from '../check-standalone.mjs'
 
 const REPO_ROOT = resolve(new URL('../..', import.meta.url).pathname)
 
@@ -241,10 +240,11 @@ export function layerSenseIn(source) {
 }
 
 test('nothing called a lane is a layer', () => {
-  const found = scannedFiles(REPO_ROOT)
+  const walk = scannedSweep(REPO_ROOT)
+  const found = walk.files
     .filter((path) => !quotesTheRetiredSense(path))
     .flatMap((path) => {
-      const source = readListed(resolve(REPO_ROOT, path))
+      const source = walk.read(path)
       if (source === null) return [] // listed, then gone before this read
       if (source.includes('\0')) return [] // binary
       return layerSenseIn(source).map((hit) => `${path}:${hit.line} — ${hit.means}`)

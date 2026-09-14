@@ -19,9 +19,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { forgetUnverified, unverified } from '../unverified.mjs'
+import { forgetUnverified, sweep, unverified } from '../sweep.mjs'
 import { repoConfig } from '../repo-config.mjs'
-import { sweep } from '../sweep.mjs'
 
 /**
  * The root documents these throwaway trees hold, in the order the walk

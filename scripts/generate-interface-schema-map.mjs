@@ -55,7 +55,8 @@ import {
   splice,
 } from './interface-schema-map.mjs'
 
-export const REPO_ROOT = resolve(new URL('..', import.meta.url).pathname)
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const REPO_ROOT = process.cwd()
 export const DOC = 'references/interface-schema-map.md'
 
 /** The document as its sources render it, and what a run should report. */

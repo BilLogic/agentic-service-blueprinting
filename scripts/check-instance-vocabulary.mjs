@@ -30,7 +30,8 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-const ROOT = resolve(new URL('..', import.meta.url).pathname)
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const ROOT = process.cwd()
 export const SCHEMA = resolve(ROOT, 'supabase/generated/portable-core.schema.sql')
 const SIBLING = resolve(ROOT, '../plus-uno-blueprint/scripts/retired-vocabulary.mjs')
 const RAW = 'https://raw.githubusercontent.com/BilLogic/plus-uno-blueprint/main/scripts/retired-vocabulary.mjs'

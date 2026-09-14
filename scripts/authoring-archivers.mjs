@@ -36,9 +36,6 @@
  *
  * Static, needs no database.
  */
-import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
-
 /**
  * An insert into the log whose column list carries `payload` — i.e. one that
  * is archiving destroyed rows rather than recording a call.
@@ -99,24 +96,37 @@ export function archivingFunctions(source) {
 }
 
 /**
- * Every archiving function named anywhere in a migration directory.
+ * Every archiving function named anywhere in a swept migration series.
  *
- * A DIRECTORY WITH NO `.sql` IN IT IS A FAILURE, not an empty answer. The set
- * this returns is compared against the client's skip set, and an empty set
- * agrees with an empty set: a caller pointed at the wrong directory would
- * sweep nothing, match nothing, and go on passing. The sweep says which
- * directory it read instead.
+ * `swept` is what `sweep({ subject: 'migrations', root })` hands back — its
+ * `files`, its `read`, and the `base` those paths hang off. This function does
+ * not decide which tree it is reading: the caller names the subject, because
+ * the same question is asked of this repository's series in one place and of a
+ * sibling deployment's in another, and a helper that resolved a directory off
+ * its own location could only ever answer for one of them.
+ *
+ * A SERIES WITH NO `.sql` IN IT IS A FAILURE, not an empty answer. The set this
+ * returns is compared against the client's skip set, and an empty set agrees
+ * with an empty set: a caller pointed at the wrong tree would sweep nothing,
+ * match nothing, and go on passing. The refusal names `swept.base`, so the
+ * message says which tree was read instead of what was hoped for.
+ *
+ * A file the listing named and the read no longer finds is passed over — that
+ * is what the sweep's null means, and here it is tolerable: the set is a union
+ * over the series, and a member that vanished mid-run is reported by nothing
+ * this check is for. A series that vanished entirely still lands on the refusal
+ * above.
  */
-export function archivingFunctionsIn(dir) {
-  const files = readdirSync(dir).filter((file) => file.endsWith('.sql'))
+export function archivingFunctionsIn(swept) {
+  const files = swept.files.filter((file) => file.endsWith('.sql'))
   if (files.length === 0) {
-    throw new Error(`no .sql files in ${dir}: this sweep has no subject`)
+    throw new Error(`no .sql files in ${swept.base}: this sweep has no subject`)
   }
   const found = new Set()
   for (const name of files) {
-    for (const fn of archivingFunctions(readFileSync(join(dir, name), 'utf8'))) {
-      found.add(fn)
-    }
+    const sql = swept.read(name)
+    if (sql === null) continue
+    for (const fn of archivingFunctions(sql)) found.add(fn)
   }
   return [...found].sort()
 }

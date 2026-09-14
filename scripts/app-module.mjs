@@ -31,8 +31,6 @@
  * promise rather than bundling again.
  */
 import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { appLayers, sweep } from './sweep.mjs'
 
@@ -51,7 +49,8 @@ const viteImports = {
   },
 }
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const ROOT = process.cwd()
 
 /**
  * The module namespace of one application module, bundled.

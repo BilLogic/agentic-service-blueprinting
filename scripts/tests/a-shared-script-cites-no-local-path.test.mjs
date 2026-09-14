@@ -62,7 +62,6 @@ export const SHARED_SCRIPTS = new Map([
     'scripts/always-loaded.mjs',
     'one list of what a session is handed before it decides anything, read by three checks',
   ],
-  ['scripts/app-source.mjs', 'where the application is, answered once for every walk in either tree'],
   ['scripts/check-glossary-only.mjs', 'every repository holds its own glossary to one shape'],
   ['scripts/check-negation-ratchet.mjs', 'the ratchet is the mechanism; the count is repo-local'],
   ['scripts/check-pointers.mjs', 'a pointer either resolves or it does not, wherever the router lives'],
@@ -74,10 +73,6 @@ export const SHARED_SCRIPTS = new Map([
   ['scripts/generate-agent-account.mjs', 'one generator, each repository’s own document and baseline'],
   ['scripts/sweep.mjs', 'one module answers where every subject is, for every check in either tree'],
   ['scripts/seed-list.mjs', 'where a deployment’s seed is and which files it is, asked by the sweep and the seed check alike'],
-  [
-    'scripts/unverified.mjs',
-    'one way of saying a subject went unmeasured, so a correct skip is visible in either tree',
-  ],
   [
     'scripts/tests/the-router-is-a-router.test.mjs',
     'the router’s three checks, proven the same way on both sides',

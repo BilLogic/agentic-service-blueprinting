@@ -32,11 +32,27 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { appFiles, readAppFile } from '../app-source.mjs'
+import { sweep } from '../sweep.mjs'
 
 const REPO_ROOT = process.cwd()
 /** The query this check was written for, and the file it lives in. */
 const HINTED_QUERY = 'src/hooks/useStepSpec.ts'
+
+/** The application, wherever it is: a deployment's residents over the package's. */
+const app = sweep({ subject: 'app', root: REPO_ROOT })
+
+/**
+ * One application file this check names by hand, read.
+ *
+ * The sweep's `read` answers null for a file that is no longer there, and a
+ * file this check names by hand is its subject, so the absence is reported with
+ * the path rather than handed to the parser as a null.
+ */
+const readApp = (path) => {
+  const text = app.read(path)
+  assert.ok(text !== null, `no ${path} under ${app.base}: this test has no subject`)
+  return text
+}
 
 /**
  * Embeds that PostgREST cannot resolve without a hint, as source → target.
@@ -59,16 +75,17 @@ const AMBIGUOUS = [
  * `node_modules/agentic-service-blueprinting` and keeps no `src` beside its
  * `scripts/`, so a walk rooted at `resolve(REPO_ROOT, 'src')` measured nothing
  * there — and an embed nobody looked at is answered by PostgREST with a 300
- * whether or not a check said so. `appFiles` sweeps whichever root holds the
- * application, REFUSES an empty result, and hands back the `src/…` paths a
+ * whether or not a check said so. The `app` sweep walks whichever roots hold
+ * the application, REFUSES an empty result, and hands back the `src/…` paths a
  * finding prints.
  */
 const selectStringSources = () =>
-  appFiles(
-    REPO_ROOT,
-    (path) => /\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path),
-    '.ts or .tsx outside a test',
-  )
+  sweep({
+    subject: 'app',
+    root: REPO_ROOT,
+    where: (path) => /\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path),
+    what: '.ts or .tsx outside a test',
+  }).files
 
 /**
  * `.from(X).select(Y)` pairs in `source`, as `{ root, select }`.
@@ -157,7 +174,11 @@ test('no select embeds a multiply-reachable table without its key', () => {
       `is not the application`,
   )
   for (const file of walked) {
-    for (const { root, select } of selectsWithRoot(readAppFile(REPO_ROOT, file))) {
+    // Listed by the sweep and gone before this read — a probe a sibling guard
+    // wrote and deleted — is skipped; every other failure throws, in `read`.
+    const source = app.read(file)
+    if (source === null) continue
+    for (const { root, select } of selectsWithRoot(source)) {
       for (const embed of unresolvableEmbeds(select, AMBIGUOUS, root)) {
         const pair = AMBIGUOUS.find(
           (entry) => entry.source === embed.parent && entry.target === embed.target,
@@ -198,7 +219,7 @@ test('the same embed is legal from a parent with one key', () => {
 })
 
 test('the live query this was written for is hinted', () => {
-  const source = readAppFile(REPO_ROOT, HINTED_QUERY)
+  const source = readApp(HINTED_QUERY)
   const frames = selectsWithRoot(source).filter(({ select }) => select.includes('frame'))
   assert.ok(frames.length > 0, 'the storyboard frames query went missing')
   for (const { root, select } of frames) {

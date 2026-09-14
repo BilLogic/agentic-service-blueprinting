@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
 
-import { readAppFile } from '../app-source.mjs'
+import { sweep } from '../sweep.mjs'
 import { toolSources, toolsOnSurface } from '../tool-sources.mjs'
 
 /**
@@ -21,6 +21,9 @@ import { toolSources, toolsOnSurface } from '../tool-sources.mjs'
 // working directory (npm test runs at the repo root), not from import.meta.
 const REPO_ROOT = process.cwd()
 
+/** The application, wherever this tree keeps it. */
+const app = sweep({ subject: 'app', root: REPO_ROOT })
+
 /** A file of THIS tree: the harness, which a deployment holds beside this test. */
 function read(path) {
   return readFileSync(resolve(REPO_ROOT, path), 'utf8')
@@ -33,10 +36,14 @@ function read(path) {
  * every deployment. `specs.ts` and `registry.ts` are not: a deployment keeps no
  * `src` and reads them out of `node_modules/agentic-service-blueprinting`.
  * Read by hand from `src/…`, this file did not fail there — it threw ENOENT on
- * import, which took the parity checks out of the run entirely.
+ * import, which took the parity checks out of the run entirely. So the sweep
+ * reads them through the overlay, and a file it cannot find is a missing
+ * subject said out loud rather than an empty string.
  */
 function readApp(path) {
-  return readAppFile(REPO_ROOT, path)
+  const text = app.read(path)
+  assert.ok(text !== null, `no ${path} under ${app.base}: this test has no subject`)
+  return text
 }
 
 
@@ -53,8 +60,8 @@ test('harness imports the app tool specs instead of forking them', () => {
   // the rosters from the definitions, and the runner destructures them from the
   // bundle surface.mjs hands it.
   assert.ok(
-    bundler.includes('scripts/agent-harness/app-surface.entry.ts'),
-    'surface.mjs no longer bundles scripts/agent-harness/app-surface.entry.ts',
+    bundler.includes("'app-surface.entry.ts'"),
+    'surface.mjs no longer bundles app-surface.entry.ts, its neighbour',
   )
   assert.match(
     harness,

@@ -12,8 +12,6 @@ import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'
 import {
-  cpSync,
-  mkdirSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
@@ -79,25 +77,21 @@ test('this checkout can see tags, so the guard has something to hold', () => {
 })
 
 /**
- * The script beside the two files it reads, in a throwaway root.
+ * The two files the script reads, in a throwaway root it is run from.
  *
- * It resolves its own repository root from where it sits, so the only way to
- * run it against a tree that is not this one is to put a copy of it in that
- * tree. `unverified.mjs` travels with it because it is imported.
+ * The script reads the tree it is run in — the working directory, never its
+ * own location — so a tree that is not this one is a matter of `cwd`, and
+ * nothing is copied.
  */
 function stage() {
-  // Realpath, because the script decides it is the entry point by comparing
-  // `process.argv[1]` against its own resolved URL — and a temporary directory
-  // reached through a symlinked root would make it decide it is not.
+  // Realpath, so the paths the script prints compare equal to what the test
+  // resolved — a temporary directory reached through a symlinked root would
+  // otherwise print under the other spelling.
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'release-tag-')))
-  mkdirSync(join(root, 'scripts'))
-  for (const file of ['scripts/check-release-tag.mjs', 'scripts/unverified.mjs']) {
-    cpSync(join(ROOT, file), join(root, file))
-  }
   writeFileSync(join(root, 'package.json'), JSON.stringify({ version: '0.4.0' }))
   writeFileSync(join(root, 'CHANGELOG.md'), '# Changelog\n\n## 0.4.0\n')
   const run = () =>
-    spawnSync(process.execPath, [join(root, 'scripts/check-release-tag.mjs')], {
+    spawnSync(process.execPath, [join(ROOT, 'scripts/check-release-tag.mjs')], {
       cwd: root,
       encoding: 'utf8',
       env: { ...process.env, GIT_CEILING_DIRECTORIES: tmpdir() },

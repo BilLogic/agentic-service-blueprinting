@@ -50,12 +50,11 @@
  *   - **Storage.** `client.storage.from(BUCKET)` takes a bucket identifier,
  *     not a quoted table name, so an upload cannot trip this.
  */
-import { fileURLToPath } from 'node:url'
-
 import { sweep } from './sweep.mjs'
 
 /** The tree this scan runs in — the deployment's root, or this repository's. */
-const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const REPO_ROOT = process.cwd()
 
 /**
  * The application's `.ts` and `.tsx` under `repoRoot`, test files excluded,

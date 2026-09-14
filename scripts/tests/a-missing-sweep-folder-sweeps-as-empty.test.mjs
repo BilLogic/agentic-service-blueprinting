@@ -19,8 +19,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
-import { sweep } from '../sweep.mjs'
-import { forgetUnverified } from '../unverified.mjs'
+import { forgetUnverified, sweep } from '../sweep.mjs'
 
 /** A throwaway tree holding exactly the files named. */
 function tree(files) {

@@ -3,8 +3,8 @@
  *
  * Where the application lives is one fact, and more than one file has to say
  * it: the Vite config for the bundler, the two tsconfigs for the compiler,
- * `app-source.mjs` for every check that walks the tree, and any script that
- * resolves a particular application file before `app-source.mjs` could be
+ * `sweep.mjs` for every check that walks the tree, and any script that
+ * resolves a particular application file before the sweep could be
  * asked. None can be derived from the others — a compiler cannot import a
  * module, and the config is bundled on its own in a tree that may not have
  * this module at all — so what makes them one fact is a test.

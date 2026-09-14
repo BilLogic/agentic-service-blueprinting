@@ -43,14 +43,20 @@
  *
  * ── Finding the deployment ────────────────────────────────────────────────
  *
- * `--seed <path>` or `DEPLOYMENT_SEED=<path>` names it outright. With neither,
- * the check looks for a checkout beside this one: a sibling directory that
- * ships `supabase/seed.sql` and whose `package.json` states a name other than
- * this package's — another copy of this template is not a deployment of it.
- * None, or more than one, and the check SKIPS with a message naming what it
- * saw and exits 0. That is why it is not in CI: a CI runner checks out one
- * repository, so this check would skip on every run and prove nothing. It is a
- * local guard — docs/engineering/checks.md § The database.
+ * `--seed <path>` or `DEPLOYMENT_SEED=<path>` names it outright, and an
+ * operator-named file is not a subject: those two branches resolve the path
+ * they were handed and nothing else is consulted.
+ *
+ * With neither, the check names the `deployment-seed` SUBJECT and judges what
+ * comes back. Which sibling checkout is a deployment of this template, and what
+ * that deployment loads, are the sweep's questions — asked of the tree the
+ * command was run in, not of wherever this file happens to sit, so a deployment
+ * running the packaged copy of this check gets its own answer. None, or more
+ * than one, and the sweep says the skip out loud and hands back `seen: false`;
+ * this check then explains how to point it at a seed and exits 0. That is why
+ * it is not in CI: a CI runner checks out one repository, so this check would
+ * skip on every run and prove nothing. It is a local guard —
+ * docs/engineering/checks.md § The database.
  *
  * ── What counts as "the seed" ─────────────────────────────────────────────
  *
@@ -78,14 +84,18 @@
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, statSync } from 'node:fs'
-import { basename, dirname, join, relative, resolve } from 'node:path'
+import { basename, dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { RENDER_READS, RENDER_READ_NAMES, STACK, parseCounts } from './check-seed-loads.mjs'
-import { unverified } from './unverified.mjs'
+import { sweep } from './sweep.mjs'
 import { RESOLVES_TO_NOTHING, resolveSeedFiles } from './seed-list.mjs'
 
-const ROOT = fileURLToPath(new URL('../', import.meta.url))
-const P = (rel) => resolve(ROOT, rel)
+/** This template's own stack files, under the tree the check was run in. */
+// The stack is this template's own — the shim, the defaults, the core, the
+// recipe — laid down from the tree the check runs in, which is the template:
+// this check asks whether a DEPLOYMENT's seed loads onto THIS core, so the
+// seed is a subject and the core is the caller's.
+const P = (rel) => resolve(process.cwd(), rel)
 
 /**
  * The stack, minus this repository's own seed — a deployment's seed replaces
@@ -202,7 +212,7 @@ export function groupFailures(failures) {
  * about a named set of files, and a set it quietly shrank is a green that
  * measured something else. This throws, and the reason stays legible in what it
  * throws: `ENOENT` for a path that has gone, something else for a path that
- * cannot be read — the same two cases `scripts/read-listed.mjs` keeps apart for
+ * cannot be read — the same two cases the sweep's `read` keeps apart for
  * the listings that ARE deliberately stale. Neither is tolerable here, so
  * neither is caught.
  */
@@ -324,19 +334,22 @@ export function resolveNamedSeeds(paths) {
   })
 }
 
-function skip(reason) {
+function skip() {
   // The skip is correct — one checkout genuinely has no deployment to load —
   // and it was invisible, which is the half that is not. A run that loaded a
-  // deployment's seed onto this core and a run that loaded nothing at all
-  // both ended in a green exit and a log line.
-  unverified(
-    "a deployment's seed against this core",
-    `${reason}, so nothing was loaded: not that the portable core accepts a real ` +
-      `deployment's content, and not that the app's role can read it back. Point this ` +
-      `at a deployment checkout with --seed <path> or DEPLOYMENT_SEED=<path>.`,
-  )
+  // deployment's seed onto this core and a run that loaded nothing at all both
+  // ended in a green exit and a log line.
+  //
+  // THE ANNOUNCEMENT IS THE SWEEP'S, NOT THIS CHECK'S. Naming the subject is
+  // what made the skip visible: the sweep has already said, as a warning
+  // annotation and a line in the run summary, that a deployment's seed against
+  // this template's portable core went unverified, and which of "none" and
+  // "several" it saw. Saying it a second time here would print one fact twice
+  // and let a reader count call sites instead of subjects. What is left for
+  // this check to say is the part the sweep does not: how an operator points
+  // it at a seed, which the sweep's sentence mentions and does not spell out.
   console.log(
-    `skipped: ${reason}.\n` +
+    `skipped: no deployment's seed to load — see the unverified warning above.\n` +
       `  This check loads a DEPLOYMENT's seed onto this template's core, so it needs a\n` +
       `  deployment checkout. Point it at one with --seed <path-to-supabase/seed.sql>\n` +
       `  or DEPLOYMENT_SEED=<path>. CI checks out one repository and so always skips —\n` +
@@ -351,6 +364,9 @@ function main(argv = process.argv.slice(2)) {
   const named = [...seedFlags(argv), ...fromEnv]
   let seedPath
   let files
+  // The deployment's own root, when the subject named one; otherwise it is
+  // read back off the named seed below.
+  let base = null
   // Every way of resolving the seed refuses by throwing, and each of those
   // refusals is written for the person who ran the command. A stack trace
   // buries the sentence that tells them what to pass — so the message is the
@@ -369,27 +385,32 @@ function main(argv = process.argv.slice(2)) {
       return refuse(error)
     }
     seedPath = files[0]
-  } else {
-    if (named.length === 1) {
-      seedPath = resolve(named[0])
-      if (!existsSync(seedPath)) {
-        console.error(`no seed at ${seedPath}`)
-        process.exitCode = 1
-        return
-      }
-    } else {
-      const chosen = chooseDeployment(siblingCandidates(ROOT), packageName(ROOT))
-      if (chosen.skip) {
-        skip(chosen.skip)
-        return
-      }
-      seedPath = join(chosen.dir, 'supabase', 'seed.sql')
+  } else if (named.length === 1) {
+    seedPath = resolve(named[0])
+    if (!existsSync(seedPath)) {
+      console.error(`no seed at ${seedPath}`)
+      process.exitCode = 1
+      return
     }
     try {
       files = resolveSeedFiles(seedPath)
     } catch (error) {
       return refuse(error)
     }
+  } else {
+    // Nothing was named, so the seed is a SUBJECT: which deployment, and which
+    // of its files in which order, are the sweep's answer. `seen: false` is the
+    // skip, already announced where a person sees it.
+    const swept = sweep({ subject: 'deployment-seed' })
+    if (!swept.seen) {
+      skip()
+      return
+    }
+    base = swept.base
+    // The subject's paths are relative to the deployment's root; psql is given
+    // the absolute file.
+    files = swept.files.map((file) => swept.locate(file))
+    seedPath = files[0]
   }
   if (files.length === 0) {
     console.error(`the seed at ${seedPath} resolves to no files`)
@@ -397,8 +418,9 @@ function main(argv = process.argv.slice(2)) {
     return
   }
   // `supabase/seed.sql` → the checkout that holds it, so every path in the
-  // report reads the way the deployment's own tree does.
-  const deploymentRoot = dirname(dirname(resolve(seedPath)))
+  // report reads the way the deployment's own tree does. When the subject named
+  // the deployment it has already said which root that is.
+  const deploymentRoot = base ?? dirname(dirname(resolve(seedPath)))
   const show = (file) => relative(deploymentRoot, file)
   // Here, next to the listing, rather than after the apply — see readSeedFiles.
   const seedSql = readSeedFiles(files)

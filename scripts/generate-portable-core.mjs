@@ -27,6 +27,13 @@
  * recipe applies on top of it. CI does both on every pull request, which is
  * what makes the claim a fact rather than a sentence.
  *
+ * Both paths are read and written under the tree the command was run in. The
+ * migrations arrive from the `migrations` subject and the two files are written
+ * beside them, under `process.cwd()`; where this script's own file sits says
+ * nothing about which tree is being generated, and a generator that resolved
+ * its output off its own location would write into the package a deployment
+ * installed.
+ *
  *   node scripts/generate-portable-core.mjs            # write both files
  *   node scripts/generate-portable-core.mjs --check    # regenerate and diff
  *
@@ -57,13 +64,12 @@
  * "layers_update_auth" becomes "lanes_update_auth" and `public.layers` becomes
  * `public.lanes`, by two different rules, exactly as the database does it.
  */
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { basename, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { sweep } from './sweep.mjs'
 
-const ROOT = new URL('../', import.meta.url)
-const MIGRATIONS = fileURLToPath(new URL('supabase/migrations/', ROOT))
-const OUT_DIR = fileURLToPath(new URL('supabase/generated/', ROOT))
+const OUT_DIR = resolve(process.cwd(), 'supabase/generated')
 
 export const CORE_FILE = 'portable-core.generated.sql'
 export const RECIPE_FILE = 'supabase-recipe.generated.sql'
@@ -378,11 +384,31 @@ export function generate(files) {
   }
 }
 
+/**
+ * The migrations to generate from, in apply order, as `{ name, sql }`.
+ *
+ * The files come from the `migrations` subject rather than from a directory
+ * this file resolves off its own location: what is generated is a statement
+ * about the tree the command was run in, and the tree a command runs in is the
+ * sweep's question. A file the listing named and the read cannot find — the
+ * sweep's one null — is a FAILURE here and not a skip: the output is the whole
+ * migration series concatenated, and a series quietly missing a member still
+ * writes two plausible files and passes `--check` on the next run. So the
+ * refusal names the file that went.
+ */
 function readMigrations() {
-  return readdirSync(MIGRATIONS)
-    .filter((name) => name.endsWith('.sql'))
-    .sort()
-    .map((name) => ({ name, sql: readFileSync(resolve(MIGRATIONS, name), 'utf8') }))
+  const swept = sweep({ subject: 'migrations', what: 'migration' })
+  return swept.files.map((path) => {
+    const sql = swept.read(path)
+    if (sql === null) {
+      throw new Error(
+        `${path} was listed under ${swept.base} and is no longer there: the generated ` +
+          'partition is the whole series, so a member that vanished mid-run cannot be ' +
+          'passed over. Re-run once the tree has settled.',
+      )
+    }
+    return { name: basename(path), sql }
+  })
 }
 
 function main() {

@@ -33,8 +33,10 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { sweep } from './sweep.mjs'
 
-const ROOT = new URL('../', import.meta.url)
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const ROOT = process.cwd()
 
 /**
  * The versions this checkout speaks, from the schema that declares them.
@@ -45,7 +47,11 @@ const ROOT = new URL('../', import.meta.url)
  */
 export function supportedVersions() {
   const schema = JSON.parse(
-    readFileSync(fileURLToPath(new URL('references/ir-schema.json', ROOT)), 'utf8'),
+    // The schema is the package's reference surface — in a deployment the
+    // installed package's, here this tree's — which is what `reference-docs`
+    // answers with; the subject lists markdown and `locate` answers for any
+    // path under its base, and a missing schema is a failure with the path in it.
+    readFileSync(sweep({ subject: 'reference-docs', root: ROOT }).locate('references/ir-schema.json'), 'utf8'),
   )
   return schema.properties.schema_version.enum
 }
@@ -113,7 +119,7 @@ function readConfig(argv) {
   }
   let dotenv = {}
   try {
-    dotenv = parseEnvFile(readFileSync(fileURLToPath(new URL('.env', ROOT)), 'utf8'))
+    dotenv = parseEnvFile(readFileSync(resolve(ROOT, '.env'), 'utf8'))
   } catch {
     // No .env is normal — the environment may carry them instead.
   }

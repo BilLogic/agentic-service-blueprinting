@@ -70,12 +70,10 @@ import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { scannedFiles } from '../check-standalone.mjs'
-import { readListed } from '../read-listed.mjs'
+import { scannedSweep } from '../check-standalone.mjs'
 import { sweep } from '../sweep.mjs'
 import { RETIRED_COPY_WORDS } from '../retired-vocabulary.mjs'
 import { COVER_ASSET_MANIFEST } from '../sync-cover-assets.mjs'
-import { appPackageRoot } from '../app-source.mjs'
 
 const REPO_ROOT = resolve(new URL('../..', import.meta.url).pathname)
 /**
@@ -90,14 +88,16 @@ const REPO_ROOT = resolve(new URL('../..', import.meta.url).pathname)
  * residue sweep at the end is `git ls-files` over THIS commit, which is a
  * question only this tree can ask of itself, and it stays on `REPO_ROOT`.
  *
- * The `app` subject of `scripts/sweep.mjs` resolves the `.tsx` walk and hands
- * back `src/…` paths, which is the half that used to be got wrong here as well
- * as the walk: a path made relative to a deployment's root came back as
+ * The `app` subject of `scripts/sweep.mjs` resolves both: the `.tsx` walk, and
+ * `APP_PACKAGE` — the sweep's own `base`, the directory a `src/…` path hangs
+ * off. That is the half that used to be got wrong here as well as the walk: a
+ * path made relative to a deployment's root came back as
  * `node_modules/agentic-service-blueprinting/src/components/…`, which the
  * `.tsx` filter still admits and which no finding, no exemption and no reader
  * of this file would recognise.
  */
-const APP_PACKAGE = appPackageRoot(REPO_ROOT)
+const APP = sweep({ subject: 'app', root: REPO_ROOT })
+const APP_PACKAGE = APP.base
 
 /**
  * The props whose string value a person reads.
@@ -802,10 +802,11 @@ export function mangledIn(source) {
 }
 
 test('a rename left no mangled English behind', () => {
-  const found = scannedFiles(REPO_ROOT)
+  const walk = scannedSweep(REPO_ROOT)
+  const found = walk.files
     .filter((path) => !mangleExempt(path))
     .flatMap((path) => {
-      const source = readListed(resolve(REPO_ROOT, path))
+      const source = walk.read(path)
       if (source === null) return [] // listed, then gone before this read
       if (source.includes('\0')) return [] // binary
       return mangledIn(source).map((hit) => `${path}:${hit.line} — meant "${hit.meant}"`)

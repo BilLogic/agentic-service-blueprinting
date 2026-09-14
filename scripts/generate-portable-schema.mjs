@@ -31,7 +31,8 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-const ROOT = resolve(new URL('..', import.meta.url).pathname)
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const ROOT = process.cwd()
 export const SERIES = resolve(ROOT, 'supabase/generated/portable-core.generated.sql')
 export const SCHEMA_FILE = 'portable-core.schema.sql'
 export const SCHEMA = resolve(ROOT, 'supabase/generated', SCHEMA_FILE)

@@ -53,8 +53,9 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { STACK } from './check-seed-loads.mjs'
 
-const ROOT = new URL('../', import.meta.url)
-const P = (rel) => fileURLToPath(new URL(rel, ROOT))
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const ROOT = process.cwd()
+const P = (rel) => resolve(ROOT, rel)
 const DB = process.env.FUNCTION_BODIES_DB ?? 'function_bodies_check'
 
 /**

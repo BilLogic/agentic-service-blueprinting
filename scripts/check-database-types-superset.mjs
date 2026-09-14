@@ -40,7 +40,8 @@ import { sweep } from './sweep.mjs'
 import { parseEnumUnions, parseGeneratedTypes } from './check-schema-inventory.mjs'
 
 /** The tree this script is part of: the directory `scripts/` sits in. */
-const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const REPO_ROOT = process.cwd()
 
 /** The application path both files are, wherever the application is. */
 const TYPES = 'src/types/database.ts'

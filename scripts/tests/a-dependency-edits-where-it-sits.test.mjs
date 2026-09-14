@@ -21,9 +21,10 @@ import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { readAppFile } from '../app-source.mjs'
+import { sweep } from '../sweep.mjs'
 
 const REPO_ROOT = process.cwd()
+const app = sweep({ subject: 'app', root: REPO_ROOT })
 
 /**
  * A file of this tree, or a file of the application wherever it sits.
@@ -35,14 +36,18 @@ const REPO_ROOT = process.cwd()
  * `process.cwd()` named a file that is not there, so the check that holds the
  * canvas and the migration to one word failed where a deployment ran it. The
  * split is the same one `check-database-names.mjs` makes and is made the same
- * way: a path starting `src/` is the application's, everything else is this
- * tree's. Both halves REFUSE a file that is absent — a subject that is gone
- * is this check's subject gone, not a smaller one.
+ * way: a path starting `src/` is the application's, which the `app` sweep
+ * resolves through the overlay, and everything else is this tree's. Both halves
+ * REFUSE a file that is absent — a subject that is gone is this check's subject
+ * gone, not a smaller one — which is why the sweep's null is asserted away
+ * rather than returned.
  */
-const read = (path) =>
-  /^src(?:\/|$)/.test(path)
-    ? readAppFile(REPO_ROOT, path)
-    : readFileSync(resolve(REPO_ROOT, path), 'utf8')
+const read = (path) => {
+  if (!/^src(?:\/|$)/.test(path)) return readFileSync(resolve(REPO_ROOT, path), 'utf8')
+  const text = app.read(path)
+  assert.ok(text !== null, `no ${path} under ${app.base}: this test has no subject`)
+  return text
+}
 
 const EDIT_MIGRATION =
   'supabase/migrations/21000226000000_a_dependency_can_be_edited_where_it_sits.sql'

@@ -67,35 +67,38 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, relative, resolve } from 'node:path'
-import { readListed } from '../read-listed.mjs'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { RENAME_MAP } from '../retired-vocabulary.mjs'
 import { COVER_ASSET_MANIFEST } from '../sync-cover-assets.mjs'
-import { appPackageRoot, appSourceRoot } from '../app-source.mjs'
+import { sweep } from '../sweep.mjs'
 
 const ROOT = resolve(new URL('../..', import.meta.url).pathname)
 /**
- * The application, wherever this tree keeps it, and the package it sits in.
+ * The application, wherever this tree keeps it: the `app` subject, narrowed.
  *
  * `resolve(ROOT, 'src')` is this repository's answer and only this
  * repository's: a deployment installs this package and reads the application
  * out of `node_modules/agentic-service-blueprinting`, with no `src` of its
  * own. `readdirSync` on a directory that is not there threw, which is the
- * loud form of this defect and the lucky one — the walk below is one line
+ * loud form of this defect and the lucky one — a walk of its own is one line
  * away from the silent form, where a tolerated absence sweeps nothing and
- * every assertion under it agrees. It refuses an empty result now for that
- * reason, beside the three that count what came back. `APP_PACKAGE` is what a
- * finding is reported relative to, so a file still reads
- * `src/styles/blueprint.css` on either side and the spot checks stay one
- * string apiece.
+ * every assertion under it agrees. The sweep refuses an empty result for that
+ * reason, beside the three tests below that count what came back. Its paths are
+ * already the ones a finding prints — `src/styles/blueprint.css` on either
+ * side, whichever layer holds the file — so the spot checks stay one string
+ * apiece.
  *
  * `docs/assets`, further down, is deliberately NOT resolved this way. A figure
  * is documentation and documentation is this tree's, the same way `scripts/`
  * is.
  */
-const SRC = appSourceRoot(ROOT)
-const APP_PACKAGE = appPackageRoot(ROOT)
+const APP = sweep({
+  subject: 'app',
+  root: ROOT,
+  where: (path) => /\.(tsx?|css)$/.test(path),
+  what: '.ts, .tsx or .css',
+})
 
 /* --------------------------------------------------------------- the tree */
 
@@ -132,69 +135,29 @@ export function commentsOnly(source) {
 }
 
 /**
- * The tree under `dir`, and an entry that vanishes mid-walk is skipped rather
- * than thrown over.
+ * Every TypeScript and stylesheet file of the application, split into its two
+ * halves: `code` is the file with comments stripped, `comments` is what the
+ * stripping removed. One listing, because the two assertions below are one
+ * subject read twice and a second walk would be a second thing to keep in step.
  *
- * `readdirSync` lists what was there a moment ago, and `statSync` asks about it
- * a moment later. A build artefact removed in between, or a symlink pointing at
- * something that has gone, turns a vocabulary guard red for a reason that has
- * nothing to do with vocabulary — and a guard that goes red for unrelated
- * reasons is one people learn to rerun rather than read.
- *
- * Only the vanishing is swallowed. Anything else — a permission, an unreadable
- * encoding — is a fact about the tree worth hearing, and it throws. And the
- * skip cannot quietly shrink the subject: `the walk reads the tree it claims
- * to` below counts what came back and names the directories that must be in it.
- */
-function walk(dir) {
-  return readdirSync(dir).flatMap((entry) => {
-    const path = join(dir, entry)
-    let stats
-    try {
-      stats = statSync(path)
-    } catch (error) {
-      if (error.code === 'ENOENT') return []
-      throw error
-    }
-    if (stats.isDirectory()) return walk(path)
-    if (!/\.(tsx?|css)$/.test(entry)) return []
-    return [path]
-  })
-}
-
-/**
- * Every TypeScript and stylesheet file under `src`, split into its two halves:
- * `code` is the file with comments stripped, `comments` is what the stripping
- * removed. One walk, because the two assertions below are one subject read
- * twice and a second walk would be a second thing to keep in step.
- *
- * The skip in `walk` covered the `statSync` and stopped there, so an entry that
- * vanished in the wider gap — between the walk finishing and this read starting
- * — still threw, and the promise above held for part of a second. It is the
- * same rule either way, and `read-listed.mjs` now states it once for every walk
- * in the repository that reads a path something else listed.
+ * A PATH THAT VANISHED between the listing and the read is skipped, and every
+ * other failure throws — a build artefact removed in the gap, or a symlink
+ * pointing at something that has gone, would otherwise turn a vocabulary guard
+ * red for a reason that has nothing to do with vocabulary, while a permission
+ * the checkout should not have is a fact about the tree worth hearing. Neither
+ * half of that rule is written here: `sweep.mjs` states it once for every walk
+ * in the repository that reads a path something else listed. And the skip
+ * cannot quietly shrink the subject: the three tests below count what came
+ * back and name the directories that must be in it.
  */
 export function appSources() {
-  const found = walk(SRC)
-    .flatMap((path) => {
-      const source = readListed(path)
+  return APP.files
+    .flatMap((file) => {
+      const source = APP.read(file)
       if (source === null) return [] // listed, then gone before this read
-      return [
-        {
-          file: relative(APP_PACKAGE, path).split('\\').join('/'),
-          code: stripComments(source),
-          comments: commentsOnly(source),
-        },
-      ]
+      return [{ file, code: stripComments(source), comments: commentsOnly(source) }]
     })
     .sort((a, b) => a.file.localeCompare(b.file))
-  if (found.length === 0) {
-    throw new Error(
-      `no .ts, .tsx or .css under ${SRC}: this walk has no subject, which is ` +
-        `a failure and not a pass`,
-    )
-  }
-  return found
 }
 
 /* --------------------------------------------- chip and pill, as names */

@@ -73,9 +73,17 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { LABEL_COLUMNS } from '../interface-schema-map.mjs'
 import { parseGeneratedTypes } from '../check-schema-inventory.mjs'
-import { readAppFile } from '../app-source.mjs'
+import { sweep } from '../sweep.mjs'
 
 const ROOT = resolve(new URL('../..', import.meta.url).pathname)
+const app = sweep({ subject: 'app', root: ROOT })
+
+/** An application file, wherever it sits; its absence is this test's subject gone. */
+const readApp = (path) => {
+  const text = app.read(path)
+  assert.ok(text !== null, `no ${path} under ${app.base}: this test has no subject`)
+  return text
+}
 
 const RERUN = 'npm test -- scripts/tests/labels-name-their-columns.test.mjs'
 /** Where the map itself lives, since #137 — a row's failure names its row. */
@@ -162,7 +170,7 @@ export function divergentNames(row) {
  * CI. So the types are the schema here, and this file reuses that script's
  * parser rather than growing a second reader of the same file.
  */
-const SCHEMA = parseGeneratedTypes(readAppFile(ROOT, 'src/types/database.ts'))
+const SCHEMA = parseGeneratedTypes(readApp('src/types/database.ts'))
 
 /** Schema names the map claims, that the schema does not have. */
 export function namesThatDoNotExist(schema, map = LABEL_COLUMNS) {

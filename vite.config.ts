@@ -31,7 +31,7 @@ import { defineConfig } from 'vite'
  * import would name a file a deployment does not have, and a config that
  * imports a module the tree lacks is a config that does not load.
  *
- * THE PAIR IS WRITTEN DOWN A FOURTH TIME, in `scripts/app-source.mjs`, for the
+ * THE PAIR IS WRITTEN DOWN A FOURTH TIME, in `scripts/sweep.mjs`, for the
  * checks that WALK the application — they have to land on the files the build
  * resolves or they are measuring a tree nobody ships. They cannot read it from
  * here: this file is loaded by bundling it in isolation.

@@ -46,8 +46,9 @@ import { generateTypescript, sortGeneratorMetadata } from '@supabase/postgrest-t
 import { CORE_STACK } from './check-deployment-seed-loads.mjs'
 import { ENUMS, membersOfCheck } from './database-vocabularies.mjs'
 
-const ROOT = new URL('../', import.meta.url)
-const P = (rel) => fileURLToPath(new URL(rel, ROOT))
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const ROOT = process.cwd()
+const P = (rel) => resolve(ROOT, rel)
 
 /** Where the types live. */
 export const TYPES_FILE = 'src/types/database.ts'

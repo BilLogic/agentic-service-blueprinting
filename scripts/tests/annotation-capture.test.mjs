@@ -10,7 +10,7 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { readAppFile } from '../app-source.mjs'
+import { sweep } from '../sweep.mjs'
 // Through the alias, not up two directories. A deployment reads the
 // application out of `node_modules/agentic-service-blueprinting` and has no
 // `src` to walk up into, so `../../src/lib/…` is a file that is not there and
@@ -186,6 +186,9 @@ const ATTRIBUTE = 'data-canvas-annotation-layer'
 /** The tree the application is read out of: this repository's, or a deployment's. */
 const REPO_ROOT = process.cwd()
 
+/** The application, wherever this tree keeps it. */
+const app = sweep({ subject: 'app', root: REPO_ROOT })
+
 /** Files that emit the attribute, and files that query for it. */
 const EMITTERS = ['src/components/editor/CanvasAnnotationLayer.tsx']
 const READERS = [
@@ -198,11 +201,15 @@ const READERS = [
 test('every reader of the annotation canvas asks for the attribute it emits', () => {
   // Read out of the application wherever it is. `process.cwd()` is the
   // deployment's root, and a deployment holds no `src` of its own — every
-  // path below would be a file that is not there. `readAppFile` refuses a
-  // named file that is missing rather than treating it as an empty one, which
-  // is the whole assertion: a reader this check cannot find is a reader this
-  // check cannot vouch for.
-  const source = (path) => readAppFile(REPO_ROOT, path)
+  // path below would be a file that is not there. The sweep reads through the
+  // overlay, and a named file that is missing is asserted away rather than
+  // treated as an empty one, which is the whole assertion: a reader this check
+  // cannot find is a reader this check cannot vouch for.
+  const source = (path) => {
+    const text = app.read(path)
+    assert.ok(text !== null, `no ${path} under ${app.base}: this test has no subject`)
+    return text
+  }
 
   for (const path of EMITTERS) {
     assert.match(

@@ -36,7 +36,8 @@ import { sweep } from './sweep.mjs'
 import { ENUMS } from './database-vocabularies.mjs'
 
 /** The tree this script is part of: the directory `scripts/` sits in. */
-const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const REPO_ROOT = process.cwd()
 
 /** The application path the types are, wherever the application is. */
 const TYPES = 'src/types/database.ts'

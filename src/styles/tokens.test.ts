@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { execSync } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { readListed } from '../../scripts/read-listed.mjs'
+import { sweep } from '../../scripts/sweep.mjs'
 import { GROUNDS } from '@/lib/ground'
 import {
   type Consumer,
@@ -396,27 +395,30 @@ describe('token resolution', () => {
     ].map(([, pattern]) => scanExclusion(pattern))
 
     // Tailwind scans what the working tree holds and `.gitignore` does not
-    // hide, tracked or not, which is exactly what this asks for. Asking git
-    // rather than walking the tree means the answer moves with `.gitignore`
-    // instead of with a skip list kept here.
-    const prose = execSync(
-      'git ls-files --cached --others --exclude-standard -- "*.md"',
-      { cwd: REPO_ROOT, encoding: 'utf8' },
-    )
-      .split('\n')
-      .filter(Boolean)
-      .filter((file) => !excluded.some((pattern) => pattern.test(file)))
+    // hide, tracked or not, which is exactly what the `commit` subject of
+    // `scripts/sweep.mjs` lists. Asking for that subject rather than walking
+    // the tree means the answer moves with `.gitignore` instead of with a skip
+    // list kept here.
+    const walk = sweep({
+      subject: 'commit',
+      root: REPO_ROOT,
+      where: (file) =>
+        file.endsWith('.md') && !excluded.some((pattern) => pattern.test(file)),
+      what: 'prose file a commit would carry',
+    })
+    const prose = walk.files
     expect(prose.length).toBeGreaterThan(0)
 
     // `git ls-files` reports the INDEX, which goes on naming a file after the
     // working tree has stopped having it — the state a release leaves behind
     // between consuming its changeset files and recording that they are gone.
     // So a listed path that is no longer there is skipped, and every other
-    // read failure still throws. `prose.length` above is what keeps the skip
-    // honest: a sweep that quietly skipped everything would report nothing.
+    // read failure still throws; the sweep's `read` is where that rule is
+    // stated. `prose.length` above is what keeps the skip honest: a sweep that
+    // quietly skipped everything would report nothing.
     const spelled: string[] = []
     for (const file of prose) {
-      const source = readListed(resolve(REPO_ROOT, file))
+      const source = walk.read(file)
       if (source === null) continue
       source.split('\n').forEach((text, index) => {
         for (const [token] of text.matchAll(/--[a-zA-Z0-9_-]+/g)) {

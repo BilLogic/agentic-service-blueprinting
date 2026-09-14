@@ -114,11 +114,12 @@
  * Run: node scripts/check-database-names.mjs   (also: npm run check:database-names)
  */
 import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { RENAME_MAP, replacementFor, retiredFragmentsIn } from './retired-vocabulary.mjs'
 import { sweep } from './sweep.mjs'
 
-const REPO_ROOT = resolve(new URL('..', import.meta.url).pathname)
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const REPO_ROOT = process.cwd()
 const SCHEMA = 'supabase/generated/portable-core.schema.sql'
 const SOURCE = /\.(?:[cm]?[jt]sx?|py)$/
 /**
