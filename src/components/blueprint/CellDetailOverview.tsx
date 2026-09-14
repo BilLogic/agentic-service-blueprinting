@@ -12,10 +12,7 @@ import { shouldUseTouchpointCellContent } from '@/lib/blueprintLayout'
 import { isBlueprintStepStoryboardPlaceholder } from '@/lib/blueprintStoryboardPlaceholder'
 import { useTouchpointToneResolver } from '@/hooks/useTouchpointToneResolver'
 import { PANEL_TERMS } from '@/lib/panelTerms'
-import type {
-  BlueprintLaneLike,
-  CellDetailFacts,
-} from '@/components/blueprint/cellDetailFacts'
+import type { CellDetailFacts } from '@/components/blueprint/cellDetailFacts'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 import type { ReactNode } from 'react'
 
@@ -39,21 +36,18 @@ const CELL_DETAIL_LOGO_CLASS =
 export function CellDetailOverview({
   facts,
   selection,
-  selectedLane,
   laneBadge,
   editingCell,
-  isStoryboardLane,
   onDone,
 }: {
   facts: CellDetailFacts
   selection: BlueprintCellSelection
-  selectedLane: BlueprintLaneLike | null
   laneBadge: ReactNode
   editingCell: boolean
-  isStoryboardLane: boolean
   onDone: () => void
 }) {
   const {
+    laneResolution,
     resolvedCellId,
     selectedCell,
     cellTouchpointList,
@@ -62,6 +56,8 @@ export function CellDetailOverview({
     touchpointDetail,
     featured,
   } = facts
+  // The lane, read from the one resolution rather than passed beside it.
+  const selectedLane = laneResolution?.lane ?? null
   /*
     The touchpoint badge's colour. A resolver rather than a value because the
     label it is about is worked out below, from the placement and the lane.
@@ -110,7 +106,9 @@ export function CellDetailOverview({
   const frameIsLogo = cellTouchpointList.some(
     (placement) => placement.iconUrl?.trim() === featuredImage,
   )
-  const showImages = Boolean(featuredImage) && !isStoryboardLane
+  // No `&& !isStoryboardLane` term: a storyboard cell never reaches this
+  // component — the panel renders the storyboard stack instead of it.
+  const showImages = Boolean(featuredImage)
   // Widened from "is a touchpoint lane" to "names a touchpoint at all", so a
   // real placement on a lane that draws no touchpoints still shows its name
   // — see `hasRealPlacement`.

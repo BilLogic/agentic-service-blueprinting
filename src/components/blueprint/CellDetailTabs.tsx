@@ -27,7 +27,8 @@ const PANEL_TABS: Array<{
  * `dependencyEditing` is the whole of the read-only/editable distinction for
  * the dependency rows — null is what makes the list read-only, the same
  * component either way — and it arrives already decided, because only the
- * panel knows whether this reader may write.
+ * panel knows whether this reader may write. It is also the only route to
+ * the arrows themselves: source, candidates and existing ride on it.
  */
 export function CellDetailTabs({
   activeTab,
@@ -36,7 +37,6 @@ export function CellDetailTabs({
   dependencyEditing,
   addingDependency,
   onAddingDependencyChange,
-  canAddDependency,
   onCellSelect,
   onTechSelect,
 }: {
@@ -46,7 +46,6 @@ export function CellDetailTabs({
   dependencyEditing: ComponentProps<typeof CellDependencySections>['editing']
   addingDependency: boolean
   onAddingDependencyChange: (adding: boolean) => void
-  canAddDependency: boolean
   onCellSelect: (cellId: string) => void
   onTechSelect: (cellId: string, techItem: string) => void
 }) {
@@ -58,9 +57,6 @@ export function CellDetailTabs({
     selectedCell,
     cellResourceList,
     cellTouchpointList,
-    dependencySource,
-    dependencyCandidates,
-    existingDependencies,
   } = facts
   return (
     <Tabs
@@ -103,12 +99,20 @@ export function CellDetailTabs({
               onCellSelect={onCellSelect}
               onTechSelect={onTechSelect}
             />
-            {canAddDependency && dependencySource ? (
+            {/*
+              ONE route to the arrows an author may draw: `dependencyEditing`
+              is non-null exactly when this reader may write and this cell can
+              be a source, so the same object that makes the rows editable
+              also carries what the Add-dependency editor needs. Reading the
+              endpoints a second time from the facts was two ways to ask one
+              question.
+            */}
+            {dependencyEditing ? (
               addingDependency ? (
                 <CellDependencyEditor
-                  source={dependencySource}
-                  candidates={dependencyCandidates}
-                  existing={existingDependencies}
+                  source={dependencyEditing.source}
+                  candidates={dependencyEditing.candidates}
+                  existing={dependencyEditing.existing}
                   onDone={() => onAddingDependencyChange(false)}
                 />
               ) : (

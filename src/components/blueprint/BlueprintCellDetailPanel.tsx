@@ -112,9 +112,7 @@ function BlueprintCellDetailPanelBody() {
   /*
     Widen/narrow is a DESKTOP control: it trades canvas width for panel
     width, and the phone's posture is a bottom sheet the full width of the
-    screen with nothing to trade. The agent command stays registered in
-    both postures (it just does nothing visible on a phone) — parity is
-    about what the agent can reach, not about which chrome is on screen.
+    screen with nothing to trade.
   */
   const mobile = useMobileShell()
   /**
@@ -304,10 +302,7 @@ function BlueprintCellDetailPanelBody() {
     selectCell(nextSelection)
   }
 
-  /*
-    The Differences surface — the compare ledger, a true sibling of the
-    cell-detail view inside the same drawer. Needs no selection.
-  */
+  // Differences: a sibling of the cell view, and needs no selection.
   if (activeSurface === 'differences') {
     return (
       <PanelDrawerShell
@@ -328,11 +323,7 @@ function BlueprintCellDetailPanelBody() {
     )
   }
 
-  /*
-    Draft creation: the panel opens on an empty slot's target and nothing is
-    written until Save. Closing the drawer (✕, Escape, Cancel) discards the
-    draft entirely — a cancelled cell never existed.
-  */
+  // A draft cell: an empty slot's target, written only on Save.
   if (!selection && draft) {
     return (
       <PanelDrawerShell
@@ -353,11 +344,7 @@ function BlueprintCellDetailPanelBody() {
     )
   }
 
-  /*
-    Details surface with nothing selected — a ledger-era state: the drawer
-    can sit open on Details after a surface switch with no cell picked.
-    A quiet placeholder rather than a vanished drawer.
-  */
+  // Details with nothing picked — a placeholder, not a vanished drawer.
   if (!selection) {
     return (
       <PanelDrawerShell
@@ -521,10 +508,8 @@ function BlueprintCellDetailPanelBody() {
                 <CellDetailOverview
                   facts={facts}
                   selection={selection}
-                  selectedLane={selectedLane}
                   laneBadge={laneBadge}
                   editingCell={editingCell}
-                  isStoryboardLane={isStoryboardLane}
                   onDone={clearSelection}
                 />
               </div>
@@ -535,7 +520,6 @@ function BlueprintCellDetailPanelBody() {
                 dependencyEditing={dependencyEditing}
                 addingDependency={addingDependency}
                 onAddingDependencyChange={setAddingDependency}
-                canAddDependency={canEdit}
                 onCellSelect={handleConnectionSelect}
                 onTechSelect={handleTechSelect}
               />

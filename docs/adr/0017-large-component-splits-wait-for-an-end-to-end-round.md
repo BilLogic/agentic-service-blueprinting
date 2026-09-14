@@ -1,5 +1,5 @@
 ---
-summary: Three components are long enough to be worth splitting and are deliberately not split, because the tests that would catch a split going wrong do not exist yet — the hold has an exit condition, not an excuse.
+summary: Three components were long enough to be worth splitting and were deliberately not split until the tests that would catch a split going wrong existed — the hold had an exit condition, not an excuse, and it has now been met: all three flows have CI slices, and the cell detail panel is split.
 ---
 
 # 17. Large component splits wait for an end-to-end round

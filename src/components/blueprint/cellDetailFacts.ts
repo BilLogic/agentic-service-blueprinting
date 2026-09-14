@@ -61,19 +61,6 @@ type PanelCell = Pick<BlueprintCell, 'content' | 'summary' | 'frame'> & {
   resources: CellResource[]
 }
 
-/**
- * The Details │ Differences switch — TOP-LEVEL panel chrome (the two
-
-/**
- * Everything the cell panel derives from the board about one selected cell.
- *
- * The panel used to work all of this out inline, between its own state and
- * its own markup, which is why a reader looking for what a cell IS had to
- * read past what the drawer DOES. One hook, one question: given a selection
- * (or a draft) and the boards in memory, what is there to show?
- *
- * Every entry is derived — nothing here is state, and nothing here writes.
- */
 /** Everything `useCellDetailFacts` resolves, for anything it is handed to. */
 export type CellDetailFacts = ReturnType<typeof useCellDetailFacts>
 
@@ -86,6 +73,16 @@ export type BlueprintLaneLike = NonNullable<
   CellDetailFacts['laneResolution']
 >['lane']
 
+/**
+ * Everything the cell panel derives from the board about one selected cell.
+ *
+ * The panel used to work all of this out inline, between its own state and
+ * its own markup, which is why a reader looking for what a cell IS had to
+ * read past what the drawer DOES. One hook, one question: given a selection
+ * (or a draft) and the boards in memory, what is there to show?
+ *
+ * Every entry is derived — nothing here is state, and nothing here writes.
+ */
 export function useCellDetailFacts({
   blueprints,
   selection,
