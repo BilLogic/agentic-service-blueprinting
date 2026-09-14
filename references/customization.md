@@ -10,6 +10,7 @@ migration in the same change.
 
 - Lane roles
 - Theming & branding
+- Deployment inputs and their config homes
 - View types & path types
 - Scale
 - Agent account
@@ -31,8 +32,10 @@ the set is a deliberate multi-file act, listed in `references/lane-roles.md`
 
 ## Theming & branding
 
-- `src/config.ts` — `ORG_NAME`: the workspace/product name in app chrome
-  (sidebar wordmark, breadcrumbs). Change per instantiation.
+- `brand.name` on the deployment config — the workspace/product name in app
+  chrome (the wordmark and the workspace title). `src/config.ts`'s `ORG_NAME` is the
+  template's own default, the last step of the fallback chain, not a file a
+  deployment edits; see § Deployment inputs and their config homes.
 - `index.html` — browser tab title.
 - `src/styles/` — the design tokens (CSS custom properties for colors,
   radii, fonts, light/dark), split across a file per concern. The blocks an
@@ -76,6 +79,34 @@ export const TOUCHPOINT_COLORS: Record<string, string> = {
 Any label not in the map still falls back to the deterministic hash palette,
 so partial pinning is fine. Keep the map **client-specific** — do not commit
 one client's labels into the shared template.
+
+## Deployment inputs and their config homes
+
+A deployment that reads the application out of the package keeps no file of
+its own inside `src`. Every input a deployment used to hold there as its own
+copy has a field on the deployment config instead, and the template's file at
+the old path is the template's default, reached only when the field is absent.
+Four of them arrived with the overlay; the cover and the accent had homes
+already and are listed so the table is the whole answer.
+
+| Config field | What it replaced | How it is read |
+| --- | --- | --- |
+| `brand.name` | `src/config.ts` — `ORG_NAME`, the org's copy of the wordmark | The workspace title resolves `content.workspaceTitle ?? cover.title ?? brand.name ?? ORG_NAME`, and every surface a person sees reads that chain. One read does not: the workspace breadcrumb label in `src/types/nav.ts` is built from `ORG_NAME` at module scope, for a breadcrumb component nothing renders yet — the owned-content test holds it unrendered until it is carried in from the config. |
+| `brand.accent` | `src/config.ts` — the org's accent | Written onto the root as a layout effect by the config provider; the template leaves it unset. |
+| `cover` (and `content.workspaceTitle`, `content.coverTitle`) | `src/content/coverContent.ts` — the org's landing page copy | Rendered by reference: the cover page shows the deployment's own object, and the template's content module stands in only when none is supplied. |
+| `agent.doctrine` | `src/lib/agent/role.md` — the deployment's own copy of the agent's role document | Laid after the template's role and the canvas adapter on every send. The template's role stays the template's; the doctrine is what one deployment adds: its house rules, its posture, its account of itself. |
+| `agent.references` | Reference documents under `src/lib/agent/` — the deployment's own account, house style, whatever it authored for `get_reference` | A map of bare name to document text; the host holds the `?raw` imports. A name the template already serves is replaced, a new name is listed to the agent right after the canvas adapter. |
+| `sample.nav` | `src/data/sampleNav.ts` — the board shown before a database answers | Read by the editor context as the slides shown before the first fetch answers (`fallbackSlides`); the template's generated sample stands in only when the field is absent. |
+
+The generated database types (`src/types/database.ts`) are the one file a
+deployment keeps in its tree on purpose: a deployment generates its own against
+its own project and holds it to the template's with the superset check
+(`scripts/check-database-types-superset.mjs`); see `docs/connectors/supabase/database.md`.
+
+`src/deploymentOwnedContent.test.ts` is the inventory behind this table — it
+fails when a module appears in the template's content directories without a
+config home, and it carries all four inputs through the config with no file
+in the application tree.
 
 ## Layouts & path kinds
 
