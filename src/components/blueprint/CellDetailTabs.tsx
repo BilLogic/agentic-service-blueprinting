@@ -24,8 +24,8 @@ const PANEL_TABS: Array<{
 /**
  * The tab row below the overview, and whichever tab is showing.
  *
- * `editing` is the whole of the read-only/editable distinction for the
- * dependency rows — null is what makes the list read-only, the same
+ * `dependencyEditing` is the whole of the read-only/editable distinction for
+ * the dependency rows — null is what makes the list read-only, the same
  * component either way — and it arrives already decided, because only the
  * panel knows whether this reader may write.
  */
