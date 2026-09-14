@@ -6,6 +6,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import { TranscriptRow } from '@/components/editor/agent/TranscriptRow'
+import { type TranscriptStepsRun } from '@/components/editor/agent/transcriptBlocks'
 import { type TranscriptEvent } from '@/lib/agent/loop'
 import { cn } from '@/lib/utils'
 
@@ -16,15 +17,14 @@ import { cn } from '@/lib/utils'
  */
 export function TranscriptStepsBlock({
   events,
-  start,
-  end,
-  hasError,
+  run,
 }: {
   events: TranscriptEvent[]
-  start: number
-  end: number
-  hasError: boolean
+  /** The run to fold, as `blockTranscript` decided it — not its three
+      fields taken apart and handed over one at a time. */
+  run: TranscriptStepsRun
 }) {
+  const { start, end, hasError } = run
   // Errors start open — the fold must never hide a failure.
   const [open, setOpen] = useState(hasError)
   const count = end - start + 1

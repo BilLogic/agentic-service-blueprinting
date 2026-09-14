@@ -2,11 +2,11 @@
 'agentic-service-blueprinting': patch
 ---
 
-**The agent panel is a state machine and eight modules, and the slice says
+**The agent panel is a state machine and nine modules, and the slice says
 nothing moved.** `src/components/editor/AgentPanel.tsx` held the sessions list,
 the chat view with its transcript rows, tool rows and folded step blocks, two
 dialogs and the ⚙ rail button around one session state machine — 1462 lines and
-13 `useState` calls. It is 60 lines now, with none: what is left is which
+twelve `useState` calls. It is 60 lines now, with none: what is left is which
 session is open, the persistence the panel attaches, and the choice between the
 two views. Everything else is a module under `src/components/editor/agent/` —
 `AgentSessionsView`, `SessionRow`, `ChangeCount` with the hook behind it,

@@ -1,5 +1,5 @@
 ---
-summary: Three components are long enough to be worth splitting and are deliberately not split, because the tests that would catch a split going wrong do not exist yet — the hold has an exit condition, not an excuse.
+summary: Three components long enough to be worth splitting waited for the tests that would catch a split going wrong; the hold had an exit condition rather than an excuse, all three flows now have one, and what each split did is recorded at the end.
 ---
 
 # 17. Large component splits wait for an end-to-end round
@@ -11,7 +11,10 @@ per flow — each held component's flow has a CI slice, and each slice unblocks
 that component's split — and the cell-edit flow is covered; see the end.
 Amended again 2026-09-14 (#747): the annotation-drag flow is covered too — as a
 jsdom slice and as a browser case in the render walk — and the annotation
-layer's split is unblocked; see the end.
+layer's split is unblocked; see the end. Amended again 2026-09-14 (#770): all
+three flows are covered, so the hold is lifted. Amended again 2026-09-14
+(#774): the agent panel is split, and the record now carries an outcome per
+component; see the end.
 **Context** `src/components/editor/CanvasAnnotationLayer.tsx`,
 `src/components/blueprint/BlueprintCellDetailPanel.tsx`,
 `src/components/editor/AgentPanel.tsx`
@@ -275,22 +278,25 @@ behaviour. The ordering claim this record made stands — the instrument came
 before the surgery — and the slices stay as the exit condition for any future
 hold of the same shape.
 
-## Outcomes, one line per component
+## Outcomes, one per component
 
 The hold is lifted, so what is recorded here from now on is what each split
 did, and what said it was safe.
 
 **`src/components/editor/AgentPanel.tsx` — split 2026-09-14.** 1462 lines and
-13 `useState` calls became 60 lines and none: the panel file now holds the
+twelve `useState` calls became 60 lines and none (the table at the top of this
+record says 13, which is what a grep for the word returns: it counts the import
+too): the panel file now holds the
 session state machine and the composition (which session is open, the
 persistence it attaches, the choice between the two views) and no view, row or
 dialog at all. The sessions list with its row and its ledger count, the chat
 view with its composer, the transcript's rows and its fold, the rule that
 decides which rows fold, the two session dialogs and the ⚙ rail button are
 modules under `src/components/editor/agent/`, none larger than the chat view's
-651 lines. Nothing crossed the seam but the session, the events and the
-callbacks; no persisted row shape moved, and no class, test id or aria
-attribute changed.
+651 lines. What crosses each new seam is what the code already
+passed around — a session or the list of them, the transcript's events, a
+callback — and no prop was invented; no persisted row shape moved, and no
+class, test id or aria attribute changed.
 
 The instrument said so: `npm run slice:agent-session` was run before the first
 move and after every one of them, and it passes with no assertion edited —

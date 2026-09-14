@@ -10,7 +10,15 @@ import { type TranscriptEvent } from '@/lib/agent/loop'
  */
 export type TranscriptBlock =
   | { kind: 'event'; index: number }
-  | { kind: 'steps'; start: number; end: number; hasError: boolean }
+  | TranscriptStepsRun
+
+/** A folded run: the half-open span of step rows, and whether one failed. */
+export type TranscriptStepsRun = {
+  kind: 'steps'
+  start: number
+  end: number
+  hasError: boolean
+}
 
 const MIN_FOLDED_STEPS = 3
 

@@ -3,9 +3,6 @@
  * tinted bubbles on the right, agent prose is a ghost bubble, tool calls
  * and status lines are Markers — the chat vocabulary shadcn ships, not a
  * hand-rolled lookalike.
- *
- * This paragraph used to float between the row and the tool type below it,
- * describing neither; the row is a file now, so it heads the file.
  */
 import { lazy, Suspense, useState } from 'react'
 import { CheckCircle2, ChevronRight, Pencil, XCircle } from 'lucide-react'

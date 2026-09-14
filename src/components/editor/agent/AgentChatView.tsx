@@ -106,8 +106,9 @@ export function AgentChatView({
   const { activePathKeys } = usePathSelectionContext()
   const changes = useSyncExternalStore(subscribeToSession, sessionSnapshot)
   const keyed = hasKey(settings)
-  // Same reason as openSessionId, plus a bonus: drafts are per session, so
-  // switching conversations no longer eats what you were typing.
+  // Same reason the panel keeps the open session outside the component,
+  // plus a bonus: drafts are per session, so switching conversations no
+  // longer eats what you were typing.
   const storedDraft = useAgentDraft(session.id)
   const draft = storedDraft.text
   const pendingSkill = storedDraft.skillId
@@ -342,12 +343,7 @@ export function AgentChatView({
                         key={`steps-${block.start}`}
                         scrollAnchor={!running && isLastBlock}
                       >
-                        <TranscriptStepsBlock
-                          events={events}
-                          start={block.start}
-                          end={block.end}
-                          hasError={block.hasError}
-                        />
+                        <TranscriptStepsBlock events={events} run={block} />
                       </MessageScrollerItem>
                     )
                   }
