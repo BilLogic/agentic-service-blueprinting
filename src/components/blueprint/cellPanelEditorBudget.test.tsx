@@ -15,6 +15,11 @@ import type { Database } from '@/types/database'
 
 vi.mock('@/lib/cellContentMutations', () => ({
   updateCellContent: vi.fn(async () => {}),
+  // The agent's create goes through the occupancy-guarded create; the
+  // person's edit through the content writer. Both are stubbed: the subject
+  // is the sentence each hears, not the write.
+  createCell: vi.fn(async () => ({ id: 'cell-1', inserted: true, previous: null })),
+  laneBudgetKind: vi.fn(async () => 'prose'),
 }))
 vi.mock('@/lib/cellSpecMutations', () => ({
   updateCellSpec: vi.fn(async () => {}),

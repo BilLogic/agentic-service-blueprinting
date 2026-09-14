@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { arg, defineTool } from '@/lib/agent/tools/definition'
+import { arg, defineTool, requireClient } from '@/lib/agent/tools/definition'
 import { CANONICAL_LANE_ROLES } from '@/lib/laneRoles'
 import { PATH_KINDS } from '@/lib/versionValidation'
 import type { DeletableKind } from '@/lib/deletionSafety'
@@ -19,7 +19,7 @@ import {
   sampleListOwnerTags,
 } from '@/lib/agent/tools/sampleRead'
 import { searchBlueprint } from '@/lib/agent/tools/search'
-import { SERVICE_ARG, readScope, requireClient } from '@/lib/agent/tools/definitions/scope'
+import { SERVICE_ARG, readScope } from '@/lib/agent/tools/definitions/scope'
 
 /**
  * The tools that read the journey as a whole — its levels, one scenario's

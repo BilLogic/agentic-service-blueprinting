@@ -9,8 +9,8 @@ import {
 import {
   clearSession,
   recordChange,
+  attributedTo,
   sessionSnapshot,
-  setAgentAttribution,
   type ChangeEntry,
 } from '@/lib/authoringSession'
 
@@ -47,7 +47,6 @@ function collector() {
 
 afterEach(() => {
   setAuthoringLogWriter(null)
-  setAgentAttribution(null)
   clearSession()
 })
 
@@ -88,12 +87,12 @@ test('a change with no captured inverse still records, with a null revert', () =
   expect(authoringLogRow(entry({ fn: 'reorder_lanes' }))?.revert).toBeNull()
 })
 
-test('agent attribution survives into the durable record', () => {
+test('agent attribution survives into the durable record', async () => {
   const rows = collector()
   clearSession()
-  setAgentAttribution('session-7')
-  recordChange('upsert_cell', { path_id: 'p1' })
-  setAgentAttribution(null)
+  await attributedTo('session-7', async () => {
+    recordChange('upsert_cell', { path_id: 'p1' })
+  })
   recordChange('upsert_cell', { path_id: 'p1' })
 
   expect(rows[0].author).toBe('agent')

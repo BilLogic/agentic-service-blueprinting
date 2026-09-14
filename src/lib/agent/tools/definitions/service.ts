@@ -1,7 +1,6 @@
 import { z } from 'zod'
-import { defineTool } from '@/lib/agent/tools/definition'
+import { defineTool, requireClient } from '@/lib/agent/tools/definition'
 import { getBusinessModel } from '@/lib/agent/tools/read'
-import { requireClient } from '@/lib/agent/tools/definitions/scope'
 
 /** The service itself: what it is, and how it sustains itself. */
 

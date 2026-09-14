@@ -96,6 +96,44 @@ export async function updateStakeholder(
   }
 }
 
+/**
+ * Edit the fields a patch names and keep the rest. The row is the unit that
+ * gets reverted, so the row is read here and the captured `previous` is the
+ * whole of it — a caller that had to supply it would supply it wrong
+ * somewhere. A field the patch does not name, `kind` included, is carried
+ * straight through: an existing `team` row stays a team.
+ */
+export async function patchStakeholder(
+  client: Client,
+  stakeholderId: string,
+  patch: Partial<StakeholderInput>,
+): Promise<void> {
+  const { data: current, error } = await client
+    .from('stakeholders')
+    .select('name, kind, summary, aliases')
+    .eq('id', stakeholderId)
+    .maybeSingle()
+  if (error) throw toAuthoringError(error)
+  if (!current) throw new Error('No stakeholder with that id.')
+  const previous: StakeholderInput = {
+    name: current.name,
+    kind: current.kind,
+    summary: current.summary,
+    aliases: current.aliases ?? [],
+  }
+  await updateStakeholder(
+    client,
+    stakeholderId,
+    {
+      name: patch.name ?? previous.name,
+      kind: patch.kind ?? previous.kind,
+      summary: patch.summary ?? previous.summary,
+      aliases: patch.aliases ?? previous.aliases,
+    },
+    previous,
+  )
+}
+
 /** Undo of "added someone" — never offered as a tool of its own. */
 export async function deleteStakeholder(
   client: Client,

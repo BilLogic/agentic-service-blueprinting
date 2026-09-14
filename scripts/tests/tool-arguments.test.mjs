@@ -32,67 +32,26 @@ const specs = readAppFile(root, 'src/lib/agent/tools/specs.ts')
 const registry = readAppFile(root, 'src/lib/agent/tools/registry.ts')
 
 /**
- * Names the handler still reads and the schema no longer advertises.
- *
- * An alias only ever goes this way. A name the SCHEMA knows and the handler
- * does not is the silent drop itself, so there is deliberately no way to
- * excuse one — the field is `accepts`, and it is read against the handler.
+ * Every tool is a definition now: its two ends are one zod schema, and a
+ * compiler compares them. The subject of this check — a spec literal beside
+ * a switch case — is empty, and what must hold until the check is deleted
+ * with the rest of the switch-era scaffolding is that it STAYS empty: no
+ * literal creeps back into the spec table, no case into the dispatcher.
+ * The accepted aliases (`create_slice.description`, `update_slice.description`)
+ * moved with the tools and are declared on the definitions themselves.
  */
-const ACCEPTED_ALIASES = [
-  {
-    tool: 'create_slice',
-    accepts: 'description',
-    now: 'summary',
-    because:
-      'the schema advertised `description` for as long as the handler read `summary`, so a model that learned that wire is still holding the word this fixed',
-  },
-  {
-    tool: 'update_slice',
-    accepts: 'description',
-    now: 'summary',
-    because: 'same mismatch, same tool pair',
-  },
-]
-
-describe('every argument a tool advertises is an argument it reads', () => {
-  it('finds no drift in either direction', () => {
-    expect(argumentDrift(specs, registry, ACCEPTED_ALIASES)).toEqual([])
+describe('no tool is a spec beside a switch case', () => {
+  it('finds no drift, because there are no two ends left to drift', () => {
+    expect(argumentDrift(specs, registry, [])).toEqual([])
   })
 
-  it('reads every accepted alias, and advertises none of them', () => {
-    const declared = declaredArguments(specs)
-    const read = readArguments(registry)
-    for (const alias of ACCEPTED_ALIASES) {
-      expect(read.get(alias.tool)?.has(alias.accepts)).toBe(true)
-      expect(declared.get(alias.tool)?.has(alias.accepts)).toBe(false)
-      expect(declared.get(alias.tool)?.has(alias.now)).toBe(true)
-    }
+  it('finds no spec literal in the table and no case in the dispatcher', () => {
+    expect([...declaredArguments(specs).keys()]).toEqual([])
+    expect([...readArguments(registry).keys()]).toEqual([])
   })
 })
 
-describe('reading the two files', () => {
-  it('finds every tool on both sides', () => {
-    // The subject is every tool that is still a spec beside a switch case.
-    // Tools that are one definition are not here — their two ends are one
-    // zod schema, and a compiler compares them — so the count shrinks as
-    // they move; what must hold is that the two sides name the same tools.
-    const declared = declaredArguments(specs)
-    const read = readArguments(registry)
-    expect(declared.size).toBeGreaterThan(0)
-    expect([...declared.keys()].filter((tool) => !read.has(tool))).toEqual([])
-    expect([...read.keys()].filter((tool) => !declared.has(tool))).toEqual([])
-  })
-
-  it('reads a properties object written on one line', () => {
-    // `update_path` is `properties: { path_id: str('…'), name: str('…') }`.
-    // A line-oriented reading finds no keys in it and accuses a correct tool.
-    const declared = declaredArguments(specs)
-    expect([...(declared.get('update_path') ?? [])].sort()).toEqual([
-      'name',
-      'path_id',
-    ])
-  })
-
+describe('reading source text', () => {
   it('credits an argument read through a helper', () => {
     // A case that never says `s(args, 'service')` but calls a local helper
     // that does is credited with the key the helper reads.

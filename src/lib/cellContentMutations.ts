@@ -1,5 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { EntityStatus } from '@/lib/entityStatus'
+import { DEFAULT_ENTITY_STATUS, asEntityStatus, type EntityStatus } from '@/lib/entityStatus'
+import { upsertCell, type CellWrite } from '@/lib/authoringRpc'
+import type { CellSpecUpdate } from '@/lib/cellSpecMutations'
+import { cellBudgetKindForLane, type CellBudgetKind } from '@/lib/cellContentLimits'
 import type { CellResource } from '@/types/blueprint'
 import type { Database, Json } from '@/types/database'
 import { recordChange } from '@/lib/authoringSession'
@@ -169,6 +172,99 @@ export async function updateCellContent(
         : undefined,
     )
   }
+}
+
+/**
+ * Which cell-text budget a write is measured against, from the lane the cell
+ * sits on. Falls through to prose when the lane cannot be read — the same
+ * fallback the panel uses when it cannot see a role.
+ */
+export async function laneBudgetKind(
+  client: Client,
+  laneId: string | null | undefined,
+): Promise<CellBudgetKind> {
+  if (!laneId) return cellBudgetKindForLane(null)
+  const { data, error } = await client
+    .from('lanes')
+    .select('name, lane_role')
+    .eq('id', laneId)
+    .maybeSingle()
+  if (error || !data) return cellBudgetKindForLane(null)
+  return cellBudgetKindForLane({ name: data.name, role: data.lane_role })
+}
+
+/** A cell as an edit finds it: both halves as their writers take them, and the lane it sits on. */
+export type CellBeforeEdit = {
+  content: CellContentUpdate
+  spec: CellSpecUpdate
+  laneId: string | null
+}
+
+/**
+ * Read a cell for an edit that names only the fields it changes. Both
+ * writers above take the whole of their half and capture the whole as the
+ * inverse, so a partial edit reads the row first and this is where it
+ * reads it. `status` comes back to be handed straight through: an edit to
+ * a cell's wording must not move it.
+ */
+export async function readCellBeforeEdit(client: Client, cellId: string): Promise<CellBeforeEdit> {
+  const { data, error } = await client
+    .from('cells')
+    .select('content, summary, owner, perceived_owner, status, function, form, value_props, lane_id')
+    .eq('id', cellId)
+    .maybeSingle()
+  if (error) throw toAuthoringError(error)
+  if (!data) throw new Error(`No cell with id ${cellId}.`)
+  const valueProps = Array.isArray(data.value_props)
+    ? (data.value_props as Array<{ for?: string; value?: string }>).map((entry) => ({
+        for: entry.for ?? '',
+        value: entry.value ?? '',
+      }))
+    : []
+  return {
+    content: {
+      content: data.content ?? '',
+      summary: data.summary ?? '',
+      owner: data.owner ?? '',
+      perceivedOwner: data.perceived_owner ?? '',
+      status: asEntityStatus(data.status) ?? DEFAULT_ENTITY_STATUS,
+    },
+    spec: {
+      function: data.function ?? '',
+      form: data.form ?? '',
+      valueProps,
+    },
+    laneId: data.lane_id ?? null,
+  }
+}
+
+/**
+ * Create the cell at a slot, and refuse when one is there. The RPC upserts,
+ * so a second call on the same slot would silently OVERWRITE the cell;
+ * creation means creation, edits go through the content writer, and being
+ * told so is a better answer than a quiet update.
+ *
+ * The guard is the error message, not the guarantee: a read followed by a
+ * write holds nothing, so the RPC still reports which half it took and the
+ * ledger branches on that (see `CellWrite`).
+ */
+export async function createCell(
+  client: Client,
+  input: { pathId: string; laneId: string; stepId: string; content: string },
+): Promise<CellWrite> {
+  const { data: occupied, error } = await client
+    .from('cells')
+    .select('id')
+    .eq('lane_id', input.laneId)
+    .eq('step_id', input.stepId)
+    .or('position.is.null,position.eq.0')
+    .limit(1)
+  if (error) throw toAuthoringError(error)
+  if (occupied && occupied.length > 0)
+    throw new Error(
+      `A cell already exists at that slot (${occupied[0].id}) — upsert_cell only creates. Use update_cell to edit the existing cell.`,
+    )
+  return upsertCell(client, input)
 }
 
 /**

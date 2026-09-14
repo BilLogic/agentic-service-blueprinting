@@ -65,7 +65,7 @@ const read = (path) =>
 const TEACHING_SURFACES = [
   'CONTEXT.md',
   'references/canvas-adapter.md',
-  'src/lib/agent/tools/specs.ts',
+  'src/lib/agent/tools/definitions/cells.ts',
 ]
 
 /**
@@ -83,8 +83,8 @@ const TARGET_FIRST = [
  * How a surface says which end comes first: in so many words, or by handing
  * the kinds' semantics to the tool descriptions. The adapter takes the second
  * route, and that is a statement of where the answer lives rather than
- * silence about it — the tool descriptions are `specs.ts`, which is on the
- * list above and has to say it in so many words.
+ * silence about it — the tool descriptions are the cell tools' definitions,
+ * which are on the list above and have to say it in so many words.
  */
 const STATES_DIRECTION =
   /source-first|`leads_to`-vs-`enables` semantics[\s\S]{0,120}live in the\s+tool descriptions/i
@@ -130,7 +130,7 @@ test('every surface says which end comes first, or names where it is said', () =
     )
   }
   // The deferral only counts while the place it defers to says it outright.
-  assert.match(read('src/lib/agent/tools/specs.ts'), /source-first/i)
+  assert.match(read('src/lib/agent/tools/definitions/cells.ts'), /source-first/i)
 })
 
 test('the retired distinction stays retired', () => {
