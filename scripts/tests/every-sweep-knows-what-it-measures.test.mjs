@@ -3,14 +3,15 @@
  * No script names an application path without knowing where the application is.
  *
  * A deployment installs this repository as a package and reads the application
- * out of `node_modules/agentic-service-blueprinting/src`, with no `src` of its
- * own. `src/lib/agent/tools/specs.ts` written by hand is a file that is not
+ * out of `node_modules/agentic-service-blueprinting/src`, laid under whatever
+ * residents its own `src` still holds. `src/lib/agent/tools/specs.ts` written by hand is a file that is not
  * there: the check either crashes or sweeps an empty set and reports success —
  * and the second goes on reporting it, because a check that has stopped
  * looking prints the same line as one that looked and found nothing.
  *
  * Two answers are correct and this holds both apart. A script that measures
- * the APPLICATION resolves through `app-source.mjs`. A script that measures
+ * the APPLICATION names the `app` subject of `sweep.mjs` (or, until the
+ * older helper is deleted, resolves through `app-source.mjs`). A script that measures
  * THIS REPOSITORY — a generator writing into its own `src/data`, the vendoring
  * sync, a `git ls-files` sweep of what this commit would carry — says so on
  * `repository-only.mjs`, with the reason, so that the next sweep through these
@@ -35,11 +36,16 @@ const REPO_ROOT = process.cwd()
 /**
  * The resolver itself, and the two files that describe the arrangement.
  *
- * `app-source.mjs` states the roots — it is where the answer is, so it cannot
- * be asked to import itself. The other two hold the lists this test reads.
+ * `sweep.mjs` is the one module that answers where a subject is, and
+ * `app-source.mjs` is the older statement of the application's root that
+ * now delegates to it — neither can be asked to import itself. The other two
+ * hold the lists this test reads.
  */
 const NOT_A_SWEEP = new Set([
   'scripts/app-source.mjs',
+  'scripts/sweep.mjs',
+  // This fence: it spells the application's root in the pattern it looks for.
+  'scripts/tests/every-sweep-knows-what-it-measures.test.mjs',
   'scripts/roots-stated.mjs',
   'scripts/repository-only.mjs',
 ])
@@ -149,9 +155,15 @@ export function applicationPathsIn(code, python = false) {
   return found
 }
 
-/** Whether a script asks `app-source.mjs` where the application is. */
+/**
+ * Whether a script asks where the application is: by naming the `app` subject
+ * of `sweep.mjs` — importing the sweep for another subject is not asking about
+ * the application, so the import alone is not taken as the answer — or through
+ * `app-source.mjs`, the older statement that now delegates to it.
+ */
 export function resolvesTheApplication(code) {
-  return /from\s+'[^']*app-source\.mjs'/.test(code)
+  if (/from\s+'[^']*\/app-source\.mjs'/.test(code)) return true
+  return /from\s+'[^']*\/sweep\.mjs'/.test(code) && /subject:\s*'app'/.test(code)
 }
 
 test('every script naming an application path either resolves it or says it is this repository’s', () => {
@@ -170,7 +182,7 @@ test('every script naming an application path either resolves it or says it is t
     'These scripts name a path into the application and never ask where the ' +
       'application is. In a deployment that reads it out of the package there ' +
       'is no `src`, so each one either fails there or sweeps nothing and ' +
-      'reports success. Resolve through scripts/app-source.mjs, add the ' +
+      'reports success. Resolve through scripts/sweep.mjs, add the ' +
       'script to scripts/repository-only.mjs with the reason it measures this ' +
       'repository alone, or — if it is a suite whose paths are all fixtures — ' +
       `to FIXTURE_ONLY beside this test, with the fixture named:\n${unresolved.join('\n')}`,

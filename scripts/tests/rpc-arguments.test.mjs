@@ -10,13 +10,11 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   clientSideInverses,
   compare,
+  compareTree,
   objectKeys,
   problemsAt,
   rpcCallSites,
@@ -36,7 +34,7 @@ CREATE FUNCTION public.sync_cell_resources(p_cell_id uuid, p_rows jsonb) RETURNS
 `
 
 test('this tree calls every RPC with the arguments the schema declares', () => {
-  assert.deepEqual(compare(ROOT), [])
+  assert.deepEqual(compareTree(ROOT), [])
 })
 
 test('a parameter list is read with its defaults, so required means required', () => {
@@ -130,40 +128,39 @@ test('an inverse the revert path executes itself is not a call', () => {
   // `rename_owner_tag_scoped` is a `case` of revertChange's switch and no
   // SQL function; a revert spec naming it posts nothing. One the schema DOES
   // have stays checked even when the switch names it.
-  const root = mkdtempSync(join(tmpdir(), 'rpc-arguments-'))
-  mkdirSync(join(root, 'src/lib'), { recursive: true })
-  mkdirSync(join(root, 'supabase/generated'), { recursive: true })
-  writeFileSync(
-    join(root, 'src/lib/authoringRpc.ts'),
-    [
-      "return call<void>(client, 'sync_cell_resources', { p_cell_id: id, p_rows: rows })",
-      "return { fn: 'rename_owner_tag_scoped', args: { cell_ids: ids, from: a, to: b } }",
-      "return { fn: 'set_cell_dependency', args: { label: previous } }",
-    ].join('\n'),
-  )
-  writeFileSync(
-    join(root, 'src/lib/revertChange.ts'),
-    "switch (fn) {\n  case 'rename_owner_tag_scoped': {\n  }\n  case 'set_cell_dependency': {\n  }\n}\n",
-  )
-  writeFileSync(join(root, 'supabase/generated/portable-core.schema.sql'), SCHEMA)
   assert.deepEqual(
     clientSideInverses("  case 'a_b':\n case 'c':\n"),
     new Set(['a_b', 'c']),
   )
-  const problems = compare(root).map(({ problem }) => problem)
+  const problems = compare({
+    caller: [
+      "return call<void>(client, 'sync_cell_resources', { p_cell_id: id, p_rows: rows })",
+      "return { fn: 'rename_owner_tag_scoped', args: { cell_ids: ids, from: a, to: b } }",
+      "return { fn: 'set_cell_dependency', args: { label: previous } }",
+    ].join('\n'),
+    schema: SCHEMA,
+    reverter:
+      "switch (fn) {\n  case 'rename_owner_tag_scoped': {\n  }\n  case 'set_cell_dependency': {\n  }\n}\n",
+  }).map(({ problem }) => problem)
   assert.equal(problems.some((problem) => problem.startsWith('rename_owner_tag_scoped')), false)
   assert.equal(problems.some((problem) => problem.startsWith('set_cell_dependency is called with label')), true)
-  rmSync(root, { recursive: true, force: true })
+})
+
+test('with no reverter, every revert spec is a call — nothing is exempt', () => {
+  const problems = compare({
+    caller: "return { fn: 'rename_owner_tag_scoped', args: { cell_ids: ids } }",
+    schema: SCHEMA,
+  }).map(({ problem }) => problem)
+  assert.deepEqual(problems, [
+    'rename_owner_tag_scoped is not a function in supabase/generated/portable-core.schema.sql',
+  ])
 })
 
 test('a caller with no call sites fails loudly rather than passing empty', () => {
   // A parser that stopped matching would otherwise report a clean tree, which
   // is the one failure a comparison check cannot afford to make quietly.
-  const root = mkdtempSync(join(tmpdir(), 'rpc-arguments-'))
-  mkdirSync(join(root, 'src/lib'), { recursive: true })
-  mkdirSync(join(root, 'supabase/generated'), { recursive: true })
-  writeFileSync(join(root, 'src/lib/authoringRpc.ts'), 'export const nothing = true\n')
-  writeFileSync(join(root, 'supabase/generated/portable-core.schema.sql'), SCHEMA)
-  assert.throws(() => compare(root), /no RPC call sites/)
-  rmSync(root, { recursive: true, force: true })
+  assert.throws(
+    () => compare({ caller: 'export const nothing = true\n', schema: SCHEMA }),
+    /no RPC call sites/,
+  )
 })

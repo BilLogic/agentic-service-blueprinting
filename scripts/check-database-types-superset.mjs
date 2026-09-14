@@ -31,7 +31,12 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { appFile } from './app-source.mjs'
+// Only built-in modules are available where this runs — a deployment installs
+// this package's dependencies and not its development ones. `sweep.mjs` and the
+// three modules it imports are dependency-free, which
+// `tests/database-types-generator.test.mjs` holds by walking this file's
+// import graph and refusing any bare specifier that is not `node:`.
+import { sweep } from './sweep.mjs'
 import { parseEnumUnions, parseGeneratedTypes } from './check-schema-inventory.mjs'
 
 /** The tree this script is part of: the directory `scripts/` sits in. */
@@ -104,10 +109,12 @@ function main() {
     )
     process.exit(2)
   }
-  const groups = missing(
-    readFileSync(appFile(REPO_ROOT, TYPES), 'utf8'),
-    readFileSync(deploymentPath, 'utf8'),
-  )
+  const app = sweep({ subject: 'app', root: REPO_ROOT, what: 'application source' })
+  const template = app.read(TYPES)
+  if (template === null) {
+    throw new Error(`no ${TYPES} under ${app.base}: this check has no subject`)
+  }
+  const groups = missing(template, readFileSync(deploymentPath, 'utf8'))
   const sections = report(groups)
   if (sections.length === 0) {
     console.log(`${deploymentPath} holds everything this package’s ${TYPES} declares`)

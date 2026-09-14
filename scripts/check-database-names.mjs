@@ -102,38 +102,23 @@
  * `skills/` IS IN THE SUBJECT, and was not before. The two shipped skill
  * scripts are the most exposed code in the repository — a model runs them
  * against a real database — and no database-name guard walked them at all.
- * Adding the root costs nothing on the first two assertions: both were already
- * clean there.
+ * Adding them costs nothing on the first two assertions: both were already
+ * clean there. They arrive with the `scripts` subject, which is this tree's
+ * `scripts/` and the scripts a skill ships, so the two SUBJECTS this check
+ * names — `app` and `scripts` — are the whole of what the three named roots
+ * used to reach: every source file under `skills/` in this tree is one of those
+ * two Python tools, and there is none outside `<skill>/scripts/`.
  *
  * Static, needs no database, runs in `gates`.
  *
  * Run: node scripts/check-database-names.mjs   (also: npm run check:database-names)
  */
-import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative, resolve, sep } from 'node:path'
-import { appPackageRoot, appSourceRoot } from './app-source.mjs'
+import { readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { RENAME_MAP, replacementFor, retiredFragmentsIn } from './retired-vocabulary.mjs'
+import { sweep } from './sweep.mjs'
 
 const REPO_ROOT = resolve(new URL('..', import.meta.url).pathname)
-/**
- * The application, and the directory it sits in.
- *
- * `src` is not a directory of this repository — it is the APPLICATION, and a
- * deployment that reads the application out of the package has none of its
- * own. A walk that resolved `src` against this tree's root would find nothing
- * there, report no findings, and print the same clean line it prints after
- * reading three hundred files. `scripts` and `skills` stay this tree's, because
- * they are: a deployment's scripts are its own.
- */
-const APP_SOURCE = appSourceRoot(REPO_ROOT)
-const APP_PACKAGE = appPackageRoot(REPO_ROOT)
-// `skills/` carries the two scripts a model runs against a live database.
-const ROOTS = ['src', 'scripts', 'skills']
-
-/** Which root a relative sweep root hangs off: the application's, or this tree's. */
-function baseOf(root) {
-  return /^src(?:\/|$)/.test(root) ? APP_PACKAGE : REPO_ROOT
-}
 const SCHEMA = 'supabase/generated/portable-core.schema.sql'
 const SOURCE = /\.(?:[cm]?[jt]sx?|py)$/
 /**
@@ -357,84 +342,33 @@ export function namedObjects(code, language = 'javascript') {
   return out
 }
 
-/* ------------------------------------------------------------------- walk */
+/* --------------------------------------------------------------- subjects */
+
+/** Whether a swept path is a source file this check reads. */
+const isSource = (path) => SOURCE.test(path) && !TEST_FILE.test(path.split('/').pop())
 
 /**
- * Every source file under `root`, test files excluded.
+ * The two subjects, each already filtered to source files.
  *
- * Exported so the copy guard walks the same tree. Upstream's copy guard grew a
- * second walker and its docstring records the sampling gap that caused —
- * `lib/`, `hooks/` and `contexts/` missing from the roots while `components/`
- * was there, so a whole class of file was never read by a guard that reported
- * clean.
+ * THE APPLICATION IS SWEPT ON ITS OWN, and that is the point of naming two
+ * subjects rather than one list of roots. `src` is not a directory of this
+ * repository — it is the APPLICATION, and a deployment that reads it out of the
+ * package has none of its own — so a single walk that missed it would still read
+ * `scripts/` and the skills' tools, report no findings, and print clean over the
+ * three hundred files it never opened. Swept separately, an application that is
+ * nowhere is the `app` subject's own refusal, by name.
+ *
+ * A WALK THAT FINDS NOTHING IS A FAILURE, not a pass, and each sweep says so for
+ * itself: an empty subject and a clean one print the same green line, and the
+ * green one goes on being printed every run after.
+ *
+ * @param {string} [root] The repository this check runs in.
  */
-export function sourceFilesUnder(root) {
-  const abs = resolve(baseOf(root), root)
-  let stats
-  try {
-    stats = statSync(abs)
-  } catch (error) {
-    // A PATH THE LISTING NAMED AND THE TREE NO LONGER HAS IS SKIPPED, and
-    // every other failure throws — the rule the application walk holds,
-    // applied here to the stat between the listing and the descent. A bare
-    // catch took both cases, which traded a loud failure for a silent one: a
-    // root that is unreadable rather than absent swept nothing and printed
-    // the line it prints after reading three hundred files. The refusal in
-    // `findings` is what stops the skip shrinking the subject quietly.
-    if (error.code === 'ENOENT') return []
-    throw error
-  }
-  if (!stats.isDirectory()) return SOURCE.test(abs) ? [abs] : []
-  return readdirSync(abs, { withFileTypes: true })
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .flatMap((entry) => {
-      if (entry.name === 'node_modules' || entry.name.startsWith('.')) return []
-      const full = join(abs, entry.name)
-      if (entry.isDirectory()) return sourceFilesUnder(full)
-      if (TEST_FILE.test(entry.name)) return []
-      return SOURCE.test(entry.name) ? [full] : []
-    })
-}
-
-/**
- * What a path in a finding is relative to.
- *
- * The application's own package, so a finding reads `src/lib/…` whether that
- * `src` is this repository's or the one inside
- * `node_modules/agentic-service-blueprinting`; this tree's root for everything
- * else, which is this tree's.
- */
-function reportBase(file) {
-  return file.startsWith(APP_SOURCE + sep) ? APP_PACKAGE : REPO_ROOT
-}
-
-/**
- * Why a sweep of `swept` files, `sweptApplication` of them the application's,
- * has no subject — or null when it has one.
- *
- * A WALK THAT FINDS NOTHING IS A FAILURE, not a pass. An empty subject and a
- * clean one print the same green line, and the green one goes on being
- * printed every run after: the run that would have caught the defect looks
- * exactly like the run before it.
- *
- * The application half is counted separately because it can vanish on its
- * own. `src` is not a directory of this repository — it is the APPLICATION,
- * and a deployment reading the application out of the package has none of its
- * own — so a walk that resolved `src` against the wrong root would still read
- * `scripts/` and `skills/`, report no findings, and print clean over the
- * three hundred files it never opened.
- */
-export function sweepRefusal({ swept, sweptApplication }) {
-  if (swept === 0) {
-    return `no source file under ${ROOTS.join(', ')}: this walk has no subject, which is a failure and not a pass`
-  }
-  if (sweptApplication === 0) {
-    return (
-      `no application source among the ${swept} file(s) swept: the application is read from ` +
-      `${APP_SOURCE}, and a walk that misses it reports clean over every file in it`
-    )
-  }
-  return null
+export function subjects(root = REPO_ROOT) {
+  return [
+    sweep({ subject: 'app', root, where: isSource, what: 'application source' }),
+    sweep({ subject: 'scripts', root, where: isSource, what: 'script source' }),
+  ]
 }
 
 /**
@@ -446,35 +380,32 @@ export function sweepRefusal({ swept, sweptApplication }) {
  * yields two identical findings. Upstream prints both. Reporting the same line
  * twice teaches a reader that the count is not the number of places to fix.
  *
- * `roots` is the sweep's subject, and is a parameter so the refusal below can
- * be driven through the real walk rather than described beside it.
+ * `swept` is the subject, and is a parameter so a test can hand this rule the
+ * files it is about rather than the tree it happens to be standing in.
  *
- * @param {string[]} [roots]
+ * @param {ReadonlyArray<{ files: string[], read: (path: string) => string | null }>} [swept]
  */
-export function findings(roots = ROOTS) {
+export function findings(swept = subjects()) {
   const out = []
   const seen = new Set()
-  let swept = 0
-  let sweptApplication = 0
-  for (const root of roots) {
-    for (const file of sourceFilesUnder(root)) {
-      swept += 1
-      if (file.startsWith(APP_SOURCE + sep)) sweptApplication += 1
-      const relativePath = relative(reportBase(file), file).split('\\').join('/')
+  for (const subject of swept) {
+    for (const file of subject.files) {
+      // Null is a file that vanished between the listing and the read, which is
+      // the sweep's rule; every other failure throws there.
+      const source = subject.read(file)
+      if (source === null) continue
       const language = file.endsWith('.py') ? 'python' : 'javascript'
-      for (const use of namedObjects(readFileSync(file, 'utf8'), language)) {
+      for (const use of namedObjects(source, language)) {
         const words = retiredFragmentsIn(use.name)
         if (words.length === 0) continue
-        const identifier = `${relativePath}:${use.line} ${use.name}`
+        const identifier = `${file}:${use.line} ${use.name}`
         if (DATABASE_NAME_EXEMPTIONS.some((entry) => entry.identifier === identifier)) continue
         if (seen.has(identifier)) continue
         seen.add(identifier)
-        out.push({ ...use, file: relativePath, identifier, words, replacement: replacementFor(words[0]) })
+        out.push({ ...use, file, identifier, words, replacement: replacementFor(words[0]) })
       }
     }
   }
-  const refusal = sweepRefusal({ swept, sweptApplication })
-  if (refusal) throw new Error(refusal)
   return out
 }
 
@@ -632,19 +563,20 @@ export function unknownNames(table, columns, relations) {
  * fix, and a name that is both retired and gone would otherwise be printed
  * twice — the same reason `findings()` dedupes within itself.
  */
-export function strayNames(reported = new Set()) {
+export function strayNames(reported = new Set(), swept = subjects()) {
   const relations = schemaRelations(readFileSync(join(REPO_ROOT, SCHEMA), 'utf8'))
   if (relations.size === 0) throw new Error(`no relations parsed from ${SCHEMA}`)
   const out = []
-  for (const root of ROOTS) {
-    for (const file of sourceFilesUnder(root)) {
+  for (const subject of swept) {
+    for (const file of subject.files) {
       if (file.endsWith('.py')) continue
-      const relativePath = relative(REPO_ROOT, file).split('\\').join('/')
-      for (const query of postgrestQueries(readFileSync(file, 'utf8'))) {
+      const source = subject.read(file)
+      if (source === null) continue
+      for (const query of postgrestQueries(source)) {
         for (const stray of unknownNames(query.table, query.columns, relations)) {
-          const identifier = `${relativePath}:${query.line} ${stray.name}`
+          const identifier = `${file}:${query.line} ${stray.name}`
           if (reported.has(identifier)) continue
-          out.push({ ...stray, file: relativePath, line: query.line, identifier })
+          out.push({ ...stray, file, line: query.line, identifier })
         }
       }
     }
@@ -730,21 +662,22 @@ export function writtenColumns(code, language = 'javascript') {
  * projection's columns are its own business, and inventing them here would
  * either refuse real columns or accept absent ones.
  */
-export function strayWrites(reported = new Set()) {
+export function strayWrites(reported = new Set(), swept = subjects()) {
   const relations = schemaRelations(readFileSync(join(REPO_ROOT, SCHEMA), 'utf8'))
   if (relations.size === 0) throw new Error(`no relations parsed from ${SCHEMA}`)
   const out = []
-  for (const root of ROOTS) {
-    for (const file of sourceFilesUnder(root)) {
-      const relativePath = relative(REPO_ROOT, file).split('\\').join('/')
+  for (const subject of swept) {
+    for (const file of subject.files) {
+      const source = subject.read(file)
+      if (source === null) continue
       const language = file.endsWith('.py') ? 'python' : 'javascript'
-      for (const write of writtenColumns(readFileSync(file, 'utf8'), language)) {
+      for (const write of writtenColumns(source, language)) {
         const known = relations.get(write.table)
-        const site = (name) => `${relativePath}:${write.line} ${name}`
+        const site = (name) => `${file}:${write.line} ${name}`
         if (known === undefined) {
           if (reported.has(site(write.table))) continue
           out.push({
-            file: relativePath,
+            file,
             line: write.line,
             verb: write.verb,
             relation: null,
@@ -759,7 +692,7 @@ export function strayWrites(reported = new Set()) {
         for (const column of write.columns) {
           if (known.has(column) || reported.has(site(column))) continue
           out.push({
-            file: relativePath,
+            file,
             line: write.line,
             verb: write.verb,
             relation: write.table,
@@ -776,7 +709,10 @@ export function strayWrites(reported = new Set()) {
 }
 
 function main() {
-  const problems = findings()
+  // One sweep, three assertions over it: the subject is the same files for all
+  // three, and walking it three times would be three chances to disagree.
+  const swept = subjects()
+  const problems = findings(swept)
   for (const problem of problems) {
     console.error(
       `::error file=${problem.file},line=${problem.line}::retired database name in a string ` +
@@ -784,7 +720,7 @@ function main() {
         `(${problem.words.join(', ')} → ${problem.replacement}). Nothing typechecks this.`,
     )
   }
-  const strays = strayNames(new Set(problems.map((problem) => problem.identifier)))
+  const strays = strayNames(new Set(problems.map((problem) => problem.identifier)), swept)
   for (const stray of strays) {
     const what =
       stray.kind === 'relation'
@@ -797,6 +733,7 @@ function main() {
   }
   const writes = strayWrites(
     new Set([...problems.map((problem) => problem.identifier), ...strays.map((stray) => stray.identifier)]),
+    swept,
   )
   for (const write of writes) {
     const what =

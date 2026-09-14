@@ -29,7 +29,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { appFile } from './app-source.mjs'
+import { sweep } from './sweep.mjs'
 // The list, not the generator: this module is also what the deployment
 // superset check imports, out of the installed package, where the generator's
 // own dependencies are not installed.
@@ -38,17 +38,28 @@ import { ENUMS } from './database-vocabularies.mjs'
 /** The tree this script is part of: the directory `scripts/` sits in. */
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
+/** The application path the types are, wherever the application is. */
+const TYPES = 'src/types/database.ts'
+
 /**
  * The generated types, wherever the application is.
  *
  * `../src/types/database.ts` was a path relative to THIS FILE, and a
  * deployment's `scripts/` is its own while its application is the package's —
  * so the types sat one directory away from where that path pointed and this
- * check died on an ENOENT with nothing to say about why. Resolved rather than
+ * check died on an ENOENT with nothing to say about why. Swept rather than
  * read at load, because both halves of this module are imported for their
  * parsers by tests that never open the file.
+ *
+ * A file the sweep listed and cannot read has vanished mid-run; this check
+ * named it as its subject, so its absence is the subject's absence and says so.
  */
-const generatedTypes = () => appFile(REPO_ROOT, 'src/types/database.ts')
+function generatedTypes() {
+  const app = sweep({ subject: 'app', root: REPO_ROOT, what: 'application source' })
+  const source = app.read(TYPES)
+  if (source === null) throw new Error(`no ${TYPES} under ${app.base}: this check has no subject`)
+  return source
+}
 
 /**
  * `kind<TAB>subject<TAB>member` rows, as psql -At -F '\t' emits them, into the
@@ -222,7 +233,7 @@ function main() {
     console.error('usage: check-schema-inventory.mjs <inventory.tsv>')
     process.exit(2)
   }
-  const source = readFileSync(generatedTypes(), 'utf8')
+  const source = generatedTypes()
   const problems = compare(
     {
       tables: parseGeneratedTypes(source),

@@ -96,22 +96,30 @@ import { existsSync } from 'node:fs'
 import { dirname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { appFiles, appPackageRoot } from './app-source.mjs'
 import { readListed } from './read-listed.mjs'
 import { repoConfig } from './repo-config.mjs'
+import { sweep } from './sweep.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
 /**
- * The application's own package — the second place a claimed path can be.
+ * The application, swept — the second place a claimed path can be.
  *
  * Half of what these documents name is APPLICATION source: `src/lib/…`,
  * `src/styles/…`, the adapter's ports. A deployment that reads the application
  * out of the package has none of that in its own tree or in its commit, so
  * every one of those claims resolved to nothing and the check reported thirty
- * stale paths in documents that had not changed.
+ * stale paths in documents that had not changed. The sweep answers both halves
+ * of that — which files the application has, and where a named one of them
+ * actually is — so nothing here joins a path onto a root of its own.
+ *
+ * Asked once and kept: the listing feeds every claim in every document, and
+ * the application is part of the listing, so a tree with no application is
+ * refused before any claim is read — which is right, because a document that
+ * names `src/…` is measured against nothing there.
  */
-const APP_PACKAGE = appPackageRoot(REPO_ROOT)
+let swept = null
+const application = () => (swept ??= sweep({ subject: 'app', root: REPO_ROOT }))
 
 /**
  * The trees this package packs and its reader reads out of it.
@@ -249,8 +257,7 @@ export function trackedPaths() {
   if (listed.length === 0) {
     throw new Error(`git lists no file under ${REPO_ROOT}: this check has no subject`)
   }
-  const application = appFiles(REPO_ROOT, () => true, 'application file')
-  return [...new Set([...listed, ...application])].sort()
+  return [...new Set([...listed, ...application().files])].sort()
 }
 
 /**
@@ -332,7 +339,9 @@ export function resolves(token, docDir, tracked) {
   for (const candidate of candidates) {
     if (candidate.includes('*')) continue
     if (existsSync(join(REPO_ROOT, candidate))) return true
-    if (existsSync(join(APP_PACKAGE, candidate))) return true
+    // An application path is asked of the application, which is where the
+    // overlay says the file is — a resident, or the package's copy under it.
+    if (/^src(?:\/|$)/.test(candidate) && existsSync(application().locate(candidate))) return true
   }
 
   // Segment-aligned suffix of a tracked path — how the docs actually write.

@@ -10,10 +10,10 @@
  * the script goes on printing what it printed last week.
  *
  * So a script asks for the module itself. `loadAppModule('lib/cellFields.ts')`
- * bundles that one file with rolldown — the `@/` alias pointed at whichever
- * root `app-source.mjs` finds, so a deployment reading the application out of
- * its package gets the same list from the same source — and hands back the
- * module namespace. The list a script then reads is the object the app reads,
+ * bundles that one file with rolldown — the entry located through
+ * `sweep.mjs`'s `app` subject and the `@/` alias pointed at its first layer, so
+ * a deployment reading the application out of its package gets the same list
+ * from the same source — and hands back the module namespace. The list a script then reads is the object the app reads,
  * not a copy of it.
  *
  * ONE MODULE PER CALL, on purpose. `scripts/agent-harness/surface.mjs` bundles
@@ -34,7 +34,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { appSourceRoot } from './app-source.mjs'
+import { appLayers, sweep } from './sweep.mjs'
 
 /** Vite's `?raw` and asset imports, for the bundler that is not Vite. */
 const RAW_SUFFIX = '?raw'
@@ -58,7 +58,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
  *
  * @param {string} pathUnderSrc The path under the application's source root —
  *   `lib/cellFields.ts`, not `src/lib/cellFields.ts`, because the root is the
- *   answer `appSourceRoot` gives and not the caller's to spell.
+ *   sweep's answer and not the caller's to spell.
  */
 const loaded = new Map()
 
@@ -73,10 +73,26 @@ export function loadAppModule(pathUnderSrc) {
 
 async function bundleAppModule(pathUnderSrc) {
   const { rolldown } = await import('rolldown')
+  const app = sweep({ subject: 'app', root: ROOT, what: 'application source' })
+  // THE INPUT IS OVERLAID AND THE ALIAS IS THE FIRST LAYER, because rolldown
+  // takes one directory per alias and the overlay is a rule per path. The
+  // entry is the file the build would resolve — a deployment's resident wins.
+  // The alias is `appLayers(ROOT)[0]`: the deployment's `src` when it keeps
+  // one, the package's otherwise. That is the whole answer at both ends — this
+  // repository has one layer, and a deployment with no residents has one too,
+  // the package's — and the modules these scripts load are inside it either
+  // way: the only call is `lib/cellFields.ts`, whose imports are all `@/…`,
+  // so the alias is what resolves them and one layer resolves them all as
+  // long as the layer that holds the entry holds its imports. A deployment
+  // that keeps SOME of `src` is the case a single alias cannot express; the
+  // day one exists, an `@/…` import of a file only the package has is the
+  // failure to expect, and it fails loudly at bundle time rather than
+  // silently reading the wrong list.
+  const [firstLayer] = appLayers(ROOT)
   const bundle = await rolldown({
-    input: resolve(appSourceRoot(ROOT), pathUnderSrc),
+    input: app.locate(`src/${pathUnderSrc}`),
     // Honor tsconfig's `@/*` path alias, on whichever root holds the application.
-    resolve: { alias: { '@': appSourceRoot(ROOT) } },
+    resolve: { alias: { '@': firstLayer } },
     plugins: [viteImports],
     logLevel: 'silent',
   })

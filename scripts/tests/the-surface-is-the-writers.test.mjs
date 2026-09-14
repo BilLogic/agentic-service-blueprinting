@@ -56,15 +56,11 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
-import { join } from 'node:path'
 import {
   TABLE_WRITE,
-  appSource,
+  appSources,
   directTableWrites,
-  walkSources,
   writtenTableNames,
   writtenVerbsByTable,
 } from '../direct-table-writes.mjs'
@@ -90,11 +86,11 @@ const ROOT = fileURLToPath(new URL('../..', import.meta.url))
  * A deployment reads it out of `node_modules/agentic-service-blueprinting/src`
  * and holds no `src` of its own, and a walk that starts at `src` there finds no
  * writer — which satisfies every rule below at once, because a surface with no
- * writers to contradict it cannot be contradicted. `appSource` is the same
- * answer `panel-write-surface.mjs` walks, so the declaration and the check of it
+ * writers to contradict it cannot be contradicted. `appSources` is the same
+ * sweep `panel-write-surface.mjs` reads, so the declaration and the check of it
  * are looking at one tree.
  */
-const APP_SOURCE = appSource(ROOT)
+const APPLICATION = appSources(ROOT)
 
 /**
  * psql's `-At -F '|'` output for the real probe set, with named outcomes.
@@ -334,34 +330,24 @@ test('the scan reads writes, and not reads or uploads', () => {
 // The repository
 // ---------------------------------------------------------------------------
 
-const WRITES = directTableWrites(APP_SOURCE)
+const WRITES = directTableWrites(APPLICATION)
 const WRITTEN = writtenTableNames(WRITES)
 
 test('the walk sees the whole of src, not a list of roots', () => {
   // A walk that silently found nothing would pass every assertion below, so
   // hold it to the facts that make the scan meaningful: it reaches files, it
   // reaches them outside `lib/`, and it finds writes at all.
-  const sources = walkSources(APP_SOURCE)
-  assert.ok(sources.length > 0)
-  assert.ok(sources.some((one) => one.startsWith('components/')))
+  //
+  // WHAT A TREE WITH NO APPLICATION DOES is the sweep's own rule and is
+  // asserted there, on fixture trees — `a-sweep-names-its-subject.test.mjs`
+  // refuses a root with neither layer and refuses a filter that leaves nothing.
+  // The arrangement this whole file used to be wrong in was the second: a
+  // deployment keeps no `src`, so the walk found nothing, `WRITTEN` was empty,
+  // and every rule below held vacuously.
+  assert.ok(APPLICATION.files.length > 0)
+  assert.ok(APPLICATION.files.some((one) => one.startsWith('src/components/')))
   assert.ok(WRITES.length > 0)
   assert.ok(WRITTEN.length > 0)
-})
-
-test('a root with no application in it refuses, and one with no source fails', () => {
-  // The arrangement this whole file used to be wrong in. A deployment keeps no
-  // `src` of its own, so the walk found nothing, `WRITTEN` was empty, and every
-  // rule below held vacuously — the run that should have caught a new writer
-  // printed the same green as the run before it.
-  const empty = mkdtempSync(join(tmpdir(), 'write-surface-'))
-  try {
-    assert.throws(() => appSource(empty), /no application source/)
-    mkdirSync(join(empty, 'src'))
-    writeFileSync(join(empty, 'src', 'notes.md'), 'not a source file\n')
-    assert.throws(() => directTableWrites(appSource(empty)), /no \.ts or \.tsx source/)
-  } finally {
-    rmSync(empty, { recursive: true, force: true })
-  }
 })
 
 test('every table the app writes directly is declared, or exempted with a reason', () => {

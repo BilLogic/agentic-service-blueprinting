@@ -13,22 +13,17 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import {
   databaseNames,
   joinAdjacentLiterals,
   findings,
   namedObjects,
-  sweepRefusal,
   postgrestQueries,
   qualifiedRelations,
   schemaRelations,
   selectTree,
   strayNames,
   strayWrites,
-  sourceFilesUnder,
   stringLiterals,
   unknownNames,
   withoutComments,
@@ -104,39 +99,26 @@ test('the whole check reports nothing on this repo, and would report a plant', (
 
 /* ------------------------------------------------- the walk has a subject */
 
-test('a sweep that read nothing refuses, and says which half of the subject was missing', () => {
-  // An empty subject and a clean one print the same green line, and the green
-  // one goes on being printed every run after. Three cases, because the
-  // application half can vanish on its own: `src` is not a directory of this
-  // repository, and a walk that resolved it against this tree's root would
-  // find nothing there and report clean over three hundred unread files.
-  assert.equal(sweepRefusal({ swept: 312, sweptApplication: 210 }), null)
-  assert.match(sweepRefusal({ swept: 0, sweptApplication: 0 }), /no source file/)
-  const application = sweepRefusal({ swept: 312, sweptApplication: 0 })
-  assert.match(application, /application/)
-  assert.match(application, /312/, 'the message says what it did read, so the reader can see the shape of it')
-})
-
-test('the whole check refuses rather than reporting clean over nothing', () => {
-  // Driven through the real walk: a root list naming nothing readable is the
-  // shape a missing application root takes, and it has to be a failure.
-  assert.throws(() => findings([]), /no source file/)
-})
-
-test('a path the listing named and the tree no longer has is skipped; anything else throws', () => {
-  const t = mkdtempSync(join(tmpdir(), 'dbnames-'))
-  try {
-    writeFileSync(join(t, 'a.ts'), "supabase.from('services')\n")
-    assert.deepEqual(sourceFilesUnder(t), [join(t, 'a.ts')])
-    // Gone between the listing and the stat: skipped, the same rule the
-    // application walk holds.
-    assert.deepEqual(sourceFilesUnder(join(t, 'nothing-here')), [])
-    // Not gone — not a directory. A bare catch took this case too, and traded
-    // a loud failure for a walk that measured nothing and said so in green.
-    assert.throws(() => sourceFilesUnder(join(t, 'a.ts', 'child.ts')), { code: 'ENOTDIR' })
-  } finally {
-    rmSync(t, { recursive: true, force: true })
-  }
+test('the judgement reads the files it is handed, and skips one that vanished', () => {
+  // The subject is a parameter, so this is the extraction and the dedupe over
+  // named files rather than over whatever tree the test happens to stand in.
+  // WHERE THE FILES COME FROM is the sweep's own rule, and its refusals — no
+  // application anywhere, a filter that leaves nothing — are asserted on
+  // fixture trees in `a-sweep-names-its-subject.test.mjs`.
+  const handed = [
+    {
+      files: ['src/lib/reader.ts', 'src/lib/gone.ts'],
+      read: (path) =>
+        path === 'src/lib/gone.ts' ? null : "supabase.from('layers').select('id')\n",
+    },
+  ]
+  assert.deepEqual(
+    findings(handed).map((one) => one.identifier),
+    ['src/lib/reader.ts:1 layers'],
+  )
+  // Nothing to judge is not a failure HERE: the empty subject is refused where
+  // the files come from, and this rule reports what it was given.
+  assert.deepEqual(findings([]), [])
 })
 
 /* -------------------------------------------- the schema-qualified rule (Python) */

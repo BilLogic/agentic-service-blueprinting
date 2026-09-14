@@ -40,7 +40,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { appFile, readAppFile } from '../app-source.mjs'
+import { sweep } from '../sweep.mjs'
 import { CASES } from './cases.mjs'
 import { surface } from './surface.mjs'
 
@@ -160,10 +160,31 @@ const isWriteCall = (name) => WRITE_TOOL_NAMES.has(name)
 // The role and the vendored skill surface are APPLICATION source, read
 // wherever the application is — `<root>/src` in a tree that keeps its own copy
 // and the package's `src` in a deployment that reads it out of `node_modules`.
-const ROLE = readAppFile(ROOT, 'src/lib/agent/role.md').trimEnd()
-const REFERENCES_DIR = appFile(ROOT, 'src/lib/agent/skill/references')
-const SKILLS_DIR = appFile(ROOT, 'src/lib/agent/skill/skills')
-const adapterDoc = readFileSync(resolve(REFERENCES_DIR, 'canvas-adapter.md'), 'utf8')
+//
+// THE TWO FOLDERS ARE SWEPT RATHER THAN LOCATED, because a DIRECTORY resolves
+// through the overlay only when the whole directory is in one layer: a
+// deployment that keeps its own copy of one skill document would hand this a
+// directory holding that file alone. The sweep lists the documents across the
+// layers and reads each where it is, and it refuses a tree that vendors none —
+// a harness with no skill surface has no system prompt to build.
+const SKILL_REFERENCES = 'src/lib/agent/skill/references/'
+const SKILL_SKILLS = 'src/lib/agent/skill/skills/'
+const app = sweep({
+  subject: 'app',
+  root: ROOT,
+  where: (path) => path.startsWith(SKILL_REFERENCES) || path.startsWith(SKILL_SKILLS),
+  what: 'vendored skill document',
+})
+
+/** One application document, or a refusal naming it: the harness needs all of them. */
+function appDocument(path) {
+  const text = app.read(path)
+  if (text === null) throw new Error(`no ${path} under ${app.base}: the harness has no subject`)
+  return text
+}
+
+const ROLE = appDocument('src/lib/agent/role.md').trimEnd()
+const adapterDoc = appDocument(`${SKILL_REFERENCES}canvas-adapter.md`)
 
 /**
  * The adapter's two surface rows are placeholders in the file and are
@@ -185,7 +206,7 @@ function buildSystem(skillId, contextNote, offered) {
     adapterFor(offered),
   ]
   if (skillId) {
-    const content = readFileSync(resolve(SKILLS_DIR, `${skillId}.md`), 'utf8')
+    const content = appDocument(`${SKILL_SKILLS}${skillId}.md`)
     parts.push(
       `\n\n--- active skill: /sb:${skillId} (invoked by the user; the same SKILL.md IDE agents follow) ---\n${content}\n\nYou are the canvas agent, not an IDE agent: skip the skill's file/script/CLI mechanics and act through your tools, translated by the canvas-adapter above. The skill's judgment — what makes a good blueprint/slice, the order of questions, the quality bars — applies in full.`,
     )
@@ -551,9 +572,8 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
     }
     switch (name) {
       case 'get_reference':
-        record.result = readFileSync(
-          resolve(REFERENCES_DIR, `${String(args.name).replace(/[^a-z-]/g, '')}.md`),
-          'utf8',
+        record.result = appDocument(
+          `${SKILL_REFERENCES}${String(args.name).replace(/[^a-z-]/g, '')}.md`,
         )
         return record.result
       case 'list_blueprint':

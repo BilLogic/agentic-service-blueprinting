@@ -25,7 +25,7 @@ import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs'
 import { basename, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { readAppFile } from './app-source.mjs'
+import { sweep } from './sweep.mjs'
 import { toolSources } from './tool-sources.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
@@ -135,7 +135,7 @@ function hookNames(root) {
  * Tool names as the model sees them, read out of the spec source rather than
  * imported: `specs.ts` is TypeScript and this script runs under bare node.
  *
- * Read through `readAppFile`, because these two are the only names in the
+ * Read through a `sweep` of the application, because these two are the only names in the
  * manifest that come out of the APPLICATION rather than out of the plugin tree,
  * and a deployment keeps no `src` of its own — it depends on this repository as
  * a package and reads them out of `node_modules/agentic-service-blueprinting`.
@@ -143,7 +143,7 @@ function hookNames(root) {
  * available answer: the manifest generated there would have declared that the
  * canvas agent offers no tools and accepts no reference names, and `--check`
  * would have called the committed truth stale. A tree with no application has
- * no answer to give, and `readAppFile` says so, naming both roots it looked in.
+ * no answer to give, and the sweep says so, naming both roots it looked in.
  */
 function agentToolNames(root) {
   // The definitions folder and the spec table together, so a tool is counted
@@ -158,7 +158,13 @@ function agentToolNames(root) {
 
 /** Reference names the canvas agent will accept, which is its own list. */
 function canvasReferenceNames(root) {
-  const source = readAppFile(root, 'src/lib/agent/tools/referenceNames.ts')
+  const app = sweep({ subject: 'app', root, what: 'application source' })
+  const source = app.read('src/lib/agent/tools/referenceNames.ts')
+  if (source === null) {
+    throw new Error(
+      `no src/lib/agent/tools/referenceNames.ts under ${app.base}: this generator has no subject`,
+    )
+  }
   const block = /REFERENCE_NAMES[^=]*=\s*\[([\s\S]*?)\]/.exec(source)
   if (!block) throw new Error('no REFERENCE_NAMES list in src/lib/agent/tools/referenceNames.ts')
   const names = [...block[1].matchAll(/'([^']+)'/g)].map((match) => match[1]).sort()

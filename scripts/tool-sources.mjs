@@ -1,4 +1,4 @@
-import { appFiles, readAppFile } from './app-source.mjs'
+import { sweep } from './sweep.mjs'
 
 /**
  * Where the agent's tools are declared, for the checks that read tool names
@@ -17,23 +17,38 @@ import { appFiles, readAppFile } from './app-source.mjs'
 export const TOOL_SPEC_TABLE = 'src/lib/agent/tools/specs.ts'
 export const TOOL_DEFINITIONS_DIR = 'src/lib/agent/tools/definitions/'
 
-/** Every source file that declares tools, `src/…` relative. */
-export function toolSourcePaths(repoRoot) {
-  const definitions = appFiles(
-    repoRoot,
-    (path) =>
+/** The definitions sweep: every tool definition under the application, whichever layer holds it. */
+const definitionSweep = (repoRoot) =>
+  sweep({
+    subject: 'app',
+    root: repoRoot,
+    where: (path) =>
       path.startsWith(TOOL_DEFINITIONS_DIR) &&
       path.endsWith('.ts') &&
       !path.endsWith('.test.ts'),
-    'tool definition',
-  )
-  return [TOOL_SPEC_TABLE, ...definitions]
+    what: 'tool definition',
+  })
+
+/** Every source file that declares tools, `src/…` relative. */
+export function toolSourcePaths(repoRoot) {
+  return [TOOL_SPEC_TABLE, ...definitionSweep(repoRoot).files]
 }
 
-/** The declaring sources concatenated, in a stable order. */
+/**
+ * The declaring sources concatenated, in a stable order.
+ *
+ * A file the sweep listed and cannot read has vanished between the listing and
+ * the read; the spec table is named by hand and is this reader's subject, so
+ * either absence is a failure with the path in it rather than a shorter join.
+ */
 export function toolSources(repoRoot) {
-  return toolSourcePaths(repoRoot)
-    .map((path) => readAppFile(repoRoot, path))
+  const app = definitionSweep(repoRoot)
+  return [TOOL_SPEC_TABLE, ...app.files]
+    .map((path) => {
+      const source = app.read(path)
+      if (source === null) throw new Error(`no ${path} under ${app.base}: a tool source is missing`)
+      return source
+    })
     .join('\n')
 }
 

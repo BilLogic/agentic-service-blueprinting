@@ -69,10 +69,10 @@
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { relative, resolve } from 'node:path'
+import { resolve } from 'node:path'
 import { scannedFiles } from '../check-standalone.mjs'
 import { readListed } from '../read-listed.mjs'
-import { sourceFilesUnder } from '../check-database-names.mjs'
+import { sweep } from '../sweep.mjs'
 import { RETIRED_COPY_WORDS } from '../retired-vocabulary.mjs'
 import { COVER_ASSET_MANIFEST } from '../sync-cover-assets.mjs'
 import { appPackageRoot } from '../app-source.mjs'
@@ -90,8 +90,9 @@ const REPO_ROOT = resolve(new URL('../..', import.meta.url).pathname)
  * residue sweep at the end is `git ls-files` over THIS commit, which is a
  * question only this tree can ask of itself, and it stays on `REPO_ROOT`.
  *
- * `sourceFilesUnder` already resolved the walk; what was left wrong was the
- * REPORTING. A path made relative to a deployment's root came back as
+ * The `app` subject of `scripts/sweep.mjs` resolves the `.tsx` walk and hands
+ * back `src/…` paths, which is the half that used to be got wrong here as well
+ * as the walk: a path made relative to a deployment's root came back as
  * `node_modules/agentic-service-blueprinting/src/components/…`, which the
  * `.tsx` filter still admits and which no finding, no exemption and no reader
  * of this file would recognise.
@@ -207,23 +208,23 @@ export function stripComments(source) {
 /**
  * Every `.tsx` in the app, as `{ file, code }`, with `src/…` paths.
  *
- * A WALK THAT FINDS NOTHING THROWS. An empty subject and a clean one print the
- * same green line, and the green one goes on being printed every run after —
- * which on this guard means a retired word can be on screen with nothing in
- * the suite disagreeing.
+ * A WALK THAT FINDS NOTHING THROWS, and the sweep is what throws. An empty
+ * subject and a clean one print the same green line, and the green one goes on
+ * being printed every run after — which on this guard means a retired word can
+ * be on screen with nothing in the suite disagreeing.
  */
 function applicationComponents() {
-  const found = sourceFilesUnder('src')
-    .filter((abs) => abs.endsWith('.tsx'))
-    .map((abs) => ({
-      file: relative(APP_PACKAGE, abs).split('\\').join('/'),
-      code: stripComments(readFileSync(abs, 'utf8')),
-    }))
-  if (found.length === 0) {
-    throw new Error(
-      `no .tsx under ${APP_PACKAGE}/src: this walk has no subject, which is ` +
-        `a failure and not a pass`,
-    )
+  const swept = sweep({
+    subject: 'app',
+    root: REPO_ROOT,
+    where: (path) => path.endsWith('.tsx') && !path.endsWith('.test.tsx'),
+    what: '.tsx',
+  })
+  const found = []
+  for (const file of swept.files) {
+    const code = swept.read(file)
+    if (code === null) continue // gone between the listing and the read
+    found.push({ file, code: stripComments(code) })
   }
   return found
 }
