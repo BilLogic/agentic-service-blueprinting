@@ -100,12 +100,13 @@ export const CONSUMER_IMPORTS = [
 
   // The browser render walk. Not imported — RUN, by path: a deployment enrols
   // by pointing Playwright at this config inside its own `node_modules` and
-  // walking its own sample board with the spec that travels beside it
+  // walking its own sample board with the specs that travel beside it
   // (`render-walk/README.md`). Same promise as the documents above, and the
   // same failure without it: a move lands green here and surfaces at the
   // deployment's next pin as a run that collects no tests.
   'render-walk/playwright.config.ts',
   'render-walk/sample-board.spec.ts',
+  'render-walk/annotation-drag.spec.ts',
 ]
 
 /**

@@ -1,5 +1,5 @@
 ---
-summary: The browser render walk — Chromium over the built distribution in no-database mode, every phase, every scenario, every path and every layout the scenario offers, failing on a console error and filing one screenshot per view; what it borrows from the app's markup, how this repository runs it, and how a deployment enrols by pointing Playwright at these same two files inside its node_modules.
+summary: The browser render walk — Chromium over the built distribution in no-database mode, every phase, every scenario, every path and every layout the scenario offers, plus the annotation-drag case that draws, drags and captures a mark with real mouse moves, failing on a console error and filing one screenshot per view; what it borrows from the app's markup, how this repository runs it, and how a deployment enrols by pointing Playwright at these same files inside its node_modules.
 ---
 
 # The browser render walk
@@ -33,6 +33,32 @@ that scenario actually offers:
 So the count is *paths per scenario*, summed, plus one for each scenario with
 two or more paths — not *scenarios × 2*. The walk prints it at the end of the
 run.
+
+## The annotation-drag case
+
+`annotation-drag.spec.ts` runs beside the walk under the same config, so
+`npm run check:render-walk` is two cases rather than one.
+
+It is the browser half of `npm run slice:annotation-drag`. That slice runs the
+whole annotation-drag flow in jsdom in a few hundred milliseconds, and stubs
+exactly three things — layout, the canvas's live CSS-transform camera, and
+pointer capture — because jsdom can do none of them. This case is those three,
+unstubbed: it opens the first scenario of the first phase, picks the rectangle
+from the real toolbar, draws a box across two cells of one lane with real mouse
+moves (the sample board's camera is around 0.47, so every client pixel is more
+than two board units), drags that box onto a third cell under a real pointer
+capture, and asserts the captured cell ids.
+
+The read-back is the capture menu's **own** download — the `Save N marks` item,
+whose JSON carries each mark's `overlaps`. Nothing was added to the app to make
+it observable. The menu's other item, **Send to the agent**, is absent here
+because it is gated on `canWrite` and this preview has no database configured;
+that attachment is the slice's read-back, and both go through the same
+`captureMarks` over the same cell rects.
+
+The console-error rule below covers this case too, including the
+`RENDER_WALK_INJECT_CONSOLE_ERROR` self-test. It screenshots the dragged mark to
+`render-walk-output/annotation-drag.png`.
 
 ## What it catches, and what it does not
 
@@ -94,11 +120,11 @@ exit, then once for real.
 
 ## Enrolling a deployment
 
-These two files are a published path, the same kind of promise as
+These files are a published path, the same kind of promise as
 `references/` and `skills/` —
 [ADR 0004](../docs/adr/0004-reference-paths-are-a-published-interface.md), and
-`CONSUMER_IMPORTS` in `scripts/check-reference-paths.mjs` lists them so a move
-here fails this repository's build rather than yours. There is no `files` field
+`CONSUMER_IMPORTS` in `scripts/check-reference-paths.mjs` lists the config and
+both specs so a move here fails this repository's build rather than yours. There is no `files` field
 in `package.json`, so nothing filters them out of the package, and `exports`
 carries `"./*"`, so they are reachable by path.
 
@@ -110,7 +136,7 @@ npx playwright test \
 ```
 
 Nothing is copied and nothing is configured. The config's `testDir` is its own
-directory, so the spec that runs is the one that shipped with the version you
+directory, so the specs that run are the ones that shipped with the version you
 pinned — and that works from inside `node_modules` without any `testIgnore`
 setting: Playwright's default `testIgnore` is empty, and its `node_modules`
 skip only refuses to *recurse into* a directory of that name below `testDir`;
@@ -153,6 +179,9 @@ from here. It is listed so a rename knows what it breaks:
 | `[data-blueprint-cell]`, `[data-blueprint-column-header]`, `[data-blueprint-row-header]` | the board grid |
 | `aria-label^="Paths shown:"`, and the `aria-controls` it names while open | the path selector trigger and its popover |
 | `aria-label="Path display"`, with `Stacked` / `Merged` inside it | the layout control |
+| `[data-canvas-annotation-layer]` and `[data-annotation-id]` inside it | the annotation scratch layer and one mark on it — read by the annotation-drag case |
+| `aria-label="Rectangle"`, `aria-label="Rectangle — Shapes tools"` | the annotation toolbar's Shapes slot: the face, and the face once the family holds the tool |
+| `aria-label="Save or send these marks"`, and the `Save N marks` menu item | the capture menu's trigger and its download item |
 
 Renaming one of these does not fail a type check or a lint rule; it fails this
 walk, with a locator that found nothing. If you are the one renaming it, the

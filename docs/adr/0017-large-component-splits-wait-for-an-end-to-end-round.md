@@ -9,6 +9,9 @@ BilLogic/plus-uno-blueprint ADR 0008 on 2026-09-10 (#551); the number
 here is this repository's. Amended 2026-09-13 (#699): the exit condition is
 per flow — each held component's flow has a CI slice, and each slice unblocks
 that component's split — and the cell-edit flow is covered; see the end.
+Amended again 2026-09-14 (#747): the annotation-drag flow is covered too — as a
+jsdom slice and as a browser case in the render walk — and the annotation
+layer's split is unblocked; see the end.
 **Context** `src/components/editor/CanvasAnnotationLayer.tsx`,
 `src/components/blueprint/BlueprintCellDetailPanel.tsx`,
 `src/components/editor/AgentPanel.tsx`
@@ -138,7 +141,8 @@ service claim, so building it is its own piece of work, and it is filed as
 for every column this slice writes. The cell panel's split is unblocked.
 
 **Annotation drag** and **an agent session** — not covered; those two files
-stay held until their slices land.
+stay held until their slices land. *(Both were covered on 2026-09-14 — see the
+two amendments at the end, and the one after them that lifts the hold.)*
 
 ## Amended 2026-09-13: the cell-edit slice has its primary form
 
@@ -191,3 +195,82 @@ the real database for every column this flow writes, and the cell-edit
 slice's PostgREST form asks of the same two writes. Mocked: the Supabase
 provider, the provider adapter, and the viewport probe jsdom has no
 `matchMedia` for. **The agent panel's split is unblocked.**
+
+## Amended 2026-09-14: the annotation-drag flow is covered
+
+**Annotation drag — covered.** `src/slices/annotationDrag.slice.test.tsx`
+opens annotation mode from the real `CanvasAnnotationToolbar`, draws a box
+across two cells of a board through the real `CanvasAnnotationLayer` — the
+real pointer path, the real `clientToLocal` un-projection, the real
+frame-batched drag queue — drags that box onto a third cell, and reads it back
+through the real `AnnotationCaptureMenu` over the real `captureMarks`: the
+captured payload names the two cells the box was drawn over before the drag
+and the one it was dragged onto after it. The layer is then taken off the page
+and mounted again under the same provider, and the mark is still where the drag
+left it — the marks are the PROVIDER's state, so a layer remount keeps them and
+a provider remount would not, which is the ephemerality rather than a gap. CI
+runs it as `npm run slice:annotation-drag` (and inside `npm test`).
+
+**There is no persistence; the read-back is the capture, and the issue's word
+was wrong.** The cell-edit slice reads a row back because a cell is a row. An
+annotation is not: annotations are deliberately never persisted —
+`src/lib/annotationCapture.ts` and `AnnotationCaptureMenu.tsx` both record why
+(saving every stroke turns markup into a record, and costing nothing is the
+point of the layer) — and the schema holds no annotations table to stand a fake
+one up for. Nothing in this flow is stored at all: the capture is an in-memory
+hand-off to the composer (`setPendingAgentAttachment`, read back with
+`takePendingAgentAttachment`), and it is the read-back because it is the one
+thing the flow produces. It is also the stronger one for this component, since
+it resolves each mark to the cells it overlaps in board space — exactly the
+answer a broken split would get wrong.
+
+What is stubbed is geometry, at the smallest seam, because jsdom lays nothing
+out: `getBoundingClientRect` on the layer and on each cell, plus
+`offsetWidth`/`offsetHeight` on the layer — the values the layer and the capture
+menu each divide to recover the camera — and
+`setPointerCapture`/`releasePointerCapture`, which jsdom does not implement. The
+board carrying those rects is a stub for the same reason: a cell's only
+contribution to this flow is its id and its rectangle, and under jsdom the
+rectangle is the test's whichever component draws it. The stubbed camera is
+deliberately NOT at zoom 1 — the layer is twice as wide in its own units as it
+is on screen, and offset — so the drag's local distance is twice the distance
+the pointer moved and a split that dropped the scale term goes red instead of
+dividing by one. Frames are faked and turned by hand, so the drag queue is
+watched publishing mid-gesture rather than only at the `pointerup` flush. One
+leaf read is mocked, the way the cell-edit slice mocks its two: the Supabase
+provider, for the `canWrite` the capture menu reads.
+
+The guard has been watched go red twice over: one case drops the drag's
+position write — the `dropOnWrite` of a flow whose write is a context call
+rather than a column — and the mark then reads back on the cells it was drawn
+over instead of the one it was dragged to; another moves the pointer under
+`DRAG_THRESHOLD` and requires the mark not to move at all.
+
+**And the browser case, because the three stubs are the three things jsdom
+cannot do at all.** `render-walk/annotation-drag.spec.ts` runs beside
+`render-walk/sample-board.spec.ts` under the same config, so
+`npm run check:render-walk` now walks two cases: it opens the bundled sample
+board, picks the rectangle from the real toolbar, draws a box across two cells
+of one lane with real mouse moves under the canvas's live CSS-transform camera
+(around 0.47 on that board), drags it onto a third with real pointer capture,
+and reads the captured `overlaps` out of the capture menu's OWN download — the
+`Save N marks` item, which needed nothing added to the app to be observable.
+(The menu's agent item is gated on `canWrite` and is absent in the walk's
+no-database preview, which is why the slice's read-back is the attachment and
+this one's is the download; both are `captureMarks` over the same cell rects.)
+The walk's console-error rule covers it, including the injected-error self-test.
+The two cases together took 35 seconds on this repository's own machine, 5 of
+them the drag.
+
+**`src/components/editor/CanvasAnnotationLayer.tsx`'s split is unblocked.**
+
+## Amended 2026-09-14: the hold is lifted
+
+With annotation drag covered above, an agent session covered in the
+amendment before it, and cell edit with its revert covered since the first
+amendment, each of the three held components has the CI slice this record
+asked for. The hold on the three splits is lifted: any of them may now be
+split, and its slice is the instrument that says whether the split moved the
+behaviour. The ordering claim this record made stands — the instrument came
+before the surgery — and the slices stay as the exit condition for any future
+hold of the same shape.
