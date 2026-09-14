@@ -187,6 +187,18 @@ What your side has to provide:
   `references/customization.md` § The offline board is two fields has the
   command and the shape.
 
+  **Either form of that second field walks.** `sample.blueprints` takes the
+  registry itself or a loader that fetches it
+  (`() => import('./data/sampleBlueprints').then((m) => m.SAMPLE_BLUEPRINTS)`),
+  and the walk cannot tell them apart: it opens the built preview and reads the
+  page, and `DeploymentConfigProvider` renders nothing below it until a loader
+  has answered — so by the time there is a cover to click past, the board
+  behind it is whole. A no-database build is exactly the build a loader IS
+  called in, which is what makes the walk the guard that exercises it. This
+  repository's own board is a value, so the run above walks the eager form;
+  `references/customization.md` § Eagerly or behind a loader says which to
+  supply and why.
+
 A deployment that wants this in its own CI can copy the `render-walk` job out
 of `.github/workflows/ci.yml`; nothing in it changes — the job already calls
 `npm run check:render-walk`, and this repository's own runs through the same

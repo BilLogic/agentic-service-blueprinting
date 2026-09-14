@@ -55,6 +55,41 @@ export type SampleBlueprintRegistry = {
   uiHiddenPathIdsByScenario?: Record<string, readonly string[]>
 }
 
+/**
+ * The same board, deferred: a registry behind a call rather than in hand.
+ *
+ * A registry of a real board is the largest thing a deployment hands this
+ * config — on the order of a megabyte of cells — and it is read on exactly one
+ * condition, `isBundledSampleActive()`. Handed over as a VALUE it is reachable
+ * from the config module, so every build carries it, including the production
+ * build with a database where nothing will ever ask for it. Handed over as a
+ * LOADER — `() => import('./data/sampleBlueprints').then((m) =>
+ * m.SAMPLE_BLUEPRINTS)` — the only reference to those bytes is inside a
+ * dynamic import, which is a chunk boundary to every bundler, and they are
+ * fetched when a board is about to be drawn and at no other time.
+ *
+ * ONE FIELD, TWO FORMS, rather than a second field beside the first. A
+ * deployment states its offline board once; two fields would need a rule for
+ * which wins when both are supplied, and there is no answer to that question
+ * a deployment would mean.
+ *
+ * CALLED MORE THAN ONCE, sometimes: React's strict mode runs the effect behind
+ * it twice in development, and a host may mount `App` more than once. A loader
+ * that is a bare `import()` costs nothing for that — the module registry
+ * answers the second call from cache — which is the form to write. One that
+ * fetches over the network should hold its own promise rather than start a
+ * second request.
+ *
+ * What the loader costs is that the registry is not there during the first
+ * render, and the board reads it during its own. `DeploymentConfigProvider`
+ * pays that in the one place that can: with the bundled sample active it
+ * awaits the loader before it renders the tree below, so nothing beneath it
+ * ever draws against a board that has not arrived. With a database configured
+ * it never calls the loader at all.
+ */
+export type SampleBlueprintRegistryLoader =
+  () => Promise<SampleBlueprintRegistry>
+
 // GENERATED-BLUEPRINT-REGISTRY:BEGIN — managed by scripts/generate_fallbacks.py --register.
 // Everything between the BEGIN/END markers is replaced wholesale on
 // registration; do not hand-edit. Default content wires the template's

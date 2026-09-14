@@ -99,7 +99,7 @@ already and are listed so the table is the whole answer.
 | `agent.doctrine` | `src/lib/agent/role.md` — the deployment's own copy of the agent's role document | Laid after the template's role and the canvas adapter on every send. The template's role stays the template's; the doctrine is what one deployment adds: its house rules, its posture, its account of itself. |
 | `agent.references` | Reference documents under `src/lib/agent/` — the deployment's own account, house style, whatever it authored for `get_reference` | A map of bare name to document text; the host holds the `?raw` imports. A name the template already serves is replaced, a new name is listed to the agent right after the canvas adapter. |
 | `sample.nav` | `src/data/sampleNav.ts` — the board shown before a database answers | Read by the editor context as the slides shown before the first fetch answers (`fallbackSlides`); the template's generated sample stands in only when the field is absent. |
-| `sample.blueprints` | `src/data/blueprintFallbacks.ts` — the CONTENT those nav rows resolve to | The registry every offline lookup goes through: `DeploymentConfigProvider` writes it onto that module with `configureSampleBlueprints` while it renders, because the board reads the module as it draws. Supply it WITH `sample.nav` — see § The offline board is two fields. |
+| `sample.blueprints` | `src/data/blueprintFallbacks.ts` — the CONTENT those nav rows resolve to | The registry every offline lookup goes through, or a loader that fetches one: `DeploymentConfigProvider` writes it onto that module with `configureSampleBlueprints` while it renders, because the board reads the module as it draws. Supply it WITH `sample.nav` — see § The offline board is two fields, and § Eagerly or behind a loader for which form. |
 
 The generated database types are the one file a deployment keeps in its tree
 on purpose, and since the overlay they are not part of the application there:
@@ -192,6 +192,65 @@ no deployment config shows.
 Omitting either field is the template's own half, which is the right answer for
 a deployment still evaluating the template and the wrong one for a deployment
 with a board of its own.
+
+### Eagerly or behind a loader
+
+`sample.blueprints` takes the registry itself or a function that fetches one:
+
+```ts
+sample: {
+  nav: SAMPLE_NAV,
+  blueprints: () =>
+    import('./data/sampleBlueprints').then((m) => m.SAMPLE_BLUEPRINTS),
+}
+```
+
+The two forms draw the same board wherever a board is drawn. They differ in
+which builds carry it.
+
+The registry is read on ONE condition — `isBundledSampleActive()`, which is
+false the moment a database is configured. Named as a value, it is reachable
+from the config module, so the bundler puts it in the entry chunk of every
+build: the production build with a database carries a board nothing will ever
+ask for. Named inside a dynamic import, the only reference to those bytes is
+behind a chunk boundary, and they are fetched when a board is about to be drawn
+and at no other time. On a registry the size of a real exported board the entry
+chunk gives back the whole of it — around 1.2 MB before compression, roughly
+140 kB gzipped.
+
+**Which form to use.** A deployment whose registry is an export of a real board
+wants the loader: the board is the largest thing it hands this config, and the
+builds that read it are the ones with no database. A clone of this template
+keeps the value, and so does any deployment whose board is small enough that a
+second request costs more than the bytes save — the package's own sample is a
+value for exactly that reason.
+
+**What the loader costs.** The board reads the registry while it renders, so
+`DeploymentConfigProvider` awaits the loader before it renders anything below
+it. In a no-database build that is one chunk fetch before the first paint; in a
+build with a database the loader is never called at all, and nothing waits. A
+loader that rejects throws rather than falling back to the template's own
+registry — that registry is keyed by the template's identifiers and answers a
+deployment nothing, so falling back would be a deployment's chrome around a
+blank canvas with no error anywhere. `DeploymentConfigProvider` is the
+outermost element `App` renders and this package catches nothing above it, so
+the throw comes up as a blank page with the error in the console: that is what
+the render walk fails on. A deployment that wants a rendered message puts its
+own error boundary above `App`. A loader that RESOLVES EMPTY is the other
+reading and stays silent — an empty registry is a value a deployment may mean,
+and it falls back to the template's own the way an empty `sample.nav` does.
+
+**In a build WITH a database the fallback module keeps the template's own
+registry** rather than the deployment's, because the loader was never called
+and there is nothing to write. Nothing reads it there: every surface that
+consults the module is behind `isBundledSampleActive()`, and the two that are
+not are keyed by identifiers a deployment's board does not carry, so they
+answer the same nothing either way. It is the difference between the forms that
+is worth knowing about, and it is a difference in what is in memory rather than
+in what anyone sees.
+
+The eager form is unchanged and needs no migration: a deployment that hands
+over the value keeps working exactly as it did.
 
 ## Composition claims: what a deployment still documents
 

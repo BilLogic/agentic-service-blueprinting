@@ -78,8 +78,9 @@ export type {
 /**
  * The offline board's two halves, named.
  *
- * `sample.nav` takes a `NavItem[]` and `sample.blueprints` a
- * {@link SampleBlueprintRegistry} — the two a deployment has to write down to
+ * `sample.nav` takes a `NavItem[]` and `sample.blueprints` either a
+ * {@link SampleBlueprintRegistry} or a {@link SampleBlueprintRegistryLoader}
+ * that fetches one — the two a deployment has to write down to
  * hold its own generated content in a module of its own. Without them here the
  * only spelling left is a path into `src/data/…`, which exists in a tree that
  * has its own `src` and in no other, so a deployment either reached for a path
@@ -90,7 +91,10 @@ export type {
  * HANDED to the config, never registered by calling anything, so the lookups
  * it feeds stay internal the way every other reader here does.
  */
-export type { SampleBlueprintRegistry } from './data/blueprintFallbacks'
+export type {
+  SampleBlueprintRegistry,
+  SampleBlueprintRegistryLoader,
+} from './data/blueprintFallbacks'
 export type { NavItem, SlideViewType } from './types/nav'
 /**
  * And what a board is made of, down to the cell.
