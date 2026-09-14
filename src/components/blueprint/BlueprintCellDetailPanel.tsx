@@ -11,12 +11,15 @@ import {
 } from 'lucide-react'
 import { ArrowLeft } from 'lucide-react'
 import { CellDependencyEditor } from '@/components/blueprint/CellDependencyEditor'
-import { CompareDifferencesSurface } from '@/components/blueprint/CompareDifferencesSurface'
 import { CellDependencySections } from '@/components/blueprint/CellDependencySections'
 import { CellEvidenceTab } from '@/components/blueprint/CellEvidenceTab'
 import { CellInSlicesFooter } from '@/components/blueprint/CellInSlicesFooter'
 import { CellOverviewSpec } from '@/components/blueprint/CellOverviewSpec'
 import { CellContentSection } from '@/components/blueprint/CellContentSection'
+import { CellDetailDifferencesSurface } from '@/components/blueprint/CellDetailDifferencesSurface'
+import { CellDetailDraftSurface } from '@/components/blueprint/CellDetailDraftSurface'
+import { CellDetailEmptySurface } from '@/components/blueprint/CellDetailEmptySurface'
+import { PanelSurfaceSwitcher } from '@/components/blueprint/PanelSurfaceSwitcher'
 import { useCellDetailFacts } from '@/components/blueprint/cellDetailFacts'
 import { CellPanelEditor } from '@/components/blueprint/CellPanelEditor'
 import {
@@ -37,10 +40,6 @@ import {
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { StoryboardStepDetailStack } from '@/components/blueprint/StoryboardStepDetailStack'
 import { ZoomableImage } from '@/components/blueprint/ZoomableImage'
-import {
-  SegmentedControl,
-  SegmentedControlItem,
-} from '@/components/editor/SegmentedControl'
 import { Button } from '@/components/ui/button'
 import {
   DrawerDescription,
@@ -106,38 +105,6 @@ const PANEL_TABS: Array<{
   { value: 'resources', label: 'Resources', icon: Link2 },
 ]
 
-/**
- * The Details │ Differences switch — TOP-LEVEL panel chrome (the two
- * surfaces are siblings of the whole panel), rendered from two call sites:
- * the details branch's own header row and the differences DrawerHeader. ONE
- * component, because two verbatim copies drifted apart once already.
- *
- * No count on the Differences tab: counts live in exactly two places
- * app-wide now — the menubar Diff count and each ledger group's trailing
- * number.
- */
-function PanelSurfaceSwitcher({
-  value,
-  onValueChange,
-}: {
-  value: BlueprintPanelSurface
-  onValueChange: (surface: BlueprintPanelSurface) => void
-}) {
-  return (
-    <SegmentedControl
-      aria-label="Panel surface"
-      value={value}
-      onValueChange={onValueChange}
-    >
-      <SegmentedControlItem value="details" className="px-2">
-        Details
-      </SegmentedControlItem>
-      <SegmentedControlItem value="differences" className="px-2">
-        Differences
-      </SegmentedControlItem>
-    </SegmentedControl>
-  )
-}
 
 /**
  * Side panel for the selected cell — its content, evidence, dependencies and
@@ -443,53 +410,14 @@ function BlueprintCellDetailPanelBody() {
         onCloseRequest={clearSelection}
         onClosed={handleClosed}
       >
-        <DrawerHeader className="flex-row items-center justify-between gap-2 border-b border-muted px-4 py-2 text-left">
-          <DrawerTitle className="sr-only">Path differences</DrawerTitle>
-          <DrawerDescription className="sr-only">
-            Every difference between the compared paths, grouped by step
-          </DrawerDescription>
-          {comparing ? (
-            <PanelSurfaceSwitcher
-              value="differences"
-              onValueChange={setPanelSurface}
-            />
-          ) : (
-            <span className="min-w-0 text-sm font-semibold text-foreground">
-              Differences
-            </span>
-          )}
-          <div className="flex shrink-0 items-center gap-0.5">
-            {expandToggle}
-            <IconTooltip label="Close the difference ledger" side="left">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="shrink-0 text-muted-foreground hover:text-foreground"
-                aria-label="Close differences"
-                onClick={clearSelection}
-              >
-                <X />
-              </Button>
-            </IconTooltip>
-          </div>
-        </DrawerHeader>
-        {compareRegistration ? (
-          <div className="flex min-h-0 flex-1 flex-col pt-3">
-            <CompareDifferencesSurface
-              registration={compareRegistration}
-              onOpenCell={handleOpenCellFromDifferences}
-            />
-          </div>
-        ) : (
-          // Reachable only during the exit animation after a comparison
-          // ended — the provider is already routing panelState away.
-          <div className="flex min-h-0 flex-1 items-center justify-center px-6 pb-8">
-            <p className="text-center text-xs text-muted-foreground">
-              No comparison is active.
-            </p>
-          </div>
-        )}
+        <CellDetailDifferencesSurface
+          comparing={comparing}
+          registration={compareRegistration}
+          expandToggle={expandToggle}
+          onSurfaceChange={setPanelSurface}
+          onClose={clearSelection}
+          onOpenCell={handleOpenCellFromDifferences}
+        />
       </PanelDrawerShell>
     )
   }
@@ -507,39 +435,12 @@ function BlueprintCellDetailPanelBody() {
         onCloseRequest={clearSelection}
         onClosed={handleClosed}
       >
-        {surfaceSwitcher}
-        <DrawerHeader className="flex-row items-center justify-between gap-2 pb-3 text-left">
-          <div className="min-w-0 flex-1">
-            <DrawerTitle className="min-w-0 text-sm font-semibold text-foreground">
-              New cell
-            </DrawerTitle>
-            <DrawerDescription className="text-xs text-muted-foreground">
-              {[
-                draft.phaseName,
-                draft.scenarioName,
-                `${draft.stepIndex + 1}. ${draft.stepName}`,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-            </DrawerDescription>
-          </div>
-          <IconTooltip label="Discard this new cell" side="left">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="shrink-0 text-muted-foreground hover:text-foreground"
-              aria-label="Discard new cell"
-              onClick={clearSelection}
-            >
-              <X />
-            </Button>
-          </IconTooltip>
-        </DrawerHeader>
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4 blueprint-scroll">
-          {laneBadge}
-          <CellPanelEditor cellId={null} draft={draft} onDone={clearSelection} />
-        </div>
+        <CellDetailDraftSurface
+          draft={draft}
+          laneBadge={laneBadge}
+          surfaceSwitcher={surfaceSwitcher}
+          onClose={clearSelection}
+        />
         {/* The editor portals Create/Cancel here — panel-level footing. */}
         <PanelFooterHost id={CELL_PANEL_FOOTER_ID} />
       </PanelDrawerShell>
@@ -559,34 +460,10 @@ function BlueprintCellDetailPanelBody() {
         onCloseRequest={clearSelection}
         onClosed={handleClosed}
       >
-        {surfaceSwitcher}
-        <DrawerHeader className="flex-row items-center justify-between gap-2 pb-3 text-left">
-          <div className="min-w-0 flex-1">
-            <DrawerTitle className="min-w-0 text-sm font-semibold text-foreground">
-              Cell details
-            </DrawerTitle>
-            <DrawerDescription className="sr-only">
-              No cell selected
-            </DrawerDescription>
-          </div>
-          <IconTooltip label="Close cell details" side="left">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="shrink-0 text-muted-foreground hover:text-foreground"
-              aria-label="Close cell details"
-              onClick={clearSelection}
-            >
-              <X />
-            </Button>
-          </IconTooltip>
-        </DrawerHeader>
-        <div className="flex min-h-0 flex-1 items-center justify-center px-6 pb-8">
-          <p className="text-center text-xs text-muted-foreground">
-            No cell selected — click a cell on the board.
-          </p>
-        </div>
+        <CellDetailEmptySurface
+          surfaceSwitcher={surfaceSwitcher}
+          onClose={clearSelection}
+        />
       </PanelDrawerShell>
     )
   }
