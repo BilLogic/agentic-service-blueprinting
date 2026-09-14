@@ -96,7 +96,7 @@
 import { spawnSync } from 'node:child_process'
 import { cpSync, existsSync, readFileSync, realpathSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { createServer } from 'node:net'
+import { connect } from 'node:net'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -171,22 +171,40 @@ export const DEFAULT_PORT = 4173
  */
 export const PORT_WINDOW = 32
 
+/** How long a port has to refuse a connection before it counts as nobody's. */
+const ANSWER_TIMEOUT = 500
+
 /**
- * Whether `port` can be listened on right now.
+ * Whether anything answers on `port` — asked at `localhost`, which is the
+ * address the walk's own `baseURL` names.
  *
- * Binding is the question asked rather than connecting, because the thing that
- * matters is whether the PREVIEW will come up — a socket held by a process
- * that accepts nothing fails the walk exactly as a stale preview does, and a
- * connection test would call that port free. `127.0.0.1` is where the preview
- * binds and where the walk's `baseURL` points, so it is where the question is
- * asked.
+ * ASKED BY CONNECTING, NOT BY BINDING, and the difference is the whole hazard
+ * this file is about. A bind test asks "may I have this port", and on macOS
+ * the answer is yes while a stranger is holding it: a server on the IPv6
+ * wildcard leaves `127.0.0.1` bindable, so the preview comes up on one family,
+ * `localhost` resolves to the other, and the walk asserts against the
+ * stranger's build — the exact green-over-somebody-else's-dist this whole
+ * arrangement exists to prevent. There is no single address a bind test can
+ * ask about that covers every way a port can be held. Connecting to the name
+ * the walk itself uses covers all of them, because a port that answers the
+ * walk is a port the walk would have walked.
+ *
+ * A port that accepts nothing within `ANSWER_TIMEOUT` counts as held rather
+ * than free: something is there, and guessing otherwise is how a run ends up
+ * previewing into a socket somebody else owns.
  */
 export function portIsFree(port) {
   return new Promise((resolve) => {
-    const probe = createServer()
-    probe.once('error', () => resolve(false))
-    probe.once('listening', () => probe.close(() => resolve(true)))
-    probe.listen(port, '127.0.0.1')
+    const probe = connect({ port, host: 'localhost' })
+    const answer = (free) => {
+      probe.destroy()
+      resolve(free)
+    }
+    probe.setTimeout(ANSWER_TIMEOUT, () => answer(false))
+    probe.once('connect', () => answer(false))
+    // Refused, or a name that does not resolve: nothing is listening, and a
+    // preview that cannot start on it fails loudly under `--strictPort`.
+    probe.once('error', () => answer(true))
   })
 }
 

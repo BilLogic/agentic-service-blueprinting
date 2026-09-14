@@ -32,9 +32,9 @@ import { DEFAULT_PORT, PORT_WINDOW, choosePort, claimPort, portIsFree } from '..
 const ROOT = new URL('../..', import.meta.url).pathname
 
 /** A listener on a free port, closed when the test that opened it is done. */
-async function listening() {
+async function listening(host = '127.0.0.1') {
   const server = createServer()
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  await new Promise((resolve) => server.listen(0, host, resolve))
   return { port: server.address().port, close: () => new Promise((r) => server.close(r)) }
 }
 
@@ -68,6 +68,20 @@ test('a port something is listening on is never the port the walk picks', async 
   try {
     assert.equal(await portIsFree(held.port), false)
     assert.equal(await choosePort(held.port, 4) > held.port, true)
+  } finally {
+    await held.close()
+  }
+})
+
+test('a port held on the other address family is held, not free', async () => {
+  // The bind test this replaced said FREE here, on macOS: a server on the IPv6
+  // wildcard leaves `127.0.0.1` bindable, so the preview would come up on one
+  // family while `localhost` — the walk's own baseURL — resolved to the
+  // stranger on the other. That is a green walk over somebody else's build,
+  // which is the one outcome this whole arrangement exists to prevent.
+  const held = await listening('::')
+  try {
+    assert.equal(await portIsFree(held.port), false)
   } finally {
     await held.close()
   }
