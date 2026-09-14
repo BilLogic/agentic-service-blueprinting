@@ -51,6 +51,7 @@ in [docs/index.md](./docs/index.md); what the folders mean is in
 | How does a deployment consume this template? | docs/adr/0020-the-deployment-imports-the-template.md |
 | Who owns the canvas agent, and how may a deployment tune it? | docs/adr/0021-the-template-owns-the-agent.md |
 | What decisions have been recorded, and under which numbers? | docs/adr/overview.md |
+| Which document owns this assembled surface, and who writes its claim? | docs/guidelines/composition/overview.md |
 | Add or move a document | docs/guidelines/documentation.md |
 | Propose a change; what a commit and a pull request carry | docs/guidelines/contributing.md |
 | See what is already being worked on | GitHub issues — the queue is not in this repo |
@@ -78,4 +79,4 @@ in [docs/index.md](./docs/index.md); what the folders mean is in
   docs/engineering/checks.md, with docs/adr/ before anything that renames.
 - **An agent, any task** — AGENTS.md (auto-loaded) → CONTEXT.md → this table.
 
-37 protocol documents are indexed in [docs/index.md](./docs/index.md).
+47 protocol documents are indexed in [docs/index.md](./docs/index.md).

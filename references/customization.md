@@ -11,6 +11,7 @@ migration in the same change.
 - Lane roles
 - Theming & branding
 - Deployment inputs and their config homes
+- Composition claims: what a deployment still documents
 - View types & path types
 - Scale
 - Agent account
@@ -191,6 +192,47 @@ no deployment config shows.
 Omitting either field is the template's own half, which is the right answer for
 a deployment still evaluating the template and the wrong one for a deployment
 with a board of its own.
+
+## Composition claims: what a deployment still documents
+
+The composition documents under `docs/guidelines/composition/` claim every file
+this package assembles — the ~200 under `src/components/{blueprint,editor,cover,mobile}`
+— and `npm run check:harness` (`scripts/check-harness-claims.mjs`) fails when one
+of them is claimed by no document, claimed twice, or claimed and gone.
+
+A deployment runs the same script. It is one of the files a deployment holds
+**byte-identical**, and it reads the composition documents out of the installed
+package as well as out of the deployment's own tree. Two consequences, and they
+are the whole of what a deployment has to know:
+
+- **A release that adds a module adds no work here.** The file is the package's,
+  so the claim is the package's, and it fails in the package's own build before
+  any tag moves. A deployment that pins the release writes nothing.
+- **A deployment claims its own trees, and only those.** `composition.claimed` in
+  the deployment's `scripts/repo-config.mjs` names them — the folders holding
+  assembled files it keeps outside this application. Every file under one of them
+  needs a claim in a composition document of the deployment's own, and a folder
+  named there that the tree does not have is a failure, not a skip.
+
+```js
+// a deployment's scripts/repo-config.mjs
+composition: {
+  documents: 'docs/guidelines/composition',
+  claimed: ['deployment/components'],
+},
+```
+
+**Overriding the prose is done by filename.** The deployment's composition folder
+is laid over the package's, document for document — the same overlay rule the
+application resolves per path. A deployment that disagrees with a surface's
+account writes a document under the same name and takes that surface over,
+`claims:` list included; a name it does not write, it inherits. Adding a
+*different* name adds a surface, and that document claims the deployment's own
+files.
+
+A deployment that has no assembled files of its own sets `claimed: []` and keeps
+no composition folder at all. The check then reads the package's documents only,
+and is green for as long as the package's own build is.
 
 ## Layouts & path kinds
 

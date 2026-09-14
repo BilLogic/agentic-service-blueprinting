@@ -27,15 +27,22 @@ test('every path the deployment imports exists and the commit carries it', () =>
   )
 })
 
-test('the list is eighteen references, four skill bodies and the render walk in four files', () => {
+test('the list is eighteen references, four skill bodies, the render walk and the composition documents', () => {
   const skills = CONSUMER_IMPORTS.filter((path) => path.endsWith('/SKILL.md'))
   const renderWalk = CONSUMER_IMPORTS.filter((path) => path.startsWith('render-walk/'))
+  // The composition documents, which a deployment's claims check reads out of
+  // the installed package: one per assembled surface, plus the survey.
+  const composition = CONSUMER_IMPORTS.filter((path) => path.startsWith('docs/'))
   assert.equal(skills.length, 4)
   // Four files, and only four: the runner a deployment names on the command
   // line, the config it stages and hands to Playwright, and the two specs that
   // travel beside it — the view walk and the annotation-drag case.
   assert.equal(renderWalk.length, 4)
-  assert.equal(CONSUMER_IMPORTS.length - skills.length - renderWalk.length, 18)
+  assert.equal(composition.length, 10)
+  assert.equal(
+    CONSUMER_IMPORTS.length - skills.length - renderWalk.length - composition.length,
+    18,
+  )
   assert.equal(new Set(CONSUMER_IMPORTS).size, CONSUMER_IMPORTS.length)
 })
 
@@ -62,7 +69,10 @@ test('a path outside the interface roots is refused', () => {
   assert.equal(found.length, 1)
   assert.equal(found[0].path, 'src/lib/agent/skills.ts')
   // The sentence names the roots, and it is built from the list rather than
-  // repeated here — a fourth root would otherwise leave the refusal telling
-  // its reader the wrong three places a path may live.
-  assert.equal(found[0].reason, 'not under references/, skills/ or render-walk/')
+  // repeated here — a fifth root would otherwise leave the refusal telling its
+  // reader the wrong four places a path may live.
+  assert.equal(
+    found[0].reason,
+    'not under references/, skills/, render-walk/ or docs/guidelines/composition/',
+  )
 })

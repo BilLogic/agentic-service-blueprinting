@@ -117,6 +117,13 @@ jobs:
       # The canvas agent writes the enum values its rulebook states, and
       # those had drifted — docs/engineering/checks.md.
       - run: npm run check:dependency-kinds
+      # Every assembled file is documented by exactly one composition
+      # document. The claim for a file is written where the file lives, so a
+      # module added here is claimed here — a deployment that pins the release
+      # writes nothing, and a surface nobody documented is red in the
+      # repository that added it.
+      - run: npm run check:harness
+
       # Every repository path the
       # plugin surface NAMES still exists. An installed skill opens the paths
       # its documents write down, so a rename that never looked at the prose

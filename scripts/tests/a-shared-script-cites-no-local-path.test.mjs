@@ -63,6 +63,10 @@ export const SHARED_SCRIPTS = new Map([
     'one list of what a session is handed before it decides anything, read by three checks',
   ],
   ['scripts/check-glossary-only.mjs', 'every repository holds its own glossary to one shape'],
+  [
+    'scripts/check-harness-claims.mjs',
+    'one rule for who claims an assembled file, read from both sides of the seam: the package claims what it ships and a deployment claims its own trees',
+  ],
   ['scripts/check-negation-ratchet.mjs', 'the ratchet is the mechanism; the count is repo-local'],
   ['scripts/check-pointers.mjs', 'a pointer either resolves or it does not, wherever the router lives'],
   ['scripts/check-router-budget.mjs', 'the budget is the mechanism; what is spent against it is repo-local'],
@@ -73,6 +77,10 @@ export const SHARED_SCRIPTS = new Map([
   ['scripts/generate-agent-account.mjs', 'one generator, each repository’s own document and baseline'],
   ['scripts/sweep.mjs', 'one module answers where every subject is, for every check in either tree'],
   ['scripts/seed-list.mjs', 'where a deployment’s seed is and which files it is, asked by the sweep and the seed check alike'],
+  [
+    'scripts/tests/harness-claims.test.mjs',
+    'the claim rule proven from the deployment side — the overlay, the deployment’s own tree, and the pin bump that must add no red',
+  ],
   [
     'scripts/tests/the-router-is-a-router.test.mjs',
     'the router’s three checks, proven the same way on both sides',
