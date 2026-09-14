@@ -275,9 +275,52 @@ behaviour. The ordering claim this record made stands — the instrument came
 before the surgery — and the slices stay as the exit condition for any future
 hold of the same shape.
 
+## Amended 2026-09-14: the annotation layer is split, and the slice held
+
+The first of the three surgeries this record held back has happened.
+`src/components/editor/CanvasAnnotationLayer.tsx` went from 2229 lines to 943,
+and what is left in it is the thing the file is named for: the pointer, drag,
+resize and selection machine, the draft types it is written in, and the
+composition that hands each annotation to the node that draws it. It holds no
+style bar, no node component and no geometry helper.
+
+What came out, and where it went. A split module sits beside the file it came
+out of, which is how this tree names one; the single exception is the focus
+hook, which goes to `src/hooks/` with the rest of them:
+
+| out of the layer | into |
+|---|---|
+| the chrome anchor, the camera un-projection, the live layer scale, the pen path builder | `canvasAnnotationGeometry.ts` |
+| the textarea focus hook | `src/hooks/useFocusTextarea.ts` |
+| the colour and stroke-weight pickers | `CanvasAnnotationSwatches.tsx` |
+| the four corner grips | `CanvasAnnotationResizeHandles.tsx` |
+| the plate, rule and tooltip the bars share | `CanvasAnnotationBarChrome.tsx`, over `canvasAnnotationChromeStyles.ts` |
+| the three style bars | `AnnotationShapeStyleBar.tsx`, `AnnotationStickyStyleBar.tsx`, `AnnotationTextStyleBar.tsx` |
+| the three annotation nodes | `ShapeAnnotationNode.tsx`, `StickyAnnotationNode.tsx`, `TextAnnotationNode.tsx` |
+| what passes between the layer and a node | `canvasAnnotationNodeProps.ts` |
+
+The interface between the layer and a node is `MovableProps`, which was
+already the interface — `movableFor` mints one per mark and a node reads
+nothing else — so the split wrote it down rather than invented it. No new prop
+reaches the layer from outside: `ZoomPanViewport` still passes `zoom` and
+nothing more.
+
+**The instrument did its job, which is the part this record exists for.** The
+slice and the browser drag case were run before the first move — 3 tests
+green, 1 browser case green — and after every move since, on the same
+assertions, with no assertion edited anywhere in the suite. One guard did go
+red, and it was the right one: `tokenDiscipline.test.ts` refuses an exemption that no longer
+matches an offender, so moving the line-style preview swatch out of the layer
+made the layer's var-ramp exemption stale within the same commit that moved
+it. That is a check noticing a file moved, which is what a path-pinned
+exemption is for.
+
+Two components remained at that point, each with its own slice: the cell
+panel, whose split is the amendment below, and the agent panel.
+
 ## Amended 2026-09-14: the cell panel is split, and its slice says nothing moved
 
-The first of the three splits this record held is done.
+The second of the three splits this record held is done.
 `src/components/blueprint/BlueprintCellDetailPanel.tsx` went from 1481 lines
 to 553, and its body — one function from line 223 to the end — is nine
 modules beside it: the facts a cell is read from (`cellDetailFacts.ts`), the
@@ -304,6 +347,5 @@ in the same shape; every section that derived its fields from
 the cell's facts, the selection, and the callbacks the panel owns — no module
 takes a prop from outside the panel that the panel did not already hold.
 
-**`src/components/editor/CanvasAnnotationLayer.tsx` and
-`src/components/editor/AgentPanel.tsx` are still to do**, each with its own
-slice standing ready as the instrument.
+**`src/components/editor/AgentPanel.tsx` is the one still to do**, with its
+own slice standing ready as the instrument.

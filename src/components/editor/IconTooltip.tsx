@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
  *
  * Before this there were five local re-implementations of the identical four
  * lines (`RailButton`, `ToolButton`, `StrokeWeightButton`,
- * `ShapeToolbarTooltip`, the sidebar's row action) and roughly fifty icon
+ * `AnnotationBarTooltip`, the sidebar's row action) and roughly fifty icon
  * buttons with no tooltip at all — a dozen of them making do with a native
  * `title`, which arrives after a second, in the browser's font, and cannot be
  * styled or positioned.
