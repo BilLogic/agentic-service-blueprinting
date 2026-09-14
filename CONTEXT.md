@@ -402,9 +402,12 @@ for this session.
 
 **config** — whether a database is connected.
 
-**active service** — the single service the URL slug names. There is no
+**active service** — the single service the URL slug names, resolved once at
+the surface root into a module store as its id and slug together. There is no
 inactive service and no flag that marks one; a reader who takes it as a
-filter over many gets a plural where the code means a singular.
+filter over many gets a plural where the code means a singular. A
+service-scoped read takes the id as a parameter and resolves nothing; given
+none, it reads nothing — never the first service, never all of them.
 
 **query key** — the name a read caches under, built in one place
 (`queryKeys`) that the read hook and the write both use. A **family** is a

@@ -1,6 +1,7 @@
 import { createContext, useContext, type ReactNode } from 'react'
 import { useServiceEntityExamples } from '@/hooks/useServiceEntityExamples'
 import type { EntityExamples } from '@/lib/panelTerms'
+import { useActiveServiceId } from '@/contexts/activeService'
 
 /**
  * The service's six per-kind examples, made reachable to every definition
@@ -40,7 +41,7 @@ export function useEntityExamples(): EntityExamples {
  * is no service, the map is empty and no example renders.
  */
 export function EntityExamplesProvider({ children }: { children: ReactNode }) {
-  const result = useServiceEntityExamples()
+  const result = useServiceEntityExamples(useActiveServiceId())
   const examples = result.status === 'ready' ? result.data : EMPTY
 
   return (

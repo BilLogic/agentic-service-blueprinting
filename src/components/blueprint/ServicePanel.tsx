@@ -28,6 +28,7 @@ import {
   updateServiceEntityExamples,
   updateServiceSummary,
 } from '@/lib/serviceSpecMutations'
+import { useActiveServiceId } from '@/contexts/activeService'
 
 export const SERVICE_PANEL_FOOTER_ID = 'service-panel-footer'
 
@@ -44,7 +45,7 @@ export const SERVICE_PANEL_FOOTER_ID = 'service-panel-footer'
  * is noise.
  */
 export function ServicePanel({ onClose }: { onClose: () => void }) {
-  const result = useServiceSpec()
+  const result = useServiceSpec(useActiveServiceId())
   const service = result.status === 'ready' ? result.data : null
 
   return (

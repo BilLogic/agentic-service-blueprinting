@@ -33,6 +33,7 @@ import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useViewState } from '@/contexts/viewStateStore'
 import { useSlices, type SliceListEntry } from '@/hooks/useSlices'
+import { useActiveServiceId } from '@/contexts/activeService'
 
 /** Sidebar group order — unknown types fall into CUSTOM. */
 const SLICE_TYPE_GROUPS = ['journey', 'step', 'lane', 'cell', 'custom'] as const
@@ -123,7 +124,7 @@ function SliceRow({
  * slice tab; writers can delete from the context menu.
  */
 export function SlicesSidebarSection() {
-  const slices = useSlices()
+  const slices = useSlices(useActiveServiceId())
   const { openTab, tabs, activeKey } = useViewState()
   const { client, canWrite } = useSupabase()
   // Edit mode only, like every other authoring affordance in this sidebar.

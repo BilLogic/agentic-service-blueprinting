@@ -1,7 +1,6 @@
 import { useCallback } from 'react'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
-import { awaitOrAbort, findActiveServiceId } from '@/lib/service'
 import type { EntityExamples } from '@/lib/panelTerms'
 import { queryKeys } from '@/lib/queryKeys'
 
@@ -36,15 +35,14 @@ export type ServiceSpec = {
 }
 
 /**
- * The ACTIVE service, and its business model.
+ * One service, and its business model.
  *
- * Active is the board's word: the service the URL slug names, or the first by
- * `created_at` at the bare root. It is resolved through `findActiveServiceId`,
- * the lookup the board's own reads make, because this read used to take the
- * first row unconditionally — and with a second service in the database the
- * header described one service while the canvas drew another. One resolver is
- * what makes them agree. Its settled id is cached and shared in flight, so the
- * lookup adds no `services` query to the ones the canvas already made.
+ * The service is the caller's to name — the active one, from the store, at
+ * a surface root. This read used to take the first row by `created_at`
+ * unconditionally, and with a second service in the database the header
+ * described one service while the canvas drew another; then it resolved the
+ * slug itself, beside the board's reads. Now neither resolves anything: the
+ * provider does, once, and both are handed the same id.
  *
  * Then one round-trip, not three in a row. The service row, its counts and its
  * business model each need only the id and none needs another, so they go out
@@ -72,26 +70,24 @@ export type ServiceSpec = {
  * The key carries the answer for the same reason. `staleTime` is infinite, so
  * one key would serve an author the result their signed-out first paint cached
  * and the business model would stay missing until a mutation or a reload. Both
- * keys begin `service-spec:first`, which is the prefix `ServicePanel`
- * invalidates.
+ * keys begin `service-spec:<id>`, which is the prefix the service-spec writes
+ * invalidate.
  *
- * And there is no key at all until the session is known. `canReadPrivate` is
- * false while the session is still loading, so a read keyed then is the
- * anonymous one, and an author paid for it and then for the signed-in one.
- * `getSession()` resolves from storage; the wait is not a network wait.
+ * And there is no key at all until the session is known, nor until a service
+ * is. `canReadPrivate` is false while the session is still loading, so a read
+ * keyed then is the anonymous one, and an author paid for it and then for the
+ * signed-in one. `getSession()` resolves from storage; the wait is not a
+ * network wait.
  */
-export function useServiceSpec(): QueryResult<ServiceSpec | null> {
+export function useServiceSpec(serviceId: string | null): QueryResult<ServiceSpec | null> {
   const { canReadPrivate, isLoading: sessionLoading } = useSupabase()
   const fallback = useCallback(() => null, [])
 
   return useSupabaseQuery<ServiceSpec | null>(
-    sessionLoading
-      ? null
-      : queryKeys.serviceSpec.of(canReadPrivate),
+    sessionLoading || !serviceId ? null : queryKeys.serviceSpec.of(serviceId, canReadPrivate),
     async (client, signal) => {
-      const serviceId = await awaitOrAbort(findActiveServiceId(client), signal)
+      // Unreachable — the key is null without a service — but a type-level fact.
       if (!serviceId) return null
-
       const [serviceResponse, phaseResponse, modelResponse] = await Promise.all([
         client
           .from('services')

@@ -29,7 +29,7 @@ Two conditions send state here, and either one is sufficient:
 
 The live instances each carry their reason in their own header comment:
 `agent/placement.ts`, `agent/panelState.ts`, `agent/settings.ts`,
-`agent/sessions.ts`, `contexts/activeServiceStore.ts`,
+`agent/sessions.ts`, `contexts/activeServiceStore.ts`, `contexts/activeService.ts`,
 `contexts/canvasModeContext.ts`, `contexts/shellBootStore.ts`,
 `contexts/sidebarCollapsedContext.ts`, `lib/canvasChromeResize.ts`,
 `lib/compareReviewStore.ts`, `lib/openCellStore.ts`, `lib/authoringSession.ts`,

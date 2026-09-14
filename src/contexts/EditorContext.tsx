@@ -20,6 +20,8 @@ import {
   type NavItem,
   type SlideViewType,
 } from '@/types/nav'
+import { useActiveServiceId } from '@/contexts/activeService'
+import { useActiveService } from '@/contexts/ActiveServiceContext'
 
 type EditorContextValue = {
   view: EditorView
@@ -362,7 +364,11 @@ type EditorProviderProps = {
 }
 
 export function EditorProvider({ children }: EditorProviderProps) {
-  const { slides: dbSlides, loading, error, configured } = useServicePhases()
+  // The service is resolved once, above, and handed down: this read never
+  // resolves a slug for itself.
+  const activeServiceId = useActiveServiceId()
+  const { loading: resolving } = useActiveService()
+  const { slides: dbSlides, loading, error, configured } = useServicePhases(activeServiceId)
   const { sample } = useDeploymentConfig()
   const fallbackSlides = sample.nav
 
@@ -500,7 +506,11 @@ export function EditorProvider({ children }: EditorProviderProps) {
     [slides, clearLayoutOverride],
   )
 
-  const slidesLoading = configured && loading && dbSlides.length === 0
+  // In flight while the roster resolves the service, and then while its
+  // phases load. A service that never resolves — an empty database, a slug
+  // no service carries — is not loading: it is a workspace with nothing in it.
+  const slidesLoading =
+    configured && (resolving || (activeServiceId !== null && loading)) && dbSlides.length === 0
   const slidesError = configured ? error : null
 
   const value = useMemo(

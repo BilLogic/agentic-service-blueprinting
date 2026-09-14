@@ -27,9 +27,6 @@ function family(name: string): Family {
   return { prefix: `${name}:`, of: (id) => `${name}:${id}` }
 }
 
-/** The one-service default a scoped read falls back to when no id is known. */
-export const FIRST_SERVICE = 'first'
-
 export const queryKeys = {
   // Whole-deployment reads: one key each.
   activeService: 'active-service',
@@ -40,15 +37,16 @@ export const queryKeys = {
   valueAudiences: 'value-audiences',
   touchpointRegistryTones: 'touchpoint-registry-tones',
 
-  // Per-service reads, keyed by the service or by the one-service default.
+  // Per-service reads, keyed by the resolved active service's id. A read
+  // with no id builds no key and fetches nothing.
   servicePhases: family('service-phases'),
   slices: family('slices'),
   serviceEntityExamples: family('service-entity-examples'),
   /** The service's spec row, read under two keys: the public one and the privileged one. */
   serviceSpec: {
     prefix: 'service-spec:',
-    of: (privateRead: boolean) =>
-      privateRead ? `service-spec:${FIRST_SERVICE}:private` : `service-spec:${FIRST_SERVICE}`,
+    of: (serviceId: string, privateRead: boolean) =>
+      privateRead ? `service-spec:${serviceId}:private` : `service-spec:${serviceId}`,
   },
 
   // Per-row reads.

@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useViewState } from '@/contexts/viewStateStore'
 import { useSlices, type SliceListEntry } from '@/hooks/useSlices'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
+import { useActiveServiceId } from '@/contexts/activeService'
 
 function slicesContainingCell(
   slices: readonly SliceListEntry[],
@@ -39,7 +40,7 @@ type CellInSlicesFooterProps = {
  * open the slice tab.
  */
 export function CellInSlicesFooter({ cellId }: CellInSlicesFooterProps) {
-  const slices = useSlices()
+  const slices = useSlices(useActiveServiceId())
   const { openTab } = useViewState()
 
   if (!cellId) return null

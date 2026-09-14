@@ -23,7 +23,7 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { FloatingSidebarNavbar } from '@/components/editor/EditorChrome'
 import { ServiceOverviewHeader } from '@/components/editor/ServiceOverviewHeader'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -36,6 +36,7 @@ import type { NavItem } from '@/types/nav'
 import { ORG_NAME } from '@/config'
 import { coverContent } from '@/content/coverContent'
 import { QUERY_DEFAULTS } from '@/lib/queryClient'
+import { setActiveService } from '@/contexts/activeService'
 
 const supabase = vi.hoisted(() => ({ client: null as unknown, calls: 0 }))
 
@@ -157,8 +158,13 @@ async function mountWithService() {
   return client
 }
 
+// The service is resolved once, at the root, into a store the hook is handed
+// from; here that root is stood in for by setting the store directly.
+beforeEach(() => setActiveService({ id: 'svc-1', slug: 'our-service' }))
+
 afterEach(() => {
   cleanup()
+  setActiveService(null)
   // The store is a module singleton — leaving it collapsed would hand the
   // next test a bar that renders nothing for a reason it never set.
   setSidebarCollapsedState({ collapsed: false })

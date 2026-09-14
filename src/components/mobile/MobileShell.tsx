@@ -36,6 +36,7 @@ import {
 import { makeMobileAgentBridge } from '@/components/mobile/mobileAgentBridge'
 import { getMainSlides, getSlideDisplayLabel, getSubslides } from '@/types/nav'
 import type { NavItem } from '@/types/nav'
+import { useActiveServiceId } from '@/contexts/activeService'
 
 /**
  * The phone's shell — the view-only visitor experience, for every tier.
@@ -98,7 +99,7 @@ export function MobileShell() {
   const [navSurface, setNavSurface] = useState<MobileNavSurface>('blueprints')
   const [agentOpen, setAgentOpen] = useState(false)
 
-  const slicesQuery = useSlices()
+  const slicesQuery = useSlices(useActiveServiceId())
   const slices =
     slicesQuery.status === 'ready'
       ? slicesQuery.data
