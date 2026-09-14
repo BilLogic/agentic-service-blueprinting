@@ -2,7 +2,6 @@ import {
   useEffect,
   useRef,
   useState,
-  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
 } from 'react'
@@ -67,6 +66,13 @@ import {
   releasePointerCapture,
 } from '@/lib/pointerGestures'
 import { cn } from '@/lib/utils'
+import {
+  chromeAnchorStyle,
+  clientToLocal,
+  getLayerScale,
+  pointsToPath,
+} from '@/components/editor/canvasAnnotationGeometry'
+import { useFocusTextarea } from '@/hooks/useFocusTextarea'
 
 type DraftPen = {
   type: 'pen'
@@ -116,90 +122,11 @@ type ResizeState = {
 
 const DRAG_THRESHOLD = 3
 
-/** Keep annotation chrome at a constant screen size as the canvas zooms. */
-function chromeScreenScale(zoom: number): number {
-  return 1 / Math.max(zoom, 0.05)
-}
-
-function chromeAnchorStyle(
-  x: number,
-  y: number,
-  width: number,
-  zoom: number,
-  gap = 12,
-): CSSProperties {
-  const scale = chromeScreenScale(zoom)
-  return {
-    left: x + width / 2,
-    top: Math.max(0, y - gap),
-    transform: `translate(-50%, -100%) scale(${scale})`,
-    transformOrigin: 'center bottom',
-  }
-}
-
 const RESIZE_CURSOR: Record<ResizeHandle, string> = {
   nw: 'nwse-resize',
   ne: 'nesw-resize',
   sw: 'nesw-resize',
   se: 'nwse-resize',
-}
-
-/** Focus a textarea after mount/edit — deferred past pointerup / chrome mount. */
-function useFocusTextarea(active: boolean) {
-  const ref = useRef<HTMLTextAreaElement>(null)
-  useEffect(() => {
-    if (!active) return
-    let cancelled = false
-    const focus = () => {
-      if (cancelled) return
-      const el = ref.current
-      if (!el) return
-      el.focus({ preventScroll: true })
-      const len = el.value.length
-      el.setSelectionRange(len, len)
-    }
-    // Double rAF + timeout: first paint, then after pointer capture releases.
-    const frame = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        focus()
-        window.setTimeout(focus, 0)
-      })
-    })
-    return () => {
-      cancelled = true
-      cancelAnimationFrame(frame)
-    }
-  }, [active])
-  return ref
-}
-
-function clientToLocal(
-  el: HTMLElement,
-  clientX: number,
-  clientY: number,
-): CanvasPoint {
-  const rect = el.getBoundingClientRect()
-  const scaleX = rect.width / Math.max(el.offsetWidth, 1)
-  const scaleY = rect.height / Math.max(el.offsetHeight, 1)
-  return {
-    x: (clientX - rect.left) / scaleX,
-    y: (clientY - rect.top) / scaleY,
-  }
-}
-
-/** Live CSS scale of the annotation layer (more reliable than React zoom state). */
-function getLayerScale(el: HTMLElement): number {
-  const rect = el.getBoundingClientRect()
-  return Math.max(rect.width / Math.max(el.offsetWidth, 1), 0.05)
-}
-
-function pointsToPath(points: CanvasPoint[]): string {
-  if (points.length === 0) return ''
-  return points
-    .map((point, index) =>
-      index === 0 ? `M ${point.x} ${point.y}` : `L ${point.x} ${point.y}`,
-    )
-    .join(' ')
 }
 
 function ColorSwatch({
