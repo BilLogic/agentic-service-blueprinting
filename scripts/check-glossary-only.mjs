@@ -60,13 +60,12 @@
  *
  * Run: node scripts/check-glossary-only.mjs   (also: npm run check:glossary)
  */
-import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { repoConfig } from './repo-config.mjs'
+import { sweep as sweepSubject } from './sweep.mjs'
 
-const REPO_ROOT = resolve(new URL('..', import.meta.url).pathname)
 
 /** Where a table of column names belongs instead of the glossary. */
 const INTERFACE_MAP = repoConfig.interfaceMap
@@ -174,8 +173,14 @@ export function findings(text, subject = SUBJECT) {
   return out
 }
 
-export function sweep(root = REPO_ROOT, subject = SUBJECT) {
-  const text = readFileSync(join(root, subject), 'utf8')
+export function sweep(root = process.cwd(), subject = SUBJECT) {
+  // The glossary is prose, so its bytes come from the `docs` subject rather
+  // than from a path this file joins: a root document is the first thing that
+  // sweep lists, and a glossary that is not there is a subject nobody measured
+  // rather than a clean run.
+  const prose = sweepSubject({ subject: 'docs', root, what: 'document' })
+  const text = prose.read(subject)
+  if (text === null) throw new Error(`no ${subject} under ${prose.base}: there is no glossary here`)
   const terms = text.split('\n').filter((line) => TERM_ROW.test(line)).length
   return { failures: findings(text, subject), terms, chars: text.length }
 }

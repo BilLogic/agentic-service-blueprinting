@@ -1,30 +1,28 @@
 /**
  * The path-stability check, and the list it holds.
  *
- * The check itself is one `existsSync` per line, so what is worth testing is
- * the list and the failure: that every imported path is really there right
- * now, that a moved file is reported by name rather than counted, and that
- * the list cannot quietly acquire a path outside the interface it guards.
+ * The check itself is one lookup per line against a sweep of the commit, so
+ * what is worth testing is the list and the failure: that every imported path is
+ * really there right now, that a moved file is reported by name rather than
+ * counted, and that the list cannot quietly acquire a path outside the interface
+ * it guards.
  *
  * Run: npm test
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { existsSync } from 'node:fs'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import {
   CONSUMER_IMPORTS,
   absences,
-  trackedPaths,
+  interfaceSweep,
 } from '../check-reference-paths.mjs'
 
-const ROOT = fileURLToPath(new URL('../..', import.meta.url))
-
-test('every path the deployment imports exists and is tracked', () => {
-  const tracked = new Set(trackedPaths())
+test('every path the deployment imports exists and the commit carries it', () => {
+  // The sweep hands both halves in: its `files` are the interface as a commit
+  // would carry it, its `read` answers whether the file is there.
+  const walk = interfaceSweep()
   assert.deepEqual(
-    absences(CONSUMER_IMPORTS, tracked, (path) => existsSync(join(ROOT, path))),
+    absences(CONSUMER_IMPORTS, new Set(walk.files), (path) => walk.read(path) !== null),
     [],
   )
 })

@@ -26,12 +26,22 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { REPOSITORY_ONLY, REPOSITORY_ONLY_SCRIPTS } from '../repository-only.mjs'
+import { sweep } from '../sweep.mjs'
 
-const REPO_ROOT = process.cwd()
+/**
+ * The repository this suite runs over, from its own location.
+ *
+ * A CHECK may not do this — it is handed a root, because its own location says
+ * nothing about which tree it is checking. A test may: it is a fact about this
+ * repository, run from this repository, and `process.cwd()` was only ever right
+ * because the runner happens to start there.
+ */
+const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url))
 
 /**
  * The resolver itself, and the two files that describe the arrangement.
@@ -39,12 +49,16 @@ const REPO_ROOT = process.cwd()
  * `sweep.mjs` is the one module that answers where a subject is, and
  * `app-source.mjs` is the older statement of the application's root that
  * now delegates to it — neither can be asked to import itself. The other two
- * hold the lists this test reads.
+ * spell the application's root as the PATTERN they look for, or hold the list
+ * this test reads.
  */
 const NOT_A_SWEEP = new Set([
   'scripts/app-source.mjs',
   'scripts/sweep.mjs',
   // This fence: it spells the application's root in the pattern it looks for.
+  // `roots-stated.mjs` does the same — `src${suffix}` is the pair it reports on,
+  // not a path it reads — and it asks the sweep for the `scripts` subject,
+  // which is not a claim about where the application is.
   'scripts/tests/every-sweep-knows-what-it-measures.test.mjs',
   'scripts/roots-stated.mjs',
   'scripts/repository-only.mjs',
@@ -82,19 +96,20 @@ const FIXTURE_ONLY = new Map([
   ],
 ])
 
-/** Every script, including the suites — `FIXTURE_ONLY` names the exceptions. */
+/**
+ * Every script, including the suites — `FIXTURE_ONLY` names the exceptions.
+ *
+ * The `scripts` subject of `sweep.mjs`, not a walk of its own: this fence is
+ * the last thing in the tree that should be resolving a root and listing a
+ * directory by hand. The subject is wider than the walk it replaced — it
+ * carries `skills/<skill>/scripts/` as well, where a model runs Python against
+ * a live database, and those two files are IN because they pass: neither names
+ * a path into the application, and a script that starts naming one there has
+ * the same defect as one under `scripts/`. It also carries the `.sh` suites,
+ * which the old extension list dropped.
+ */
 export function scriptsUnder(root) {
-  const found = []
-  const walk = (dir) => {
-    for (const entry of readdirSync(dir).sort()) {
-      if (entry.startsWith('.')) continue
-      const path = join(dir, entry)
-      if (statSync(path).isDirectory()) walk(path)
-      else if (/\.(?:mjs|cjs|js|mts|cts|ts|py)$/.test(entry)) found.push(path)
-    }
-  }
-  walk(join(root, 'scripts'))
-  return found.map((path) => relative(root, path).split('\\').join('/')).sort()
+  return sweep({ subject: 'scripts', root, what: 'script' }).files
 }
 
 /** Comments blanked, newlines kept, so a docblock naming a path is not a use. */
@@ -172,7 +187,9 @@ test('every script naming an application path either resolves it or says it is t
     if (NOT_A_SWEEP.has(script) || FIXTURE_ONLY.has(script)) continue
     if (REPOSITORY_ONLY_SCRIPTS.includes(script)) continue
     const code = readFileSync(join(REPO_ROOT, script), 'utf8')
-    const paths = applicationPathsIn(code, script.endsWith('.py'))
+    // `#` is a comment in Python and in shell alike, and the subject carries
+    // both; a docblock naming a path is not a use in either.
+    const paths = applicationPathsIn(code, /\.(?:py|sh)$/.test(script))
     if (paths.length === 0 || resolvesTheApplication(code)) continue
     unresolved.push(`${script}: ${[...new Set(paths)].join(', ')}`)
   }
@@ -190,18 +207,19 @@ test('every script naming an application path either resolves it or says it is t
 })
 
 test('the sweep read scripts, and enough of them to mean something', () => {
-  // The shape the assertion above cannot see from the inside: a walk that
-  // stopped descending reports no unresolved script, which is exactly what a
-  // clean tree reports.
+  // The shape the assertion above cannot see from the inside: a sweep that
+  // came back short reports no unresolved script, which is exactly what a
+  // clean tree reports. The sweep itself refuses an empty subject; these
+  // assertions are about a subject that is there and is not all of it.
   const scripts = scriptsUnder(REPO_ROOT)
   assert.ok(scripts.length > 20, `only ${scripts.length} scripts in the subject`)
   assert.ok(
     scripts.includes('scripts/app-source.mjs'),
-    'the walk did not reach scripts/app-source.mjs, so it is not reading scripts/',
+    'the sweep did not return scripts/app-source.mjs, so it is not reading scripts/',
   )
   assert.ok(
     scripts.includes('scripts/tests/retired-copy.test.mjs'),
-    'the walk did not reach the suites, which is the tree it used to skip whole',
+    'the sweep did not reach the suites, which is the tree it used to skip whole',
   )
 })
 

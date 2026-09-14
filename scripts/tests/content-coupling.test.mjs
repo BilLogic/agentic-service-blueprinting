@@ -57,7 +57,12 @@ test('a listing every predicate rejects is refused, not swept as clean', () => {
     mkdirSync(join(root, 'supabase'), { recursive: true })
     writeFileSync(join(root, 'supabase/seed.sql'), 'select 1;\n')
     git('add', '-A')
-    assert.throws(() => scannedFiles(root), /no scanned file under .*: git listed 1 path/)
+    // The refusal is the sweep's now — `sweep.mjs`'s `commit` subject — and it
+    // names what this check was looking for rather than the subject's own name.
+    assert.throws(
+      () => scannedFiles(root),
+      /no shared file a commit would carry under .*: this walk has no subject/,
+    )
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
@@ -218,7 +223,9 @@ test('an allowlist entry exempts one file and one value, and nothing else', () =
 
 test('an allowance nothing matches any more is itself a failure', () => {
   const allowed = [{ file: 'src/gone.ts', match: 'Tutor', why: 'the file was deleted' }]
-  assert.deepEqual(staleAllowances([], allowed), allowed)
+  // The sweep is handed in: a walk with nothing in it is a tree that has no
+  // site for any allowance, so every entry is stale.
+  assert.deepEqual(staleAllowances({ files: [], read: () => null }, allowed), allowed)
 })
 
 test('every pattern says why it exists, because the failure report prints it', () => {

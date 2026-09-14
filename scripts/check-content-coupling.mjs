@@ -20,8 +20,14 @@
  * ── The subject ────────────────────────────────────────────────────────────
  *
  * EVERYTHING A COMMIT WOULD CARRY — tracked plus untracked files git would not
- * ignore, the subject `check-standalone.mjs` settled in #182 and the subject
- * `commit-subject.mjs` now describes for both sweeps in one place.
+ * ignore, the subject `check-standalone.mjs` settled in #182 and the `commit`
+ * subject of `sweep.mjs` now answers for every check that wants it. That header
+ * holds the listing, the reason the untracked files are in it (#180, #181), the
+ * vanished-file rule and the refusal of an empty subject; what is left to each
+ * sweep is the narrowing, and the two narrow differently. This one skips the
+ * BINARY payloads the word-grep skips plus `svg`, which carries no id, cast or
+ * asset path; it skips FIXTURES, which the word-grep does not; and it names the
+ * remaining exclusions one at a time below.
  *
  * IT USED TO BE NARROWED BY DIRECTORY, over a list of seven roots — `src/`,
  * `skills/`, `agents/`, `references/`, `evals/`, `scripts/`, `docs/` — that no
@@ -138,10 +144,8 @@
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { commitFiles } from './commit-subject.mjs'
-import { readListed } from './read-listed.mjs'
+import { sweep } from './sweep.mjs'
 
-const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
 /** The namespace `fid()` in scripts/generate_sample_blueprint.mjs mints. */
 export const SAMPLE_ID_PREFIX = 'f0000000-0000-4000-8000-'
@@ -243,13 +247,24 @@ export function isScanned(path) {
 }
 
 /**
- * Every file the sweep reads: what a commit would carry, minus the exclusions
- * above. `commit-subject.mjs` holds the listing and the empty-sweep refusal,
- * so the subject this sweep and the word-grep share is stated in one place and
- * only the narrowing is each sweep's own.
+ * The sweep this check reads: the `commit` subject of `sweep.mjs`, narrowed by
+ * `isScanned`. The sweep refuses an empty result, which either step between
+ * `git ls-files` and this subject can produce — the listing, and a predicate
+ * that can reject every path in it — and either used to print
+ * `no deployment content in 0 shared files` in the usual green.
  */
-export function scannedFiles(root = REPO_ROOT) {
-  return commitFiles(root, isScanned)
+export function scannedSweep(root = process.cwd()) {
+  return sweep({
+    subject: 'commit',
+    root,
+    where: isScanned,
+    what: 'shared file a commit would carry',
+  })
+}
+
+/** Every file the sweep reads: what a commit would carry, minus the exclusions. */
+export function scannedFiles(root = process.cwd()) {
+  return scannedSweep(root).files
 }
 
 /**
@@ -301,11 +316,16 @@ export function isAllowed(path, match, allowed = ALLOWED) {
   return allowed.some((entry) => entry.file === path && entry.match === match)
 }
 
-/** Every coupling in the tree, allowlisted sites removed. */
-export function findings(allowed = ALLOWED) {
+/**
+ * Every coupling in the tree, allowlisted sites removed. `walk` is the sweep to
+ * read, so a caller that has already asked for one reads exactly the subject it
+ * counted; a path the listing named and the tree no longer has comes back null
+ * from the sweep's `read` and is skipped, and every other read failure throws.
+ */
+export function findings(allowed = ALLOWED, walk = scannedSweep()) {
   const out = []
-  for (const path of scannedFiles()) {
-    const source = readListed(resolve(REPO_ROOT, path))
+  for (const path of walk.files) {
+    const source = walk.read(path)
     if (source === null) continue // listed, then gone before this read
     if (source.includes('\0')) continue // binary without a listed extension
     for (const hit of couplingsIn(source)) {
@@ -316,11 +336,11 @@ export function findings(allowed = ALLOWED) {
   return out
 }
 
-/** Allowlist entries the tree no longer has a site for. */
-export function staleAllowances(files = scannedFiles(), allowed = ALLOWED) {
+/** Allowlist entries the tree no longer has a site for, over a handed-in sweep. */
+export function staleAllowances(walk = scannedSweep(), allowed = ALLOWED) {
   const live = new Set()
-  for (const path of files) {
-    const source = readListed(resolve(REPO_ROOT, path))
+  for (const path of walk.files) {
+    const source = walk.read(path)
     if (source === null) continue // listed, then gone before this read
     for (const hit of couplingsIn(source)) live.add(`${path}\0${hit.match}`)
   }
@@ -328,13 +348,13 @@ export function staleAllowances(files = scannedFiles(), allowed = ALLOWED) {
 }
 
 function main() {
-  const files = scannedFiles()
-  const problems = findings()
-  const stale = staleAllowances(files)
+  const walk = scannedSweep()
+  const problems = findings(ALLOWED, walk)
+  const stale = staleAllowances(walk)
 
   if (problems.length === 0 && stale.length === 0) {
     console.log(
-      `no deployment content in ${files.length} shared files a commit would carry` +
+      `no deployment content in ${walk.files.length} shared files a commit would carry` +
         ` — ${PATTERNS.length} patterns, ${ALLOWED.length} allowed`,
     )
     return

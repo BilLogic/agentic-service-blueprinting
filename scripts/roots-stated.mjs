@@ -16,6 +16,16 @@
  * there — a sixth statement is found the moment it is written, and a statement
  * that stops agreeing is found the moment it stops.
  *
+ * WHERE THE SUBJECT COMES FROM is two answers, and only one of them is a walk.
+ * This helper no longer walks anything: the code is the `scripts` subject of
+ * `sweep.mjs`, the one module that answers "give me the files for this subject"
+ * and states what a tree with no scripts means; the build's own configuration
+ * is a named list of four, because at the root the subject really is closed —
+ * the toolchain loads those four by fixed name, and a fifth is a toolchain
+ * change rather than a file that appeared. Both are read through the sweep, so
+ * a file this tree does not have is answered by the vanished-file rule stated
+ * once in `sweep.mjs` instead of by an `existsSync` here.
+ *
  * WHAT COUNTS AS A STATEMENT: a path under the package's own `src`, IN CODE.
  * A docblock explaining the arrangement names both roots in prose and in
  * whichever order the sentence wanted; it resolves nothing, and holding it to
@@ -29,8 +39,7 @@
  * the order is the rule, because the first root that exists wins and a pair in
  * the other order is a different answer on a tree that has both.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { sweep } from './sweep.mjs'
 
 /** The package a deployment reads the application out of. */
 export const APP_PACKAGE = 'agentic-service-blueprinting'
@@ -98,30 +107,57 @@ export function withoutComments(code) {
 }
 
 /**
- * The files that RESOLVE the roots: the build configuration and the checks.
+ * The build's own configuration: the four files the BUILD names, not a walk.
+ *
+ * The root is the one place where the subject is a closed list and naming it
+ * is the honest answer. These four are not "whatever is at the root" — they
+ * are the files the toolchain loads by fixed name, and the only way a fifth
+ * appears is a toolchain change, which is a change to this list. The walk this
+ * replaced swept every root-level `.json`/`.ts`/`.js` and then had to subtract
+ * the lockfile, which named the package as a DEPENDENCY — a different sentence
+ * about a different thing — so the wide sweep bought nothing but an exception.
+ * A file the tree does not have is simply not read: `sweep`'s `read` answers
+ * null for it, so this helper never decides for itself what a missing file
+ * means.
+ */
+const BUILD_CONFIGS = ['vite.config.ts', 'tsconfig.json', 'tsconfig.app.json', 'tsconfig.node.json']
+
+/**
+ * This repository's executable code, as `sweep.mjs` lists it, minus two corners.
  *
  * Not `scripts/tests/`. A test asserts ABOUT the statements — it quotes them,
  * in regular expressions and in fixtures whose roots are `/repo` — and quoting
- * a fact is not stating it. A lockfile is excluded for the same reason it is
- * never read by hand: it names the package as a dependency, which is a
- * different sentence about a different thing.
+ * a fact is not stating it.
+ *
+ * Not `skills/<skill>/scripts/` either, which the subject also carries: those
+ * are Python, and `withoutComments` below is a JAVASCRIPT stripper — it reads
+ * `#` as code — so a packaged path named in a Python comment would be reported
+ * as a statement. The exclusion is about this file's reader, not about whether
+ * a skill's script could ever state the pair.
+ */
+const statedIn = (path) => !path.startsWith('scripts/tests/') && path.startsWith('scripts/')
+
+/** The sweep this helper reads through: the `scripts` subject of `repoRoot`. */
+function sweptScripts(repoRoot) {
+  return sweep({
+    subject: 'scripts',
+    root: repoRoot,
+    where: statedIn,
+    what: 'script that could state where the application is',
+  })
+}
+
+/**
+ * The files that RESOLVE the roots: the build configuration and the checks.
+ *
+ * Absolute paths, sorted, as before. The build's four are named whether or not
+ * this tree has each — a tree missing one states nothing there, and
+ * `statementsOfTheRoots` reads through the sweep, which says so by answering
+ * null.
  */
 export function filesThatResolveTheRoots(repoRoot) {
-  const found = readdirSync(repoRoot)
-    .filter((name) => /\.(?:json|ts|js|mjs|cjs|mts|cts)$/.test(name))
-    .filter((name) => !/(?:package-lock|npm-shrinkwrap)\.json$/.test(name))
-    .map((name) => join(repoRoot, name))
-  const scripts = join(repoRoot, 'scripts')
-  const walk = (dir) => {
-    for (const entry of readdirSync(dir).sort()) {
-      if (entry === 'tests' || entry.startsWith('.')) continue
-      const path = join(dir, entry)
-      if (statSync(path).isDirectory()) walk(path)
-      else if (/\.(?:mjs|mts|cjs|js|ts)$/.test(entry)) found.push(path)
-    }
-  }
-  walk(scripts)
-  return found.sort()
+  const swept = sweptScripts(repoRoot)
+  return [...BUILD_CONFIGS, ...swept.files].map((path) => swept.locate(path)).sort()
 }
 
 /**
@@ -130,9 +166,12 @@ export function filesThatResolveTheRoots(repoRoot) {
  * @returns {{ file: string, packaged: string, repository: string, ordered: boolean }[]}
  */
 export function statementsOfTheRoots(repoRoot) {
+  const swept = sweptScripts(repoRoot)
   const statements = []
-  for (const path of filesThatResolveTheRoots(repoRoot)) {
-    const text = withoutComments(readFileSync(path, 'utf8'))
+  for (const file of [...BUILD_CONFIGS, ...swept.files].sort()) {
+    const source = swept.read(file)
+    if (source === null) continue
+    const text = withoutComments(source)
     for (const match of text.matchAll(PACKAGED)) {
       const after = text.slice(match.index + match[0].length)
       const stop = after.search(PATH_END)
@@ -143,7 +182,9 @@ export function statementsOfTheRoots(repoRoot) {
       const before = text.slice(0, match.index)
       const ordered = before.split(repository).length > 1
       statements.push({
-        file: relative(repoRoot, path).split('\\').join('/'),
+        // Already repo-relative with forward slashes: the sweep prints its
+        // files the way a finding does.
+        file,
         packaged: `${match[0]}${suffix}`,
         repository,
         ordered,

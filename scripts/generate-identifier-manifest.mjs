@@ -21,14 +21,13 @@
  * by bare filename across every references/ directory, so two files that share
  * one basename make the resolution order the contract.
  */
-import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs'
-import { basename, join, relative, resolve } from 'node:path'
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { basename, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { sweep } from './sweep.mjs'
 import { toolSources } from './tool-sources.mjs'
 
-const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 export const MANIFEST_PATH = 'identifiers.json'
 
 /** `name:` out of a markdown frontmatter block, or null when there is none. */
@@ -39,36 +38,21 @@ export function frontmatterName(source) {
   return name ? name[1].trim() : null
 }
 
-/** Directories named `references` anywhere in the plugin tree, depth-first. */
-function referenceDirs(root) {
-  const found = []
-  const walk = (dir) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue
-      const full = join(dir, entry.name)
-      if (entry.name === 'references') found.push(full)
-      else walk(full)
-    }
-  }
-  if (existsSync(join(root, 'references'))) found.push(join(root, 'references'))
-  if (existsSync(join(root, 'skills'))) walk(join(root, 'skills'))
-  return found
-}
-
 /**
- * Every file a consumer can name. Markdown is addressable through
- * `read_reference` by basename-without-extension; JSON schemas are addressed
- * by full filename, because that is how the skills cite them.
+ * Every file a consumer can name, out of the `references` SUBJECT of
+ * `sweep.mjs` — `references/` and every `skills/<skill>/references/`, every
+ * file, which is exactly the surface this walked for itself before. Markdown is
+ * addressable through `read_reference` by basename-without-extension; JSON
+ * schemas are addressed by full filename, because that is how the skills cite
+ * them, and the subject holds both for that reason.
  */
 function collectReferences(root) {
   const docs = []
   const schemas = []
-  for (const dir of referenceDirs(root)) {
-    for (const file of readdirSync(dir).sort()) {
-      const path = relative(root, join(dir, file)).replaceAll('\\', '/')
-      if (file.endsWith('.md')) docs.push({ name: basename(file, '.md'), path })
-      else if (file.endsWith('.json')) schemas.push({ name: file, path })
-    }
+  for (const path of sweep({ subject: 'references', root, what: 'reference file' }).files) {
+    const file = basename(path)
+    if (file.endsWith('.md')) docs.push({ name: basename(file, '.md'), path })
+    else if (file.endsWith('.json')) schemas.push({ name: file, path })
   }
   return { docs, schemas }
 }
@@ -86,35 +70,60 @@ export function collisions(entries) {
     .map(([name, paths]) => ({ name, paths }))
 }
 
+/**
+ * The prose these two read is the `docs` SUBJECT of `sweep.mjs` — this
+ * repository's markdown, `agents/` and `skills/` among the folders it names —
+ * so neither of them lists a directory for itself any more. `where` narrows the
+ * subject to the files each is about, and the sweep refuses an empty result:
+ * a tree with no `agents/` used to hand back `[]`, and a manifest generated
+ * there would have declared that this plugin dispatches no sub-agent.
+ *
+ * @param {string} root
+ * @param {(path: string) => boolean} where
+ * @param {string} what
+ */
+function sweptMarkdown(root, where, what) {
+  return sweep({ subject: 'docs', root, where, what })
+}
+
+/** The markdown directly under `dir`, named by its frontmatter where it has one. */
 function markdownNames(root, dir) {
-  const full = join(root, dir)
-  if (!existsSync(full)) return []
-  return readdirSync(full)
-    .filter((file) => file.endsWith('.md'))
-    .sort()
-    .map((file) => {
-      const declared = frontmatterName(readFileSync(join(full, file), 'utf8'))
-      return { name: declared ?? basename(file, '.md'), path: `${dir}/${file}` }
-    })
+  const swept = sweptMarkdown(
+    root,
+    (path) => path.startsWith(`${dir}/`) && !path.slice(dir.length + 1).includes('/'),
+    `markdown under ${dir}/`,
+  )
+  return swept.files.map((path) => {
+    const declared = frontmatterName(swept.read(path) ?? '')
+    return { name: declared ?? basename(path, '.md'), path }
+  })
 }
 
+/**
+ * The skills, one `SKILL.md` each. The list of skills is DERIVED from the swept
+ * markdown rather than read off the directory: a skill is a folder with a body
+ * the loader can read, so the bodies are the roster.
+ */
 function skillNames(root) {
-  const full = join(root, 'skills')
-  if (!existsSync(full)) return []
-  return readdirSync(full, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort()
-    .map((dir) => {
-      const skill = join(full, dir, 'SKILL.md')
-      const declared = existsSync(skill)
-        ? frontmatterName(readFileSync(skill, 'utf8'))
-        : null
-      return { name: declared ?? dir, path: `skills/${dir}/SKILL.md` }
-    })
+  const swept = sweptMarkdown(
+    root,
+    (path) => /^skills\/[^/]+\/SKILL\.md$/.test(path),
+    'skill body under skills/',
+  )
+  return swept.files.map((path) => {
+    const declared = frontmatterName(swept.read(path) ?? '')
+    return { name: declared ?? path.split('/')[1], path }
+  })
 }
 
-/** Hook names are the event plus the script the event runs. */
+/**
+ * Hook names are the event plus the script the event runs.
+ *
+ * The one list here that names no subject: `hooks/hooks.json` is a single file
+ * addressed by path rather than a tree to list, and it is JSON, so no prose
+ * sweep covers it. Nothing is walked, so there is nothing for a subject to
+ * answer — the events come out of the file's own contents.
+ */
 function hookNames(root) {
   const file = join(root, 'hooks/hooks.json')
   if (!existsSync(file)) return []
@@ -174,7 +183,7 @@ function canvasReferenceNames(root) {
   return names
 }
 
-export function buildManifest(root = REPO_ROOT) {
+export function buildManifest(root = process.cwd()) {
   const { docs, schemas } = collectReferences(root)
   const clashes = collisions(docs).concat(collisions(schemas))
   if (clashes.length > 0) {
@@ -204,7 +213,7 @@ export function buildManifest(root = REPO_ROOT) {
 
 function main() {
   const check = process.argv.includes('--check')
-  const target = join(REPO_ROOT, MANIFEST_PATH)
+  const target = join(process.cwd(), MANIFEST_PATH)
   const next = `${JSON.stringify(buildManifest(), null, 2)}\n`
   if (!check) {
     writeFileSync(target, next)

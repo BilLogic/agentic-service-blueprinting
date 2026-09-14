@@ -46,9 +46,29 @@ import {
   measure as measureBans,
   verdict as negationVerdict,
 } from '../check-negation-ratchet.mjs'
-import { EXEMPT_SECTION, itemsIn, leadingWord, pointersIn, sweep } from '../check-pointers.mjs'
+import {
+  EXEMPT_SECTION,
+  SUBJECTS,
+  itemsIn,
+  leadingWord,
+  pointersIn,
+  sweep as sweepRouters,
+} from '../check-pointers.mjs'
 
 const ROOT = resolve(new URL('../..', import.meta.url).pathname)
+
+/**
+ * A sink that keeps a fixture's announcements out of this run's annotations.
+ *
+ * Each throwaway repository below is a router and the two or three files the
+ * case needs, so the prose sweep that hands the check its bytes has swept
+ * folders it cannot see and something true to say about them. An annotation
+ * raised by a fixture is one a reader has to learn to ignore.
+ */
+const QUIET = { env: {}, write: () => {}, append: () => {} }
+
+/** The pointer sweep, quietly. */
+const sweep = (root, subjects = SUBJECTS) => sweepRouters(root, subjects, QUIET)
 
 function run(script) {
   const result = spawnSync(process.execPath, [join(ROOT, 'scripts', script)], {

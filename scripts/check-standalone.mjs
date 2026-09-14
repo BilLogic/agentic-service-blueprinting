@@ -19,9 +19,30 @@
  *
  *   node scripts/check-standalone.mjs
  *
- * Scans every tracked text file. Exits 1 naming each file and line, so a
- * reference reintroduced in a comment fails the PR that introduced it rather
- * than the next sweep, months later.
+ * Scans every text file a commit would carry. Exits 1 naming each file and
+ * line, so a reference reintroduced in a comment fails the PR that introduced
+ * it rather than the next sweep, months later.
+ *
+ * ── The subject ────────────────────────────────────────────────────────────
+ *
+ * EVERYTHING A COMMIT WOULD CARRY — the `commit` subject of `sweep.mjs`, which
+ * holds the listing, the reason it takes the untracked files too (#180, #181 —
+ * its header carries the sentence, and the trap it names is why this sweep does
+ * not read the index alone), the vanished-file rule and the empty-subject
+ * refusal. `check-content-coupling.mjs` reads the same subject for the same
+ * deployment's CONTENT — an id, a cast, a scenario, an asset path, which names
+ * nothing and walks past a grep. Two questions, one subject, so the only thing
+ * each script states for itself is what it NARROWS and why.
+ *
+ * WHAT THIS ONE NARROWS. Binary payloads, because there is no line to read out
+ * of one — and the list is one extension shorter than the content sweep's: an
+ * `svg` is read here on purpose, since `unowned` in an icon was one of the
+ * eighteen, and it carries no id, cast or asset path. Fixtures are NOT
+ * narrowed away: a word this check forbids has no excuse for being written
+ * down, so its fixtures are named file by file in `EXCLUDED` below rather than
+ * skipped as a class. Nothing is narrowed by DIRECTORY — a seven-root list no
+ * root-level file could match once left `AGENTS.md`, the always-loaded tier,
+ * outside the subject entirely.
  *
  * ── The patterns, and why each is bounded the way it is ────────────────────
  *
@@ -54,10 +75,8 @@
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { commitFiles } from './commit-subject.mjs'
-import { readListed } from './read-listed.mjs'
+import { sweep } from './sweep.mjs'
 
-const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
 /** Each `test` is applied per line; `label` is what the failure report says. */
 export const PATTERNS = [
@@ -107,15 +126,24 @@ export function isScanned(path) {
 }
 
 /**
- * Every file the sweep reads: what a commit would carry, minus the exclusions
- * above. `commit-subject.mjs` holds the listing, the reason it takes the
- * untracked files too (#180, #181), and the empty-sweep refusal — one
- * description of the subject this sweep shares with
- * `check-content-coupling.mjs`, so the only thing each states for itself is
- * what it narrows and why.
+ * The sweep this check reads: the `commit` subject of `sweep.mjs`, narrowed by
+ * `isScanned`. The sweep refuses an empty result, which is the failure both
+ * steps between `git ls-files` and this subject can produce — the listing
+ * itself, and a predicate that can reject every path it returns — and either of
+ * them used to print the green line below with a `0` in it.
  */
-export function scannedFiles(root = REPO_ROOT) {
-  return commitFiles(root, isScanned)
+export function scannedSweep(root = process.cwd()) {
+  return sweep({
+    subject: 'commit',
+    root,
+    where: isScanned,
+    what: 'scanned file a commit would carry',
+  })
+}
+
+/** Every file the sweep reads: what a commit would carry, minus the exclusions. */
+export function scannedFiles(root = process.cwd()) {
+  return scannedSweep(root).files
 }
 
 /**
@@ -183,18 +211,19 @@ export function violationsIn(source) {
  *
  * A path the listing named and the tree no longer has is skipped, because the
  * listing was taken a moment before the read and `git ls-files` reports the
- * index. Every other read failure throws; `read-listed.mjs` holds that rule
- * and the argument for it. The skip cannot quietly shrink the subject —
- * `standalone.test.mjs` counts what came back.
+ * index. Every other read failure throws; the sweep's `read` applies that rule
+ * — `read-listed.mjs` holds the argument for it — so this walk states it
+ * nowhere. The skip cannot quietly shrink the subject: `standalone.test.mjs`
+ * counts what came back.
  *
- * `files` is the listing to walk, so a caller that has already asked for one
- * — `main` below, which reports its size — walks exactly the subject it
- * counted rather than asking git a second time and hoping for the same answer.
+ * `walk` is the sweep to read, so a caller that has already asked for one —
+ * `main` below, which reports its size — walks exactly the subject it counted
+ * rather than asking git a second time and hoping for the same answer.
  */
-export function violationsUnder(root = REPO_ROOT, files = scannedFiles(root)) {
+export function violationsUnder(root = process.cwd(), walk = scannedSweep(root)) {
   const problems = []
-  for (const path of files) {
-    const source = readListed(resolve(root, path))
+  for (const path of walk.files) {
+    const source = walk.read(path)
     if (source === null) continue // listed, then gone before this read
     if (source.includes('\0')) continue // binary without a listed extension
     for (const hit of violationsIn(source)) problems.push({ path, ...hit })
@@ -203,11 +232,13 @@ export function violationsUnder(root = REPO_ROOT, files = scannedFiles(root)) {
 }
 
 function main() {
-  const files = scannedFiles()
-  const problems = violationsUnder(REPO_ROOT, files)
+  const walk = scannedSweep()
+  const problems = violationsUnder(process.cwd(), walk)
 
   if (problems.length === 0) {
-    console.log(`no uno / PLUS / Ecoeled references in ${files.length} files a commit would carry`)
+    console.log(
+      `no uno / PLUS / Ecoeled references in ${walk.files.length} files a commit would carry`,
+    )
     return
   }
 

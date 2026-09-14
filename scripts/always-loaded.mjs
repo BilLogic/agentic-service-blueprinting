@@ -5,8 +5,8 @@
  * budget (`check-router-budget.mjs`), the negation ratchet
  * (`check-negation-ratchet.mjs`) and the pointer sweep (`check-pointers.mjs`).
  * Two lists would drift the way two vocabularies do: a file added to one and
- * not the others is a file half the guards read. Same reason `swept-docs.mjs`
- * holds the swept set once.
+ * not the others is a file half the guards read. Same reason the `docs` subject
+ * of `sweep.mjs` holds the swept set once.
  *
  * WHAT COUNTS AS ALWAYS-LOADED. A file is in this tier when the harness hands
  * it to the session without the session choosing — here that is `AGENTS.md`

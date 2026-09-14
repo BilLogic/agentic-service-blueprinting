@@ -58,7 +58,7 @@
  * The rule's own header states its blind spots — anaphora across a sentence
  * boundary, and a sentence using a retired value as English beside its own
  * table. Two more belong to this file's subjects. The decision records are
- * outside `sweptDocs` and stay outside, on the reason that module gives:
+ * outside the `docs` subject and stay outside, on the reason that sweep gives:
  * rewriting a decision record falsifies it. And a figure that says nothing but
  * the value — a box labelled `unhappy` with no `Path` beside it and no live
  * kind anywhere in the drawing — has no company to keep, so this passes it. Such a figure would be unreadable for other reasons,
@@ -69,7 +69,7 @@ import assert from 'node:assert/strict'
 import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { SCHEMA } from '../check-instance-vocabulary.mjs'
-import { sweptDocs } from '../swept-docs.mjs'
+import { sweep } from '../sweep.mjs'
 import { catalogFromSchema, isCorrection, retiredValuesInCompany, sentencesOf } from '../value-set-claims.mjs'
 
 const ROOT = process.cwd()
@@ -85,14 +85,16 @@ const say = (where, { value, column, is, migration }) =>
 
 test('no swept document offers a retired value in the company of its column', () => {
   const live = catalog()
-  const docs = sweptDocs(ROOT)
+  const { files: docs, read } = sweep({ subject: 'docs', root: ROOT })
   // Same breadth assertion the figures half of this file already makes: the
   // root documents are prepended unconditionally, so a corpus that collapsed
   // to them alone still has a length and still sweeps green.
   assert.ok(docs.length > 20, `only ${docs.length} swept document(s) — is the sweep still on?`)
   const found = []
   for (const relative of docs) {
-    for (const sentence of sentencesOf(readFileSync(`${ROOT}/${relative}`, 'utf8'))) {
+    const text = read(relative)
+    if (text === null) continue // listed, then gone before this read
+    for (const sentence of sentencesOf(text)) {
       // A sentence recording the retirement has to spell the retired value,
       // and proves it is doing that the way the markdown sweep asks: a
       // correction verb and the migration that ran.
