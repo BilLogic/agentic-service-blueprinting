@@ -15,7 +15,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { execFileSync } from 'node:child_process'
-import { appSourceRoot } from '../app-source.mjs'
+import { appLayers } from '../sweep.mjs'
 import {
   isScanned,
   scannedFiles,
@@ -232,9 +232,10 @@ test('the application is in the subject wherever this tree keeps its own', () =>
   // application in its own `src` must be sweeping it, and a tree that reads
   // the application out of the package must not — that copy is a dependency,
   // not something this commit would carry, and it is the template's own code
-  // in any case. `app-source.mjs` is what says which tree this is.
+  // in any case. `appLayers` is what says which tree this is: its first layer
+  // is the root a walk starts at, this tree's own `src` or the package's.
   const files = scannedFiles()
-  const own = appSourceRoot(REPO_ROOT) === join(REPO_ROOT, 'src')
+  const own = appLayers(REPO_ROOT)[0] === join(REPO_ROOT, 'src')
   assert.equal(
     files.some((path) => path.startsWith('src/')),
     own,

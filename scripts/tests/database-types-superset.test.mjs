@@ -23,11 +23,20 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { readAppFile } from '../app-source.mjs'
+import { sweep } from '../sweep.mjs'
 import { missing, report } from '../check-database-types-superset.mjs'
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url))
 const SCRIPT = fileURLToPath(new URL('../check-database-types-superset.mjs', import.meta.url))
+
+const app = sweep({ subject: 'app', root: ROOT })
+
+/** An application file, wherever it sits; its absence is this test's subject gone. */
+const readApp = (path) => {
+  const text = app.read(path)
+  assert.ok(text !== null, `no ${path} under ${app.base}: this test has no subject`)
+  return text
+}
 
 /** A types file of the shape the generator writes, short enough to read. */
 function typesFile({ tables, unions }) {
@@ -151,7 +160,7 @@ test('the command with no file to compare says so and exits 2', () => {
 })
 
 test('the command exits 0 on a file that holds everything this package declares, and 1 on one that does not', () => {
-  const copy = written(readAppFile(ROOT, 'src/types/database.ts'))
+  const copy = written(readApp('src/types/database.ts'))
   try {
     const passed = run([copy.path])
     assert.equal(passed.status, 0, passed.stderr)

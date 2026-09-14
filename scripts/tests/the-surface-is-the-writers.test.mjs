@@ -76,9 +76,17 @@ import {
 } from '../panel-write-surface.mjs'
 import { POPULATED } from '../check-seed-loads.mjs'
 import { parseGeneratedTypes } from '../check-schema-inventory.mjs'
-import { readAppFile } from '../app-source.mjs'
+import { sweep } from '../sweep.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
+const app = sweep({ subject: 'app', root: ROOT })
+
+/** An application file, wherever it sits; its absence is this test's subject gone. */
+const readApp = (path) => {
+  const text = app.read(path)
+  assert.ok(text !== null, `no ${path} under ${app.base}: this test has no subject`)
+  return text
+}
 
 /**
  * The application, wherever this tree keeps it.
@@ -439,7 +447,7 @@ test('the surface asks about every verb the app uses, on every table it uses it'
 })
 
 test('every name on the write surface is a name the schema has', () => {
-  const schema = parseGeneratedTypes(readAppFile(ROOT, 'src/types/database.ts'))
+  const schema = parseGeneratedTypes(readApp('src/types/database.ts'))
   const problems = namesTheSchemaLacks(PANEL_WRITE_SURFACE, schema)
   assert.deepEqual(
     problems,

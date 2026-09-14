@@ -42,7 +42,7 @@
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { RETIRED_IDENTIFIER_FRAGMENTS } from '../retired-vocabulary.mjs'
-import { readAppFile } from '../app-source.mjs'
+import { sweep } from '../sweep.mjs'
 
 /**
  * Every retired fragment in its presentation spelling: hyphens where the
@@ -90,14 +90,20 @@ export function retiredSpellingsIn(fill) {
  *
  * They were read at a bare relative path, which is a path off the working
  * directory — the deployment's root, which holds no `src`. All three are
- * application source, so all three go through the pair of roots the build
- * resolves, and a file that is not under either is a missing subject rather
- * than an empty string.
+ * application source, so all three go through the `app` sweep's overlay, and a
+ * file that is not under either layer is a missing subject rather than an empty
+ * string.
  */
 const REPO_ROOT = process.cwd()
-const styleModule = readAppFile(REPO_ROOT, STYLE_MODULE)
-const stylesheet = readAppFile(REPO_ROOT, STYLESHEET)
-const theme = readAppFile(REPO_ROOT, THEME)
+const app = sweep({ subject: 'app', root: REPO_ROOT })
+const readApp = (path) => {
+  const text = app.read(path)
+  assert.ok(text !== null, `no ${path} under ${app.base}: this test has no subject`)
+  return text
+}
+const styleModule = readApp(STYLE_MODULE)
+const stylesheet = readApp(STYLESHEET)
+const theme = readApp(THEME)
 
 test('no fill name contains a word the schema has retired', () => {
   const offenders = declaredFills(styleModule)

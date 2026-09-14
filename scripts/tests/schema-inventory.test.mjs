@@ -18,7 +18,7 @@
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
-import { readAppFile } from '../app-source.mjs'
+import { sweep } from '../sweep.mjs'
 import {
   compare,
   declaredVocabularies,
@@ -28,6 +28,14 @@ import {
 } from '../check-schema-inventory.mjs'
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url))
+const app = sweep({ subject: 'app', root: ROOT })
+
+/** An application file, wherever it sits; its absence is this test's subject gone. */
+const readApp = (path) => {
+  const text = app.read(path)
+  assert.ok(text !== null, `no ${path} under ${app.base}: this test has no subject`)
+  return text
+}
 
 /** A tail of the shape the generator writes, with the aliases under it. */
 const TAIL = `/** The kinds of Path a Scenario holds. */
@@ -174,7 +182,7 @@ test('a union over a vocabulary the database never closes is reported against th
 })
 
 test('the generated types still parse into tables, columns and the four unions', () => {
-  const source = readAppFile(ROOT, 'src/types/database.ts')
+  const source = readApp('src/types/database.ts')
   const tables = parseGeneratedTypes(source)
   assert.ok(tables.size > 10, 'expected the app schema, got ' + tables.size + ' tables')
   assert.ok(tables.get('cells')?.has('id'))

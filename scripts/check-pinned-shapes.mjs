@@ -13,10 +13,10 @@
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { shapeDrift } from './pinned-shapes.mjs'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const ROOT = process.cwd()
 const SCHEMA = join(ROOT, 'supabase/generated/portable-core.schema.sql')
 
 const BINDINGS = [

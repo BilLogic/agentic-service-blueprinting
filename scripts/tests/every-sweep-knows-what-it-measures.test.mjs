@@ -10,15 +10,14 @@
  * looking prints the same line as one that looked and found nothing.
  *
  * Two answers are correct and this holds both apart. A script that measures
- * the APPLICATION names the `app` subject of `sweep.mjs` (or, until the
- * older helper is deleted, resolves through `app-source.mjs`). A script that measures
+ * the APPLICATION names the `app` subject of `sweep.mjs`. A script that measures
  * THIS REPOSITORY — a generator writing into its own `src/data`, the vendoring
- * sync, a `git ls-files` sweep of what this commit would carry — says so on
- * `repository-only.mjs`, with the reason, so that the next sweep through these
- * files does not re-decide the same handful.
+ * sync, a sweep of what this commit would carry — says so on the
+ * repository-only list below, with the reason, so that the next sweep through
+ * these files does not re-decide the same handful.
  *
  * WHAT IS NOT CHECKED HERE is whether a resolving script resolves EVERY path
- * it names; a file that imports `app-source.mjs` is taken at its word. This
+ * it names; a file that names the `app` subject is taken at its word. This
  * guard is for the file that was written without the question being asked at
  * all, which is how all of them got here.
  *
@@ -30,7 +29,6 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { REPOSITORY_ONLY, REPOSITORY_ONLY_SCRIPTS } from '../repository-only.mjs'
 import { sweep } from '../sweep.mjs'
 
 /**
@@ -44,16 +42,102 @@ import { sweep } from '../sweep.mjs'
 const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url))
 
 /**
+ * THE SCRIPTS THAT MEASURE THIS REPOSITORY rather than the application, and
+ * why each one does. A deployment installs this repository as a package and
+ * reads the application out of node_modules; a script that measures the
+ * application asks the sweep for the `app` subject and is swept where the
+ * build resolves it. A script that measures THIS TREE does not, and this is
+ * where it says so — once, with the reason, so the next sweep does not
+ * re-litigate the same handful of files. What makes a script repository-only
+ * is the QUESTION it asks: it writes into this repository's own application
+ * (a generator, a vendoring sync — a deployment has nothing to write into),
+ * or it asks what THIS COMMIT would carry (the `commit` subject, whether by
+ * name or through `scannedFiles`, which is that listing exported — a
+ * deployment's commit is the deployment's). The list used to be a module of
+ * its own, `repository-only.mjs`; it is the fence's, because the fence is
+ * the only reader it ever had.
+ */
+/**
+ * @type {ReadonlyArray<{ script: string, why: string }>}
+ */
+const REPOSITORY_ONLY = [
+  {
+    script: 'scripts/generate_sample_blueprint.mjs',
+    why:
+      'it WRITES src/data/sampleBlueprint.ts and the seed beside it. The ' +
+      'sample board is this repository’s own content, generated into its own ' +
+      'application; a deployment brings its own board and would be editing ' +
+      'its dependency.',
+  },
+  {
+    script: 'scripts/generate_fallbacks.py',
+    why:
+      'it WRITES src/data/generatedBlueprints.ts, src/data/blueprintFallbacks.ts ' +
+      'and src/data/sampleNav.ts. Same reason as the sample generator: the ' +
+      'offline board is authored here, into this tree’s application.',
+  },
+  {
+    script: 'scripts/generate-database-types.mjs',
+    why:
+      'it WRITES src/types/database.ts, generated from this repository’s own ' +
+      'portable core and recipe. The types are the template’s statement of ' +
+      'its schema; a deployment generates its own file against its own ' +
+      'project and holds it to this one with the superset check, it does not ' +
+      'regenerate the package’s.',
+  },
+  {
+    script: 'scripts/sync-canvas-skills.mjs',
+    why:
+      'it VENDORS references/ and skills/ into src/lib/agent/skill/, holding ' +
+      'the two byte-identical. Both sides are this repository’s — the source ' +
+      'of the copy is this tree’s plugin surface, so the destination is this ' +
+      'tree’s application and no other.',
+  },
+  {
+    script: 'scripts/check-standalone.mjs',
+    why:
+      'its subject is `git ls-files` — what THIS commit would carry — and its ' +
+      'question is whether a deployment’s name survived into the template. A ' +
+      'deployment running it would be asked whether its own files name it, ' +
+      'which they are entitled to.',
+  },
+  {
+    script: 'scripts/tests/a-lane-is-not-a-layer.test.mjs',
+    why:
+      'its subject is `scannedFiles` — the same `git ls-files` listing the ' +
+      'standalone sweep reads — because the retired sense of the word turns up ' +
+      'in prose anywhere in the tree, not in the application alone. The one ' +
+      'application path it names is an argument to `quotesTheRetiredSense`, not ' +
+      'a file it opens.',
+  },
+  {
+    script: 'scripts/tests/the-vendored-copy-is-only-the-copy.test.mjs',
+    why:
+      'it stages the vendoring sync — this repository’s own plugin surface beside ' +
+      'this repository’s own application — and plants a file inside the staged copy. ' +
+      'Same subject and same reason as the sync it drives: both sides are this ' +
+      'tree’s, and a deployment has neither to stage.',
+  },
+  {
+    script: 'scripts/check-content-coupling.mjs',
+    why:
+      'the same subject and the same reason as the standalone sweep: `git ' +
+      'ls-files` over this commit, asking whether a deployment’s CONTENT — ' +
+      'its ids, its cast, its vocabulary — survived into the template.',
+  },
+]
+
+/** Just the paths. */
+const REPOSITORY_ONLY_SCRIPTS = REPOSITORY_ONLY.map((entry) => entry.script)
+
+/**
  * The resolver itself, and the two files that describe the arrangement.
  *
- * `sweep.mjs` is the one module that answers where a subject is, and
- * `app-source.mjs` is the older statement of the application's root that
- * now delegates to it — neither can be asked to import itself. The other two
- * spell the application's root as the PATTERN they look for, or hold the list
- * this test reads.
+ * `sweep.mjs` is the one module that answers where a subject is, and it cannot
+ * be asked to import itself. The other two spell the application's root as the
+ * PATTERN they look for, or hold the list this test reads.
  */
 const NOT_A_SWEEP = new Set([
-  'scripts/app-source.mjs',
   'scripts/sweep.mjs',
   // This fence: it spells the application's root in the pattern it looks for.
   // `roots-stated.mjs` does the same — `src${suffix}` is the pair it reports on,
@@ -61,7 +145,6 @@ const NOT_A_SWEEP = new Set([
   // which is not a claim about where the application is.
   'scripts/tests/every-sweep-knows-what-it-measures.test.mjs',
   'scripts/roots-stated.mjs',
-  'scripts/repository-only.mjs',
 ])
 
 /**
@@ -73,7 +156,7 @@ const NOT_A_SWEEP = new Set([
  * allowed to name anything. That is true and it is not a reason to skip the
  * tree: a test that SWEEPS the application has exactly the defect this fence
  * exists for, and twenty-two of the twenty-six suites that name an application
- * path already resolve through `app-source.mjs` and would have been read here
+ * path already resolve through the `app` subject and would have been read here
  * from the first run. Naming the ones that do not is cheaper than meeting the
  * thirty-first file with the defect.
  */
@@ -172,13 +255,16 @@ export function applicationPathsIn(code, python = false) {
 
 /**
  * Whether a script asks where the application is: by naming the `app` subject
- * of `sweep.mjs` — importing the sweep for another subject is not asking about
- * the application, so the import alone is not taken as the answer — or through
- * `app-source.mjs`, the older statement that now delegates to it.
+ * of `sweep.mjs`, or by asking it for `appLayers` — the two roots themselves,
+ * which is what a file holding the build to them wants. Importing the sweep for
+ * another subject is not asking about the application, so the import alone is
+ * not taken as the answer.
  */
 export function resolvesTheApplication(code) {
-  if (/from\s+'[^']*\/app-source\.mjs'/.test(code)) return true
-  return /from\s+'[^']*\/sweep\.mjs'/.test(code) && /subject:\s*'app'/.test(code)
+  return (
+    /from\s+'[^']*\/sweep\.mjs'/.test(code) &&
+    (/subject:\s*'app'/.test(code) || /\bappLayers\b/.test(code))
+  )
 }
 
 test('every script naming an application path either resolves it or says it is this repository’s', () => {
@@ -200,7 +286,7 @@ test('every script naming an application path either resolves it or says it is t
       'application is. In a deployment that reads it out of the package there ' +
       'is no `src`, so each one either fails there or sweeps nothing and ' +
       'reports success. Resolve through scripts/sweep.mjs, add the ' +
-      'script to scripts/repository-only.mjs with the reason it measures this ' +
+      'script to the repository-only list in this file with the reason it measures this ' +
       'repository alone, or — if it is a suite whose paths are all fixtures — ' +
       `to FIXTURE_ONLY beside this test, with the fixture named:\n${unresolved.join('\n')}`,
   )
@@ -214,8 +300,8 @@ test('the sweep read scripts, and enough of them to mean something', () => {
   const scripts = scriptsUnder(REPO_ROOT)
   assert.ok(scripts.length > 20, `only ${scripts.length} scripts in the subject`)
   assert.ok(
-    scripts.includes('scripts/app-source.mjs'),
-    'the sweep did not return scripts/app-source.mjs, so it is not reading scripts/',
+    scripts.includes('scripts/roots-stated.mjs'),
+    'the sweep did not return scripts/roots-stated.mjs, so it is not reading scripts/',
   )
   assert.ok(
     scripts.includes('scripts/tests/retired-copy.test.mjs'),
@@ -258,10 +344,11 @@ test('a repository-only listing is not a place to park an application sweep', ()
   for (const entry of REPOSITORY_ONLY) {
     const code = readFileSync(join(REPO_ROOT, entry.script), 'utf8')
     const writes = /writeFileSync|copyFileSync|mkdirSync|\bPath\(|\.write_text\(/.test(code)
-    // `scannedFiles` IS the `git ls-files` sweep, exported so a second suite
-    // can ask the same question of the same listing; a caller of it is asking
-    // what this commit would carry as surely as the shell-out is.
-    const listsTheCommit = /ls-files|\bscannedFiles\b/.test(code)
+    // `scannedSweep` IS the `commit` sweep, and `scannedFiles` its listing,
+    // exported so a second suite can ask the same question of the same walk; a
+    // caller of either is asking what this commit would carry as surely as the
+    // shell-out is.
+    const listsTheCommit = /ls-files|\bscannedFiles\b|\bscannedSweep\b/.test(code)
     if (!writes && !listsTheCommit) wrong.push(entry.script)
   }
   assert.deepEqual(

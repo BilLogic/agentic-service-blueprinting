@@ -45,6 +45,14 @@ else the package's.
 package's file at the same path. Every resident is listed with a reason —
 owned, or diverged with a ticket.
 
+**Subject** — a named tree a check measures, with its rule: where its root is,
+which files are its, and what "cannot see the subject" means there — a skip
+said out loud, or a failure. The sweep answers eight (the application, the
+prose, the scripts, the migrations, the reference surface, the package's
+reference documents, a deployment's seed, and the commit); a check names one,
+receives its files, and judges. A check's own location is never the root: the
+tree it runs in is.
+
 ## The blueprint
 
 **Service** — the whole thing being blueprinted, and the top container. One

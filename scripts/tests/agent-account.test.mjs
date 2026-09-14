@@ -23,9 +23,10 @@ import {
   vocabularySource,
 } from '../agent-account.mjs'
 import { credentials } from '../generate-agent-account.mjs'
-import { readAppFile } from '../app-source.mjs'
+import { sweep } from '../sweep.mjs'
 
 const ROOT = new URL('../..', import.meta.url).pathname
+const app = sweep({ subject: 'app', root: ROOT })
 
 /**
  * The two application sources this suite reads, out of wherever they are.
@@ -34,11 +35,18 @@ const ROOT = new URL('../..', import.meta.url).pathname
  * `vocabularySource` and `schemaDeclaration` are for, and the fixtures below
  * assert both branches of each. Its TEST was the half still spelling
  * `${ROOT}src/…`, so the thing that measured the two-root rule was the one
- * thing that only worked under one of them. `docs/agents/blueprint.md` below
- * stays a plain path: the account document is the READING repository's, and
- * a deployment renders its own.
+ * thing that only worked under one of them. The sweep of the `app` subject is
+ * what answers "wherever they are" now: it lays a deployment's `src` over the
+ * installed package's per path, and a file it cannot find is this suite's
+ * subject gone, which is why the read below refuses null rather than returning
+ * it. `docs/agents/blueprint.md` below stays a plain path: the account document
+ * is the READING repository's, and a deployment renders its own.
  */
-const readApp = (path) => readAppFile(ROOT, path)
+const readApp = (path) => {
+  const text = app.read(path)
+  assert.ok(text !== null, `no ${path} under ${app.base}: this test has no subject`)
+  return text
+}
 
 test('the six entity kinds are read off panelTerms.ts as written', () => {
   const kinds = entityKinds(readApp('src/lib/panelTerms.ts'))

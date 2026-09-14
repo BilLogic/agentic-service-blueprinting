@@ -18,8 +18,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
 import { chooseDeployment } from '../seed-list.mjs'
-import { SUBJECTS, sweep } from '../sweep.mjs'
-import { forgetUnverified } from '../unverified.mjs'
+import { SUBJECTS, forgetUnverified, sweep } from '../sweep.mjs'
 
 const PACKAGE = 'node_modules/agentic-service-blueprinting'
 

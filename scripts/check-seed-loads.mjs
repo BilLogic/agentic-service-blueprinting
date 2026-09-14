@@ -65,8 +65,9 @@ import {
   writeSurfaceEntries,
 } from './panel-write-surface.mjs'
 
-const ROOT = new URL('../', import.meta.url)
-const P = (rel) => fileURLToPath(new URL(rel, ROOT))
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const ROOT = process.cwd()
+const P = (rel) => resolve(ROOT, rel)
 
 /** Applied in this order onto the empty database. */
 export const STACK = [

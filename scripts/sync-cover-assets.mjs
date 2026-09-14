@@ -25,7 +25,7 @@
  * (the optional dirs exist for the test harness; defaults are the real ones)
  */
 import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 /** Every SVG served under `/cover/`, by basename. A test holds this list to
@@ -47,7 +47,8 @@ export const COVER_ASSET_MANIFEST = [
   'why-now.svg',
 ]
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const repoRoot = process.cwd()
 
 export function syncCoverAssets(
   srcDir = join(repoRoot, 'docs', 'assets'),

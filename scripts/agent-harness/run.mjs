@@ -38,13 +38,13 @@
  *   node scripts/agent-harness/run.mjs --repeat 3  # majority-vote per line
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
-import { resolve, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 import { sweep } from '../sweep.mjs'
 import { CASES } from './cases.mjs'
 import { surface } from './surface.mjs'
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+/** The tree the harness runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const ROOT = process.cwd()
 
 // ---------------------------------------------------------------------------
 // Env

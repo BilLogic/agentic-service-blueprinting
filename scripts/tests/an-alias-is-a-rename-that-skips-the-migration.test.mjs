@@ -31,9 +31,12 @@
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { RETIRED_IDENTIFIER_FRAGMENTS } from '../retired-vocabulary.mjs'
-import { appFiles, readAppFile } from '../app-source.mjs'
+import { sweep } from '../sweep.mjs'
 
 const REPO_ROOT = process.cwd()
+
+/** The application, wherever it is: a deployment's residents over the package's. */
+const app = sweep({ subject: 'app', root: REPO_ROOT })
 
 /**
  * Files that may hold a select string: the application's, wherever it is.
@@ -43,16 +46,17 @@ const REPO_ROOT = process.cwd()
  * `node_modules/agentic-service-blueprinting` with no `src` beside its
  * `scripts/`. The hand-rolled walk that started at `resolve(REPO_ROOT, 'src')`
  * crashed there, and the day somebody made it tolerant of a missing directory
- * it would have done the worse thing instead: swept nothing and passed.
- * `appFiles` sweeps whichever root holds the application, REFUSES an empty
+ * it would have done the worse thing instead: swept nothing and passed. The
+ * `app` sweep walks whichever roots hold the application, REFUSES an empty
  * result, and reports each file as the `src/…` path a reader writes.
  */
 const selectStringSources = () =>
-  appFiles(
-    REPO_ROOT,
-    (path) => /\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path),
-    '.ts or .tsx outside a test',
-  )
+  sweep({
+    subject: 'app',
+    root: REPO_ROOT,
+    where: (path) => /\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path),
+    what: '.ts or .tsx outside a test',
+  }).files
 
 /**
  * The select strings in `source`.
@@ -98,7 +102,10 @@ test('no select string aliases a row field to a word the database retired', () =
   const findings = []
   let read = 0
   for (const file of selectStringSources()) {
-    const source = readAppFile(REPO_ROOT, file)
+    // Listed by the sweep and gone before this read — a probe a sibling guard
+    // wrote and deleted — is skipped; every other failure throws, in `read`.
+    const source = app.read(file)
+    if (source === null) continue
     for (const select of selectStrings(source)) {
       read += 1
       for (const alias of retiredAliases(select)) {

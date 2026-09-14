@@ -68,10 +68,10 @@
 
 import { createHash } from 'node:crypto'
 import { existsSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 
-const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const REPO_ROOT = process.cwd()
 const OUT_PATH = join(REPO_ROOT, 'src', 'data', 'sampleBlueprint.ts')
 const SEED_OUT_PATH = join(REPO_ROOT, 'supabase', 'seed.sql')
 

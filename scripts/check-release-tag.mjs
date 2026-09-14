@@ -32,9 +32,10 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { unverified } from './unverified.mjs'
+import { unverified } from './sweep.mjs'
 
-const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const REPO_ROOT = process.cwd()
 
 /** `v0.4.0` for `0.4.0`. One shape, so nothing has to guess. */
 export const tagFor = (version) => `v${version}`

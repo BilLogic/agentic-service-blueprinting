@@ -18,13 +18,18 @@
  * are already applied on every existing database, and renaming an applied
  * migration is the desync this exists to prevent. They are frozen by name here.
  *
+ * WHICH FILENAMES ARE JUDGED IS NOT THIS SCRIPT'S QUESTION. It names the
+ * `migrations` subject and receives that tree's `.sql` files; where the tree is
+ * — this checkout, or the one a deployment runs the packaged copy of this check
+ * against — is the sweep's answer and not a fact about where this file happens
+ * to sit. `check` therefore keeps taking bare filenames: the rule is about
+ * names, and a rule about names is testable without a directory.
+ *
  * Run: npm run check:band
  */
-import { readdirSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { basename, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-
-const MIGRATIONS = fileURLToPath(new URL('../supabase/migrations/', import.meta.url))
+import { sweep } from './sweep.mjs'
 
 /** The reserved band, inclusive. Both ends are 14-digit migration versions. */
 export const BAND_START = '21000101000000'
@@ -127,7 +132,11 @@ export function check(filenames) {
 }
 
 function main() {
-  const problems = check(readdirSync(MIGRATIONS))
+  // The subject is the `.sql` under supabase/migrations — what the CLI applies.
+  // The old listing judged every entry in the folder, a stray note included;
+  // a file the CLI would never run is not a migration to stamp.
+  const { files } = sweep({ subject: 'migrations', what: 'migration' })
+  const problems = check(files.map((path) => basename(path)))
   if (problems.length === 0) {
     console.log(`every upstream migration is inside ${BAND_START}–${BAND_END}`)
     return

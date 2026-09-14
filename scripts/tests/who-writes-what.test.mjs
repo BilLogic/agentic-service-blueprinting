@@ -180,8 +180,8 @@ test('a write tool that names no record is not this file’s business', () => {
  * The roster, read out of the application wherever this tree keeps it.
  *
  * A deployment has no `src` — it reads the application out of
- * `node_modules/agentic-service-blueprinting` — and `readAppFile` refuses a tree
- * that has it in neither place. That refusal is the point: `toolSurfaces`
+ * `node_modules/agentic-service-blueprinting` — and the `app` sweep refuses a
+ * tree that has it in neither place. That refusal is the point: `toolSurfaces`
  * throws on a source with no definitions in it, but an EMPTY roster would
  * have satisfied both rules below, because a table can credit no unreal tool and
  * orphan no write when there are no writes to orphan.

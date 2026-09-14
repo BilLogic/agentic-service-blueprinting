@@ -213,7 +213,7 @@ test('the seed text is read straight off the listing, and a gone path throws', (
   // quietly would be a green that measured something else.
   assert.throws(() => readSeedFiles([first, join(dir, 'gone.sql')]), { code: 'ENOENT' })
   // And a path that is there but unreadable stays a different fact, as
-  // scripts/read-listed.mjs keeps it for the listings that are deliberately stale.
+  // the sweep's `read` keeps it for the listings that are deliberately stale.
   assert.throws(() => readSeedFiles([first, dir]), (error) => error.code !== 'ENOENT')
 })
 

@@ -61,9 +61,10 @@ import {
 } from './agent-account.mjs'
 import { parseEnvFile } from './check-target-schema.mjs'
 import { repoConfig } from './repo-config.mjs'
-import { unverified } from './unverified.mjs'
+import { unverified } from './sweep.mjs'
 
-const REPO_ROOT = resolve(new URL('..', import.meta.url).pathname)
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const REPO_ROOT = process.cwd()
 /** This repository's own two paths — see `repoConfig.agentAccount`. */
 const PATHS = repoConfig.agentAccount
 const DOC = resolve(REPO_ROOT, PATHS.document)

@@ -42,9 +42,11 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { appFiles, readAppFile } from '../app-source.mjs'
+import { sweep } from '../sweep.mjs'
 
 const REPO_ROOT = process.cwd()
+/** The application, wherever this tree keeps it. */
+const app = sweep({ subject: 'app', root: REPO_ROOT })
 /** The card itself. Its own module declares the surface rather than using it. */
 const CARD_MODULE = 'src/components/blueprint/DefinitionCard.tsx'
 
@@ -55,17 +57,18 @@ const CARD_MODULE = 'src/components/blueprint/DefinitionCard.tsx'
  * `node_modules/agentic-service-blueprinting` and has no `src` beside its
  * `scripts/`, so the walk that started at `resolve(REPO_ROOT, 'src')` swept
  * nothing there and reported it in green — a check that has stopped looking
- * prints the same line as one that looked and agreed. `appFiles` sweeps
- * whichever root holds the application and REFUSES an empty result, and the
+ * prints the same line as one that looked and agreed. The `app` sweep walks
+ * whichever layers hold the application and REFUSES an empty result, and the
  * paths it hands back stay `src/…` so `CARD_MODULE` is one string rather than
  * one per deployment.
  */
 const applicationSources = () =>
-  appFiles(
-    REPO_ROOT,
-    (path) => /\.tsx$/.test(path) && !/\.test\.tsx$/.test(path),
-    '.tsx outside a test',
-  )
+  sweep({
+    subject: 'app',
+    root: REPO_ROOT,
+    where: (path) => /\.tsx$/.test(path) && !/\.test\.tsx$/.test(path),
+    what: '.tsx outside a test',
+  }).files
 
 /** Where each component in `source` is declared, in order. */
 function components(source) {
@@ -137,7 +140,10 @@ test('every definition in the app hangs off a badge', () => {
 
   const found = []
   for (const path of files) {
-    const source = readAppFile(REPO_ROOT, path)
+    // The walk listed it; only a file that vanished since reads back null, and
+    // that is a fact about the tree rather than a finding about the app.
+    const source = app.read(path)
+    assert.ok(source !== null, `${path} was walked and is no longer there`)
     for (const finding of definitionsNotOnABadge(source)) {
       found.push(`${path}:${finding.line}  ${finding.owner} explains a label`)
     }

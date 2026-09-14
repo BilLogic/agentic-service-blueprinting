@@ -29,9 +29,12 @@ import { dirname, join, resolve } from 'node:path'
 
 const ROOT = resolve(new URL('../..', import.meta.url).pathname)
 
-/** The four trees the sync reads or writes, copied into a throwaway root. */
+/**
+ * The three trees the sync reads or writes, copied into a throwaway root. The
+ * script itself is not copied: it reads the tree it is run in, so the staged
+ * root is a matter of `cwd` and the script runs from where it is.
+ */
 const STAGED = [
-  'scripts/sync-canvas-skills.mjs',
   'references',
   'skills',
   'src/lib/agent/skill',
@@ -50,7 +53,7 @@ function stage() {
 /** The sync, run in a staged root. `{ status, output }`, never throwing. */
 function run(root, ...args) {
   try {
-    const output = execFileSync('node', [join(root, 'scripts/sync-canvas-skills.mjs'), ...args], {
+    const output = execFileSync('node', [join(ROOT, 'scripts/sync-canvas-skills.mjs'), ...args], {
       cwd: root,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],

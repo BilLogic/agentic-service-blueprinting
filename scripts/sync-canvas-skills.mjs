@@ -27,11 +27,12 @@
  * behind three green checks. The reverse walk below is what makes the
  * exclusion those two rely on true.
  */
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { dirname, join, relative, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { relative, resolve } from 'node:path'
+import { sweep } from './sweep.mjs'
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+/** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
+const ROOT = process.cwd()
 const VENDORED = resolve(ROOT, 'src/lib/agent/skill/references')
 const VENDORED_SKILLS = resolve(ROOT, 'src/lib/agent/skill/skills')
 
@@ -134,15 +135,16 @@ for (const [source, target, label] of pairs) {
   }
 }
 
-/** Every file under `dir`, absolute. A directory that is not there holds none. */
+/**
+ * Every file under a vendored directory, absolute. The vendored copy is
+ * application source, so the `app` sweep lists it — narrowed to the directory
+ * and with the empty result allowed through, because a vendored directory
+ * that holds nothing yet is exactly the state before the first sync.
+ */
 function filesUnder(dir) {
-  if (!existsSync(dir)) return []
-  return readdirSync(dir)
-    .sort()
-    .flatMap((entry) => {
-      const path = join(dir, entry)
-      return statSync(path).isDirectory() ? filesUnder(path) : [path]
-    })
+  const under = `${relative(ROOT, dir).split('\\').join('/')}/`
+  const app = sweep({ subject: 'app', root: ROOT })
+  return app.files.filter((path) => path.startsWith(under)).map((path) => app.locate(path))
 }
 
 // The walk back. Every file under the two vendored directories has to be

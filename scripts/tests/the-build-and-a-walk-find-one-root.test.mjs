@@ -4,8 +4,8 @@
  *
  * Where the application lives is one fact, and more than one file states it:
  * the Vite config for the bundler, the two tsconfigs for the compiler,
- * `scripts/app-source.mjs` for every check that walks the tree, and any script
- * that has to resolve one application file before `app-source.mjs` could be
+ * `scripts/sweep.mjs` for every check that walks the tree, and any script
+ * that has to resolve one application file before the sweep could be
  * asked. None of them can be derived from the others — a compiler cannot
  * import a module, and the config is bundled on its own in a tree that may not
  * have this module at all — so what makes them one fact is this test, the way
@@ -36,10 +36,22 @@ import { join, resolve } from 'node:path'
 import ts from 'typescript'
 import { resolveConfig } from 'vite'
 
-import { APP_SOURCE_ROOTS, appSourceRoot } from '../app-source.mjs'
 import { statementsOfTheRoots } from '../roots-stated.mjs'
+import { APP_PACKAGE, appLayers } from '../sweep.mjs'
 
 const REPO_ROOT = process.cwd()
+
+/**
+ * The pair, spelled the way the build's three lists spell it: repo-relative.
+ *
+ * `appLayers` is where the pair lives for every walk, but it answers with the
+ * roots that EXIST under a given tree, absolute — which is the right answer for
+ * a walk and the wrong one here, because the root that does not exist in this
+ * tree is half of what the build states. So the two are written out, with the
+ * package name taken from the sweep rather than typed again, and the tests
+ * below hold the four build statements to them.
+ */
+const APP_SOURCE_ROOTS = ['src', `node_modules/${APP_PACKAGE}/src`]
 
 /** The TypeScript configs that map `@/…`, and the one that only an editor reads. */
 const TSCONFIGS = ['tsconfig.json', 'tsconfig.app.json']
@@ -82,7 +94,10 @@ test('the alias the build resolves is the root a walk starts at', async () => {
     'serve',
   )
   const alias = config.resolve.alias.find((entry) => entry.find === '@')
-  assert.equal(alias.replacement, appSourceRoot(REPO_ROOT))
+  // `appLayers` answers with the roots that exist here, overlay first: the
+  // first of them is the root a walk starts at, and the one the alias resolves
+  // to in this tree.
+  assert.equal(alias.replacement, appLayers(REPO_ROOT)[0])
 })
 
 /**
@@ -97,7 +112,7 @@ const MUST_STATE_THE_PAIR = [
   'vite.config.ts',
   'tsconfig.json',
   'tsconfig.app.json',
-  'scripts/app-source.mjs',
+  'scripts/sweep.mjs',
 ]
 
 test('every statement of the pair is discovered, and the sweep found the build', () => {
