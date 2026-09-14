@@ -74,6 +74,18 @@ type PanelCell = Pick<BlueprintCell, 'content' | 'summary' | 'frame'> & {
  *
  * Every entry is derived — nothing here is state, and nothing here writes.
  */
+/** Everything `useCellDetailFacts` resolves, for anything it is handed to. */
+export type CellDetailFacts = ReturnType<typeof useCellDetailFacts>
+
+/**
+ * The lane a cell sits in, as the panel reads it: the row record, or the
+ * name-only stand-in the resolution below falls back to. Taken from the
+ * resolution rather than restated, so the two can never drift.
+ */
+export type BlueprintLaneLike = NonNullable<
+  CellDetailFacts['laneResolution']
+>['lane']
+
 export function useCellDetailFacts({
   blueprints,
   selection,
