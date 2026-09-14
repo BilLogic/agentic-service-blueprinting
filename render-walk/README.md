@@ -1,0 +1,159 @@
+---
+summary: The browser render walk — Chromium over the built distribution in no-database mode, every phase, every scenario, every path and every layout the scenario offers, failing on a console error and filing one screenshot per view; what it borrows from the app's markup, how this repository runs it, and how a deployment enrols by pointing Playwright at these same two files inside its node_modules.
+---
+
+# The browser render walk
+
+**For** anyone whose render walk just went red, and any deployment that wants
+the same walk over its own board.
+**Answers** what does this open, what does it catch, and how do I run it?
+
+Every other guard in this repository reads a file, a schema or a module graph.
+This one opens the application in a browser.
+
+It builds nothing itself. It previews the built distribution, walks the bundled
+sample board and fails on any `console` error or page error, naming the address
+it appeared on. Each view is screenshotted under a name that states its
+address.
+
+## What a view is
+
+Every phase, every scenario inside it, and then, per scenario, every layout
+that scenario actually offers:
+
+- **stacked, once per path.** Showing one path at a time is the layout's whole
+  claim, so a scenario with three paths is three views. A scenario the app
+  gives no path selector is one view, addressed with no `paths` at all.
+- **merged, once — and only from two paths up.** Below two there is nothing to
+  lay out two ways: the app hides the layout control, and a `merged` address
+  for a single-path scenario is byte-identical to its `stacked` one apart from
+  `view=`. Walking it would be the same board twice and the same screenshot
+  filed under two names.
+
+So the count is *paths per scenario*, summed, plus one for each scenario with
+two or more paths — not *scenarios × 2*. The walk prints it at the end of the
+run.
+
+## What it catches, and what it does not
+
+It catches an error in the console, a page that threw, an error boundary, and a
+board that came up without lanes, without step headers or with empty cells.
+Those are the states where the app is broken and every file-reading guard is
+green — the class
+[ADR 0017](../docs/adr/0017-large-component-splits-wait-for-an-end-to-end-round.md)
+records two of: a renamed at-rule whose whole block the browser dropped, and a
+lane chip that set `backgroundColor` to a role key rather than a colour.
+
+It does not catch a wrong colour. Nothing here asserts that a pixel is the
+right pixel, and a chip that renders untinted renders. That half is the
+screenshots, which CI uploads and a person reads.
+
+Exploratory walks — "does this import look right, does this deploy look
+right" — stay with the `render-checker` agent (`agents/render-checker.md`).
+This file is the one that runs unattended.
+
+## Running it here
+
+```bash
+VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= npm run build
+npm run check:render-walk
+```
+
+The build variables are cleared on purpose. `isSupabaseConfigured()` in
+`src/lib/supabase.ts` reads `VITE_SUPABASE_URL` at BUILD time, and Vite bakes
+whatever `.env` holds into `dist`. A developer with real values in `.env` who
+builds without clearing them gets a preview wired to a live database, and the
+walk then measures somebody's rows rather than the bundled sample. The walk
+refuses that run: its first assertion is that the app shows the `sample data`
+badge.
+
+`npm run check:render-walk` starts its own preview on port 4173 and stops it
+again (`reuseExistingServer: false`, so a preview left running from an older
+build cannot be mistaken for this one). That plus `--strictPort` means a busy
+4173 **aborts the run** rather than reusing what is there — deliberately, since
+what is there is usually an older `dist` — so stop your own `npm run preview`
+first, or move the walk:
+
+```bash
+RENDER_WALK_PORT=4273 npm run check:render-walk
+```
+
+Output — one screenshot per view, plus
+Playwright's own artifacts — lands in `render-walk-output/`, which is
+gitignored here and uploaded by CI.
+
+To watch the guard fail, which is the only way to know it works:
+
+```bash
+RENDER_WALK_INJECT_CONSOLE_ERROR=1 npm run check:render-walk   # must exit 1
+```
+
+That variable makes the spec inject one `console.error` into every page. CI
+runs the walk twice for this reason — once with it set, asserting a non-zero
+exit, then once for real.
+
+## Enrolling a deployment
+
+These two files are a published path, the same kind of promise as
+`references/` and `skills/` —
+[ADR 0004](../docs/adr/0004-reference-paths-are-a-published-interface.md), and
+`CONSUMER_IMPORTS` in `scripts/check-reference-paths.mjs` lists them so a move
+here fails this repository's build rather than yours. There is no `files` field
+in `package.json`, so nothing filters them out of the package, and `exports`
+carries `"./*"`, so they are reachable by path.
+
+From the root of a deployment that installs this package:
+
+```bash
+npx playwright test \
+  -c node_modules/agentic-service-blueprinting/render-walk/playwright.config.ts
+```
+
+Nothing is copied and nothing is configured. The config's `testDir` is its own
+directory, so the spec that runs is the one that shipped with the version you
+pinned — and that works from inside `node_modules` without any `testIgnore`
+setting: Playwright's default `testIgnore` is empty, and its `node_modules`
+skip only refuses to *recurse into* a directory of that name below `testDir`;
+a `testDir` that is itself under `node_modules` is walked normally. The
+`webServer` runs `npm run preview` in **your** working directory, so the
+preview serves your `dist`.
+
+The walk's inventory — phases, scenarios, paths — is read off the rendered
+page, never imported from `src/data/sampleBlueprint.ts`. Your sample board is
+your own, and the walk is over whatever your build shows.
+
+What your side has to provide:
+
+- **`@playwright/test`**, pinned to the same version (`1.62.0` here).
+- **The browser**: `npx playwright install chromium` (`--with-deps` on CI).
+  Playwright looks for a build number tied to its own version, so the install
+  has to be the one your pin asks for.
+- **A build made with the Supabase variables cleared**, for the reason above.
+- **A `preview` script that takes `--port` and `--strictPort`** — Vite's own
+  does, since the config invokes it as
+  `npm run preview -- --port <port> --strictPort`. Set `RENDER_WALK_PORT` if
+  4173 is taken on your runner; a busy port aborts rather than reuses.
+
+A deployment that wants this in its own CI can copy the `render-walk` job out
+of `.github/workflows/ci.yml`; the only line that changes is the config path.
+
+## What the walk reads off the app
+
+The walk drives the app through markup the app grew for its own reasons — CSS
+hooks, annotation anchors, scroll targets, accessible names. None of it was
+designed as a test contract, and nothing in the app's source says it is read
+from here. It is listed so a rename knows what it breaks:
+
+| What the walk reads | Where the app writes it |
+| --- | --- |
+| `[data-cover-page]`, and the `header button` inside it | the cover page; the walk clicks that button to get past the overlay |
+| `[data-nav-row]` — value is the phase or scenario id | the sidebar's rows |
+| `button[aria-controls^="phase-panel-…"]` and `id="phase-panel-<id>"` | the sidebar's phase disclosure and its panel |
+| `[data-focus-slide-id="<scenario id>"]` | the canvas artboard for one scenario |
+| `[data-blueprint-cell]`, `[data-blueprint-column-header]`, `[data-blueprint-row-header]` | the board grid |
+| `aria-label^="Paths shown:"`, and the `aria-controls` it names while open | the path selector trigger and its popover |
+| `aria-label="Path display"`, with `Stacked` / `Merged` inside it | the layout control |
+
+Renaming one of these does not fail a type check or a lint rule; it fails this
+walk, with a locator that found nothing. If you are the one renaming it, the
+fix belongs here in the same change.

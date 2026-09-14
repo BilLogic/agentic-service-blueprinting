@@ -78,6 +78,35 @@ Until then, prefer extracting a genuinely independent piece — one with its own
 tests, the way `AgentSettingsFields.tsx` came out of the settings rail — over a
 structural split of the whole file.
 
+**Browser render — covered.** 2026-09-13 (#706). `render-walk/` opens the built
+distribution in Chromium, in no-database mode, and walks the bundled sample
+board exhaustively: every phase, every scenario, every path one at a time, and
+every layout that scenario offers — merged only from two paths up, where it is
+a different board rather than the same one under a second `view=`. It fails on any console error or page error, naming the address
+it appeared on, and it fails on a board that arrives without lanes, without
+step headers or with empty cells. It runs as its own CI job, which first
+injects a console error and asserts the walk goes red. `npm run
+check:render-walk`.
+
+That is the *render* flow, and it is exactly the class the two findings above
+belong to: the code looks right, the guards are green, and the thing is broken
+in the browser. Both would now be caught in part — the dropped at-rule left
+`touch-action` computing `auto`, which this walk does not read, but a rule the
+browser refuses is the kind of defect that usually takes something visible with
+it, and a page that throws while laying one out is now an error somebody sees.
+
+What it does not see is the other half, and the distinction matters for anyone
+reading this as permission: **it sees an error and a blank grid, not a wrong
+colour.** A lane chip tinted with a role key renders untinted, and renders. So
+the walk files one screenshot per view, CI uploads them, and a person reads
+them — the guard is the machine half, the screenshots are the human half, and
+neither is the whole instrument.
+
+The three flows the exit condition above names — annotation drag, an agent
+session, a cell edit with its revert — are untouched by this. A render walk
+navigates and reads; it does not drag, does not open a session, and does not
+write. The hold stands.
+
 ## What this is not
 
 This is not a claim that the files are fine. They are long, and the length

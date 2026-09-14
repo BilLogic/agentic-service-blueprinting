@@ -20,5 +20,9 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts"]
+  // The build's own config, and the browser render walk beside it: both are
+  // Node programs about this repository rather than part of the application,
+  // and `render-walk/` ships to deployments, so its two files are typechecked
+  // here rather than only by whatever Playwright tolerates at run time.
+  "include": ["vite.config.ts", "render-walk"]
 }

@@ -49,8 +49,10 @@ import { sweep } from './sweep.mjs'
 
 /**
  * The paths the deployment imports from this repo, verbatim, minus the
- * package-name prefix its specifiers carry. Eighteen references and the four
- * `SKILL.md` bodies.
+ * package-name prefix its specifiers carry. Eighteen references, the four
+ * `SKILL.md` bodies, and the two files of the browser render walk — which a
+ * deployment RUNS by path rather than importing, with the same consequence
+ * for a move.
  *
  * Where the list comes from — re-derive it in a checkout of the deployment,
  * substituting this package's name:
@@ -95,10 +97,29 @@ export const CONSUMER_IMPORTS = [
   'skills/slice/references/slice-playbook.md',
   'skills/slice/references/slice-templates.md',
   'skills/whatif/references/whatif-playbook.md',
+
+  // The browser render walk. Not imported — RUN, by path: a deployment enrols
+  // by pointing Playwright at this config inside its own `node_modules` and
+  // walking its own sample board with the spec that travels beside it
+  // (`render-walk/README.md`). Same promise as the documents above, and the
+  // same failure without it: a move lands green here and surfaces at the
+  // deployment's next pin as a run that collects no tests.
+  'render-walk/playwright.config.ts',
+  'render-walk/sample-board.spec.ts',
 ]
 
-/** The two roots this interface covers. A path outside them is a mistake. */
-const INTERFACE_ROOTS = ['references/', 'skills/']
+/**
+ * The roots this interface covers. A path outside them is a mistake.
+ *
+ * `render-walk/` is the third because a deployment reaches it by published
+ * path exactly as it reaches a reference or a skill body — the difference is
+ * that Playwright opens it rather than Vite, which changes nothing about what
+ * moving it costs.
+ */
+const INTERFACE_ROOTS = ['references/', 'skills/', 'render-walk/']
+
+/** The roots as the refusal says them, so the sentence cannot drift off the list. */
+const ROOTS_PHRASE = `${INTERFACE_ROOTS.slice(0, -1).join(', ')} or ${INTERFACE_ROOTS.at(-1)}`
 
 /**
  * The interface as the commit carries it: the sweep over `references/` and
@@ -126,7 +147,7 @@ export function absences(paths, tracked, onDisk) {
   const out = []
   for (const path of paths) {
     if (!INTERFACE_ROOTS.some((root) => path.startsWith(root))) {
-      out.push({ path, reason: 'not under references/ or skills/' })
+      out.push({ path, reason: `not under ${ROOTS_PHRASE}` })
       continue
     }
     if (!onDisk(path)) {

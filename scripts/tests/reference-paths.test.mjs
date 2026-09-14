@@ -27,10 +27,14 @@ test('every path the deployment imports exists and the commit carries it', () =>
   )
 })
 
-test('the list is eighteen references and four skill bodies', () => {
+test('the list is eighteen references, four skill bodies and the render walk', () => {
   const skills = CONSUMER_IMPORTS.filter((path) => path.endsWith('/SKILL.md'))
+  const renderWalk = CONSUMER_IMPORTS.filter((path) => path.startsWith('render-walk/'))
   assert.equal(skills.length, 4)
-  assert.equal(CONSUMER_IMPORTS.length - skills.length, 18)
+  // Two files, and only two: the config a deployment names on the command
+  // line and the spec that travels beside it.
+  assert.equal(renderWalk.length, 2)
+  assert.equal(CONSUMER_IMPORTS.length - skills.length - renderWalk.length, 18)
   assert.equal(new Set(CONSUMER_IMPORTS).size, CONSUMER_IMPORTS.length)
 })
 
@@ -52,9 +56,12 @@ test('a file present but untracked would not ship in a git install', () => {
   assert.match(found[0].reason, /untracked/)
 })
 
-test('a path outside references/ or skills/ is refused', () => {
+test('a path outside the interface roots is refused', () => {
   const found = absences(['src/lib/agent/skills.ts'], new Set(), () => true)
-  assert.deepEqual(found, [
-    { path: 'src/lib/agent/skills.ts', reason: 'not under references/ or skills/' },
-  ])
+  assert.equal(found.length, 1)
+  assert.equal(found[0].path, 'src/lib/agent/skills.ts')
+  // The sentence names the roots, and it is built from the list rather than
+  // repeated here — a fourth root would otherwise leave the refusal telling
+  // its reader the wrong three places a path may live.
+  assert.equal(found[0].reason, 'not under references/, skills/ or render-walk/')
 })
