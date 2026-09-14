@@ -18,12 +18,22 @@
  *   psql -At -F $'\t' -f supabase/portable/inventory.sql > inventory.tsv
  *   node scripts/check-schema-inventory.mjs inventory.tsv
  *
- * The comparison is structural rather than textual: tables and their columns.
+ * The comparison is structural rather than textual: tables and their columns,
+ * and the closed vocabularies beside them. The vocabularies are here because
+ * the types' tail is DERIVED now — `generate-database-types.mjs` reads each
+ * union off the constraint `ENUMS` names — and a derived tail is worth holding
+ * to the database for the same reason the body is. A member the constraint
+ * accepts and the union does not list is a value the app cannot name; a member
+ * the union lists and the constraint refuses is a `23514` no build catches.
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { appFile } from './app-source.mjs'
+// The list, not the generator: this module is also what the deployment
+// superset check imports, out of the installed package, where the generator's
+// own dependencies are not installed.
+import { ENUMS } from './database-vocabularies.mjs'
 
 /** The tree this script is part of: the directory `scripts/` sits in. */
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
@@ -40,18 +50,31 @@ const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
  */
 const generatedTypes = () => appFile(REPO_ROOT, 'src/types/database.ts')
 
-/** `table<TAB>column` rows, as psql -At -F '\t' emits them. */
+/**
+ * `kind<TAB>subject<TAB>member` rows, as psql -At -F '\t' emits them, into the
+ * two halves the comparison reads: `tables`, keyed by table name, and `enums`,
+ * keyed by the subject the vocabulary closes — a domain's name, or
+ * `table.column`. `supabase/portable/inventory.sql` says why the kind leads.
+ */
 export function parseInventory(tsv) {
   const tables = new Map()
+  const enums = new Map()
   for (const line of tsv.split('\n')) {
     const trimmed = line.trim()
     if (trimmed === '') continue
-    const [table, column] = trimmed.split('\t')
-    if (!table || !column) continue
-    if (!tables.has(table)) tables.set(table, new Set())
-    tables.get(table).add(column)
+    const [kind, subject, member] = trimmed.split('\t')
+    if (!kind || !subject || !member) continue
+    // An unknown kind is a row this reader does not understand, and a reader
+    // that files it under one of the two halves anyway reports a table called
+    // whatever the new subject is. It is louder to say so.
+    if (kind !== 'column' && kind !== 'enum') {
+      throw new Error(`the inventory emits a row of kind ${kind}, which this check does not read`)
+    }
+    const into = kind === 'enum' ? enums : tables
+    if (!into.has(subject)) into.set(subject, new Set())
+    into.get(subject).add(member)
   }
-  return tables
+  return { tables, enums }
 }
 
 /**
@@ -81,25 +104,78 @@ export function parseGeneratedTypes(source) {
 }
 
 /**
+ * The unions in the file's tail, as `name → members`.
+ *
+ * The tail is where the closed vocabularies land — `export type PathKind =`
+ * and a `| 'member'` line each — and it is derived from the constraints now,
+ * which is exactly why it is read back and compared rather than trusted. The
+ * row aliases below it match nothing here: an alias's next line is a
+ * `Database[…]` lookup and not a member.
+ */
+export function parseEnumUnions(source) {
+  const unions = new Map()
+  // A union of string literals, however it is laid out: the generator writes
+  // one member per line, and the Supabase CLI's output a deployment may still
+  // carry writes `= 'a' | 'b'` on one line. Both are the same type, so both
+  // are read; a body that is anything but quoted literals joined by `|` is
+  // not a vocabulary and is left alone.
+  for (const [, name, body] of source.matchAll(
+    /^export type (\w+) =((?:\s*\|?\s*'[^']*')+)\s*$/gm,
+  )) {
+    unions.set(name, [...body.matchAll(/'([^']*)'/g)].map((match) => match[1]))
+  }
+  return unions
+}
+
+/**
+ * Those unions under the subject each one closes, so the two sides of the
+ * comparison are keyed alike: `ENUMS` is what says which union describes which
+ * domain or column, and it is the same list the generator derived them from.
+ *
+ * The value keeps the union's NAME beside its members because that is the half
+ * of a finding a reader can act on — `paths.kind` names the constraint to fix
+ * and `PathKind` names the type that is wrong about it.
+ */
+export function declaredVocabularies(unions) {
+  const bySubject = new Map()
+  for (const entry of ENUMS) {
+    const subject = entry.domain ?? `${entry.table}.${entry.column}`
+    const members = unions.get(entry.name)
+    if (!members) continue
+    bySubject.set(subject, { name: entry.name, members: new Set(members) })
+  }
+  return bySubject
+}
+
+/** The subject of each `ENUMS` entry, in that order. */
+export const enumSubjects = () =>
+  ENUMS.map((entry) => ({
+    name: entry.name,
+    subject: entry.domain ?? `${entry.table}.${entry.column}`,
+  }))
+
+/**
  * What the types and the built database disagree about.
  *
  * Direction matters in the report: it is the difference between "regenerate
- * the types" and "the migration that made this is wrong".
+ * the types" and "the migration that made this is wrong". Both arguments carry
+ * the two halves `parseInventory` names — `{ tables, enums }` — and the types'
+ * `enums` are `declaredVocabularies`, keyed by subject the same way.
  */
 export function compare(types, actual) {
   const problems = []
-  for (const table of [...actual.keys()].sort()) {
-    if (!types.has(table)) {
+  for (const table of [...actual.tables.keys()].sort()) {
+    if (!types.tables.has(table)) {
       problems.push(`the schema builds public.${table}; the generated types do not describe it`)
     }
   }
-  for (const table of [...types.keys()].sort()) {
-    if (!actual.has(table)) {
+  for (const table of [...types.tables.keys()].sort()) {
+    if (!actual.tables.has(table)) {
       problems.push(`the generated types describe public.${table}; the schema never builds it`)
       continue
     }
-    const declared = types.get(table)
-    const built = actual.get(table)
+    const declared = types.tables.get(table)
+    const built = actual.tables.get(table)
     for (const column of [...built].sort()) {
       if (!declared.has(column)) {
         problems.push(`public.${table}.${column} exists in the database and not in the types`)
@@ -108,6 +184,32 @@ export function compare(types, actual) {
     for (const column of [...declared].sort()) {
       if (!built.has(column)) {
         problems.push(`public.${table}.${column} is in the types and not in the database`)
+      }
+    }
+  }
+  // The vocabularies, member for member, in both directions. Only the subjects
+  // `ENUMS` names are compared: the database closes dozens of columns this way
+  // and the app is typed against four of them, so a subject the types say
+  // nothing about is a subject nobody asked them to describe.
+  for (const { name, subject } of enumSubjects()) {
+    const declared = types.enums.get(subject)
+    const built = actual.enums.get(subject)
+    if (!built) {
+      problems.push(`${name} is the union over public.${subject}; the database closes no such vocabulary`)
+      continue
+    }
+    if (!declared) {
+      problems.push(`public.${subject} is closed to a fixed list; the generated types declare no ${name}`)
+      continue
+    }
+    for (const member of [...built].sort()) {
+      if (!declared.members.has(member)) {
+        problems.push(`public.${subject} accepts '${member}' in the database and ${name} does not list it`)
+      }
+    }
+    for (const member of [...declared.members].sort()) {
+      if (!built.has(member)) {
+        problems.push(`${name} lists '${member}' and public.${subject} does not accept it in the database`)
       }
     }
   }
@@ -120,8 +222,12 @@ function main() {
     console.error('usage: check-schema-inventory.mjs <inventory.tsv>')
     process.exit(2)
   }
+  const source = readFileSync(generatedTypes(), 'utf8')
   const problems = compare(
-    parseGeneratedTypes(readFileSync(generatedTypes(), 'utf8')),
+    {
+      tables: parseGeneratedTypes(source),
+      enums: declaredVocabularies(parseEnumUnions(source)),
+    },
     parseInventory(readFileSync(inventoryPath, 'utf8')),
   )
   if (problems.length === 0) {
@@ -132,7 +238,7 @@ function main() {
   for (const problem of problems) console.error(`  ${problem}`)
   console.error(
     '\nThe app compiles against these types. Regenerate them with ' +
-      '`npm run supabase:types`, or fix the migration that made them wrong.',
+      '`npm run generate:database-types`, or fix the migration that made them wrong.',
   )
   process.exit(1)
 }

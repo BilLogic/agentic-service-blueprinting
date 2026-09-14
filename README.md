@@ -169,7 +169,7 @@ All three are generated. Edit a migration and run `npm run generate:portable-cor
 | `npm run build` | Typecheck + production build |
 | `npm run lint` | ESLint |
 | `npm run supabase:start` / `stop` / `reset` | Local Supabase stack |
-| `npm run supabase:types` / `types:local` | Regenerate `src/types/database.ts` |
+| `npm run generate:database-types` / `check:database-types` | Regenerate `src/types/database.ts` from the database the portable core builds, or diff it against what is committed |
 | `node scripts/generate_sample_blueprint.mjs` | Regenerate the sample content (fallback module + seed) |
 | `python3 scripts/validate_ir.py <blueprint.json>` | Validate a blueprint file (stdlib-only) |
 | `python3 scripts/generate_fallbacks.py <blueprint.json> --locale <tag> --register` | blueprint → no-database data module + offline nav |

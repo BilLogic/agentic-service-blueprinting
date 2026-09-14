@@ -55,6 +55,15 @@ export const REPOSITORY_ONLY = [
       'offline board is authored here, into this tree’s application.',
   },
   {
+    script: 'scripts/generate-database-types.mjs',
+    why:
+      'it WRITES src/types/database.ts, generated from this repository’s own ' +
+      'portable core and recipe. The types are the template’s statement of ' +
+      'its schema; a deployment generates its own file against its own ' +
+      'project and holds it to this one with the superset check, it does not ' +
+      'regenerate the package’s.',
+  },
+  {
     script: 'scripts/sync-canvas-skills.mjs',
     why:
       'it VENDORS references/ and skills/ into src/lib/agent/skill/, holding ' +

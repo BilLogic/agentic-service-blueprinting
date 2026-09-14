@@ -20,10 +20,12 @@ describe('setPlacementTouchpoint', () => {
       { id: 'ct-1', cellId: 'cell-1', name: 'Workday (Employee View)' },
       { touchpointId: 'tp-workday', touchpointName: 'Workday' },
     )
+    // The optional argument is left out rather than sent as null; the
+    // function defaults it to null either way.
     expect(rpc).toHaveBeenCalledWith('set_placement_touchpoint', {
       p_placement_id: 'ct-1',
       p_touchpoint_id: 'tp-workday',
-      p_name: null,
+      p_name: undefined,
     })
     const [entry] = sessionSnapshot()
     expect(entry!.fn).toBe('set_placement_touchpoint')

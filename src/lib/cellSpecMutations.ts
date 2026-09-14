@@ -3,7 +3,7 @@ import { recordChange } from '@/lib/authoringSession'
 import { toAuthoringError } from '@/lib/authoringErrors'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
 import type { ValueProp } from '@/lib/valueProps'
-import type { Database, Json } from '@/types/database'
+import type { Database } from '@/types/database'
 import { invalidateCellBoard, invalidateQueries } from '@/lib/queryClient'
 import { queryKeys } from '@/lib/queryKeys'
 
@@ -45,7 +45,10 @@ export async function updateCellSpec(
     .update({
       function: update.function.trim() || null,
       form: update.form.trim() || null,
-      value_props: (valueProps.length > 0 ? valueProps : null) as Json,
+      // The column is NOT NULL with `[]` as its default, so an empty list is
+      // written as the empty list. It used to be written as null, which the
+      // column refuses — a bug the generated types now spell out.
+      value_props: valueProps,
     })
     .eq('id', cellId)
     .select('id')

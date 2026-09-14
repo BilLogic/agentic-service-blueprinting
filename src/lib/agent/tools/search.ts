@@ -29,10 +29,10 @@ type Client = SupabaseClient<Database>
  *
  * ── WHY THE GENERATED TYPES DO NOT KNOW THE FUNCTION ──────────────────────
  *
- * `types/database.ts` is generated from this repository's migration chain, and
- * `search_blueprint` is not in it — a hand-added entry inside the generated
- * block would be dropped by the next `npm run supabase:types`, and the file's
- * own header only promises to preserve the alias section at the bottom. So the
+ * `types/database.ts` is generated from the database this repository's portable
+ * core builds, and `search_blueprint` is not in it — the whole file is written
+ * by `npm run generate:database-types`, so a hand-added entry anywhere in it is
+ * dropped by the next run and the check that diffs the file says so. So the
  * call goes through one narrow local signature instead. The cast is confined
  * to {@link searchRpc}: nothing else in this module is loosely typed, and the
  * contract it asserts is written down in the connector doc a deployment reads.

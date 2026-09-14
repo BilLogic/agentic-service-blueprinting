@@ -55,10 +55,13 @@ export async function setPlacementTouchpoint(
   placement: { id: string; cellId?: string | null; name: string },
   to: PlacementIdentity & { touchpointName?: string },
 ): Promise<void> {
+  // Both optional arguments default to null in the function, so leaving one
+  // out is the same call as sending null; the generated types spell an
+  // optional argument as absent.
   const { data, error } = await client.rpc('set_placement_touchpoint', {
     p_placement_id: placement.id,
-    p_touchpoint_id: to.touchpointId ?? null,
-    p_name: to.name ?? null,
+    p_touchpoint_id: to.touchpointId ?? undefined,
+    p_name: to.name ?? undefined,
   })
   if (error) throw toAuthoringError(error)
   const previous = readPrevious(data)
