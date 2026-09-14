@@ -1,21 +1,18 @@
 /**
- * The compatibility check the adapter contract has always claimed to run.
+ * The list is one list, held equal to the two places that also carry it.
  *
- * The case that matters is the mismatch message: it has to name the version
- * the target carries AND the versions this template speaks, because the reader
- * of that failure is deciding whether to apply a migration or check out a
- * different revision, and one number cannot tell them which.
+ * `references/ir-schema.json` is the source `scripts/validate_ir.py` and
+ * `npm run check:target` both read, and the bootstrap migration seeds a
+ * version into the database. Nothing at runtime compares them, so these cases
+ * are the comparison: a version added here and nowhere else, or there and not
+ * here, fails before a target is born speaking a shape the app does not know.
  */
 import { describe, expect, test } from 'vitest'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { createFixtureBackend } from './adapters/fixture'
-import { runConformance } from './conformance'
 import {
   SUPPORTED_SCHEMA_VERSIONS,
-  SchemaVersionMismatch,
   TEMPLATE_SCHEMA_VERSION,
-  assertSchemaCompatible,
   isSchemaVersionSupported,
 } from './schemaVersion'
 
@@ -47,39 +44,5 @@ describe('schema version', () => {
     const seeded = /values \('([\d.]+)'\)/.exec(sql)?.[1]
     expect(seeded).toBeDefined()
     expect(isSchemaVersionSupported(seeded as string)).toBe(true)
-  })
-
-  test('an unknown version is rejected, and the message names both sides', () => {
-    let error: unknown
-    try {
-      assertSchemaCompatible('2025.01.01')
-    } catch (caught) {
-      error = caught
-    }
-    expect(error).toBeInstanceOf(SchemaVersionMismatch)
-    expect((error as Error).message).toContain('2025.01.01')
-    expect((error as Error).message).toContain(TEMPLATE_SCHEMA_VERSION)
-  })
-
-  test('a conforming backend answers the question', async () => {
-    const backend = createFixtureBackend()
-    expect(await backend.schemaVersion()).toBe(TEMPLATE_SCHEMA_VERSION)
-  })
-
-  test('the conformance suite fails a backend on the wrong schema', async () => {
-    const backend = createFixtureBackend()
-    const stale = { ...backend, schemaVersion: async () => '2025.01.01' }
-    const results = await runConformance(stale, {
-      scenarioId: (await backend.blueprints.listPhases())[0].scenarios[0].id,
-      pathId: (
-        await backend.blueprints.listPaths(
-          (await backend.blueprints.listPhases())[0].scenarios[0].id,
-        )
-      )[0].id,
-    })
-    const check = results.find((result) => result.id === 'read/schema-version')
-    expect(check?.status).toBe('fail')
-    expect(check?.detail).toContain('2025.01.01')
-    expect(check?.detail).toContain(TEMPLATE_SCHEMA_VERSION)
   })
 })
