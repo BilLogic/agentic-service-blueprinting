@@ -11,8 +11,10 @@ claims:
 # Mobile shell
 
 The one surface that forks. Every other document here describes a tree the
-phone and the desktop share; below the 768px gate (`MOBILE_BREAKPOINT` in
-`src/hooks/use-mobile.ts`) this shell renders instead of the desktop one. Directly above
+phone and the desktop share; below the 768px gate (`MOBILE_SHELL_QUERY` in
+`src/hooks/useMobileShell.ts`, `max-width: 767px`) this shell renders instead of the
+desktop one; the `MOBILE_BREAKPOINT` in `use-mobile.ts` is the same number, read only
+by the sidebar primitive. Directly above
 it the desktop shell renders, with its [sidebar](sidebar.md) collapsed or open
 as the reader left it, so the two meet with nothing between them.
 
