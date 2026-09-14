@@ -28,7 +28,12 @@ attributes, classes and handlers it had in each of the three.
 **This is the first split ADR 0017 held back, and the record was the point.**
 The hold was lifted when the annotation-drag slice and the browser drag case
 landed; both were run before the first move and after every move since, on the
-same assertions, and no test file was edited. What the interface between the
+same assertions, and no assertion was edited anywhere in the suite. One test
+file changed and it is not one of theirs: `tokenDiscipline.test.ts` pins its
+colour exemptions to a path, and the line-style preview swatch the layer's
+exemption was written for is in `ShapeStyleBar.tsx` now, so the entry follows
+it. That list refuses an exemption matching no offender, which is how the move
+announced itself. What the interface between the
 layer and a node is — `MovableProps` — was already the interface; the split
 wrote it down. No new prop reaches the layer from outside it. The ADR carries
 the outcome.

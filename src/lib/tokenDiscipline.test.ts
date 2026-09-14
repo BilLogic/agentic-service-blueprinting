@@ -55,7 +55,7 @@ import { sweep } from '../../scripts/sweep.mjs'
  * neither. Measured on this tree, the first found one component spelling
  * absolute white all through a bar that `semantic.css` had already given an
  * ink ladder — `CanvasAnnotationLayer.tsx`, which now consumes the ladder
- * instead of carrying an exemption; the bars themselves are their own modules
+ * instead of carrying an exemption, and whose bars are modules of their own
  * since — and the rest is categorical colour,
  * named file by file below with the reason each one is categorical.
  */

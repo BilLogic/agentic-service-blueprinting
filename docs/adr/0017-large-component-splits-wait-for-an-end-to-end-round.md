@@ -284,8 +284,9 @@ resize and selection machine, the draft types it is written in, and the
 composition that hands each annotation to the node that draws it. It holds no
 style bar, no node component and no geometry helper.
 
-What came out, and where it went — all of it beside the layer in
-`src/components/editor/`, which is how this tree names a split module:
+What came out, and where it went. A split module sits beside the file it came
+out of, which is how this tree names one; the single exception is the focus
+hook, which goes to `src/hooks/` with the rest of them:
 
 | out of the layer | into |
 |---|---|
@@ -307,8 +308,8 @@ nothing more.
 **The instrument did its job, which is the part this record exists for.** The
 slice and the browser drag case were run before the first move — 3 tests
 green, 1 browser case green — and after every move since, on the same
-assertions, with no test file edited. One guard did go red, and it was the
-right one: `tokenDiscipline.test.ts` refuses an exemption that no longer
+assertions, with no assertion edited anywhere in the suite. One guard did go
+red, and it was the right one: `tokenDiscipline.test.ts` refuses an exemption that no longer
 matches an offender, so moving the line-style preview swatch out of the layer
 made the layer's var-ramp exemption stale within the same commit that moved
 it. That is a check noticing a file moved, which is what a path-pinned
