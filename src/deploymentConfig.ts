@@ -247,7 +247,7 @@ export type DeploymentConfig = {
    * defect this second field was added for: `nav` replaces rather than
    * merges, so a deployment's nav over the package's registry is the
    * deployment's rows above an empty canvas in every no-database build, and a
-   * render walk over that build finds no board (#754). Each is replaced,
+   * render walk over that build finds no board. Each is replaced,
    * never merged, and an omitted or empty one is the template's own.
    */
   sample?: {

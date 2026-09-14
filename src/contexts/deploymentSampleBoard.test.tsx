@@ -6,7 +6,7 @@
  * `sample.nav` had a config home and the board behind it did not, so a
  * deployment that supplied its own nav got its phases and scenarios over an
  * empty canvas in every no-database build, and the render walk over that build
- * could find no board (#754). This holds the fix at the level the failure
+ * could find no board. This holds the fix at the level the failure
  * appeared: the hook the canvas reads its lanes, cells and paths from, under a
  * provider handed a deployment's config and nothing else.
  *
