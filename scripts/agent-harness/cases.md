@@ -62,6 +62,22 @@ tier/mobile injections.
 
 ## C. Write discipline
 
+Writes are rehearsed, never sent: the tool's own `run` executes against a
+recording client that answers with `dry-N` placeholders (`dry-4`, then
+`dry-4.2` for a second id minted in the same call), so the model reads the
+sentence the tool says — `Added lane to every path of the scenario…` —
+followed by the harness's one rehearsal note, which is about the rehearsal
+and so is nobody's tool sentence to say. The note and the tool's own "re-read
+the blueprint" can both be true: it refuses the re-read that CHECKS the write,
+and says the ids above are placeholders no read will find.
+
+A rehearsal cannot refuse what only real rows could refuse — a revision
+conflict, a missing row, a dedupe against a dismissed finding, an upsert onto
+an occupied slot all rehearse as success — so a C case judges the SHAPE of a
+write (how many, in what order, after which read), never that the database
+would have accepted it. A rehearsal that throws is recorded as a tool error
+and does not count as a write.
+
 - **C1 add-lane** — QA lane, two turns. [T] reference + blueprint read
   before the write; exactly one create_lane; narration precedes the write.
   [J] one-line batch narration; coinage stated. *(smoke)*

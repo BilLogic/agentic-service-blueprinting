@@ -8,7 +8,15 @@
  * - READS are real: PostgREST (anon, RLS read-only) when VITE_SUPABASE_URL
  *   is configured, else the SHIPPED SAMPLE FIXTURE (the same modules the
  *   app renders keyless) — so a fresh clone runs the harness with zero env.
- * - WRITES are dry-run: recorded in the trace, never sent anywhere.
+ *   The rows come over REST here; the TEXT is the app's own formatter in
+ *   every case, so a database read answers in the words the app answers in.
+ * - WRITES are dry-run: the tool's own `run` executes against a recording
+ *   client that answers with `dry-N` placeholders, so the model reads the
+ *   tool's own sentence — plus the rehearsal note, which is the harness's,
+ *   because it is about the rehearsal and not about the write. Nothing is
+ *   sent anywhere. A rehearsal cannot refuse what only real rows could
+ *   refuse (see the dry-run branch); a rehearsal that throws is a tool
+ *   error, not a write that happened.
  * - get_ui_state (and injection cases' get_cell) are per-case mocks — the
  *   CLI has no live shell to observe.
  *
@@ -21,8 +29,13 @@
  * - MIRRORED BY HAND: the system-prompt ASSEMBLY (buildSystem + the tier /
  *   mobile injections), the provider glue, the batch limiter and the round
  *   cap follow src/lib/agent/loop.ts and providers/ by copy — edit both
- *   sides together. The tool RESULT texts below are harness-local mocks of
- *   registry.ts behavior, not the real wrappers.
+ *   sides together. What remains harness-local in the tool RESULTS is the
+ *   per-case mock (get_ui_state, and the injection cases' get_cell), the
+ *   rehearsal note, the "no browser session store" answers, and the findings
+ *   header that quotes a count=exact total the app's read never asks for.
+ *   Everything else — the writes, the refusals, and every database read's
+ *   text — answers in the app's words, and `toolParity.test.mjs` fails if a
+ *   sentence the app says turns up composed here again.
  *
  * Provider selection is NEUTRAL — the first key found wins:
  *   GEMINI_API_KEY, then ANTHROPIC_API_KEY, then OPENAI_API_KEY
@@ -138,6 +151,8 @@ const {
   WRITE_BATCH_LIMIT,
   AGENT_CELL_FIELDS,
   renderCanvasAdapter,
+  rehearsalContext,
+  runTool,
 } = surface
 
 /**
@@ -231,6 +246,28 @@ const {
   formatBlueprintList,
   listBlueprintRequest,
   REFERENCE_NAMES,
+  // The app's own text for every other read the harness serves from the
+  // database, so a REST row reads back in the app's words. See
+  // app-surface.entry.ts: the harness composes no tool result sentence of its
+  // own, and `toolParity.test.mjs` fails if one comes back.
+  formatBlueprints,
+  formatBusinessModel,
+  formatCellDependencies,
+  formatEvidenceDetail,
+  formatEvidenceList,
+  formatFindingsList,
+  formatLaneVocabulary,
+  formatOwnerTags,
+  formatSliceDetail,
+  formatSliceList,
+  formatStakeholderList,
+  normalizeBlueprint,
+  NAME_AN_EVIDENCE_ID,
+  NO_PATHS_IN_SCENARIO,
+  noCellWithId,
+  NO_UI_STATE,
+  CELL_CAMERA_SETTLED,
+  cameraSettled,
 } = surface
 
 // ---------------------------------------------------------------------------
@@ -311,59 +348,43 @@ async function realListBlueprint(options) {
   )
 }
 
+/**
+ * The grid, read over REST and rendered by the app's own pair: the rows go
+ * through `normalizeBlueprint` — the same normalizer the board read uses —
+ * and the text is `formatBlueprints`. The harness walked the lanes and wrote
+ * the step, lane and cell lines itself before, which was four templates the
+ * app could reword without this file noticing.
+ */
 async function realGetBlueprint(scenarioId) {
   const paths = await rest(
     `paths?select=id,name,kind,lanes(id,name,lane_role,position),path_steps(position,steps(id,name))&scenario_id=eq.${encodeURIComponent(scenarioId)}`,
   )
-  if (!paths?.length) return 'No paths in this scenario.'
-  const out = []
+  if (!paths?.length) return NO_PATHS_IN_SCENARIO
+  const blueprints = []
   for (const path of paths) {
-    const steps = (path.path_steps ?? [])
-      .sort((a, b) => a.position - b.position)
-      .map((ps) => ({ ...ps.steps, position: ps.position }))
-      .filter((s) => s.id)
-    const cells = await rest(
-      `cells?select=id,content,lane_id,step_id&path_id=eq.${path.id}`,
-    )
-    out.push(
-      `Path "${path.name}" (${path.id}, type ${path.kind})`,
-      `Steps: ${steps.map((s) => `${s.position}. "${s.name}" (${s.id})`).join(' | ')}`,
-      ...(path.lanes ?? [])
-        .sort((a, b) => a.position - b.position)
-        .map((lane) => {
-          const laneCells = (cells ?? [])
-            .filter((cell) => cell.lane_id === lane.id)
-            .map((cell) => {
-              const step = steps.find((s) => s.id === cell.step_id)
-              return `  [step ${step?.position ?? '?'}] "${cell.content}" (${cell.id})`
-            })
-          return `Lane "${lane.name}" (${lane.id}${lane.lane_role ? `, role ${lane.lane_role}` : ''}):\n${laneCells.join('\n') || '  (empty)'}`
-        }),
-    )
+    // The cells ride under the path, which is where the app's select puts
+    // them; the harness asks for them separately because its select is the
+    // narrow one its cases judge.
+    const cells = await rest(`cells?select=id,content,lane_id,step_id&path_id=eq.${path.id}`)
+    blueprints.push(normalizeBlueprint({ ...path, cells: cells ?? [] }))
   }
-  return out.join('\n')
+  return formatBlueprints(blueprints)
 }
 
 async function realGetCell(cellId) {
   const data = await rest(`cells?select=${CELL_COLUMNS.join(',')}&id=eq.${encodeURIComponent(cellId)}`)
-  if (!data?.[0]) throw new Error(`No cell with id ${cellId}.`)
+  if (!data?.[0]) throw new Error(noCellWithId(cellId))
   return JSON.stringify(data[0], null, 1)
 }
 
 async function realListOwnerTags() {
-  const data = await rest(`cells?select=${OWNER_TAG_COLUMNS.join(',')}`)
-  const tags = new Set()
-  for (const row of data ?? []) {
-    for (const column of OWNER_TAG_COLUMNS) if (row[column]) tags.add(row[column])
-  }
-  return tags.size ? [...tags].sort().join(', ') : 'No owner tags in use yet.'
+  const rows = await rest(`cells?select=${OWNER_TAG_COLUMNS.join(',')}`)
+  return formatOwnerTags(rows ?? [])
 }
 
 async function realListSlices() {
-  const data = await rest('slices?select=id,title,kind')
-  return (data ?? [])
-    .map((s) => `"${s.title}" (${s.id}, type ${s.kind})`)
-    .join('\n')
+  const rows = await rest('slices?select=id,title,kind')
+  return formatSliceList(rows ?? [])
 }
 
 async function realGetSlice(sliceId) {
@@ -371,34 +392,19 @@ async function realGetSlice(sliceId) {
     `slices?select=id,title,summary,kind,actor,authorship,slides(id,position,title,caption,cell_ids)&id=eq.${encodeURIComponent(String(sliceId))}`,
   )
   if (!rows?.[0]) throw new Error('No slice with that id.')
-  const slice = rows[0]
-  const slides = [...(slice.slides ?? [])]
-    .sort((a, b) => a.position - b.position)
-    .map((s, i) => `slide ${i + 1}: cells [${(s.cell_ids ?? []).join(', ')}]${s.title ? ` title "${s.title}"` : ''}`)
-  return `slice "${slice.title}" (${slice.id}) type=${slice.kind}\n${slides.join('\n') || '(no slides)'}`
+  return formatSliceDetail(rows[0], rows[0].slides ?? [])
 }
 
 // The bundled fixture is a board, not a deployment: it carries no cast, no
 // provenance and no business model, so a keyless run says so rather than
-// inventing rows.
-const NO_CAST = 'No stakeholders registered yet.'
-const NO_EVIDENCE = 'No evidence recorded yet.'
+// inventing rows — in the app's own words for "none", which is what each of
+// these formatters answers an empty list with.
+const NO_CAST = () => formatStakeholderList([])
+const NO_EVIDENCE = () => formatEvidenceList([])
 
 async function realListLanes() {
   const rows = await rest('lanes?select=name,lane_role&order=position')
-  const counts = new Map()
-  for (const row of rows ?? []) {
-    const key = JSON.stringify([row.name, row.lane_role ?? null])
-    counts.set(key, (counts.get(key) ?? 0) + 1)
-  }
-  if (!counts.size) return 'No lanes defined yet.'
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([key, count]) => {
-      const [name, role] = JSON.parse(key)
-      return `${name}${role ? ` (role ${role})` : ''} — ${count} lane${count === 1 ? '' : 's'}`
-    })
-    .join('\n')
+  return formatLaneVocabulary(rows ?? [])
 }
 
 async function realListCellDependencies(cellId) {
@@ -408,82 +414,50 @@ async function realListCellDependencies(cellId) {
   const rows = await rest(
     `cell_dependencies?select=id,source_cell_id,target_cell_id,kind,name&limit=200${scope}`,
   )
-  if (!rows?.length)
-    return cellId ? `No links on cell ${cellId}.` : 'No links recorded yet.'
-  const header = cellId
-    ? `${rows.length} link(s) touching ${cellId}:`
-    : `${rows.length} link(s):`
-  return [
-    header,
-    ...rows.map(
-      (e) =>
-        `${e.source_cell_id} --${e.kind ?? 'leads_to'}--> ${e.target_cell_id}${e.name ? ` "${e.name}"` : ''} (${e.id})`,
-    ),
-  ].join('\n')
+  return formatCellDependencies(rows ?? [], cellId ? String(cellId) : undefined)
 }
 
 async function realListStakeholders() {
-  const rows = await rest(
-    'stakeholders?select=id,name,kind,summary,aliases&order=kind,name',
-  )
-  if (!rows?.length) return NO_CAST
-  return rows
-    .map(
-      (r) =>
-        `${r.name} (${r.kind}) [${r.id}]${(r.aliases ?? []).length ? ` — also written ${r.aliases.join(', ')}` : ''}${r.summary ? ` — ${r.summary}` : ''}`,
-    )
-    .join('\n')
+  const rows = await rest('stakeholders?select=id,name,kind,summary,aliases&order=kind,name')
+  return formatStakeholderList(rows ?? [])
 }
 
 const EVIDENCE_COLUMNS = 'id,cell_id,kind,title,note,observed_at'
-
-const evidenceLine = (r) =>
-  `[${r.kind}] "${r.title}"${r.observed_at ? ` observed=${String(r.observed_at).slice(0, 10)}` : ''}${r.cell_id ? ` cell=${r.cell_id}` : ''} (${r.id})`
 
 async function realListEvidence(cellId) {
   const scope = cellId ? `&cell_id=eq.${encodeURIComponent(String(cellId))}` : ''
   const rows = await rest(
     `evidence?select=${EVIDENCE_COLUMNS}&order=created_at.desc&limit=100${scope}`,
   )
-  if (!rows?.length)
-    return cellId ? `No evidence attached to cell ${cellId}.` : NO_EVIDENCE
-  return [
-    `${rows.length} evidence row(s):`,
-    ...rows.map(evidenceLine),
-  ].join('\n')
+  return formatEvidenceList(rows ?? [], cellId ? String(cellId) : undefined)
 }
 
 async function realGetEvidence(ids) {
   const wanted = Array.isArray(ids) ? ids : []
-  if (!wanted.length) return 'Pass at least one evidence id.'
+  if (!wanted.length) return NAME_AN_EVIDENCE_ID
   const rows = await rest(
     `evidence?select=${EVIDENCE_COLUMNS}&id=in.(${wanted.map(encodeURIComponent).join(',')})`,
   )
-  if (!rows?.length) return 'No evidence with those ids.'
-  return rows
-    .map((r) =>
-      [evidenceLine(r), r.note ? `  note: ${r.note}` : '']
-        .filter(Boolean)
-        .join('\n'),
-    )
-    .join('\n')
+  return formatEvidenceDetail(rows ?? [], wanted)
 }
 
 async function realGetBusinessModel() {
   const rows = await rest(
     'business_models?select=pricing,funding,partners,revenue_model,delivery_cost&limit=1',
   )
-  const row = rows?.[0]
-  if (!row) return 'No business model recorded for this service yet.'
-  const filled = Object.entries(row).filter(([, v]) => v !== null && v !== '')
-  return filled.length
-    ? filled.map(([k, v]) => `${k}: ${v}`).join('\n')
-    : 'The business model row exists but is empty.'
+  return formatBusinessModel(rows?.[0] ?? null)
 }
 
+/**
+ * The findings, in the app's words, under a total the app cannot state.
+ *
+ * The rows and every empty state are `formatFindingsList` — the same function
+ * `list_findings` answers with. The header above them is the harness's own
+ * and stays: this read asks PostgREST for `count=exact`, so it knows the true
+ * total behind the cap, which the app's own read does not and therefore has
+ * no sentence for.
+ */
 async function realListFindings(statusFilter) {
-  // Mirrors read.ts: the capped read carries the TRUE TOTAL (count=exact)
-  // and instructs the model to answer count questions from it.
   const query = `audit_findings?select=id,source,check_key,severity,summary,status,cell_ids,created_at&order=created_at.desc&limit=100${statusFilter === 'all' ? '' : `&status=eq.${encodeURIComponent(statusFilter)}`}`
   const response = await fetch(`${env.VITE_SUPABASE_URL}/rest/v1/${query}`, {
     headers: {
@@ -496,19 +470,13 @@ async function realListFindings(statusFilter) {
   const rows = await response.json()
   const range = response.headers.get('content-range')
   const total = range?.includes('/') ? Number(range.split('/')[1]) : undefined
-  if (!rows?.length)
-    return statusFilter === 'all' ? 'No findings recorded yet.' : `No ${statusFilter} findings.`
+  const listed = formatFindingsList(rows ?? [], { filter: statusFilter })
+  if (!rows?.length) return listed
   const label = statusFilter === 'all' ? 'findings' : `${statusFilter} findings`
   const header = Number.isFinite(total)
     ? `${total} ${label} total; listing ${Math.min(rows.length, total)}. Answer count questions from the TOTAL, not by counting the rows below.`
     : `Listing ${rows.length} ${label} (total unavailable — do not state a total).`
-  return [
-    header,
-    ...rows.map(
-      (r) =>
-        `${r.id} [${r.severity}] ${r.check_key} (${r.source}, ${r.status}, ${String(r.created_at).slice(0, 10)}) cells:${(r.cell_ids ?? []).length}${r.summary ? ` — ${r.summary}` : ''}`,
-    ),
-  ].join('\n')
+  return [header, listed].join('\n')
 }
 
 // ---------------------------------------------------------------------------
@@ -517,6 +485,22 @@ async function realListFindings(statusFilter) {
 // batch etiquette.
 // ---------------------------------------------------------------------------
 let dryCounter = 0
+/**
+ * The one sentence in this file that is the harness's own, deliberately: it
+ * is about the REHEARSAL, not about the write, so no tool could say it. It
+ * matters — reads here are real and will not reflect a dry-run write, and
+ * without the note the model re-reads, concludes the write failed, and
+ * retries (observed live: a doubled create_lane).
+ *
+ * Worded so that it and the TOOL's own sentence can both be true at once.
+ * `create_lane` ends "Re-read the blueprint for the new lane ids", and a note
+ * that said "do NOT re-read" flatly contradicted it; the model then obeyed
+ * one of them at random. This one refuses only the re-read that CHECKS —
+ * verifying this write, or retrying it — and says why the ids above cannot be
+ * looked up: they are placeholders, and no read will find them.
+ */
+const DRY_RUN_NOTE =
+  'NOTE: rehearsal — this write was not applied and any ids above are placeholders; a re-read will not show it. Continue as if it landed; do not re-read to verify it and do not retry it.'
 async function dispatch(caseDef, name, args, trace, turn = 0) {
   const mock = caseDef.mocks?.[name]
   const record = { name, args, isError: false, turn }
@@ -560,14 +544,40 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
     }
     if (WRITE_TOOL_NAMES.has(name)) {
       dryCounter += 1
+      const definition = TOOL_DEFINITIONS.find((tool) => tool.name === name)
+      // Every id this call mints, distinct: `dry-4` for the first, then
+      // `dry-4.2`, `dry-4.3`. One counter per CALL keeps the transcript
+      // readable (the fourth write says `dry-4`), and the suffix keeps a
+      // write that mints two rows from reporting the same id for both.
+      let minted = 0
+      const placeholder = () => {
+        minted += 1
+        return minted === 1 ? `dry-${dryCounter}` : `dry-${dryCounter}.${minted}`
+      }
+      // The tool's OWN sentence: its `run`, validated at the same seam the
+      // live loop validates at, against a client that records rather than
+      // writes and answers with placeholders. A call the model malformed, or
+      // a mutation the rehearsal cannot satisfy, throws — and lands on this
+      // dispatch's own error path, recorded as the tool error the live loop
+      // would report rather than as a write that landed.
+      //
+      // WHAT A REHEARSAL CANNOT REFUSE, so a transcript reader does not read
+      // "it worked" as "it would have worked": every gate that needs the real
+      // rows is open here. A revision conflict, a missing row, a dedupe
+      // against an already-dismissed finding, an upsert landing on a row that
+      // already exists — all four rehearse as success, because the recording
+      // client answers the before-read with the row the chain addressed and
+      // never with somebody else's version of it. What a rehearsal DOES
+      // catch is what the tool decides for itself: argument validation, the
+      // refusals a `run` raises on its arguments, and a mutation whose shape
+      // the rehearsal cannot answer at all.
+      const rehearsal = rehearsalContext({ definition, args, placeholder })
+      const sentence = await runTool(definition, args, rehearsal.ctx)
+      // Marked as a dry-run write only once the rehearsal RESOLVED: a
+      // rehearsal that threw is an error, not an executed write, and the
+      // trace checks count `t.dryRun` as writes that happened.
       record.dryRun = true
-      // The rehearsal note matters: reads are real and will not reflect
-      // this write — without it the model re-reads, concludes the write
-      // failed, and retries (observed live: a doubled create_lane).
-      record.result =
-        name === 'create_finding'
-          ? `Recorded ${args.severity ?? 'warn'} finding for ${args.check_key ?? '?'}. run_id ${args.run_id ?? `00000000-0000-4000-8000-00000000d${dryCounter}`}; reuse it for the rest of this run. NOTE: this is a rehearsal environment — reads will not show this change; do NOT re-read to verify or retry this write.`
-          : `Done (${name} accepted, ref dry-${dryCounter}). NOTE: this is a rehearsal environment — reads will not show this change; do NOT re-read to verify or retry this write.`
+      record.result = `${sentence} ${DRY_RUN_NOTE}`
       return record.result
     }
     switch (name) {
@@ -604,9 +614,7 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
         const filter = typeof args.status === 'string' ? args.status : 'open'
         record.result = HAS_DB
           ? await realListFindings(filter)
-          : filter === 'all'
-            ? 'No findings recorded yet.'
-            : `No ${filter} findings.`
+          : formatFindingsList([], { filter })
         return record.result
       }
       case 'list_references':
@@ -623,22 +631,22 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
           : sampleListCellDependencies(args.cell_id)
         return record.result
       case 'list_stakeholders':
-        record.result = HAS_DB ? await realListStakeholders() : NO_CAST
+        record.result = HAS_DB ? await realListStakeholders() : NO_CAST()
         return record.result
       case 'list_evidence':
         record.result = HAS_DB
           ? await realListEvidence(args.cell_id)
-          : NO_EVIDENCE
+          : NO_EVIDENCE()
         return record.result
       case 'get_evidence':
         record.result = HAS_DB
           ? await realGetEvidence(args.evidence_ids)
-          : NO_EVIDENCE
+          : NO_EVIDENCE()
         return record.result
       case 'get_business_model':
         record.result = HAS_DB
           ? await realGetBusinessModel()
-          : 'No business model recorded for this service yet.'
+          : formatBusinessModel(null)
         return record.result
       // The session store is browser state (localStorage plus a merged DB
       // list), and the harness has no browser. Saying so is the honest
@@ -652,17 +660,21 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
         record.result =
           'Session transcripts are not available in this rehearsal environment (no browser session store).'
         return record.result
+      // The harness drives no canvas, so the three interface calls answer
+      // with what the UI bridge says when a navigation LANDS — the app's
+      // sentence, not a copy of it — and `get_ui_state` with what the tool
+      // says when no shell is reporting.
       case 'get_ui_state':
-        record.result = 'No UI state is being reported right now.'
+        record.result = NO_UI_STATE
         return record.result
       case 'open_phase':
-        record.result = 'Opened the phase and settled its canvas camera.'
+        record.result = cameraSettled('phase')
         return record.result
       case 'open_scenario':
-        record.result = 'Opened the scenario and settled its canvas camera.'
+        record.result = cameraSettled('scenario')
         return record.result
       case 'focus_cell':
-        record.result = 'Focused the active canvas camera on the cell.'
+        record.result = CELL_CAMERA_SETTLED
         return record.result
       default:
         record.result = `Tool "${name}" is not on the allow-list.`

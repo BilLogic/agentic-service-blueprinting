@@ -89,6 +89,16 @@ async function openAndAwaitNavigation(
     return `${kind === 'phase' ? 'Phase' : 'Scenario'} navigation selected the target, but its camera outcome was not verified before timeout.`
   if (result.kind !== 'completed')
     return `${kind === 'phase' ? 'Phase' : 'Scenario'} navigation was ${result.kind}; the camera was not claimed as landed.`
+  return cameraSettled(kind)
+}
+
+/**
+ * The one sentence a landed navigation answers with. A template rather than
+ * two constants because the noun is the only difference, and exported because
+ * the eval harness rehearses `open_phase` / `open_scenario` without a canvas
+ * and must answer in these words rather than in a copy of them.
+ */
+export function cameraSettled(kind: 'phase' | 'scenario'): string {
   return `Opened the ${kind} and settled its canvas camera.`
 }
 
@@ -119,6 +129,9 @@ export function openAgentSurface(): boolean {
 const FOCUS_DEADLINE_MS = 1500
 const FOCUS_TIMED_OUT = Symbol('focus-timed-out')
 
+/** What a landed cell focus answers with — exported for the reason `cameraSettled` is. */
+export const CELL_CAMERA_SETTLED = 'Focused the active canvas camera on the cell.'
+
 export async function agentFocusCell(cellId: string): Promise<string> {
   const focus = resolveActiveFocusCells()
   if (!focus)
@@ -135,7 +148,7 @@ export async function agentFocusCell(cellId: string): Promise<string> {
     return 'That cell is not on the active canvas — open its scenario first, then retry.'
   if (result.completion !== 'completed')
     return `The camera focus was ${result.completion}; the cell was not claimed as landed.`
-  return 'Focused the active canvas camera on the cell.'
+  return CELL_CAMERA_SETTLED
 }
 
 export function agentSetSidebar(collapsed: boolean): string {

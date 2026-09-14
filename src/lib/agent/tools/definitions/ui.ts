@@ -7,6 +7,13 @@ import { defineTool } from '@/lib/agent/tools/definition'
  * The calls that DRIVE the canvas are `interface.ts`.
  */
 
+/**
+ * What `get_ui_state` says when no shell is reporting. Exported because the
+ * eval harness, which has no shell at all, answers the same tool and must
+ * answer it in these words rather than in a copy of them.
+ */
+export const NO_UI_STATE = 'No UI state is being reported right now.'
+
 export const getUiStateTool = defineTool({
   name: 'get_ui_state',
   description:
@@ -14,7 +21,7 @@ export const getUiStateTool = defineTool({
   surface: 'read',
   args: z.object({}),
   availability: { sample: true, mobile: true },
-  run: async (_args, ctx) => ctx.ui.uiState() || 'No UI state is being reported right now.',
+  run: async (_args, ctx) => ctx.ui.uiState() || NO_UI_STATE,
 })
 
 export const listUiCommandsTool = defineTool({

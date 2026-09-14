@@ -3,11 +3,13 @@ import type { Database } from '@/types/database'
 import {
   formatBlueprintList,
   formatBlueprints,
+  formatBusinessModel,
   formatCellDependencies,
   formatCompareDiff,
   formatEvidenceDetail,
   formatEvidenceList,
   formatFields,
+  formatFindingsList,
   formatLaneVocabulary,
   formatOwnerTags,
   formatResources,
@@ -346,12 +348,18 @@ export async function listEvidence(
   return formatEvidenceList(data ?? [], cellId)
 }
 
+/**
+ * What `get_evidence` answers a call that named nothing. Exported for the
+ * reason `NO_PATHS_IN_SCENARIO` is: the harness serves the same tool.
+ */
+export const NAME_AN_EVIDENCE_ID = 'Pass at least one evidence id.'
+
 /** Named evidence rows in full — the note included. */
 export async function getEvidence(
   client: Client,
   ids: string[],
 ): Promise<string> {
-  if (ids.length === 0) return 'Pass at least one evidence id.'
+  if (ids.length === 0) return NAME_AN_EVIDENCE_ID
   const { data, error } = await client
     .from('evidence')
     .select(EVIDENCE_SELECT)
@@ -423,16 +431,15 @@ export async function getBusinessModel(
   if (scope.kind === 'service') query = query.eq('service_id', scope.serviceId)
   const { data, error } = await query.limit(1).maybeSingle()
   if (error) throw new Error(error.message)
-  if (!data) return 'No business model recorded for this service yet.'
-  const filled = formatFields([
-    ['pricing', data.pricing],
-    ['revenue_model', data.revenue_model],
-    ['funding', data.funding],
-    ['partners', data.partners],
-    ['delivery_cost', data.delivery_cost],
-  ])
-  return filled || 'The business model row exists but is empty.'
+  return formatBusinessModel(data)
 }
+
+/**
+ * A scenario with no paths, said once. Exported because the eval harness's
+ * REST read of the same scenario must answer in these words rather than in a
+ * copy of them.
+ */
+export const NO_PATHS_IN_SCENARIO = 'No paths in this scenario.'
 
 export async function getBlueprint(
   client: Client,
@@ -444,7 +451,7 @@ export async function getBlueprint(
     .eq('scenario_id', scenarioId)
   if (error) throw new Error(error.message)
   const rows = (data ?? []) as unknown as RawPath[]
-  if (rows.length === 0) return 'No paths in this scenario.'
+  if (rows.length === 0) return NO_PATHS_IN_SCENARIO
   return formatBlueprints(rows.map((raw) => normalizeBlueprint(raw)))
 }
 
@@ -463,7 +470,7 @@ export async function getCompareDiff(
     .eq('scenario_id', scenarioId)
   if (error) throw new Error(error.message)
   const rows = (data ?? []) as unknown as RawPath[]
-  if (rows.length === 0) return 'No paths in this scenario.'
+  if (rows.length === 0) return NO_PATHS_IN_SCENARIO
   return formatCompareDiff(
     rows.map((raw) => normalizeBlueprint(raw)),
     pathIds,
@@ -477,6 +484,11 @@ export async function getCompareDiff(
  * the panel shows them under the cell, the grid query embeds them, and an
  * agent asked "where does this moment link to?" had no read that answered.
  */
+/** What a cell read answers when the id names nothing — the harness's too. */
+export function noCellWithId(cellId: string): string {
+  return `No cell with id ${cellId}.`
+}
+
 export async function getCell(client: Client, cellId: string): Promise<string> {
   const { data, error } = await client
     .from('cells')
@@ -486,7 +498,7 @@ export async function getCell(client: Client, cellId: string): Promise<string> {
     .eq('id', cellId)
     .maybeSingle()
   if (error) throw new Error(error.message)
-  if (!data) return `No cell with id ${cellId}.`
+  if (!data) return noCellWithId(cellId)
   const fields: Array<[string, unknown]> = [
     ['content', data.content],
     ['summary', data.summary],
@@ -556,16 +568,7 @@ export async function listFindings(
   if (forCell) query = query.contains('cell_ids', [forCell])
   const { data, error } = await query
   if (error) throw new Error(error.message)
-  if (!data || data.length === 0) {
-    if (forCell) return `No ${filter === 'all' ? '' : `${filter} `}findings touch cell ${forCell}.`
-    return filter === 'all' ? 'No findings recorded yet.' : `No ${filter} findings.`
-  }
-  return data
-    .map(
-      (row) =>
-        `${row.id} [${row.severity}] ${row.check_key} (${row.source}, ${row.status}, ${row.created_at.slice(0, 10)}) cells:${(row.cell_ids ?? []).length}${row.summary ? ` — ${row.summary}` : ''}`,
-    )
-    .join('\n')
+  return formatFindingsList(data ?? [], { filter, forCell })
 }
 
 /** The tag vocabulary — read this before writing any owner value. */
