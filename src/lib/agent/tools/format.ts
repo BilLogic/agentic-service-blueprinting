@@ -418,6 +418,66 @@ export function formatBlueprints(blueprints: readonly BlueprintData[]): string {
   return sections.join('\n\n')
 }
 
+/**
+ * The business model as the agent reads it: the filled fields, or the reason
+ * there are none. Here rather than beside the query because the eval harness
+ * reads the same row over REST and must answer in these words — a second copy
+ * of "no business model recorded" is a sentence the app can reword while the
+ * harness goes on saying the old one.
+ */
+export function formatBusinessModel(
+  row: {
+    pricing?: string | null
+    funding?: string | null
+    partners?: string | null
+    revenue_model?: string | null
+    delivery_cost?: string | null
+  } | null,
+): string {
+  if (!row) return 'No business model recorded for this service yet.'
+  const filled = formatFields([
+    ['pricing', row.pricing],
+    ['revenue_model', row.revenue_model],
+    ['funding', row.funding],
+    ['partners', row.partners],
+    ['delivery_cost', row.delivery_cost],
+  ])
+  return filled || 'The business model row exists but is empty.'
+}
+
+/** One audit finding as a line — id, severity, check, provenance, cell count. */
+function findingLine(row: FindingRow): string {
+  const summary = row.summary ? ` — ${row.summary}` : ''
+  return `${row.id} [${row.severity}] ${row.check_key} (${row.source}, ${row.status}, ${row.created_at.slice(0, 10)}) cells:${(row.cell_ids ?? []).length}${summary}`
+}
+
+export type FindingRow = {
+  id: string
+  source: string
+  check_key: string
+  severity: string
+  summary?: string | null
+  status: string
+  cell_ids?: string[] | null
+  created_at: string
+}
+
+/**
+ * The findings list, and the three ways it can be empty — for the whole
+ * board, for one status, and for one cell. Shared with the harness's REST
+ * read for the reason `formatBusinessModel` is.
+ */
+export function formatFindingsList(
+  rows: ReadonlyArray<FindingRow>,
+  { filter, forCell }: { filter: string; forCell?: string },
+): string {
+  if (rows.length === 0) {
+    if (forCell) return `No ${filter === 'all' ? '' : `${filter} `}findings touch cell ${forCell}.`
+    return filter === 'all' ? 'No findings recorded yet.' : `No ${filter} findings.`
+  }
+  return rows.map(findingLine).join('\n')
+}
+
 /** `key: value` lines, empty fields dropped. */
 export function formatFields(fields: Array<[string, unknown]>): string {
   return fields

@@ -49,6 +49,39 @@ export {
  */
 export { formatBlueprintList, listBlueprintRequest } from '@/lib/agent/tools/format'
 /**
+ * The rest of the read surface's TEXT, for the same reason and by the same
+ * rule: the harness fetches rows over REST and the app says what they read
+ * as. Every one of these was a sentence run.mjs composed itself — the cast,
+ * the evidence, the lanes, the arrows, the tags, the slices, the business
+ * model and the findings, each with its own empty state — and a sentence
+ * written twice is a sentence the app can reword while the harness goes on
+ * saying the old one. `normalizeBlueprint` comes with them because the grid
+ * read's text is a function of the app's own row shape, not of REST's.
+ */
+export {
+  formatBusinessModel,
+  formatCellDependencies,
+  formatEvidenceDetail,
+  formatEvidenceList,
+  formatFindingsList,
+  formatLaneVocabulary,
+  formatOwnerTags,
+  formatSliceDetail,
+  formatSliceList,
+  formatStakeholderList,
+  formatBlueprints,
+} from '@/lib/agent/tools/format'
+export { NAME_AN_EVIDENCE_ID, NO_PATHS_IN_SCENARIO, noCellWithId } from '@/lib/agent/tools/read'
+export { normalizeBlueprint } from '@/lib/normalizeBlueprint'
+/**
+ * The interface surface's two landed sentences and its one empty state. The
+ * harness drives no canvas, so it answers `open_phase`, `open_scenario` and
+ * `focus_cell` with what the bridge says when a navigation lands, and
+ * `get_ui_state` with what the tool says when no shell is reporting.
+ */
+export { NO_UI_STATE } from '@/lib/agent/tools/definitions/ui'
+export { CELL_CAMERA_SETTLED, cameraSettled } from '@/lib/agent/uiBridge'
+/**
  * The reference vocabulary, so `list_references` answers from the app's own
  * list rather than a second copy the harness would have to keep in step.
  */
@@ -65,6 +98,16 @@ export {
   VIEW_ONLY_REFUSAL,
   WRITE_BATCH_LIMIT,
 } from '@/lib/agent/tools/refusals'
+/**
+ * The rehearsal seam: the app's own call gate and a context whose client
+ * records instead of writing. A dry-run write in the harness is the tool's
+ * `run` through `runTool` against `rehearsalContext()`, so the sentence the
+ * model reads back is the tool's own — the harness used to compose one per
+ * write in the tool's name, and a sentence composed twice is a sentence that
+ * drifts.
+ */
+export { runTool } from '@/lib/agent/tools/definition'
+export { rehearsalContext } from '@/lib/agent/tools/rehearsal'
 /**
  * The cell fields the agent may edit, derived the way `update_cell` derives
  * its arguments, so the harness's database read of a cell asks for the

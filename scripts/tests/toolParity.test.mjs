@@ -95,9 +95,36 @@ test('harness imports the app tool specs instead of forking them', () => {
   )
   assert.match(
     harness,
-    /\{\s*TOOL_SPECS,\s*TOOL_DEFINITIONS,\s*WRITE_TOOL_NAMES,\s*MOBILE_READ_TOOL_NAMES,\s*BATCH_LIMIT_REFUSAL,\s*MOBILE_SHELL_REFUSAL,\s*VIEW_ONLY_REFUSAL,\s*WRITE_BATCH_LIMIT,\s*AGENT_CELL_FIELDS,\s*renderCanvasAdapter,?\s*\}\s*=\s*surface/,
-    'run.mjs no longer destructures the rosters and refusals from the bundled surface',
+    /\{\s*TOOL_SPECS,\s*TOOL_DEFINITIONS,\s*WRITE_TOOL_NAMES,\s*MOBILE_READ_TOOL_NAMES,\s*BATCH_LIMIT_REFUSAL,\s*MOBILE_SHELL_REFUSAL,\s*VIEW_ONLY_REFUSAL,\s*WRITE_BATCH_LIMIT,\s*AGENT_CELL_FIELDS,\s*renderCanvasAdapter,\s*rehearsalContext,\s*runTool,?\s*\}\s*=\s*surface/,
+    'run.mjs no longer destructures the rosters, refusals and rehearsal seam from the bundled surface',
   )
+  // A dry-run write answers in the TOOL's words: its own `run`, through the
+  // app's own call seam, against the rehearsal context. The harness composed
+  // a sentence per write before, which is a sentence the tool can change
+  // without the harness noticing.
+  assert.match(
+    surfaceEntry,
+    /export\s*\{\s*runTool\s*\}\s*from\s*'@\/lib\/agent\/tools\/definition'/,
+    'app-surface.entry.ts no longer re-exports runTool from definition.ts',
+  )
+  assert.match(
+    surfaceEntry,
+    /export\s*\{\s*rehearsalContext\s*\}\s*from\s*'@\/lib\/agent\/tools\/rehearsal'/,
+    'app-surface.entry.ts no longer re-exports rehearsalContext from rehearsal.ts',
+  )
+  assert.match(
+    harness,
+    /rehearsalContext\(\{ definition, args, placeholder \}\)/,
+    'run.mjs no longer builds the rehearsal from the definition and the call’s own arguments',
+  )
+  assert.match(
+    harness,
+    /runTool\(definition, args, rehearsal\.ctx\)/,
+    'run.mjs no longer rehearses a dry-run write through the tool’s own run',
+  )
+  for (const copy of [/accepted, ref dry-/, /Recorded \$\{args\.severity/]) {
+    assert.doesNotMatch(harness, copy, `run.mjs composes a write result of its own: ${copy}`)
+  }
   // The refusals the harness answers gates with are the loop's, re-exported
   // from refusals.ts — not sentences of the harness's own.
   assert.match(
@@ -132,6 +159,65 @@ test('harness imports the app tool specs instead of forking them', () => {
       `${file} contains inline tool-spec declarations — the fork is back`,
     )
   }
+})
+
+/**
+ * NO TOOL RESULT SENTENCE IS WRITTEN TWICE.
+ *
+ * The checks above name the copies that were found and removed, one regex
+ * each — which catches those and nothing else. This one is the rule they were
+ * instances of: a sentence the harness hands a model as a tool result must
+ * not also exist in the application, because then the application can reword
+ * it and the harness will go on saying the old words, and the eval will pass
+ * against a sentence no tool says.
+ *
+ * WHAT IT COMPARES. A "sentence literal" is a quoted string with a space in
+ * it, at least 20 characters long, with every `${…}` reduced to `${}` so a
+ * template matches the same template written with different variable names.
+ * On the harness side it reads the literals in RESULT POSITIONS — a line
+ * carrying `record.result`, a `return`, a ternary arm, or a SHOUTING const —
+ * which is where a tool result is composed; on the application side it sweeps
+ * every literal under `src/lib/agent`, through the overlay, so a deployment's
+ * own copy of a read is the subject when it has one.
+ *
+ * WHAT IT DOES NOT CATCH, said out loud: a short sentence, a sentence with no
+ * space, and the system-prompt ASSEMBLY, which is declared mirrored-by-hand in
+ * run.mjs's header and is not a tool result. Those are the header's business.
+ */
+const SENTENCE = /'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g
+const RESULT_POSITION = /record\.result|\breturn\b|^\s*[?:]\s|^\s*(?:const|let) [A-Z][A-Z0-9_]*\s*=/
+const sentences = (text) => {
+  const found = new Set()
+  for (const match of text.matchAll(SENTENCE)) {
+    const literal = (match[1] ?? match[2] ?? match[3] ?? '').replace(/\$\{[^}]*\}/g, '${}')
+    if (literal.length >= 20 && literal.includes(' ')) found.add(literal)
+  }
+  return found
+}
+
+test('run.mjs composes no tool result sentence the app already says', () => {
+  const appSentences = new Set()
+  const agent = sweep({
+    subject: 'app',
+    root: REPO_ROOT,
+    where: (path) => path.startsWith('src/lib/agent/') && path.endsWith('.ts'),
+    what: 'agent tool surface',
+  })
+  for (const path of agent.files) {
+    const text = agent.read(path)
+    if (text !== null) for (const sentence of sentences(text)) appSentences.add(sentence)
+  }
+  assert.ok(appSentences.size > 0, 'swept no sentences from src/lib/agent: this check has no subject')
+  const copies = []
+  for (const line of harness.split('\n')) {
+    if (!RESULT_POSITION.test(line)) continue
+    for (const sentence of sentences(line)) if (appSentences.has(sentence)) copies.push(sentence)
+  }
+  assert.deepEqual(
+    copies,
+    [],
+    `run.mjs hands a model a sentence the app also says — export it from the src module that owns it, re-export it through app-surface.entry.ts, and use the export: ${copies.map((copy) => JSON.stringify(copy)).join(', ')}`,
+  )
 })
 
 /**
