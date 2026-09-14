@@ -4,6 +4,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useState,
   type ReactNode,
 } from 'react'
 import {
@@ -13,7 +14,12 @@ import {
 } from '@/deploymentConfig'
 import { ORG_NAME } from '@/config'
 import type { CoverContent } from '@/components/cover/coverModel'
-import { configureSampleBlueprints } from '@/data/blueprintFallbacks'
+import {
+  configureSampleBlueprints,
+  type SampleBlueprintRegistry,
+  type SampleBlueprintRegistryLoader,
+} from '@/data/blueprintFallbacks'
+import { isBundledSampleActive } from '@/lib/bundledSample'
 import { applyBrandAccent } from '@/lib/brandAccent'
 import { configureCellBudget } from '@/lib/cellContentLimits'
 import { configureAgentSearch } from '@/lib/agent/searchPlan'
@@ -40,6 +46,89 @@ import { configureStoryboardBorders } from '@/lib/storyboardWalkthrough'
 const DeploymentConfigContext = createContext<ResolvedDeploymentConfig | null>(
   null,
 )
+
+/**
+ * The offline board, in hand: the registry `sample.blueprints` carries, or the
+ * one its loader fetches, with the two states a fetch adds.
+ *
+ * Here rather than inline in the provider because the provider is otherwise a
+ * flat list of "write this settled field onto the module that serves it", and
+ * this one field needs a fetch, two pieces of state and a gate. Not in
+ * `src/hooks/` either: nothing but this provider may call it, since calling it
+ * twice would fetch twice and the write it feeds is a module write.
+ */
+function useSampleBlueprintRegistry(
+  supplied: SampleBlueprintRegistry | SampleBlueprintRegistryLoader,
+): {
+  /** The registry to write, or `null` while a loader is still answering. */
+  blueprints: SampleBlueprintRegistry | null
+  /** A loader is outstanding: nothing below may render yet. */
+  awaiting: boolean
+  /** A loader rejected. The caller throws it. */
+  failure: Error | null
+} {
+  const eager = typeof supplied === 'function' ? null : supplied
+  const loader = typeof supplied === 'function' ? supplied : null
+
+  /**
+   * The loader is called on ONE condition, and it is the same condition every
+   * reader of the registry is already behind: is the bundled sample reachable
+   * at all? With a database configured it is not — the board draws rows, the
+   * slices resolve against reads, and nothing below asks this module anything
+   * — so fetching a board nobody will look at is precisely the cost the loader
+   * form exists to avoid. Read during render rather than inside the effect, so
+   * the fetch and the gate agree in the same pass.
+   */
+  const active = loader && isBundledSampleActive() ? loader : null
+
+  /**
+   * Both states are kept WITH the loader that produced them, and compared by
+   * identity below. A host that swapped its config for one carrying a
+   * different board would otherwise draw the first board under the second
+   * config until the second arrived — and a host that swapped a broken loader
+   * for a working one would keep throwing the first one's error forever.
+   * `App` is meant to be handed a module-level config, so neither swap is a
+   * shape this repository encourages; they are cheap to be correct about and
+   * expensive to debug.
+   */
+  const [answer, setAnswer] = useState<{
+    loader: SampleBlueprintRegistryLoader
+    registry: SampleBlueprintRegistry
+  } | null>(null)
+  const [failed, setFailed] = useState<{
+    loader: SampleBlueprintRegistryLoader
+    error: Error
+  } | null>(null)
+
+  useEffect(() => {
+    if (!active) return
+    let live = true
+    active().then(
+      (registry) => {
+        if (live) setAnswer({ loader: active, registry })
+      },
+      (cause: unknown) => {
+        if (live) {
+          setFailed({
+            loader: active,
+            error: cause instanceof Error ? cause : new Error(String(cause)),
+          })
+        }
+      },
+    )
+    return () => {
+      live = false
+    }
+  }, [active])
+
+  const loaded = answer && answer.loader === active ? answer.registry : null
+
+  return {
+    blueprints: eager ?? loaded,
+    awaiting: active !== null && loaded === null,
+    failure: failed && failed.loader === active ? failed.error : null,
+  }
+}
 
 export function DeploymentConfigProvider({
   config,
@@ -73,9 +162,12 @@ export function DeploymentConfigProvider({
    * settling a module the children below it read. Inside the memo, so it
    * happens once per distinct config object rather than on every render.
    */
+  const { blueprints, awaiting, failure } = useSampleBlueprintRegistry(
+    resolved.sample.blueprints,
+  )
   useMemo(() => {
-    configureSampleBlueprints(resolved.sample.blueprints)
-  }, [resolved.sample.blueprints])
+    configureSampleBlueprints(blueprints ?? undefined)
+  }, [blueprints])
 
   /**
    * `brand.accent` onto the root, as a LAYOUT effect: React runs these after
@@ -166,6 +258,48 @@ export function DeploymentConfigProvider({
   useEffect(() => {
     configureAgentDoctrine(agentDoctrine)
   }, [agentDoctrine])
+
+  /**
+   * Nothing renders until a loader has answered.
+   *
+   * The render-time write at the top of this component is why: the board
+   * reads the fallback module DURING its own render, and a write to that
+   * module notifies nobody. Letting the tree draw first and writing the
+   * registry when it arrived would put a board on screen with nothing behind
+   * it — a deployment's nav rows over an empty canvas, which is the exact
+   * failure `sample.blueprints` was added to fix — and the hook that built
+   * those empty maps memoizes them on its scenario ids, so no later render
+   * corrects it. A gate here is the smallest thing that is true: the
+   * eager form passes it in the same tick and renders as it always did, and
+   * the loader form holds one chunk fetch before the first paint. Through that
+   * one frame the fallback module holds the package's own registry, because
+   * there is nothing yet to write — nothing renders to read it, which is what
+   * the gate is for.
+   *
+   * The alternative considered and rejected was to make the fallback module a
+   * subscribable store, read through `useSyncExternalStore`, so a write
+   * NOTIFIED its readers and the shell could stay up while the board filled
+   * in. That is the shape this repository reaches for when state must outlive
+   * a mount point or be read where no hook is available — but the
+   * registry is not state, it is a content document settled once per
+   * installation, and turning every offline lookup into a subscription to buy
+   * one chunk fetch of shell would be a store built for the loading screen it
+   * saves. The gate costs a blank frame in one build; the store costs the read
+   * path forever.
+   *
+   * A loader that REJECTS throws rather than falling back to the package's
+   * own. The package's board is keyed by this template's identifiers and
+   * answers a deployment nothing, so the fallback would be a deployment's
+   * chrome around a blank canvas with no error anywhere — the silent version
+   * of the failure. WHERE THE THROW LANDS IS THE HOST'S: this provider is the
+   * outermost element `App` renders, and the editor's boundary is inside it,
+   * so nothing in this package catches it — the page comes up blank with the
+   * error in the console, which is what the render walk fails on and what a
+   * person reads. A host that wants a rendered message puts its own boundary
+   * above `App`.
+   */
+  if (failure) throw failure
+  if (awaiting) return null
 
   return (
     <DeploymentConfigContext.Provider value={resolved}>
