@@ -27,6 +27,7 @@ import {
   MARKERS,
   SAMPLE_SCENARIO_TITLES,
   contentFiles,
+  contentFromTree,
   findings,
   groupSites,
   isScanned,
@@ -39,7 +40,19 @@ const REPO_ROOT = resolve(dirname(SCRIPT), '..')
 const labels = (source) => sitesIn(source).map((site) => site.label)
 const matches = (source) => sitesIn(source).map((site) => site.match)
 
-/** A tree with `files` written into it, as a temp root the check can read. */
+/** A `{ path: body }` map as the `[{ path, text }]` the judgement takes. */
+const handedIn = (files) =>
+  Object.entries(files)
+    .filter(([path]) => path !== 'supabase/config.toml')
+    .map(([path, text]) => ({ path, text }))
+
+/**
+ * A tree with `files` written into it, as a temp root the check can read.
+ *
+ * ONE test still needs a real tree, and it is the one about the GATHERER: which
+ * seed `contentFromTree` opens is `[db.seed]`'s answer, and `[db.seed]` is a
+ * file on disk. Every other case here hands its texts to `findings` directly.
+ */
 function tree(files) {
   const root = mkdtempSync(join(tmpdir(), 'sample-content-'))
   for (const [path, body] of Object.entries(files)) {
@@ -73,7 +86,7 @@ const ADOPTED = {
 /* ---------------------------------------------------------- a fresh clone */
 
 test('a fresh clone reports the sample, because the sample is what it serves', () => {
-  const sites = findings()
+  const sites = findings(contentFromTree())
   assert.ok(sites.length > 0, 'the shipped tree reports nothing — the markers have rotted')
 
   // All three markers land, and both halves of the content surface do. If a
@@ -89,7 +102,7 @@ test('a fresh clone reports the sample, because the sample is what it serves', (
 })
 
 test('the report names the file, the line and the value', () => {
-  const site = findings().find((hit) => hit.path === 'supabase/seed.sql')
+  const site = findings(contentFromTree()).find((hit) => hit.path === 'supabase/seed.sql')
   assert.ok(Number.isInteger(site.line) && site.line > 0)
   assert.ok(site.match.length > 0)
   assert.ok(site.text.length > 0)
@@ -99,10 +112,18 @@ test('the report names the file, the line and the value', () => {
 /* ------------------------------------------------------ an adopted deployment */
 
 test('a deployment that put its own content in reports nothing', () => {
-  assert.deepEqual(findings(tree(ADOPTED)), [])
+  assert.deepEqual(findings(handedIn(ADOPTED)), [])
+})
+
+test('no content at all is refused rather than reported clean', () => {
+  // An empty subject and a clean one would otherwise print the same line, and
+  // the empty one would go on printing it every run after.
+  assert.throws(() => findings([]), /no subject/)
 })
 
 test('the seed swept is the one [db.seed] names, not the one this repo happens to use', () => {
+  // The one tree fixture left: this is a claim about the GATHERER, and which
+  // seed it opens is what `[db.seed]` says on disk.
   const root = tree({
     ...ADOPTED,
     'supabase/config.toml': '[db.seed]\nenabled = true\nsql_paths = ["./seeds/blueprint.sql"]\n',
@@ -111,7 +132,7 @@ test('the seed swept is the one [db.seed] names, not the one this repo happens t
       "insert into public.services (name) values ('Keeping a blueprint true');",
   })
   assert.deepEqual(
-    findings(root).map((site) => `${site.path}:${site.line} — ${site.match}`),
+    findings(contentFromTree(root)).map((site) => `${site.path}:${site.line} — ${site.match}`),
     ['supabase/seeds/blueprint.sql:1 — Keeping a blueprint true'],
   )
 })

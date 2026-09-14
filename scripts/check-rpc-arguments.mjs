@@ -54,11 +54,11 @@
  *
  * Run: node scripts/check-rpc-arguments.mjs   (also: npm run check:rpc-arguments)
  */
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { appPackageRoot, readAppFile } from './app-source.mjs'
+import { sweep } from './sweep.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
@@ -298,16 +298,22 @@ export function clientSideInverses(source) {
   return new Set([...source.matchAll(/^\s*case '([a-z_]+)':/gm)].map((match) => match[1]))
 }
 
-export function compare(root = REPO_ROOT) {
-  const read = (path) => readFileSync(join(root, path), 'utf8')
-  const source = readAppFile(root, CALLER)
-  const functions = schemaFunctions(read(SCHEMA))
-  const sites = rpcCallSites(source)
+/**
+ * The whole judgement, over the three TEXTS it is a judgement about.
+ *
+ * Nothing here touches a filesystem: `caller` is the source of `CALLER`,
+ * `schema` the dump `SCHEMA`, and `reverter` the source of `REVERTER` or null
+ * for a tree that has none — a tree without one has no client-side inverses to
+ * exempt. Which means every case this check makes can be written down as three
+ * strings, and `compareTree` below is the only thing that needs a tree.
+ */
+export function compare({ caller, schema, reverter = null }) {
+  const functions = schemaFunctions(schema)
+  const sites = rpcCallSites(caller)
   if (sites.length === 0) {
     throw new Error(`no RPC call sites found in ${CALLER}`)
   }
-  const reverter = join(appPackageRoot(root), REVERTER)
-  const handled = existsSync(reverter) ? clientSideInverses(readFileSync(reverter, 'utf8')) : new Set()
+  const handled = reverter === null ? new Set() : clientSideInverses(reverter)
   return sites
     .filter((site) => !(handled.has(site.fn) && !functions.has(site.fn)))
     .flatMap((site) =>
@@ -315,8 +321,30 @@ export function compare(root = REPO_ROOT) {
     )
 }
 
+/**
+ * The same judgement over a tree: the one place the sweep and the disk are read.
+ *
+ * The caller comes through the sweep, because it is application source and a
+ * deployment's may live in the package; the dump is read against `root`,
+ * because a deployment's schema is its own. The reverter's absence reads off
+ * the sweep's null rather than a separate existence test of a path this file
+ * resolved itself.
+ */
+export function compareTree(root = REPO_ROOT) {
+  const app = sweep({ subject: 'app', root, what: 'application source' })
+  const caller = app.read(CALLER)
+  if (caller === null) {
+    throw new Error(`no ${CALLER} under ${app.base}: this check has no subject`)
+  }
+  return compare({
+    caller,
+    schema: readFileSync(join(root, SCHEMA), 'utf8'),
+    reverter: app.read(REVERTER),
+  })
+}
+
 function main() {
-  const failures = compare()
+  const failures = compareTree()
   if (failures.length === 0) {
     console.log(`${CALLER} calls every RPC with the arguments ${SCHEMA} declares`)
     return

@@ -4,7 +4,7 @@
  * rolldown bundles app-surface.entry.ts from the application, honouring the
  * `@/` alias, so the tool declarations, the derived rosters and the offline readers
  * are the exact objects the app hands its providers. The alias is pointed at
- * the root `app-source.mjs` resolves rather than at `<root>/src`, because the
+ * the first layer `sweep.mjs` finds rather than at `<root>/src`, because the
  * two are the same directory only in a tree that keeps its own copy of the
  * application — in a deployment that reads it out of the package, an alias
  * pointed at an absent `src` fails every import in the entry and the harness
@@ -17,7 +17,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { appSourceRoot } from '../app-source.mjs'
+import { appLayers, sweep } from '../sweep.mjs'
 
 /**
  * Vite's `?raw` import, for the bundler that is not Vite. The app reads its
@@ -51,10 +51,23 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
 async function loadAppSurface() {
   const { rolldown } = await import('rolldown')
+  // The sweep refuses a tree with no application at all, which is the failure
+  // worth having here: an alias pointed at an absent directory fails every
+  // import in the entry, one message at a time, and the harness has no surface.
+  sweep({ subject: 'app', root: ROOT, what: 'application source' })
+  // THE ALIAS IS THE FIRST LAYER — the deployment's `src` when it keeps one and
+  // the package's otherwise — because rolldown takes one directory per alias
+  // while the overlay is a rule per path. The entry is the harness's own file
+  // and every `@/…` in it resolves inside that one layer, which is the whole
+  // answer in this repository (one layer) and in a deployment with no
+  // residents (the package's, complete). A deployment that keeps only part of
+  // `src` is the case a single alias cannot express, and an import of a file
+  // only the package has fails at bundle time rather than quietly.
+  const [firstLayer] = appLayers(ROOT)
   const bundle = await rolldown({
     input: resolve(ROOT, 'scripts/agent-harness/app-surface.entry.ts'),
     // Honor tsconfig's `@/*` path alias, on whichever root holds the application.
-    resolve: { alias: { '@': appSourceRoot(ROOT) } },
+    resolve: { alias: { '@': firstLayer } },
     plugins: [viteImports],
     logLevel: 'silent',
   })

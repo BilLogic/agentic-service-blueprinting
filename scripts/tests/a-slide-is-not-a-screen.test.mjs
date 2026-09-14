@@ -34,7 +34,17 @@
  * TEST FILES ARE NOT THE SUBJECT either, for a reason about the word rather
  * than about tests: `screen` is Testing Library's own export, so every
  * occurrence in a `*.test.tsx` is a library binding this vocabulary has no
- * claim on. `sourceFilesUnder` already drops them.
+ * claim on. The `where` filter below drops them.
+ *
+ * WHERE THE FILES COME FROM is the `app` subject of `scripts/sweep.mjs`, which
+ * answers with this tree's `src` or the one inside
+ * `node_modules/agentic-service-blueprinting` in a deployment that keeps no copy,
+ * and hands back one `src/…` path per file whichever it was. The reporting is
+ * what was left to get wrong here: a path made relative to this tree's root came
+ * back as `node_modules/agentic-service-blueprinting/src/components/editor/…`
+ * there, which `SLICE_SURFACE` still matches but which the two files named below
+ * do not, so the walk's own proof that it reached the editor failed in the one
+ * arrangement it was written to survive.
  *
  * THERE IS NO ASSERTION ABOUT `frame`, deliberately. A frame is a real thing
  * on this surface — `SlideImagesField` shows one — so no rule about the
@@ -48,26 +58,10 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
-import { relative, resolve } from 'node:path'
-import { sourceFilesUnder } from '../check-database-names.mjs'
-import { appPackageRoot } from '../app-source.mjs'
+import { resolve } from 'node:path'
+import { sweep } from '../sweep.mjs'
 
 const REPO_ROOT = resolve(new URL('../..', import.meta.url).pathname)
-/**
- * What a path in a finding is relative to: the application's own package.
- *
- * `sourceFilesUnder('src')` already sweeps whichever root holds the
- * application — this tree's `src`, or the one inside
- * `node_modules/agentic-service-blueprinting` in a deployment that keeps no
- * copy — so what was left to get wrong here was the REPORTING. A path made
- * relative to this tree's root came back as
- * `node_modules/agentic-service-blueprinting/src/components/editor/…` there,
- * which `SLICE_SURFACE` still matches but which the two files named below do
- * not, so the walk's own proof that it reached the editor failed in the one
- * arrangement it was written to survive.
- */
-const APP_PACKAGE = appPackageRoot(REPO_ROOT)
 
 /**
  * The slice surface, by path rather than by enumeration: anything whose file
@@ -98,31 +92,30 @@ function stripComments(source) {
 }
 
 /**
- * The slice surface, as `src/…` paths.
+ * The slice surface, swept.
  *
- * A SURFACE THAT COMES BACK EMPTY THROWS. A tree with no slice file in it is
- * not a tree whose slice surface is clean, and the two report the same green
- * line — every run after, because nothing about a walk that has stopped
- * finding its subject looks different from one that found it and agreed.
+ * A SURFACE THAT COMES BACK EMPTY THROWS, and the sweep is what throws: a tree
+ * with no slice file in it is not a tree whose slice surface is clean, and the
+ * two report the same green line — every run after, because nothing about a walk
+ * that has stopped finding its subject looks different from one that found it
+ * and agreed.
  */
-export function sliceSurfaceFiles() {
-  const found = sourceFilesUnder('src')
-    .map((abs) => relative(APP_PACKAGE, abs).split('\\').join('/'))
-    .filter((file) => SLICE_SURFACE.test(file))
-  if (found.length === 0) {
-    throw new Error(
-      `no slice file under ${APP_PACKAGE}/src: this walk has no subject, ` +
-        `which is a failure and not a pass`,
-    )
-  }
-  return found
+export function sliceSurface() {
+  return sweep({
+    subject: 'app',
+    root: REPO_ROOT,
+    where: (path) => SLICE_SURFACE.test(path) && !/\.test\.tsx?$/.test(path),
+    what: 'slice file',
+  })
 }
 
 /** Every line of the slice surface that names something `screen`. */
-export function screenNames() {
+export function screenNames(swept = sliceSurface()) {
   const out = []
-  for (const file of sliceSurfaceFiles()) {
-    stripComments(readFileSync(resolve(APP_PACKAGE, file), 'utf8'))
+  for (const file of swept.files) {
+    const source = swept.read(file)
+    if (source === null) continue // gone between the listing and the read
+    stripComments(source)
       .split('\n')
       .forEach((line, index) => {
         if (SCREEN.test(line)) out.push(`${file}:${index + 1} ${line.trim()}`)
@@ -146,7 +139,7 @@ test('nothing on the slice surface is named a screen', () => {
 test('the guard reads names and not prose', () => {
   // The subject, exercised directly. A guard whose extraction is wrong
   // reports clean forever and nobody finds out.
-  const files = sliceSurfaceFiles()
+  const files = sliceSurface().files
   assert.ok(
     files.includes('src/components/editor/SliceSlideEditor.tsx'),
     'the walk must reach the editor this check was written for',

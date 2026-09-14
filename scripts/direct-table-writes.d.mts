@@ -1,9 +1,13 @@
 /** Types for the direct-table-write scan (imported by the write-boundary contract). */
-export declare const SRC: string
 export declare const TABLE_WRITE: RegExp
-export declare function walkSources(directory: string, prefix?: string): string[]
+/** The half of a sweep this scan uses: the files, and a read that may find one gone. */
+export interface SweptFiles {
+  files: string[]
+  read(path: string, encoding?: BufferEncoding): string | null
+}
+export declare function appSources(repoRoot?: string): SweptFiles
 export declare function directTableWrites(
-  root?: string,
+  swept?: SweptFiles,
 ): { path: string; line: number; table: string; verb: string }[]
 export declare function writtenTableNames(
   writes: { table: string }[],

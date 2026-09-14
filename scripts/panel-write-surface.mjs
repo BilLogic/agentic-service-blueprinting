@@ -188,9 +188,9 @@ export const OUTSIDE_THE_SURFACE = [
  * database nothing — `evaluateWriteSurface` reports that rather than letting the
  * check pass on an empty question.
  *
- * The walk takes no root here, and that is the point: `directTableWrites`
- * resolves the application through `scripts/app-source.mjs`, so a deployment
- * that reads it out of `node_modules/agentic-service-blueprinting/src` derives
+ * The scan takes no argument here, and that is the point: `directTableWrites`
+ * receives the application from the `app` subject of `scripts/sweep.mjs`, so a
+ * deployment that reads it out of `node_modules/agentic-service-blueprinting/src` derives
  * the same verbs from the same modules. A root spelled here would have been a
  * second answer to that question, and the deployment is where the two would
  * have disagreed — silently, with every entry coming back verbless at once.

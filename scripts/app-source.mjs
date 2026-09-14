@@ -33,8 +33,10 @@
  * a deployment with no residents, where the package answers every path; and
  * the deployment as it stands, where every file is still a resident and `src`
  * answers every path — and disagrees only in between, once the first resident
- * is deleted. The sweep module (#703) takes the shared resolver before that
- * deletion, and this paragraph goes with it.
+ * is deleted. The sweep module takes the layers from here and applies the
+ * overlay to them; what remains of this module is the older statement kept
+ * for the tests and the fence that still name it, and it goes with the other
+ * helpers when the last of them moves.
  *
  * IT REFUSES WHEN NEITHER ROOT IS THERE rather than handing back the first. A
  * tree with no application is not a tree with an empty application: an alias
@@ -57,6 +59,7 @@
  */
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
+import { appLayers } from './sweep.mjs'
 
 /** The roots, in order, relative to a repository root. */
 export const APP_SOURCE_ROOTS = [
@@ -67,12 +70,15 @@ export const APP_SOURCE_ROOTS = [
 /**
  * The first of `APP_SOURCE_ROOTS` that exists under `repoRoot`, absolute.
  *
- * Throws when neither does, naming both.
+ * Throws when neither does, naming both. The layers come from `sweep.mjs`,
+ * which is where the rule lives now; this module is the older statement of
+ * it, kept for the callers the sweep has not yet taken and deleted with the
+ * other helpers when the last of them moves.
  */
 export function appSourceRoot(repoRoot) {
-  const roots = APP_SOURCE_ROOTS.map((root) => resolve(repoRoot, root))
-  const found = roots.find((root) => existsSync(root))
+  const [found] = appLayers(repoRoot)
   if (!found) {
+    const roots = APP_SOURCE_ROOTS.map((root) => resolve(repoRoot, root))
     throw new Error(
       `no application source under ${repoRoot}: neither ${roots.join(' nor ')} exists`,
     )

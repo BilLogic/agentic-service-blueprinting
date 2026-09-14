@@ -113,13 +113,12 @@
  * red build — which is the whole argument for the check being advisory, made
  * from the other end.
  */
-import { readdirSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { appPackageRoot } from './app-source.mjs'
 import { SAMPLE_ID_PREFIX } from './check-content-coupling.mjs'
 import { resolveSeedFiles } from './check-deployment-seed-loads.mjs'
 import { readListed } from './read-listed.mjs'
+import { sweep } from './sweep.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
@@ -196,22 +195,24 @@ export function isScanned(path) {
   return !BINARY.test(path) && !TEST_FILE.test(path)
 }
 
-/** Every file under one directory, depth-first, sorted, relative to `root`. */
-function filesUnder(root, dir) {
-  const absolute = join(root, dir)
-  let entries
-  try {
-    entries = readdirSync(absolute, { withFileTypes: true })
-  } catch {
-    return [] // a deployment that ships no such directory
-  }
-  const found = []
-  for (const entry of [...entries].sort((a, b) => a.name.localeCompare(b.name))) {
-    const path = `${dir}/${entry.name}`
-    if (entry.isDirectory()) found.push(...filesUnder(root, path))
-    else if (entry.isFile()) found.push(path)
-  }
-  return found
+/** Whether a swept application path is part of the offline board. */
+const isBoard = (path) => path.startsWith(`${FALLBACK_DIR}/`)
+
+/**
+ * The offline half, swept: the application, and the board inside it.
+ *
+ * THE FILTER IS NOT THE SWEEP'S, deliberately, and it is the one place this
+ * check does not want the sweep's empty-subject refusal. A `where` that left
+ * nothing would refuse here, and a deployment that re-registered its board and
+ * has no `src/data` at all is a tree this report can still say something true
+ * about from the seed alone — the refusal this check owes its reader is the one
+ * below, over BOTH halves. What the sweep does refuse is the case that was
+ * always a failure: no application anywhere, which is a `src/data` nobody can
+ * resolve rather than one a deployment has replaced.
+ */
+export function boardFiles(root = REPO_ROOT) {
+  const swept = sweep({ subject: 'app', root })
+  return { swept, files: swept.files.filter(isBoard) }
 }
 
 /**
@@ -221,12 +222,12 @@ function filesUnder(root, dir) {
  * deployment that renamed its seed or split it across several files is swept
  * as it actually loads. When there is no config to read, the default stands.
  */
-export function contentFiles(root = REPO_ROOT) {
+export function contentFiles(root = REPO_ROOT, board = boardFiles(root).files) {
   const seeds = resolveSeedFiles(join(root, DEFAULT_SEED))
     .map((file) => relative(root, file).split('\\').join('/'))
     .filter((path) => !path.startsWith('..'))
   const seen = new Set()
-  const found = [...seeds, ...filesUnder(appPackageRoot(root), FALLBACK_DIR)].filter((path) => {
+  const found = [...seeds, ...board].filter((path) => {
     if (seen.has(path) || !isScanned(path)) return false
     seen.add(path)
     return true
@@ -239,21 +240,10 @@ export function contentFiles(root = REPO_ROOT) {
   if (found.length === 0) {
     throw new Error(
       `no content file under ${root}: neither ${DEFAULT_SEED} nor ` +
-        `${FALLBACK_DIR} under ${appPackageRoot(root)}, so this sweep has no subject`,
+        `${FALLBACK_DIR} in the application, so this sweep has no subject`,
     )
   }
   return found
-}
-
-/**
- * Which root a content path hangs off.
- *
- * The application's package for the offline board, the tree's own root for the
- * seed — the two halves come from different places and a path that reads
- * `src/data/…` has to be opened where that `src` actually is.
- */
-function contentBase(root, path) {
-  return path.startsWith(`${FALLBACK_DIR}/`) ? appPackageRoot(root) : root
 }
 
 /**
@@ -275,21 +265,51 @@ export function sitesIn(source) {
   return found
 }
 
-/** Every site in a deployment's content surfaces. */
-export function findings(root = REPO_ROOT) {
+/**
+ * Every site in a deployment's content surfaces, over the files handed in.
+ *
+ * `files` is `[{ path, text }]` — whatever a deployment serves its blueprint
+ * from, already opened. The judgement is the markers and nothing else, so every
+ * case this check makes can be written down as a couple of strings; `contentFromTree`
+ * below is the only thing that has to know where those strings come from.
+ *
+ * An empty list is refused for the reason the gatherer refuses its own: a sweep
+ * of nothing reports "no sample content" because it read nothing, which is the
+ * one answer this report must not give quietly.
+ */
+export function findings(files) {
+  if (files.length === 0) {
+    throw new Error('no content file was handed in, so this sweep has no subject')
+  }
   const out = []
-  const files = contentFiles(root)
+  for (const { path, text } of files) {
+    for (const site of sitesIn(text)) out.push({ path, ...site })
+  }
+  return out
+}
+
+/**
+ * The content surfaces of one tree, opened: `[{ path, text }]`, seed first.
+ *
+ * The two halves are opened by whoever knows where they are: the board through
+ * the sweep, which resolves a `src/data/…` path to the layer that holds it, and
+ * the seed against this tree's own root, because a deployment's seed is its own.
+ */
+export function contentFromTree(root = REPO_ROOT, board = boardFiles(root)) {
+  const files = contentFiles(root, board.files)
+  const out = []
   let read = 0
   for (const path of files) {
-    // ENOENT alone. A bare catch also took a permission the checkout should
-    // not have and a directory where a file belongs, and a sweep that skips
-    // every file it cannot open reports nothing and looks exactly like a clean
-    // tree — which for this report is the one answer it must not give quietly.
-    const source = readListed(resolve(contentBase(root, path), path))
-    if (source === null) continue // removed between the listing and here
+    // ENOENT alone, either way. A bare catch also took a permission the
+    // checkout should not have and a directory where a file belongs, and a
+    // sweep that skips every file it cannot open reports nothing and looks
+    // exactly like a clean tree — which for this report is the one answer it
+    // must not give quietly.
+    const text = isBoard(path) ? board.swept.read(path) : readListed(resolve(root, path))
+    if (text === null) continue // removed between the listing and here
     read += 1
-    if (source.includes('\0')) continue // binary without a listed extension
-    for (const site of sitesIn(source)) out.push({ path, ...site })
+    if (text.includes('\0')) continue // binary without a listed extension
+    out.push({ path, text })
   }
   // The breadth assertion `read-listed.mjs` asks of each of its callers. The
   // listing is refused when it is empty; this is the other end of the same
@@ -349,8 +369,11 @@ function report(groups, { all }) {
 
 function main(argv = process.argv.slice(2)) {
   const all = argv.includes('--all')
-  const files = contentFiles()
-  const sites = findings()
+  // One sweep of the application for both halves of the answer: the files the
+  // report counts and the files it reads are the same files.
+  const board = boardFiles()
+  const files = contentFiles(REPO_ROOT, board.files)
+  const sites = findings(contentFromTree(REPO_ROOT, board))
 
   if (sites.length === 0) {
     console.log(

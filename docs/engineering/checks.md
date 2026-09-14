@@ -171,7 +171,7 @@ than as the whole suite.
 ## 7. Adding one
 
 A new guard belongs here when a claim in this repository is currently true and
-nothing would notice if it stopped being. Three rules the existing set follows:
+nothing would notice if it stopped being. Four rules the existing set follows:
 
 - **Fail by naming the file and the line.** A guard that says only "drift" is
   a guard someone has to reproduce before they can fix it.
@@ -179,3 +179,13 @@ nothing would notice if it stopped being. Three rules the existing set follows:
 - **Generate, then diff.** Where an artifact can be derived, derive it and
   diff it rather than hand-maintaining a second copy. A second hand-maintained
   copy is the drift surface the guard was meant to close.
+- **Name a subject; judge only.** A check does not resolve a root from its own
+  location, walk a directory, or decide what a file that vanished between the
+  listing and the read means. It asks `scripts/sweep.mjs` for one of the seven
+  subjects (`app`, `docs`, `scripts`, `migrations`, `references`,
+  `reference-docs`, `deployment-seed`), receives the files, and contains only
+  its judgement — so a deployment that reads the application out of the
+  package, with residents of its own laid over it, is swept where the build
+  resolves it. Each subject states what "cannot see the subject" means there: a
+  skip said out loud, or a failure. Its tests hand files in and test the
+  judgement; the walk is tested once, in the sweep's own suite.

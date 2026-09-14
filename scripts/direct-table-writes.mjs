@@ -25,17 +25,22 @@
  * a new directory is covered the moment it appears, and a new writer has to
  * argue for itself.
  *
- * WHERE THAT ROOT IS, this file no longer decides. It used to be this
- * repository's own `src`, spelled once here so no consumer had to — which is
- * the right shape and was the wrong fact: a deployment installs this repository
- * as a package and reads the application out of
+ * WHERE THAT ROOT IS, this file does not decide, and it no longer walks. It
+ * used to be this repository's own `src`, spelled once here so no consumer had
+ * to — which is the right shape and was the wrong fact: a deployment installs
+ * this repository as a package and reads the application out of
  * `node_modules/agentic-service-blueprinting/src`, keeping no `src` of its own.
  * A walk pointed at the `src` that is not there finds no file, reports no
  * write, and every rule built on it passes — `PANEL_WRITE_SURFACE` matches an
  * empty set of writers, `check:seed-load` asks the database about nothing, and
- * the green line is identical to the one a healthy run prints. So the root
- * comes from `scripts/app-source.mjs`, which is where the build's two roots are
- * written down, and A WALK THAT FINDS NO FILE THROWS.
+ * the green line is identical to the one a healthy run prints. So the files
+ * come from the `app` subject of `scripts/sweep.mjs`, which resolves the
+ * application's layers, refuses a tree that has none, AND REFUSES A WALK THAT
+ * FINDS NO FILE — the three answers this file used to give itself.
+ *
+ * A PATH IS `src/…`, the way a finding prints it wherever the application
+ * physically is, which is what the sweep hands back and what every consumer of
+ * this scan reports.
  *
  * Two shapes look like writes and are not, and both are asserted by the tests
  * that use this rather than left to the pattern's good behaviour:
@@ -45,26 +50,34 @@
  *   - **Storage.** `client.storage.from(BUCKET)` takes a bucket identifier,
  *     not a quoted table name, so an upload cannot trip this.
  */
-import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { appSourceRoot } from './app-source.mjs'
+import { sweep } from './sweep.mjs'
 
 /** The tree this scan runs in — the deployment's root, or this repository's. */
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
 /**
- * The application's root, wherever `repoRoot` keeps it, so no consumer has to
- * spell the path.
+ * The application's `.ts` and `.tsx` under `repoRoot`, test files excluded,
+ * as the sweep that lists them — its `files` and `read` are what a consumer
+ * walks and opens.
  *
- * A function rather than the constant it replaces, because the answer is a
- * question about a disk that may have neither root, and `appSourceRoot` refuses
- * that case by name. A constant would have had to answer it at import time, on
- * every import, including the ones that never walk anything.
+ * A function rather than a constant, because the answer is a question about a
+ * disk that may have no application at all, and the sweep refuses that case by
+ * name. A constant would have had to answer it at import time, on every import,
+ * including the ones that never read a file.
+ *
+ * A TEST FILE IS NOT A WRITER. Its `.from('slides').update(…)` is a fixture
+ * proving the scan sees the shape, and a scan that read its own evidence would
+ * report every guard in the suite as an offender.
  */
-export function appSource(repoRoot = REPO_ROOT) {
-  return appSourceRoot(repoRoot)
+export function appSources(repoRoot = REPO_ROOT) {
+  return sweep({
+    subject: 'app',
+    root: repoRoot,
+    where: (path) => /\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path),
+    what: '.ts or .tsx source',
+  })
 }
 
 /**
@@ -82,46 +95,32 @@ export const TABLE_WRITE =
   /\.from\(\s*'([a-z_]+)'\s*\)[\s\S]{0,200}?\.(update|insert|upsert|delete)\s*\(/g
 
 /**
- * Every non-test `.ts`/`.tsx` file under `directory`, as `directory`-relative
- * paths, sorted so a report reads the same way twice.
- */
-export function walkSources(directory, prefix = '') {
-  const out = []
-  for (const entry of readdirSync(directory).sort()) {
-    const full = resolve(directory, entry)
-    const relative = prefix ? `${prefix}/${entry}` : entry
-    if (statSync(full).isDirectory()) out.push(...walkSources(full, relative))
-    else if (/\.tsx?$/.test(entry) && !/\.test\.tsx?$/.test(entry)) out.push(relative)
-  }
-  return out
-}
-
-/**
- * `{ path, line, table, verb }` for every direct table write under `root`.
+ * `{ path, line, table, verb }` for every direct table write in `swept`.
  *
- * `path` is relative to `root`, and `line` is 1-based, so a failure can name
- * the offending call the way an editor does. `lib/sliceMutations.ts` reads the
- * same whether that root is this repository's `src` or the package's.
+ * `path` is the `src/…` path a finding prints, and `line` is 1-based, so a
+ * failure can name the offending call the way an editor does.
+ * `src/lib/sliceMutations.ts` reads the same whether that `src` is this
+ * repository's or the package's.
  *
- * A ROOT WITH NO SOURCE IN IT THROWS. Every rule over this set is a claim about
- * what the writers do, and a set with no writers in it satisfies all of them at
- * once: nothing is undeclared, nothing is unexempted, nothing writes a table it
- * may not. That is the one answer this scan must never return quietly.
+ * A SET WITH NO WRITERS IN IT SATISFIES EVERY RULE OVER IT AT ONCE: nothing is
+ * undeclared, nothing is unexempted, nothing writes a table it may not. That is
+ * the one answer this scan must never return quietly, and the sweep refuses it
+ * before this function is reached — an application with no `.ts` or `.tsx` in
+ * it is a walk with no subject.
+ *
+ * @param {{ files: string[], read: (path: string) => string | null }} [swept]
  */
-export function directTableWrites(root = appSource()) {
-  const sources = walkSources(root)
-  if (sources.length === 0) {
-    throw new Error(
-      `no .ts or .tsx source under ${root}: this scan has no subject, which is ` +
-        `a failure and not a pass`,
-    )
-  }
+export function directTableWrites(swept = appSources()) {
   const writes = []
-  for (const relative of sources) {
-    const source = readFileSync(resolve(root, relative), 'utf8')
+  for (const path of swept.files) {
+    // A file the listing named and the tree no longer has is skipped, which is
+    // the sweep's own rule and the reason `read` answers null rather than
+    // throwing; every other failure throws there.
+    const source = swept.read(path)
+    if (source === null) continue
     for (const match of source.matchAll(TABLE_WRITE)) {
       writes.push({
-        path: relative,
+        path,
         line: source.slice(0, match.index).split('\n').length,
         table: match[1],
         verb: match[2],

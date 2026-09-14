@@ -1,10 +1,8 @@
-import { existsSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { expect, test } from 'vitest'
 import {
   TABLE_WRITE,
+  appSources,
   directTableWrites,
-  walkSources,
 } from '../../scripts/direct-table-writes.mjs'
 
 /**
@@ -32,7 +30,7 @@ import {
  * the exceptions inverts that: a new directory is covered the moment it
  * appears, and a new writer has to argue for itself here.
  *
- * The walk itself lives in `scripts/direct-table-writes.mjs`, because a second
+ * The scan itself lives in `scripts/direct-table-writes.mjs`, because a second
  * rule now asks a question of the same set: `scripts/tests/the-surface-is-the-writers.test.mjs`
  * holds `PANEL_WRITE_SURFACE` — the declaration of what a signed-in author may
  * write, which `check:seed-load` asks a real database about — to the tables
@@ -54,18 +52,25 @@ import {
  * deliberately separate tests: this one asks who may write, that one asks what
  * a writer does when the write is refused.
  */
-const SRC = resolve(__dirname, '..')
+/**
+ * The application's non-test sources, as the `src/…` paths a finding prints.
+ *
+ * The sweep answers where the application is and refuses a tree that has none,
+ * so this file names no root of its own — it never did know which of the two
+ * roots it was standing in.
+ */
+const APPLICATION = appSources()
 
 /**
- * A `src`-relative path that owns part of the write path.
+ * A path that owns part of the write path.
  *
  * The `*Mutations.ts` family is matched by shape rather than listed, because
  * adding one is the *sanctioned* way to add a write and should not need an
- * edit here. The pattern is anchored at `lib/` on purpose: a
- * `components/FooMutations.ts` is not a mutation module, it is this test being
- * routed around.
+ * edit here. The pattern is anchored at `src/lib/` on purpose: a
+ * `src/components/FooMutations.ts` is not a mutation module, it is this test
+ * being routed around.
  */
-const MUTATION_MODULE = /^lib\/[A-Za-z]+Mutations\.ts$/
+const MUTATION_MODULE = /^src\/lib\/[A-Za-z]+Mutations\.ts$/
 
 /**
  * The writers deliberately outside the `*Mutations` family, each with the
@@ -74,12 +79,12 @@ const MUTATION_MODULE = /^lib\/[A-Za-z]+Mutations\.ts$/
  */
 const EXEMPT: ReadonlyArray<{ path: string; because: string }> = [
   {
-    path: 'lib/revertChange.ts',
+    path: 'src/lib/revertChange.ts',
     because:
       'the ledger’s own inverse-applier — it cannot record a change, because recording one is precisely what it is undoing',
   },
   {
-    path: 'lib/agent/persistence.ts',
+    path: 'src/lib/agent/persistence.ts',
     because:
       'the agent transcript (agent_sessions, agent_messages), which is not blueprint data: it has no inverse to capture, and it is best-effort by design — the deployed read-only site has no policy on either table and every call there fails quietly on purpose',
   },
@@ -92,7 +97,7 @@ function isExempt(relative: string): boolean {
   )
 }
 
-const sources: string[] = walkSources(SRC)
+const sources: string[] = APPLICATION.files
 
 test('the walk sees the whole of src, not a list of roots', () => {
   // A walk that silently found nothing would pass every assertion below. Hold
@@ -100,15 +105,18 @@ test('the walk sees the whole of src, not a list of roots', () => {
   // it reaches them outside `lib/` — the named-roots version of this guard was
   // wrong in exactly the opposite direction, and either blind spot is fatal.
   expect(sources.length).toBeGreaterThan(0)
-  expect(sources.some((one) => one.startsWith('components/'))).toBe(true)
-  expect(sources.some((one) => one.startsWith('lib/'))).toBe(true)
+  expect(sources.some((one) => one.startsWith('src/components/'))).toBe(true)
+  expect(sources.some((one) => one.startsWith('src/lib/'))).toBe(true)
   expect(sources.filter((one) => MUTATION_MODULE.test(one)).length).toBeGreaterThan(0)
 })
 
 test('every exempted writer still exists', () => {
-  const missing = EXEMPT.filter(
-    (entry) => !existsSync(resolve(SRC, entry.path)),
-  ).map((entry) => entry.path)
+  // Asked of the sweep's own listing rather than of the disk: the exemption is
+  // about a file in the subject, and a file that is not in the subject is not
+  // one this rule can be routed around by.
+  const missing = EXEMPT.filter((entry) => !sources.includes(entry.path)).map(
+    (entry) => entry.path,
+  )
   expect(
     missing,
     `Exempted from the write boundary but no longer present: ${missing.join(', ')}. ` +
@@ -119,9 +127,9 @@ test('every exempted writer still exists', () => {
 test('nothing outside the mutation layer writes to a table directly', () => {
   const offenders: string[] = []
 
-  for (const write of directTableWrites(SRC)) {
+  for (const write of directTableWrites(APPLICATION)) {
     if (isExempt(write.path)) continue
-    offenders.push(`src/${write.path}:${write.line} — ${write.verb} on '${write.table}'`)
+    offenders.push(`${write.path}:${write.line} — ${write.verb} on '${write.table}'`)
   }
 
   expect(

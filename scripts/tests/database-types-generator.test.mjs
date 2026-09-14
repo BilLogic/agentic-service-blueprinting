@@ -82,7 +82,12 @@ test('the superset check a deployment runs loads nothing that needs a developmen
   const { seen, bare } = importGraph(resolve(SCRIPTS, 'check-database-types-superset.mjs'))
   const reached = [...seen].map((file) => file.slice(SCRIPTS.length))
   assert.ok(!reached.includes('generate-database-types.mjs'), reached.join(', '))
+  // Built-in modules, and this package by its own name — the spelling that
+  // resolves out of node_modules in a deployment and by self-reference here.
   for (const specifier of bare) {
-    assert.ok(specifier.startsWith('node:'), `${specifier} is not a built-in module`)
+    assert.ok(
+      specifier.startsWith('node:') || specifier.startsWith('agentic-service-blueprinting/'),
+      `${specifier} is not a built-in module`,
+    )
   }
 })
