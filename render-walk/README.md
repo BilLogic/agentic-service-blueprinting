@@ -106,8 +106,8 @@ The walk asserts against whatever answers on its port, so the port is part of
 the subject rather than a detail. It is decided once per run, by the runner,
 before Playwright starts:
 
-- **No `RENDER_WALK_PORT`** — 4173 if nothing is listening there and no other
-  walk has claimed it, otherwise the next free port above it, up to 4204. So
+- **No `RENDER_WALK_PORT`** — 4173 if nothing answers there and no other walk
+  has claimed it, otherwise the next free port above it, up to 4204. So
   your own `npm run preview` on 4173, or a second checkout walking at the same
   moment, moves this run along instead of stopping it: two walks started
   together take 4173 and 4174 and each walks its own `dist`. The run says
@@ -115,20 +115,28 @@ before Playwright starts:
   thirty-two held is a refusal naming the range.
 - **`RENDER_WALK_PORT=4273`** — that port and no other. You named it, so a walk
   elsewhere would not be the walk you asked for: if something is already
-  listening there the runner **refuses by name**, tells you how to find out
-  whose it is (`lsof -i :4273`), and starts nothing.
+  listening there, or another walk has claimed it, the runner **refuses by
+  name**, tells you how to find out whose it is (`lsof -i :4273`, on macOS and
+  Linux), and starts nothing.
 
 ```bash
 RENDER_WALK_PORT=4273 npm run check:render-walk
 ```
+
+A port is *claimed* as well as tested, because a free port is not yet a bound
+one: the two seconds Playwright spends starting up are two seconds in which a
+second walk would read the same port as free. The claim is a file holding this
+run's process id, `render-walk-port-<port>` in the system temporary directory,
+removed on the way out; one left behind by a walk that was killed names a
+process that is gone, and the next walk takes it over rather than believing it.
 
 Either way the walk never reuses a server it did not start. What is already on
 a port is somebody else's `dist` — an older build of this tree, or another
 tree's altogether — and a green walk over it would be a statement about code
 that is not in your working directory. Pointing Playwright at the config by
 hand rather than through the runner keeps the fixed 4173, where
-`reuseExistingServer: false` plus `--strictPort` makes a held port an abort
-that names it and collects no tests.
+`reuseExistingServer: false` aborts on a held port, naming it, and runs no
+tests.
 
 Output — one screenshot per view, plus
 Playwright's own artifacts — lands in `render-walk-output/`, which is

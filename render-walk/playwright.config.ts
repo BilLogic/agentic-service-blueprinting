@@ -67,8 +67,7 @@ import { defineConfig, devices } from '@playwright/test'
  * The constant below is therefore the FALLBACK, for the one path the runner is
  * not on: Playwright pointed at this config by hand. That path keeps a fixed
  * port, and the abort above is what a held one gets there — named, with no
- * test collected, which is the honest end of a walk that has nowhere to
- * preview.
+ * test run, which is the honest end of a walk that has nowhere to preview.
  *
  * The deployment's `preview` script has to accept `--port` and `--strictPort`,
  * which Vite's own does; see `render-walk/README.md` § Enrolling a deployment.

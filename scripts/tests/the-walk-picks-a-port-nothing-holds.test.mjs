@@ -22,12 +22,18 @@
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { existsSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { DEFAULT_PORT, PORT_WINDOW, choosePort, claimPort, portIsFree } from '../../render-walk/run.mjs'
+import {
+  DEFAULT_PORT,
+  PORT_WINDOW,
+  choosePort,
+  claimPath,
+  claimPort,
+  portIsFree,
+} from '../../render-walk/run.mjs'
 
 const ROOT = new URL('../..', import.meta.url).pathname
 
@@ -37,9 +43,6 @@ async function listening(host = '127.0.0.1') {
   await new Promise((resolve) => server.listen(0, host, resolve))
   return { port: server.address().port, close: () => new Promise((r) => server.close(r)) }
 }
-
-/** Where a claim on `port` is written, as the runner writes it. */
-const claimPath = (port) => join(tmpdir(), `render-walk-port-${port}`)
 
 /**
  * A free port with no claim on it.
@@ -134,9 +137,33 @@ test('a port the caller named and somebody else holds is refused, and no test ru
   }
 })
 
-test('the default is what a run with a free machine previews on', async () => {
-  // Stated because the README, the config's fallback and the CI job all spell
-  // it, and a chooser that quietly started somewhere else would leave three
-  // documents describing a port nothing uses.
-  assert.equal(DEFAULT_PORT, 4173)
+test('a port the caller named and another walk has claimed is refused too', async () => {
+  // Nothing is listening yet — the other walk is still starting Playwright up
+  // — so the port would test free. Naming a port is not a way past that: two
+  // previews on one port is one preview and one `--strictPort` failure.
+  const port = await unclaimed()
+  assert.equal(claimPort(port), true)
+
+  const refused = spawnSync(process.execPath, [join(ROOT, 'render-walk', 'run.mjs')], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    env: { ...process.env, RENDER_WALK_PORT: String(port) },
+  })
+
+  assert.equal(refused.status, 1)
+  assert.match(refused.stderr, new RegExp(`port ${port}`))
+  assert.match(refused.stderr, /another render walk/)
+  assert.doesNotMatch(refused.stdout, /Running \d+ test/)
+})
+
+test('the config falls back to the port the runner defaults to', () => {
+  // Two published files spell this number: the runner, which chooses, and the
+  // config, for the one path the runner is not on. A test asserting the
+  // constant against itself could not notice the config drifting off it, so
+  // the config's own literal is what is read.
+  const config = readFileSync(join(ROOT, 'render-walk', 'playwright.config.ts'), 'utf8')
+  const fallback = config.match(/RENDER_WALK_PORT \|\| (\d+)/)
+
+  assert.notEqual(fallback, null, 'the config no longer falls back to a literal port')
+  assert.equal(Number(fallback[1]), DEFAULT_PORT)
 })
