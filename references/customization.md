@@ -125,24 +125,69 @@ over a registry keyed by the template's ids, which answers none of them — rows
 above an empty canvas in every no-database build, and a render walk over that
 build with no board to find (#754).
 
-`scripts/generate_fallbacks.py --register` writes both halves in one pass, and
-the config field takes the registry in exactly the shape that run emits, so a
-deployment hands over what its own pipeline already produced:
+`scripts/generate_fallbacks.py` writes both halves in one pass, and the config
+field takes the registry in exactly the shape that run emits, so a deployment
+hands over what its own pipeline already produced. From the root of a
+deployment that installs this package:
+
+```bash
+python3 node_modules/agentic-service-blueprinting/scripts/generate_fallbacks.py \
+  <ir-file> --locale <tag> \
+  --out deployment/data/generatedBlueprints.ts \
+  --registry-out deployment/data/sampleBlueprints.ts \
+  --nav-out deployment/data/sampleNav.ts
+```
+
+`--registry-out` and `--nav-out` are required together and refused alongside
+`--register`, which is this repository's own marker rewrite and writes nothing
+a deployment can use. An `--out` under a `src` is refused too: a deployment
+that mounts this package must not have one, because the `@/…` alias tries the
+host's root first and a `src` holding only the host's files would capture every
+import the application makes of itself.
+
+The three modules are the deployment's own generated content, held beside its
+cover copy under its own root. The two the config reads name their types the
+way a consumer names anything here — by package name, since no `@/…` path of a
+tree without a `src` reaches them. Each opens with one line:
 
 ```ts
-import { PACKAGE_SAMPLE_BLUEPRINTS } from './data/blueprintFallbacks'
+// deployment/data/sampleBlueprints.ts
+import type { SampleBlueprintRegistry } from 'agentic-service-blueprinting'
+```
+
+```ts
+// deployment/data/sampleNav.ts
+import type { NavItem } from 'agentic-service-blueprinting'
+```
+
+and the config hands both halves over together:
+
+```ts
+import type { DeploymentConfig } from 'agentic-service-blueprinting'
+import { SAMPLE_BLUEPRINTS } from './data/sampleBlueprints'
 import { SAMPLE_NAV } from './data/sampleNav'
 
 const config: DeploymentConfig = {
-  sample: { nav: SAMPLE_NAV, blueprints: PACKAGE_SAMPLE_BLUEPRINTS },
+  sample: { nav: SAMPLE_NAV, blueprints: SAMPLE_BLUEPRINTS },
 }
 ```
 
-Those two modules are the deployment's own generated content, held wherever it
-keeps its content — beside its cover copy, not as residents under `src`. A
-deployment that registered against an earlier release re-runs `--register` once
-after adopting this one: the block that run writes is what exports the registry
-the config field takes.
+A deployment that generated its board against an earlier release re-runs the
+generator once after adopting this one, with these flags — the modules it holds
+now are what the config field reads.
+
+`BlueprintData` — what a registry's values are — is exported beside those two,
+down to `BlueprintPath`, `BlueprintLane`, `BlueprintStep`, `BlueprintCell` and
+`BlueprintCellDependency`, for a deployment that reshapes an export of its own
+board rather than running the generator over an IR: annotating a whole board
+needs only the first, and writing the function that builds one needs the rest.
+
+Inside this repository the same run registers against the template's own
+markers instead: `--out src/data/generatedBlueprints.ts --register` rewrites
+the blocks in `src/data/blueprintFallbacks.ts` and `src/data/sampleNav.ts`,
+which is where `PACKAGE_SAMPLE_BLUEPRINTS` comes from — the board a clone with
+no deployment config shows.
+
 Omitting either field is the template's own half, which is the right answer for
 a deployment still evaluating the template and the wrong one for a deployment
 with a board of its own.

@@ -172,7 +172,8 @@ All three are generated. Edit a migration and run `npm run generate:portable-cor
 | `npm run generate:database-types` / `check:database-types` | Regenerate `src/types/database.ts` from the database the portable core builds, or diff it against what is committed |
 | `node scripts/generate_sample_blueprint.mjs` | Regenerate the sample content (fallback module + seed) |
 | `python3 scripts/validate_ir.py <blueprint.json>` | Validate a blueprint file (stdlib-only) |
-| `python3 scripts/generate_fallbacks.py <blueprint.json> --locale <tag> --register` | blueprint → no-database data module + offline nav |
+| `python3 scripts/generate_fallbacks.py <blueprint.json> --locale <tag> --register` | blueprint → no-database data module + offline nav, into this repository's own marker blocks |
+| `python3 scripts/generate_fallbacks.py <blueprint.json> --locale <tag> --registry-out <path> --nav-out <path>` | the same two halves as standalone modules, for a deployment that mounts this package |
 | `python3 scripts/generate_seed_sql.py <blueprint.json> --locale <tag>` | blueprint → transactional Supabase seed |
 | `python3 scripts/compute_signoff_hash.py <blueprint.json>` | Per-scenario sign-off content hashes |
 | `python3 skills/audit/scripts/audit_tools.py` | Helpers the audit checks run on |

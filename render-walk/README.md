@@ -182,9 +182,10 @@ What your side has to provide:
   what it opens is whatever your build shows: nav rows with no registry behind
   them are rows over an empty canvas, and the walk fails on the first board it
   asserts rather than on anything it can name. Both are generated in one run of
-  `scripts/generate_fallbacks.py --register`;
+  `scripts/generate_fallbacks.py` with `--registry-out` and `--nav-out`, which
+  write them as modules of your own that name their types by package name;
   `references/customization.md` § The offline board is two fields has the
-  shape.
+  command and the shape.
 
 A deployment that wants this in its own CI can copy the `render-walk` job out
 of `.github/workflows/ci.yml`; nothing in it changes — the job already calls

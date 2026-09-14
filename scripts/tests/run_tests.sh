@@ -558,7 +558,8 @@ PY
 pass "seed-entity-examples-absent (a service block with no examples emits the empty map — silence, not a clear)"
 
 # ---------------------------------------------------------------------------
-# 5. Fallback TS module: generate, type-check, determinism, --register
+# 5. Fallback TS module: generate, type-check, determinism, --register,
+#    and the standalone pair a deployment generates for its own tree
 # ---------------------------------------------------------------------------
 
 cd "$REPO_ROOT"
@@ -652,6 +653,91 @@ if python3 "$FALLBACK_GEN" "$TMP/bad1.json" --locale en --out "$TMP/generated.ba
 fi
 [ ! -f "$TMP/generated.bad.ts" ] || fail "fallback-invalid-ir: output written despite invalid IR"
 pass "fallback-invalid-ir (invalid IR generates nothing)"
+
+# The same pass for a DEPLOYMENT: no marker block to rewrite, both halves
+# written whole, and every type named by package name because the tree that
+# holds them has no `src` for '@/…' to find.
+DEP="$TMP/deployment/data"
+mkdir -p "$DEP"
+python3 "$FALLBACK_GEN" "$SAMPLE" --locale en --out "$DEP/generatedBlueprints.ts" \
+  --registry-out "$DEP/sampleBlueprints.ts" --nav-out "$DEP/sampleNav.ts" > /dev/null \
+  || fail "deployment-pair: generation failed"
+grep -q "^import type { SampleBlueprintRegistry } from 'agentic-service-blueprinting'$" \
+  "$DEP/sampleBlueprints.ts" \
+  || fail "deployment-pair: the registry does not name its type by package name"
+grep -q "^import { GENERATED_PATH_FALLBACKS_BY_SCENARIO } from './generatedBlueprints'$" \
+  "$DEP/sampleBlueprints.ts" \
+  || fail "deployment-pair: the registry does not read the generated module beside it"
+grep -q "export const SAMPLE_BLUEPRINTS: SampleBlueprintRegistry" "$DEP/sampleBlueprints.ts" \
+  || fail "deployment-pair: no SAMPLE_BLUEPRINTS export"
+grep -q "^import type { NavItem } from 'agentic-service-blueprinting'$" "$DEP/sampleNav.ts" \
+  || fail "deployment-pair: the nav does not name NavItem by package name"
+grep -q "export const SAMPLE_NAV: NavItem\[\]" "$DEP/sampleNav.ts" \
+  || fail "deployment-pair: no SAMPLE_NAV export"
+grep -q "^import type { BlueprintData } from 'agentic-service-blueprinting'$" \
+  "$DEP/generatedBlueprints.ts" \
+  || fail "deployment-pair: the generated module still imports BlueprintData through '@/'"
+if grep -q "from '@/" "$DEP/sampleBlueprints.ts" "$DEP/sampleNav.ts" "$DEP/generatedBlueprints.ts"; then
+  fail "deployment-pair: an '@/…' import survived into a deployment's own module"
+fi
+pass "deployment-pair (three standalone modules, every type named by package name)"
+
+# The pair is one board: either flag alone is refused, and nothing is written.
+if python3 "$FALLBACK_GEN" "$SAMPLE" --locale en --out "$TMP/half.ts" \
+  --registry-out "$TMP/half-registry.ts" > /dev/null 2>&1; then
+  fail "deployment-half: --registry-out without --nav-out was accepted"
+fi
+[ ! -f "$TMP/half.ts" ] || fail "deployment-half: output written despite the refusal"
+if python3 "$FALLBACK_GEN" "$SAMPLE" --locale en --out "$TMP/half2.ts" \
+  --nav-out "$TMP/half-nav.ts" > /dev/null 2>&1; then
+  fail "deployment-half: --nav-out without --registry-out was accepted"
+fi
+[ ! -f "$TMP/half2.ts" ] || fail "deployment-half: output written despite the refusal"
+pass "deployment-half (one half of the board alone is refused, nothing written)"
+
+# --register is the marker rewrite of THIS tree; the pair writes another's.
+if python3 "$FALLBACK_GEN" "$SAMPLE" --locale en --out "$TMP/both.ts" --register \
+  --registry-out "$TMP/both-registry.ts" --nav-out "$TMP/both-nav.ts" > /dev/null 2>&1; then
+  fail "deployment-and-register: the two trees were generated for at once"
+fi
+[ ! -f "$TMP/both.ts" ] || fail "deployment-and-register: output written despite the refusal"
+pass "deployment-and-register (the marker rewrite and a deployment's own modules are exclusive)"
+
+# One payload, two homes: the standalone nav carries exactly the rows the
+# marker block carries, so a change to either reaches both.
+python3 - "$DEP/sampleNav.ts" "$NAV" <<'NAVPARITY' || fail "deployment-nav-parity: the two nav emitters disagree"
+import sys
+
+MARKER = "export const SAMPLE_NAV: NavItem[] = "
+
+
+def rows(path):
+    text = open(path, encoding="utf-8").read()
+    assert MARKER in text, f"no SAMPLE_NAV in {path}"
+    return text.split(MARKER, 1)[1].rsplit("]", 1)[0] + "]"
+
+
+standalone, block = (rows(path) for path in sys.argv[1:3])
+assert standalone == block, "the standalone nav and the marker block carry different rows"
+NAVPARITY
+pass "deployment-nav-parity (one nav payload behind both emitters)"
+
+# A deployment must not grow a `src` — it captures every '@/…' the app imports.
+if python3 "$FALLBACK_GEN" "$SAMPLE" --locale en \
+  --registry-out "$TMP/s-registry.ts" --nav-out "$TMP/s-nav.ts" > /dev/null 2>&1; then
+  fail "deployment-src-out: the default src/ output path was accepted"
+fi
+[ ! -f "$TMP/s-registry.ts" ] || fail "deployment-src-out: a module written despite the refusal"
+if python3 "$FALLBACK_GEN" "$SAMPLE" --locale en --out "$TMP/dep-g.ts" \
+  --registry-out "$TMP/src/r.ts" --nav-out "$TMP/dep-n.ts" > /dev/null 2>&1; then
+  fail "deployment-src-out: --registry-out under src/ was accepted"
+fi
+if python3 "$FALLBACK_GEN" "$SAMPLE" --locale en --out "$TMP/dep-g.ts" \
+  --registry-out "$TMP/dep-r.ts" --nav-out "$TMP/src/n.ts" > /dev/null 2>&1; then
+  fail "deployment-src-out: --nav-out under src/ was accepted"
+fi
+[ ! -f "$TMP/dep-g.ts" ] || fail "deployment-src-out: a module written despite the refusal"
+pass "deployment-src-out (any of the three outputs under src/ is refused, not only --out)"
 
 # Restore the shipped registry + nav state and confirm they still type-check.
 cp "$TMP/blueprintFallbacks.ts.bak" "$REGISTRY"
