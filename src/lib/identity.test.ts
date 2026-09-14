@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
-import { createSupabaseIdentity } from './supabaseIdentity'
+import { readTier } from './identity'
 
 /**
  * What tier is this session in, and who decides.
@@ -51,26 +51,22 @@ describe('the Supabase identity tier', () => {
     const ask: Ask = { calls: 0 }
     // The seam's permissive default answers `true` to anyone who calls it,
     // anon included, so asking here would hand a deployed visitor the tier.
-    const identity = createSupabaseIdentity(clientFor(null, true, ask))
+    const client = clientFor(null, true, ask)
 
-    expect(await identity.currentTier()).toBe('anon')
+    expect(await readTier(client)).toBe('anon')
     expect(ask.calls).toBe(0)
   })
 
   it('answers anon for a signed-in session the database refuses', async () => {
     // The strict posture: the optional tier recipe is applied and this
     // account was never stamped. It reads and chats; it writes nothing.
-    const identity = createSupabaseIdentity(clientFor(signedIn(), false))
-
-    expect(await identity.currentTier()).toBe('anon')
+    expect(await readTier(clientFor(signedIn(), false))).toBe('anon')
   })
 
   it('answers service for a signed-in session the database allows', async () => {
     // The permissive posture, where the same role-less account edits: the
     // recipe was skipped or deleted, and the seam is still `select true`.
-    const identity = createSupabaseIdentity(clientFor(signedIn(), true))
-
-    expect(await identity.currentTier()).toBe('service')
+    expect(await readTier(clientFor(signedIn(), true))).toBe('service')
   })
 
   it('reads the database rather than the role claim', async () => {
@@ -78,17 +74,13 @@ describe('the Supabase identity tier', () => {
     // holding a token minted before the revocation, or a claim an adopter
     // set by hand on a deployment whose seam reads something else. The claim
     // is not consulted, so the answer follows the wall that refuses the write.
-    const stamped = createSupabaseIdentity(clientFor(signedIn('service'), false))
-    expect(await stamped.currentTier()).toBe('anon')
+    expect(await readTier(clientFor(signedIn('service'), false))).toBe('anon')
 
     // And the converse: no claim at all, and the database says yes.
-    const unstamped = createSupabaseIdentity(clientFor(signedIn(), true))
-    expect(await unstamped.currentTier()).toBe('service')
+    expect(await readTier(clientFor(signedIn(), true))).toBe('service')
   })
 
   it('answers anon when the ask fails', async () => {
-    const identity = createSupabaseIdentity(clientFor(signedIn('service'), null))
-
-    expect(await identity.currentTier()).toBe('anon')
+    expect(await readTier(clientFor(signedIn('service'), null))).toBe('anon')
   })
 })

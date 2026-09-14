@@ -60,14 +60,20 @@ browser-local write path was considered and rejected: it would be a second
 implementation of the authoring semantics whose divergence would surface
 only in the demo.
 
-**What live mode actually requires**: the app reads and writes through the
-repository interfaces in `src/lib/backend/ports.ts` — domain operations like
-`getBlueprint(pathId)` and `createSlice(draft)`. Any store that can answer
-them can serve this app. The Supabase adapter answers them with PostgREST
-embedded selects; that is one implementation, not the requirement.
+**What live mode actually requires**: the domain operations named in § Live
+backend surface below — `getBlueprint(pathId)`, `createSlice(draft)` and the
+rest. Any store that can answer them can serve this app. The Supabase call
+sites answer them with PostgREST embedded selects; that is one implementation,
+not the requirement.
 
 This paragraph used to say that a host without a PostgREST-compatible read
 API "cannot serve the app". That was our coupling written down as physics.
+
+It then said, for a while, that the app reads and writes through a set of
+repository interfaces kept beside the code. That was the opposite mistake: no
+call site ever dispatched through them, so the sentence described a seam that
+did not exist. The operations below are the contract; the seam the code
+actually holds is the generated database type (`src/types/database.ts`).
 
 **⚠ Slices, findings and evidence without a DB (normative)**: a no-DB adopter's
 findings/slices store IS the ledger files that
@@ -101,10 +107,13 @@ Ensure the target carries the template schema at a compatible
 **Ask the target; do not assume.** The version lives in the database, in
 `public.schema_version` — one row, `select version from public.schema_version`
 (Supabase: `/rest/v1/schema_version?select=version`). No-DB: the generated
-module carries it. An adapter answers it through `Backend.schemaVersion()`
-(`src/lib/backend/ports.ts`), and the conformance case `read/schema-version`
-fails a target this template cannot speak, naming the version found and the
-versions supported — `src/lib/backend/schemaVersion.ts` holds the list.
+module carries it. An adapter answers it by reading that row, and
+`npm run check:target` fails a target this template cannot speak, naming the
+version found and the versions supported. The list lives in
+`references/ir-schema.json`, which `scripts/validate_ir.py` and
+`scripts/check-target-schema.mjs` both read;
+`src/lib/backend/schemaVersion.ts` carries the TypeScript copy and the test
+that holds the two equal.
 
 Until that table existed this clause compared a file against a file: the value
 was in the IR and in `blueprint-workspace.json` and nowhere a live target could
@@ -220,31 +229,56 @@ carries these rules, each learned the hard way from a bot that shipped
 ## Live backend surface (beyond import)
 
 Importing is the floor; **serving the app live** is a larger surface. It is
-defined by the repository interfaces in `src/lib/backend/ports.ts`, one per
-aggregate — blueprints, slices, findings — plus an identity port. Each
-operation declares what a caller may assume of it: `read`, `atomic`
-(all-or-nothing), or `converging` (repeating it lands in the same place).
-Round-trip expectations are declared too, so a backend without joins conforms
-visibly rather than by turning one screen into ninety requests nobody notices
-until the bill arrives.
+defined here, in prose, one group per aggregate — blueprints, slices,
+findings — plus identity. Each operation says what a caller may assume of it:
+it **reads** (changes nothing), it is **atomic** (all-or-nothing), or it
+**converges** (repeating it lands in the same place). Reads should take one
+round trip; a backend without joins may take more and should say so, rather
+than turning one screen into ninety requests nobody notices until the bill
+arrives.
 
-Identity is a **separate port** answering one question — *what may this
-session do?* — in three tiers (`anon`, `authoring`, `service`). It never
-exposes a token or a claim name, so an adopter can run Supabase auth, their
-own OIDC, or a single-user desktop build without either side learning about
-the other. It is a UI-level answer; the backend still enforces it.
+- **Blueprints, read-only.** List the phases with their scenarios nested; list
+  a scenario's paths; read one path's whole grid — lanes, steps, cells, edges
+  — and answer *absent* rather than *error* for a path that does not exist.
+  Structural authoring goes through the RPC roster below.
+- **Slices.** List them, read one, create one (atomic: a slice with no slides
+  is a slice nobody can read and nobody knows to delete), replace a slice's
+  slides wholesale (atomic), delete one (converging — deleting a slice that is
+  already gone is success, because callers retry). A store that cannot write
+  atomically owes a repair pass instead; see the two levels below.
+- **Findings.** List them by status; record a batch, skipping any whose
+  fingerprint is already open (converging — the audit re-runs constantly and
+  must not breed duplicates, and deduplication is by fingerprint, not by row
+  id); set a status (converging — setting the status a row already has is
+  success). § 5 below has the dedupe semantics in full.
+- **Identity**, separate from data, answering one question — *what may this
+  session do?* — in three tiers (`anon`, `authoring`, `service`). It never
+  exposes a token or a claim name, so an adopter can run Supabase auth, their
+  own OIDC, or a single-user desktop build without either side learning about
+  the other. It is a UI-level answer; the backend still enforces it. The
+  shipped reader is `src/lib/identity.ts`.
+
+These were once TypeScript interfaces with adapters behind them. Nothing
+dispatched through the interfaces, so what they added over this section was a
+second statement of it that the compiler could not check against any caller.
+The seam the code does hold is the generated database type,
+`src/types/database.ts`: change the portable core, regenerate, and every call
+site that no longer agrees stops building. A replacement backend's real work
+is answering the operations above; the type is what tells it when it has
+stopped.
 
 ### Two conformance levels
 
-**Transactional** — every `atomic` operation is all-or-nothing; a rejected
+**Transactional** — every atomic operation is all-or-nothing; a rejected
 write leaves nothing behind. Supabase conforms here through its RPCs.
 Firestore can, within its transaction limits.
 
-**Idempotent** — `atomic` operations may tear, in exchange for two duties:
-re-running a request converges, and `repairSlices()` resolves every torn state
-a write can leave. Notion has no transactions at all and conforms here. The
-cost is real and stated rather than hidden: an interrupted write can leave a
-slice with no slides until a repair pass runs.
+**Idempotent** — atomic operations may tear, in exchange for two duties:
+re-running a request converges, and a repair pass resolves every torn state a
+write can leave, naming what it finished or undid. Notion has no transactions
+at all and conforms here. The cost is real and stated rather than hidden: an
+interrupted write can leave a slice with no slides until that pass runs, and
+the app has to tell the user such a pass exists and when it runs.
 
 This is the decision that makes "any backend" true rather than a marketing
 line. A contract that demanded transactions would be the Supabase requirement
@@ -252,21 +286,17 @@ again, wearing a different word.
 
 ### Proving an implementation
 
-`src/lib/backend/conformance.ts` is the suite — framework-free, so an adopter
-runs it from their own runner against their own store. It reports every case,
-skipping none silently: a read-only backend's write cases come back `skipped`
-with a reason, so "did not apply" is distinguishable from "was not run".
-
-Passing it today: the bundled fixture (`adapters/fixture.ts`, reads only) and
-an in-memory store (`adapters/memory.ts`, which runs at either level in about
-two hundred lines — the shortest honest answer to "what does implementing this
-involve"). **The Supabase adapter is not written yet**: its call sites still
-talk to PostgREST directly, and it becomes the second reference implementation
-when the seam reaches them. Until then the suite is proved against two
-adapters that are not databases, which is worth knowing when reading its
-green.
-
-⚠️ The suite writes. Point it at a scratch project.
+**There is no runnable conformance suite, and saying so is the honest state.**
+There was one — framework-free, run from an adopter's own runner — and the two
+implementations it held equivalent were a read-only fixture over the bundled
+sample and an in-memory store. Neither was a database, and neither served the
+app: the shipped call sites talk to PostgREST directly, so the suite's green
+was two hypothetical stores agreeing with each other. Proving an
+implementation against § 1–§ 5 below, and against the checklist at the end of
+this document, is what an adopter actually has: the operations are named, the
+guarantees are named, and the shipped Supabase rendering is the worked
+example. A suite earns its place back on the day a second real backend needs
+it.
 
 ### How the Supabase adapter renders it
 
@@ -362,8 +392,7 @@ a cancelled request rather than completing it.
 
 ### 5. Findings dedupe semantics and operators
 
-`recordFindings` (the `findings` port in `src/lib/backend/ports.ts`, one
-implementation per adapter) is read-then-write, not upsert: it reads
+Recording a finding is read-then-write, not upsert: it reads
 existing rows by `(service_id, fingerprint)`, updates an open row in
 place, skips a dismissed one, and inserts a fresh `open` row otherwise. The
 schema's **open-fingerprint partial unique index**
@@ -390,7 +419,7 @@ four behaviors intact.
 **The tier is asked, not read off the token.** The client calls
 `is_service_account()` — the same seam every write RPC asserts in its own
 body and every restrictive write policy ANDs with — and takes its answer
-(`src/lib/backend/adapters/supabaseIdentity.ts`, consumed by
+(`src/lib/identity.ts`, consumed by
 `src/contexts/SupabaseProvider.tsx`):
 
 - no session → `anon`, settled without asking. The seam's permissive

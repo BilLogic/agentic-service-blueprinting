@@ -12,6 +12,15 @@
  * is not. Ranges were the alternative and are a promise nobody can keep —
  * "2026.07.16 and later" claims compatibility with shapes that do not exist
  * yet. Each entry earns its place by having a migration behind it.
+ *
+ * **Nothing at runtime asks this module.** The check against a live target is
+ * `npm run check:target` (`scripts/check-target-schema.mjs`), which reads the
+ * same list out of `references/ir-schema.json` — the one source, which
+ * `scripts/validate_ir.py` reads too. This list is the TypeScript half of that
+ * agreement, and `schemaVersion.test.ts` is what holds the two halves equal:
+ * the enum, the version this checkout builds, and the version the bootstrap
+ * migration seeds. A second copy of a version list is a second thing to
+ * forget, so the copy carries the test that will not let it drift.
  */
 
 /** The shape this checkout builds. Bumped by the migration that changes it. */
@@ -115,35 +124,6 @@ export const SUPPORTED_SCHEMA_VERSIONS: readonly string[] = [
   '2026.07.16',
 ]
 
-export class SchemaVersionMismatch extends Error {
-  readonly found: string
-  readonly supported: readonly string[]
-
-  constructor(found: string, supported: readonly string[]) {
-    super(
-      `the target carries schema_version ${found}; this template speaks ` +
-        `${supported.join(', ')}. Apply the migrations in supabase/migrations, ` +
-        'or check out the template revision that matches the target.',
-    )
-    this.found = found
-    this.supported = supported
-    this.name = 'SchemaVersionMismatch'
-  }
-}
-
 export function isSchemaVersionSupported(version: string): boolean {
   return SUPPORTED_SCHEMA_VERSIONS.includes(version)
-}
-
-/**
- * Throw unless the target's version is one this template speaks.
- *
- * The message names both sides on purpose. "Incompatible schema" sends a
- * reader to the migrations directory to guess; "carries 2026.07.16, speaks
- * 2026.08.25" tells them which migration is missing.
- */
-export function assertSchemaCompatible(found: string): void {
-  if (!isSchemaVersionSupported(found)) {
-    throw new SchemaVersionMismatch(found, SUPPORTED_SCHEMA_VERSIONS)
-  }
 }

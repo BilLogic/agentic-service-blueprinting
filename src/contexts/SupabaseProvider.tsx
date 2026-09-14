@@ -18,8 +18,7 @@ import {
   setAuthoringLogWriter,
   supabaseAuthoringLogWriter,
 } from '../lib/authoringLog'
-import { createSupabaseIdentity } from '../lib/backend/adapters/supabaseIdentity'
-import type { Tier } from '../lib/backend/ports'
+import { readTier, type Tier } from '../lib/identity'
 import { sessionRefresher, setSessionReconciler } from '../lib/sessionReconcile'
 import type { Database } from '../types/database'
 import { hasKey, useAgentSettings } from '../lib/agent/settings'
@@ -238,8 +237,8 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
    * ANDs with. An OPTIONAL recipe replaces the permissive default with a
    * read of the session's role claim, and a client that inferred the tier
    * from that claim's presence would be guessing which of the two databases
-   * it is talking to. So it calls the function instead; see the identity
-   * adapter for what each answer means.
+   * it is talking to. So it calls the function instead; see `lib/identity`
+   * for what each answer means.
    *
    * The ask is keyed on the ACCESS TOKEN, because the answer is computed
    * server-side from the token this client presents: the same account on a
@@ -261,11 +260,9 @@ export function SupabaseProvider({ children }: SupabaseProviderProps) {
   useEffect(() => {
     if (!client || userId === null || accessToken === null) return
     let cancelled = false
-    void createSupabaseIdentity(client)
-      .currentTier()
-      .then((tier) => {
-        if (!cancelled) setTierAnswer({ userId, tier })
-      })
+    void readTier(client).then((tier) => {
+      if (!cancelled) setTierAnswer({ userId, tier })
+    })
     return () => {
       cancelled = true
     }
