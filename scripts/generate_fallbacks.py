@@ -12,9 +12,8 @@ a TypeScript module exporting `BlueprintData` per path, keyed by scenario
 UUID, with the SAME UUIDv5 ids as scripts/generate_seed_sql.py — the two
 adapters must stay behaviorally identical (same IR in -> same render out).
 
-Registration: src/data/blueprintFallbacks.ts derives its lookup registry
-(FALLBACK_BY_PATH / FALLBACK_PATHS_BY_SCENARIO / FALLBACK_BY_SCENARIO) from a
-marker-delimited block:
+Registration: src/data/blueprintFallbacks.ts derives its lookup tables from
+the registry (PACKAGE_SAMPLE_BLUEPRINTS) in a marker-delimited block:
 
     // GENERATED-BLUEPRINT-REGISTRY:BEGIN …
     // GENERATED-BLUEPRINT-REGISTRY:END
@@ -28,7 +27,10 @@ marker-delimited block:
         // GENERATED-NAV:BEGIN …
         // GENERATED-NAV:END
 
-    so the nav (phases + scenarios) never drifts from the blueprint data.
+    so the nav (phases + scenarios) never drifts from the blueprint data. The
+    two are the two halves of one offline board, and a deployment mounting
+    this package hands BOTH to its config — `sample.nav` and
+    `sample.blueprints` — since a nav replaces rather than merges.
   * Without --register (or if the markers are missing), it prints the exact
     blocks to paste, so nothing is guessed about a hand-modified file.
 
@@ -279,29 +281,18 @@ import {{
 /** The generated primary scenario (rendered offline without a database). */
 export const SAMPLE_SCENARIO_ID = GENERATED_PRIMARY_SCENARIO_ID
 
-const FALLBACK_BY_PATH: Record<string, BlueprintData> = {{}}
-const FALLBACK_PATHS_BY_SCENARIO: Record<string, FallbackPathListItem[]> = {{}}
-const FALLBACK_BY_SCENARIO: Record<string, BlueprintData> = {{}}
-for (const [scenarioId, fallbacks] of Object.entries(
-  GENERATED_PATH_FALLBACKS_BY_SCENARIO,
-)) {{
-  FALLBACK_PATHS_BY_SCENARIO[scenarioId] = fallbacks.map((fallback) => ({{
-    id: fallback.path.id,
-    name: fallback.path.name,
-    summary: fallback.path.summary,
-    note: fallback.path.note,
-    kind: fallback.path.kind,
-  }}))
-  for (const fallback of fallbacks) {{
-    FALLBACK_BY_PATH[fallback.path.id] = fallback
-  }}
-  if (fallbacks.length > 0) {{
-    FALLBACK_BY_SCENARIO[scenarioId] = fallbacks[0]
-  }}
+/**
+ * This build's own offline board. A deployment that reads the application out
+ * of the package hands this same value to the config as `sample.blueprints`,
+ * beside the `sample.nav` generated in the same run — the nav lists the
+ * scenarios, this draws them, and one without the other is rows over an empty
+ * canvas.
+ */
+export const PACKAGE_SAMPLE_BLUEPRINTS: SampleBlueprintRegistry = {{
+  blueprintsByScenario: GENERATED_PATH_FALLBACKS_BY_SCENARIO,
+  // Paths hidden from pickers/grids until ready in the UI (generated: none).
+  uiHiddenPathIdsByScenario: {{}},
 }}
-
-/** Paths hidden from pickers/grids until ready in the UI (generated: none). */
-const UI_HIDDEN_PATH_IDS_BY_SCENARIO: Record<string, readonly string[]> = {{}}
 // {MARKER_END}"""
 
 

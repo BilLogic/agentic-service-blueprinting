@@ -177,6 +177,14 @@ What your side has to provide:
   does, since the config invokes it as
   `npm run preview -- --port <port> --strictPort`. Set `RENDER_WALK_PORT` if
   4173 is taken on your runner; a busy port aborts rather than reuses.
+- **Both halves of your own offline board on the config** — `sample.nav` AND
+  `sample.blueprints`. The walk reads its inventory off the rendered page, so
+  what it opens is whatever your build shows: nav rows with no registry behind
+  them are rows over an empty canvas, and the walk fails on the first board it
+  asserts rather than on anything it can name. Both are generated in one run of
+  `scripts/generate_fallbacks.py --register`;
+  `references/customization.md` § The offline board is two fields has the
+  shape.
 
 A deployment that wants this in its own CI can copy the `render-walk` job out
 of `.github/workflows/ci.yml`; nothing in it changes — the job already calls

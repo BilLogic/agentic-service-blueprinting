@@ -92,6 +92,10 @@
 import { BRAND, ORG_NAME } from './config'
 import { coverContent } from './content/coverContent'
 import type { CoverContent } from '@/components/cover/coverModel'
+import {
+  PACKAGE_SAMPLE_BLUEPRINTS,
+  type SampleBlueprintRegistry,
+} from '@/data/blueprintFallbacks'
 import { SAMPLE_NAV } from '@/data/sampleNav'
 import type { LaneSetEntry } from '@/lib/authoringRpc'
 import { DEFAULT_LANE_SET } from '@/lib/blueprintValidation'
@@ -235,9 +239,20 @@ export type DeploymentConfig = {
    * why it reaches the template through here rather than being imported by the
    * navigation model: a module of types and pure helpers that carries one
    * repository's phases cannot be shared with the next.
+   *
+   * BOTH HALVES OR NEITHER. `nav` is the phases and scenarios the sidebar
+   * lists; `blueprints` is what each of those scenarios draws. They are
+   * separate fields because they are separate generated artefacts, and they
+   * are named together here because supplying one without the other is the
+   * defect this second field was added for: `nav` replaces rather than
+   * merges, so a deployment's nav over the package's registry is the
+   * deployment's rows above an empty canvas in every no-database build, and a
+   * render walk over that build finds no board. Each is replaced,
+   * never merged, and an omitted or empty one is the template's own.
    */
   sample?: {
     nav?: NavItem[]
+    blueprints?: SampleBlueprintRegistry
   }
   /**
    * Path names pinned to a colour/dash slot in the open set, rather than left
@@ -382,6 +397,14 @@ export type ResolvedDeploymentConfig = {
    */
   sample: {
     nav: NavItem[]
+    /**
+     * Guaranteed the same way `nav` is, and read the same way: the
+     * deployment's registry when it supplied one, the package's otherwise.
+     * `DeploymentConfigProvider` writes it onto the fallback module with
+     * `configureSampleBlueprints` while it renders — not in an effect, because
+     * the board reads that module during its own render.
+     */
+    blueprints: SampleBlueprintRegistry
   }
   /**
    * Guaranteed a map, the way `sample.nav` is guaranteed an array: the
@@ -479,7 +502,7 @@ export const asbDefaultAgentSearch: ResolvedAgentSearchConfig = {
 export const asbDefaultConfig: DeploymentConfig = {
   brand: { name: ORG_NAME, accent: BRAND.accent },
   content: { workspaceTitle: coverContent.title },
-  sample: { nav: SAMPLE_NAV },
+  sample: { nav: SAMPLE_NAV, blueprints: PACKAGE_SAMPLE_BLUEPRINTS },
   pathColorPins: {},
   cellBudget: {
     prose: { ...asbDefaultCellBudget.prose },
@@ -598,10 +621,21 @@ export function resolveDeploymentConfig(
     ? { ...agentRest, ...(search ? { search } : {}) }
     : undefined
   const overlaidNav = config?.sample?.nav
+  const overlaidBlueprints = config?.sample?.blueprints
   const sample = {
     nav: [
       ...(overlaidNav?.length ? overlaidNav : (asbDefaultConfig.sample?.nav ?? [])),
     ],
+    // Carried by REFERENCE, the way the cover is and unlike the nav: a
+    // registry is a generated content document, read-only from the moment it
+    // evaluates, and copying a board of every cell of every path on every
+    // resolution would buy nothing. Empty reads as "nothing to say", the same
+    // as an empty nav.
+    blueprints:
+      overlaidBlueprints &&
+      Object.keys(overlaidBlueprints.blueprintsByScenario).length > 0
+        ? overlaidBlueprints
+        : PACKAGE_SAMPLE_BLUEPRINTS,
   }
   const pathColorPins = {
     ...present(asbDefaultConfig.pathColorPins),
