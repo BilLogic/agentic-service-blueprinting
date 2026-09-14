@@ -1,16 +1,12 @@
 import {
-  lazy,
-  Suspense,
   useEffect,
   useMemo,
   useRef,
   useState,
   useSyncExternalStore,
 } from 'react'
-import { Eyebrow } from '@/components/blueprint/Eyebrow'
 import {
   ChevronLeft,
-  ChevronRight,
   Pencil,
   SendHorizontal,
   Settings,
@@ -40,15 +36,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { CheckCircle2, Loader2, XCircle } from 'lucide-react'
-import { Bubble, BubbleContent } from '@/components/ui/bubble'
-import {
-  Marker,
-  MarkerContent,
-  MarkerIcon,
-  markerVariants,
-} from '@/components/ui/marker'
-import { Message, MessageContent } from '@/components/ui/message'
+import { Loader2 } from 'lucide-react'
+import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker'
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -57,39 +46,9 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from '@/components/ui/message-scroller'
-/*
- * Lazy: AgentMarkdown is the only importer of react-markdown's unified
- * toolchain, and transcripts only render once the agent surface is open —
- * no reason for the landing page to pay for a markdown parser. The fallback
- * is the raw text, so a slow chunk shows content, not a spinner.
- */
-const AgentMarkdownLazy = lazy(() =>
-  import('@/components/editor/AgentMarkdown').then((m) => ({
-    default: m.AgentMarkdown,
-  })),
-)
-
-function AgentMarkdown(props: { text: string; className?: string }) {
-  return (
-    <Suspense
-      fallback={
-        <p className={cn('whitespace-pre-wrap', props.className)}>
-          {props.text}
-        </p>
-      }
-    >
-      <AgentMarkdownLazy {...props} />
-    </Suspense>
-  )
-}
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
 import {
   Attachment,
   AttachmentAction,
@@ -112,7 +71,6 @@ import {
   stopAgent,
   useAgentRun,
   useAgentTranscriptHydrating,
-  type TranscriptEvent,
 } from '@/lib/agent/loop'
 import {
   setPendingAgentAttachment,
@@ -148,6 +106,9 @@ import {
   useAgentSettingsOpen,
 } from '@/lib/agent/settings'
 import { AgentSessionsView } from '@/components/editor/agent/AgentSessionsView'
+import { blockTranscript } from '@/components/editor/agent/transcriptBlocks'
+import { TranscriptRow } from '@/components/editor/agent/TranscriptRow'
+import { TranscriptStepsBlock } from '@/components/editor/agent/TranscriptStepsBlock'
 import { ChangeCount } from '@/components/editor/agent/ChangeCount'
 import { RenameSessionDialog } from '@/components/editor/agent/SessionDialogs'
 import { useAgentChangeCount } from '@/components/editor/agent/useAgentChangeCount'
@@ -197,247 +158,6 @@ export function AgentPanel() {
         setOpenAgentSession(session.id)
       }}
     />
-  )
-}
-
-/**
- * One transcript row, built from the DS chat primitives: user turns are
- * tinted bubbles on the right, agent prose is a ghost bubble, tool calls
- * and status lines are Markers — the chat vocabulary shadcn ships, not a
- * hand-rolled lookalike.
- */
-
-type ToolEvent = Extract<TranscriptEvent, { kind: 'tool' }>
-
-/** One labelled payload block inside an opened tool row. */
-function ToolDetail({ label, body }: { label: string; body: string }) {
-  return (
-    <div className="min-w-0">
-      <Eyebrow>
-        {label}
-      </Eyebrow>
-      <pre className="mt-0.5 max-h-40 overflow-auto rounded-md bg-muted px-2 py-1.5 font-mono text-xs whitespace-pre-wrap text-foreground">
-        {body}
-      </pre>
-    </div>
-  )
-}
-
-/**
- * A tool call. Collapsed it is the same quiet one-liner it always was; open
- * it shows the arguments the agent sent and what came back — the same
- * disclosure vocabulary as the folded steps block, so a reviewer only has
- * to learn one gesture. Rows rehydrated from a previous browser session carry
- * no payload and stay flat.
- */
-function ToolRow({ event }: { event: ToolEvent }) {
-  const [open, setOpen] = useState(false)
-  const expandable = Boolean(event.args || event.result)
-  const face = (
-    <>
-      <MarkerIcon>
-        {event.isError ? (
-          <XCircle aria-hidden />
-        ) : (
-          <CheckCircle2 aria-hidden />
-        )}
-      </MarkerIcon>
-      <MarkerContent className={cn(!open && 'truncate')}>
-        <span className="font-mono">{event.name}</span>
-        {event.summary ? (
-          <span className="ml-1.5 text-muted-foreground">{event.summary}</span>
-        ) : null}
-      </MarkerContent>
-    </>
-  )
-
-  if (!expandable) {
-    return (
-      <Marker className={cn(event.isError && 'text-destructive')}>
-        {face}
-      </Marker>
-    )
-  }
-
-  return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger
-        render={
-          <button
-            type="button"
-            className={cn(
-              markerVariants({ variant: 'default' }),
-              'cursor-pointer rounded-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              event.isError && 'text-destructive',
-            )}
-          >
-            {face}
-            <ChevronRight
-              className={cn(
-                'ml-auto size-3 shrink-0 opacity-60 transition-transform',
-                open && 'rotate-90',
-              )}
-              aria-hidden
-            />
-          </button>
-        }
-      />
-      <CollapsibleContent>
-        <div className="mt-1 ml-6 flex flex-col gap-1.5">
-          {event.args ? <ToolDetail label="Arguments" body={event.args} /> : null}
-          {event.result ? (
-            <ToolDetail label="Result" body={event.result} />
-          ) : null}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-  )
-}
-
-function TranscriptRow({
-  event,
-}: {
-  event: TranscriptEvent
-}) {
-  switch (event.kind) {
-    case 'user':
-      return (
-        <Message align="end">
-          <MessageContent>
-            {event.skill || event.attachmentLabel ? (
-              <div className="mb-0.5 flex justify-end gap-1">
-                {event.skill ? (
-                  <Badge variant="secondary" className="font-mono">
-                    /{event.skill}
-                  </Badge>
-                ) : null}
-                {event.attachmentLabel ? (
-                  <Badge variant="outline">
-                    <Pencil aria-hidden />
-                    {event.attachmentLabel}
-                  </Badge>
-                ) : null}
-              </div>
-            ) : null}
-            <Bubble variant="tinted">
-              <BubbleContent className="whitespace-pre-wrap">
-                {event.text}
-              </BubbleContent>
-            </Bubble>
-          </MessageContent>
-        </Message>
-      )
-    case 'assistant':
-      return (
-        <Message>
-          <MessageContent>
-            <Bubble variant="ghost">
-              <BubbleContent className="text-foreground">
-                <AgentMarkdown text={event.text} />
-              </BubbleContent>
-            </Bubble>
-          </MessageContent>
-        </Message>
-      )
-    case 'tool':
-      return <ToolRow event={event} />
-    case 'status':
-      return (
-        <Marker variant="separator" className="italic">
-          <MarkerContent>{event.text}</MarkerContent>
-        </Marker>
-      )
-  }
-}
-
-/**
- * Transcript grouping (2026-08-17): a finished run's tool/status rows fold
- * into one "N steps" accordion — a long build otherwise leaves a wall of
- * upsert_cell rows between the question and the answer. Rules: only runs of
- * ≥3 consecutive step rows fold; the LIVE tail never folds (streaming stays
- * visible); a run containing an error starts open — collapsing a failure
- * would hide the thing that most needs reading.
- */
-type TranscriptBlock =
-  | { kind: 'event'; index: number }
-  | { kind: 'steps'; start: number; end: number; hasError: boolean }
-
-const MIN_FOLDED_STEPS = 3
-
-function blockTranscript(events: TranscriptEvent[]): TranscriptBlock[] {
-  const blocks: TranscriptBlock[] = []
-  let runStart = -1
-  let runHasError = false
-  const flush = (end: number) => {
-    if (runStart === -1) return
-    if (end - runStart >= MIN_FOLDED_STEPS) {
-      blocks.push({
-        kind: 'steps',
-        start: runStart,
-        end: end - 1,
-        hasError: runHasError,
-      })
-    } else {
-      for (let i = runStart; i < end; i += 1)
-        blocks.push({ kind: 'event', index: i })
-    }
-    runStart = -1
-    runHasError = false
-  }
-  events.forEach((event, index) => {
-    const isStep = event.kind === 'tool' || event.kind === 'status'
-    if (isStep) {
-      if (runStart === -1) runStart = index
-      if (
-        (event.kind === 'tool' && event.isError) ||
-        (event.kind === 'status' && /error/i.test(event.text))
-      )
-        runHasError = true
-      return
-    }
-    flush(index)
-    blocks.push({ kind: 'event', index })
-  })
-  flush(events.length)
-  return blocks
-}
-
-function TranscriptStepsBlock({
-  events,
-  start,
-  end,
-  hasError,
-}: {
-  events: TranscriptEvent[]
-  start: number
-  end: number
-  hasError: boolean
-}) {
-  // Errors start open — the fold must never hide a failure.
-  const [open, setOpen] = useState(hasError)
-  const count = end - start + 1
-  return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger className="group/steps flex w-full items-center gap-1.5 rounded-md py-0.5 text-left text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <ChevronRight
-          aria-hidden
-          className={cn(
-            'size-3.5 transition-transform duration-(--motion-fade) motion-reduce:transition-none',
-            open && 'rotate-90',
-          )}
-        />
-        <span>
-          {count} steps{hasError ? ' — one failed' : ''}
-        </span>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="flex flex-col gap-3 pt-3 pl-1">
-          {events.slice(start, end + 1).map((event, offset) => (
-            <TranscriptRow key={start + offset} event={event} />
-          ))}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
   )
 }
 
