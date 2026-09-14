@@ -12,13 +12,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Pencil,
-  Plus,
-  Search,
   SendHorizontal,
   Settings,
   Sparkles,
   Square,
-  Trash2,
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -27,13 +24,6 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu'
-import { Input } from '@/components/ui/input'
 import {
   InputGroup,
   InputGroupAddon,
@@ -93,13 +83,7 @@ function AgentMarkdown(props: { text: string; className?: string }) {
   )
 }
 import { IconTooltip } from '@/components/editor/IconTooltip'
-import { NavSection } from '@/components/editor/SidebarNav'
 import { Badge } from '@/components/ui/badge'
-import { AgentSessionsLoadingSkeleton } from '@/components/editor/EditorLoadingSkeletons'
-import {
-  DeferredSkeleton,
-  EDITOR_BOOT_HOLD_KEY,
-} from '@/components/ui/deferred-skeleton'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Collapsible,
@@ -153,7 +137,6 @@ import {
   createAgentSession,
   hydrateAgentSessions,
   useAgentSessions,
-  useAgentSessionsHydrating,
   type AgentSession,
 } from '@/lib/agent/sessions'
 import {
@@ -164,41 +147,13 @@ import {
   useAgentSettings,
   useAgentSettingsOpen,
 } from '@/lib/agent/settings'
-import {
-  DeleteSessionDialog,
-  RenameSessionDialog,
-} from '@/components/editor/agent/SessionDialogs'
+import { AgentSessionsView } from '@/components/editor/agent/AgentSessionsView'
+import { ChangeCount } from '@/components/editor/agent/ChangeCount'
+import { RenameSessionDialog } from '@/components/editor/agent/SessionDialogs'
+import { useAgentChangeCount } from '@/components/editor/agent/useAgentChangeCount'
 import { AgentSettingsFields } from '@/components/editor/AgentSettingsFields'
 import { AgentTrialBanner } from '@/components/editor/AgentTrialBanner'
 import { cn } from '@/lib/utils'
-
-/**
- * Case-insensitive subsequence match — the same forgiving filter the tag
- * pickers use: every query character must appear, in order, not necessarily
- * adjacent ("dic" finds "Draft the Intake Call").
- */
-function fuzzyMatches(query: string, title: string): boolean {
-  const q = query.trim().toLowerCase()
-  if (!q) return true
-  const t = title.toLowerCase()
-  let at = 0
-  for (const char of q) {
-    at = t.indexOf(char, at)
-    if (at === -1) return false
-    at += 1
-  }
-  return true
-}
-
-function isToday(iso: string): boolean {
-  const then = new Date(iso)
-  const now = new Date()
-  return (
-    then.getFullYear() === now.getFullYear() &&
-    then.getMonth() === now.getMonth() &&
-    then.getDate() === now.getDate()
-  )
-}
 
 /**
  * The ✦ surface: two views, one at a time — session info never crowds the
@@ -243,281 +198,6 @@ export function AgentPanel() {
       }}
     />
   )
-}
-
-/**
- * "N changes this session" — the ledger count, spoken once, in one place.
- * The ✦ used to be a literal character in the copy; it is the Sparkles icon
- * everywhere else in the app, so it is the Sparkles icon here too.
- */
-function ChangeCount({
-  count,
-  className,
-}: {
-  count: number
-  className?: string
-}) {
-  return (
-    <span
-      className={cn(
-        'flex shrink-0 items-center gap-0.5 text-xs tabular-nums',
-        className,
-      )}
-      title={`${count} change${count === 1 ? '' : 's'} from this session`}
-    >
-      <Sparkles className="size-2.5" aria-hidden />
-      {count}
-      <span className="sr-only">
-        {' '}
-        change{count === 1 ? '' : 's'} from this session
-      </span>
-    </span>
-  )
-}
-
-function SessionRow({
-  session,
-  onOpen,
-  onRename,
-  onDelete,
-}: {
-  session: AgentSession
-  onOpen: () => void
-  onRename: () => void
-  onDelete: () => void
-}) {
-  const changeCount = useAgentChangeCount(session.id)
-  const row = (
-    <button
-      type="button"
-      onClick={onOpen}
-      className={cn(
-        // pl-6 = the NavSection title's own text indent (pl-1 + size-4
-        // chevron slot + gap-1), so rows left-align with TODAY / EARLIER.
-        'group/session flex w-full min-w-0 items-center gap-1.5 rounded-md py-1.5 pl-6 pr-2 text-left transition-colors',
-        'hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
-      )}
-    >
-      {/* No per-row glyph: a column of identical ✦ marks says nothing the
-          SESSIONS header hasn't already said. */}
-      <span className="min-w-0 flex-1 truncate text-sm text-foreground group-hover/session:text-sidebar-accent-foreground">
-        {session.title}
-      </span>
-      {changeCount > 0 ? (
-        <ChangeCount
-          count={changeCount}
-          className="text-tertiary-foreground"
-        />
-      ) : null}
-    </button>
-  )
-
-  return (
-    <ContextMenu>
-      <ContextMenuTrigger className="block w-full">{row}</ContextMenuTrigger>
-      <ContextMenuContent>
-        <ContextMenuItem onClick={onRename}>
-          <Pencil className="size-3.5" />
-          Rename…
-        </ContextMenuItem>
-        <ContextMenuItem variant="destructive" onClick={onDelete}>
-          <Trash2 className="size-3.5" />
-          Delete session…
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
-  )
-}
-
-function AgentSessionsView({
-  sessions,
-  onOpen,
-  onCreate,
-}: {
-  sessions: AgentSession[]
-  onOpen: (id: string) => void
-  onCreate: () => void
-}) {
-  // canAgent gates the pending flag: without persistence there is nothing
-  // on the wire, so "not yet hydrated" must not read as loading forever.
-  // The no-database trial passes canAgent with NO client — persistence can
-  // never attach there, so it must not wait for it either.
-  const { canAgent, isSampleTrial } = useSupabase()
-  const hydrating = useAgentSessionsHydrating() && canAgent && !isSampleTrial
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [query, setQuery] = useState('')
-  const [todayOpen, setTodayOpen] = useState(true)
-  const [earlierOpen, setEarlierOpen] = useState(true)
-  const [renameTarget, setRenameTarget] = useState<AgentSession | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<AgentSession | null>(null)
-  const searchRef = useRef<HTMLInputElement>(null)
-
-  const pendingAttachment = usePendingAgentAttachment()
-  const searching = searchOpen && query.trim() !== ''
-  const filtered = useMemo(
-    () => sessions.filter((session) => fuzzyMatches(query, session.title)),
-    [query, sessions],
-  )
-  const today = filtered.filter((session) => isToday(session.createdAt))
-  const earlier = filtered.filter((session) => !isToday(session.createdAt))
-
-  const rowFor = (session: AgentSession) => (
-    <SessionRow
-      key={session.id}
-      session={session}
-      onOpen={() => onOpen(session.id)}
-      onRename={() => setRenameTarget(session)}
-      onDelete={() => setDeleteTarget(session)}
-    />
-  )
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col" data-agent-panel="sessions">
-      {/* Header: title, hover-priority actions — the Figma Pages row. */}
-      <div className="flex h-9 shrink-0 items-center gap-1 px-2">
-        {searchOpen ? (
-          <Input
-            ref={searchRef}
-            autoFocus
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                setQuery('')
-                setSearchOpen(false)
-              }
-            }}
-            placeholder="Filter sessions…"
-            className="h-6 flex-1 text-xs"
-            aria-label="Filter sessions"
-          />
-        ) : (
-          <Eyebrow className="min-w-0 flex-1 truncate pl-1">
-            Sessions
-          </Eyebrow>
-        )}
-        <IconTooltip label="Filter sessions by name" side="bottom">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            aria-label={searchOpen ? 'Close session filter' : 'Filter sessions'}
-            aria-pressed={searchOpen}
-            className="text-muted-foreground hover:text-foreground"
-            onClick={() => {
-              setSearchOpen((open) => {
-                if (open) setQuery('')
-                return !open
-              })
-            }}
-          >
-            <Search className="size-3.5" aria-hidden />
-          </Button>
-        </IconTooltip>
-        <IconTooltip label="Start a new session" side="bottom">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            aria-label="New session"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={onCreate}
-          >
-            <Plus className="size-3.5" aria-hidden />
-          </Button>
-        </IconTooltip>
-      </div>
-
-      {pendingAttachment ? (
-        <p className="mx-2 mb-1 flex items-start gap-1.5 rounded-md bg-muted px-2 py-1.5 text-xs text-muted-foreground">
-          <Pencil className="mt-px size-3 shrink-0" aria-hidden />
-          <span>
-            {pendingAttachment.label} ready — open or start a session to send
-            them.
-          </span>
-        </p>
-      ) : null}
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-        {/*
-          Same loading contract as the phases nav, on the same boot session.
-
-          The DB merge is the list's source of truth, so until the first
-          merge lands the WHOLE list is a loading state — the localStorage
-          cache underneath may be missing sessions from other browsers. What
-          changed is the packaging: this was a bare ternary, so it painted
-          its rows the instant the merge landed rather than holding and
-          fading like every other surface. The BOOT case is not handled
-          here — the sidebar's boot layer in EditorShell covers this panel
-          whole and lifts with the canvas, so nothing in the sidebar can
-          resolve ahead of the board.
-        */}
-        <DeferredSkeleton
-          loading={hydrating}
-          holdKey={EDITOR_BOOT_HOLD_KEY}
-          skeleton={<AgentSessionsLoadingSkeleton />}
-        >
-          {sessions.length === 0 ? (
-          <p className="px-1.5 pt-2 text-xs text-muted-foreground">
-            No sessions yet. A session is one conversation plus the changes
-            it made.
-          </p>
-        ) : searching ? (
-          // A filter answers "where is it", so groups get out of the way.
-          <div className="flex flex-col gap-0.5">
-            {filtered.length === 0 ? (
-              <p className="px-1.5 pt-2 text-xs text-muted-foreground">
-                No session matches “{query.trim()}”.
-              </p>
-            ) : (
-              filtered.map(rowFor)
-            )}
-          </div>
-        ) : (
-          <>
-            {today.length > 0 ? (
-              <NavSection
-                title="Today"
-                open={todayOpen}
-                onOpenChange={setTodayOpen}
-              >
-                {today.map(rowFor)}
-              </NavSection>
-            ) : null}
-            {earlier.length > 0 ? (
-              <NavSection
-                title="Earlier"
-                open={earlierOpen}
-                onOpenChange={setEarlierOpen}
-              >
-                {earlier.map(rowFor)}
-              </NavSection>
-            ) : null}
-          </>
-          )}
-        </DeferredSkeleton>
-      </div>
-
-      <RenameSessionDialog
-        session={renameTarget}
-        onOpenChange={(open) => {
-          if (!open) setRenameTarget(null)
-        }}
-      />
-      <DeleteSessionDialog
-        session={deleteTarget}
-        onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null)
-        }}
-      />
-    </div>
-  )
-}
-
-/** Live count of ledger entries this agent session produced. */
-function useAgentChangeCount(sessionId: string): number {
-  const changes = useSyncExternalStore(subscribeToSession, sessionSnapshot)
-  return changes.filter((entry) => entry.agentSessionId === sessionId).length
 }
 
 /**
