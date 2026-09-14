@@ -1,62 +1,34 @@
-import { useEffect, useMemo, useState } from 'react'
-import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
-import {
-  FileSearch,
-  Link2,
-  PanelRightClose,
-  PanelRightOpen,
-  Plus,
-  Workflow,
-  X,
-} from 'lucide-react'
-import { ArrowLeft } from 'lucide-react'
-import { describeLaneRole, getLaneRole } from '@/lib/laneRoles'
-import { CellDependencyEditor } from '@/components/blueprint/CellDependencyEditor'
-import { CompareDifferencesSurface } from '@/components/blueprint/CompareDifferencesSurface'
-import { CellDependencySections } from '@/components/blueprint/CellDependencySections'
-import { CellEvidenceTab } from '@/components/blueprint/CellEvidenceTab'
+import { useEffect, useState } from 'react'
+import { ArrowLeft, PanelRightClose, PanelRightOpen, X } from 'lucide-react'
 import { CellInSlicesFooter } from '@/components/blueprint/CellInSlicesFooter'
-import { CellOverviewSpec } from '@/components/blueprint/CellOverviewSpec'
-import { CellContentSection } from '@/components/blueprint/CellContentSection'
-import { CellPanelEditor } from '@/components/blueprint/CellPanelEditor'
+import { CellDetailDifferencesSurface } from '@/components/blueprint/CellDetailDifferencesSurface'
+import { CellDetailDraftSurface } from '@/components/blueprint/CellDetailDraftSurface'
+import { CellDetailEmptySurface } from '@/components/blueprint/CellDetailEmptySurface'
+import { CellDetailOverview } from '@/components/blueprint/CellDetailOverview'
+import { CellDetailBreadcrumb } from '@/components/blueprint/CellDetailBreadcrumb'
+import {
+  CellDetailTabs,
+  type PanelTab,
+} from '@/components/blueprint/CellDetailTabs'
+import { useCellPanelAgentCommands } from '@/components/blueprint/cellDetailAgentCommands'
+import { PanelSurfaceSwitcher } from '@/components/blueprint/PanelSurfaceSwitcher'
+import { useCellDetailFacts } from '@/components/blueprint/cellDetailFacts'
 import {
   CELL_PANEL_FOOTER_ID,
   DetailPanelErrorBoundary,
-  Field,
   PanelDrawerShell,
   PanelFooterHost,
   PanelIdentity,
   PanelKindBadge,
 } from '@/components/blueprint/panelShell'
-import { CellResourcesTab } from '@/components/blueprint/CellResourcesTab'
-import { FeaturedButtons } from '@/components/blueprint/FeaturedResources'
-import { featuredPresentation } from '@/lib/resourcePresentation'
-import {
-  TOUCHPOINT_ROLE_DEFINITION,
-  TOUCHPOINT_ROLE_LABEL,
-} from '@/lib/touchpointRole'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { StoryboardStepDetailStack } from '@/components/blueprint/StoryboardStepDetailStack'
-import { ZoomableImage } from '@/components/blueprint/ZoomableImage'
-import {
-  SegmentedControl,
-  SegmentedControlItem,
-} from '@/components/editor/SegmentedControl'
 import { Button } from '@/components/ui/button'
 import {
   DrawerDescription,
   DrawerHeader,
   DrawerTitle,
 } from '@/components/ui/drawer'
-import {
-  Breadcrumb,
-  BreadcrumbEllipsis,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   useBlueprintCellDetail,
   type BlueprintPanelSurface,
@@ -71,125 +43,19 @@ import {
 } from '@/lib/compareReviewStore'
 import {
   buildBlueprintCellSelectionForId,
-  getBlueprintCellConnections,
   getBlueprintForPath,
-  getLinkedTechFromConnections,
-  getSelectedCellLaneRowPosition,
   scrollBlueprintCellIntoView,
 } from '@/lib/blueprintCellConnections'
 import {
   buildTouchpointSelectionForItem,
-  getBlueprintStepTechItems,
   scrollBlueprintTouchpointCellIntoView,
 } from '@/lib/blueprintStepTech'
-import { shouldUseTouchpointCellContent, shouldUseStoryboardContent } from '@/lib/blueprintLayout'
-import { isBlueprintStepStoryboardPlaceholder } from '@/lib/blueprintStoryboardPlaceholder'
-import {
-  getBlueprintLaneStyle,
-  getBlueprintLaneZone,
-} from '@/lib/blueprintTheme'
+import { shouldUseStoryboardContent } from '@/lib/blueprintLayout'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
-import { cellResources } from '@/lib/cellResources'
-import {
-  cellTouchpoints,
-  findCellPlacement,
-  resolveTouchpointDetail,
-} from '@/lib/cellTouchpoints'
-import { resolveStoryboardStripEntries } from '@/lib/storyboardWalkthrough'
 import { panelEditorBusy } from '@/lib/panelEditorBusy'
-import { useTouchpointToneResolver } from '@/hooks/useTouchpointToneResolver'
-import { PANEL_TERMS } from '@/lib/panelTerms'
-import type { ExistingDependency } from '@/components/blueprint/CellDependencyEditor'
 import type { DraftCellTarget } from '@/components/blueprint/CellPanelEditor'
-import type { DependencyEndpoint } from '@/lib/dependencyValidation'
-import type {
-  BlueprintCell,
-  CellResource,
-  CellTouchpoint,
-} from '@/types/blueprint'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 
-/**
- * Where a cell sits, said so that two cells never say the same thing.
- *
- * Step names are not unique — a blueprint may run several columns all called
- * "Discovers the service" — so the column number leads. Without it the picker
- * offers three identical rows and choosing between them is a coin flip.
- */
-function cellPositionLabel(
-  stepIndex: number,
-  stepName: string,
-  laneName: string,
-): string {
-  const column = stepIndex >= 0 ? `${stepIndex + 1}. ` : ''
-  return `${column}${stepName} · ${laneName}`
-}
-
-/** Fixed panel and illustration frame so every row/step uses the same size. */
-const CELL_DETAIL_PICTURE_FRAME_CLASS =
-  'relative aspect-[4/3] w-full max-w-full shrink-0 overflow-hidden rounded-lg bg-muted/20'
-const CELL_DETAIL_PICTURE_CLASS =
-  'absolute inset-0 h-full w-full object-contain object-center'
-const CELL_DETAIL_LOGO_CLASS =
-  'size-32 shrink-0 rounded-lg bg-muted/20 p-2 object-contain object-center'
-
-type PanelTab = 'dependencies' | 'evidence' | 'resources'
-
-const PANEL_TABS: Array<{
-  value: PanelTab
-  label: string
-  icon: typeof Workflow
-}> = [
-  { value: 'dependencies', label: 'Dependencies', icon: Workflow },
-  { value: 'evidence', label: 'Evidence', icon: FileSearch },
-  { value: 'resources', label: 'Resources', icon: Link2 },
-]
-
-/**
- * The cell as this panel needs it, from either source.
- *
- * `touchpoints` and `resources` are resolved once at the top rather than
- * threaded as the raw link array they used to be: the database has two
- * relations where it had one column, and only `cellTouchpoints.ts` /
- * `cellResources.ts` know which source a board came from.
- */
-type PanelCell = Pick<BlueprintCell, 'content' | 'summary' | 'frame'> & {
-  touchpoints: CellTouchpoint[]
-  resources: CellResource[]
-}
-
-/**
- * The Details │ Differences switch — TOP-LEVEL panel chrome (the two
- * surfaces are siblings of the whole panel), rendered from two call sites:
- * the details branch's own header row and the differences DrawerHeader. ONE
- * component, because two verbatim copies drifted apart once already.
- *
- * No count on the Differences tab: counts live in exactly two places
- * app-wide now — the menubar Diff count and each ledger group's trailing
- * number.
- */
-function PanelSurfaceSwitcher({
-  value,
-  onValueChange,
-}: {
-  value: BlueprintPanelSurface
-  onValueChange: (surface: BlueprintPanelSurface) => void
-}) {
-  return (
-    <SegmentedControl
-      aria-label="Panel surface"
-      value={value}
-      onValueChange={onValueChange}
-    >
-      <SegmentedControlItem value="details" className="px-2">
-        Details
-      </SegmentedControlItem>
-      <SegmentedControlItem value="differences" className="px-2">
-        Differences
-      </SegmentedControlItem>
-    </SegmentedControl>
-  )
-}
 
 /**
  * Side panel for the selected cell — its content, evidence, dependencies and
@@ -246,17 +112,9 @@ function BlueprintCellDetailPanelBody() {
   /*
     Widen/narrow is a DESKTOP control: it trades canvas width for panel
     width, and the phone's posture is a bottom sheet the full width of the
-    screen with nothing to trade. The agent command stays registered in
-    both postures (it just does nothing visible on a phone) — parity is
-    about what the agent can reach, not about which chrome is on screen.
+    screen with nothing to trade.
   */
   const mobile = useMobileShell()
-  /*
-    The touchpoint badge's colour, taken here rather than beside the badge:
-    the label it is about is derived far below, past an early return, and a
-    hook cannot go there. The resolver is a function for exactly that reason.
-  */
-  const resolveTouchpointTone = useTouchpointToneResolver()
   /**
    * One-shot "← Back to Differences" button: set when the ledger's ⇱ opens a
    * cell in Details, cleared when used — and whenever the panel leaves
@@ -266,38 +124,7 @@ function BlueprintCellDetailPanelBody() {
   const compareRegistration = useCompareReviewState().registration
   const comparing = compareRegistration !== null
 
-  // Agent parity: the panel's own controls, registered while it is open.
-  useEffect(() => {
-    const unregister = [
-      registerAgentUiCommand({
-        name: 'cell_panel_tab',
-        summary: "Switch the open cell panel's tab. arg: dependencies | evidence | resources",
-        run: (arg) => {
-          const tab = arg === 'evidence' || arg === 'resources' ? arg : 'dependencies'
-          setActiveTab(tab)
-          return `Cell panel is on the ${tab} tab.`
-        },
-      }),
-      registerAgentUiCommand({
-        name: 'cell_panel_expand',
-        summary: 'Widen or shrink the open cell panel. arg: true (wide) | false (normal)',
-        run: (arg) => {
-          const wide = arg !== 'false'
-          setExpanded(wide)
-          return wide ? 'Cell panel expanded.' : 'Cell panel back to normal width.'
-        },
-      }),
-      registerAgentUiCommand({
-        name: 'cell_panel_close',
-        summary: 'Close the open cell detail panel.',
-        run: () => {
-          clearSelection()
-          return 'Cell panel closed.'
-        },
-      }),
-    ]
-    return () => unregister.forEach((fn) => fn())
-  }, [clearSelection])
+  useCellPanelAgentCommands({ setActiveTab, setExpanded, clearSelection })
   const [addingDependency, setAddingDependency] = useState(false)
   const { canWrite } = useSupabase()
   // View mode presents everything read-only; every edit affordance in this
@@ -398,151 +225,16 @@ function BlueprintCellDetailPanelBody() {
     return () => setCompareLedgerOpen(false)
   }, [ledgerShowing])
 
-  const pathEntry = selection?.paths[0]
-  const resolvedCellId = pathEntry?.cellId
-    ? resolveBlueprintCellId(pathEntry.cellId)
-    : null
-
-  const connections = useMemo(() => {
-    const cellId = pathEntry?.cellId
-    const pathId = pathEntry?.pathId
-    if (!cellId || !pathId) {
-      return { incoming: [], outgoing: [] }
-    }
-
-    const blueprint = getBlueprintForPath(blueprints, pathId)
-    if (!blueprint) {
-      return { incoming: [], outgoing: [] }
-    }
-
-    return getBlueprintCellConnections(blueprint, cellId)
-  }, [blueprints, pathEntry?.cellId, pathEntry?.pathId])
-
-  const stepTechItems = useMemo(() => {
-    const pathId = pathEntry?.pathId
-    const cellId = pathEntry?.cellId
-    const techItem = selection?.techItem
-    const stepId = selection?.stepId
-    if (!pathId || !cellId || !techItem || !stepId) {
-      return []
-    }
-
-    const blueprint = getBlueprintForPath(blueprints, pathId)
-    if (!blueprint) return []
-
-    return getBlueprintStepTechItems(blueprint, stepId, {
-      cellId: resolvedCellId ?? cellId,
-      item: techItem,
-    })
-  }, [
-    blueprints,
-    pathEntry?.cellId,
-    pathEntry?.pathId,
+  const facts = useCellDetailFacts({ blueprints, selection, draft })
+  const {
+    pathEntry,
     resolvedCellId,
-    selection?.stepId,
-    selection?.techItem,
-  ])
-
-  const selectedCell = useMemo((): PanelCell | null => {
-    const fromEntry = (): PanelCell | null => {
-      if (!pathEntry) return null
-      return {
-        content: pathEntry.content,
-        summary: pathEntry.summary ?? null,
-        frame: pathEntry.frame ?? null,
-        touchpoints: pathEntry.touchpoints ?? [],
-        resources: pathEntry.resources ?? [],
-      }
-    }
-
-    const pathId = pathEntry?.pathId
-    if (!resolvedCellId || !pathId) return fromEntry()
-
-    const blueprint = getBlueprintForPath(blueprints, pathId)
-    const cell =
-      blueprint?.cells.find((entry) => entry.id === resolvedCellId) ?? null
-    if (cell) {
-      return {
-        content: cell.content,
-        summary: cell.summary,
-        frame: cell.frame,
-        touchpoints: cellTouchpoints(cell),
-        resources: cellResources(cell),
-      }
-    }
-
-    return (
-      fromEntry() ?? {
-        content: '',
-        summary: null,
-        frame: null,
-        touchpoints: [],
-        resources: [],
-      }
-    )
-  }, [blueprints, pathEntry, resolvedCellId])
-
-  const cellTouchpointList = useMemo(
-    (): CellTouchpoint[] => selectedCell?.touchpoints ?? [],
-    [selectedCell?.touchpoints],
-  )
-
-  const cellResourceList = useMemo(
-    (): CellResource[] => selectedCell?.resources ?? [],
-    [selectedCell?.resources],
-  )
-
-  const linkedTechItems = useMemo(
-    () => getLinkedTechFromConnections(connections),
-    [connections],
-  )
-
-  /*
-    ONE lane resolution for the whole panel.
-
-    The lane a cell sits in answers three questions — which row record it is
-    (storyboard/touchpoint content rules), what colour the badge wears, and
-    what the row MEANS on hover — and each used to walk `blueprint.lanes` for
-    itself. Three lookups of one fact is three chances to disagree.
-
-    Reads the DRAFT's lane when there is no selection: a cell being created
-    sits in a real row, and the badge above the new-cell form is the same
-    badge the panel shows once it is saved.
-  */
-  const laneResolution = useMemo(() => {
-    const laneName = selection?.laneName ?? draft?.laneName
-    if (!laneName) return null
-
-    const pathId = pathEntry?.pathId ?? draft?.pathId
-    const blueprint = pathId ? getBlueprintForPath(blueprints, pathId) : null
-    const laneRecord =
-      blueprint?.lanes.find((lane) => lane.name === laneName) ?? null
-    const zone =
-      laneRecord && blueprint
-        ? getBlueprintLaneZone(laneRecord, blueprint.lanes)
-        : 'frontstage'
-    return {
-      laneName,
-      /**
-       * The row record, or a name-only stand-in when the lane is unknown.
-       *
-       * The stand-in spells `role: null` rather than omitting the key, so
-       * that both arms of the union answer the question "what role is this
-       * lane?". A reader of `lane.role` gets the honest answer — none
-       * recorded — where an absent key would be a type error at every call
-       * site that asks.
-       */
-      lane: laneRecord ?? { name: laneName, role: null },
-      // Keyed by lane_role — the name argument is only the legacy fallback.
-      style: getBlueprintLaneStyle(laneName, zone, laneRecord?.role),
-      /* What the badge MEANS, for its hover. Resolved the way the canvas
-         resolves it: the explicit role if the row carries one, else the
-         legacy name map. */
-      description: describeLaneRole(
-        getLaneRole({ name: laneName, role: laneRecord?.role ?? null }),
-      ),
-    }
-  }, [blueprints, draft?.laneName, draft?.pathId, pathEntry?.pathId, selection?.laneName])
+    laneResolution,
+    dependencyCandidates,
+    existingDependencies,
+    dependencySource,
+    storyboardStepEntries,
+  } = facts
 
   const selectedLane = selection ? (laneResolution?.lane ?? null) : null
 
@@ -563,220 +255,6 @@ function BlueprintCellDetailPanelBody() {
       description={laneResolution.description}
     />
   ) : null
-
-  const otherTechEntries = useMemo(() => {
-    const laneNameByCellId = new Map<string, string>()
-    const stepIndexByCellId = new Map<string, number>()
-    for (const entry of [...connections.incoming, ...connections.outgoing]) {
-      laneNameByCellId.set(entry.cellId, entry.laneName)
-      stepIndexByCellId.set(entry.cellId, entry.stepIndex)
-    }
-
-    const seen = new Set<string>()
-    const entries: Array<{
-      id: string
-      cellId: string
-      item: string
-      laneName?: string
-      stepIndex?: number
-    }> = []
-
-    const add = (entry: {
-      id: string
-      cellId: string
-      item: string
-      laneName?: string
-      stepIndex?: number
-    }) => {
-      if (seen.has(entry.id)) return
-      seen.add(entry.id)
-      entries.push(entry)
-    }
-
-    for (const entry of linkedTechItems) {
-      add({
-        id: entry.id,
-        cellId: entry.cellId,
-        item: entry.item,
-        laneName: laneNameByCellId.get(entry.cellId),
-        stepIndex: stepIndexByCellId.get(entry.cellId),
-      })
-    }
-    for (const entry of stepTechItems) {
-      add({
-        id: entry.id,
-        cellId: entry.cellId,
-        item: entry.item,
-        laneName: entry.laneName,
-        stepIndex: entry.stepIndex,
-      })
-    }
-
-    return entries
-  }, [connections.incoming, connections.outgoing, linkedTechItems, stepTechItems])
-
-  /*
-    The placement row this panel is about.
-
-    One resolution, by `findCellPlacement`, where the panel used to run three
-    name matches of its own — one for the featured preview, one for the role
-    badge, one for the pictures — each with its own idea of trimming and
-    case. The row is what the summary, the role, the icon and the featured
-    attachment all belong to, so it is resolved once and read from.
-  */
-  const selectedPlacement = useMemo(
-    () =>
-      selectedCell
-        ? findCellPlacement(
-            { touchpoints: selectedCell.touchpoints },
-            selection?.techItem,
-          )
-        : null,
-    [selectedCell, selection?.techItem],
-  )
-
-  /*
-    The READING of that row, which is a different thing from the row.
-
-    `resolveTouchpointDetail` falls back to the cell's summary where the
-    placement has none, which is right for a reader and wrong for a form:
-    seeding an editor with the fallback is how a cell's sentence ends up
-    written onto a placement that never said it. The editor takes the row.
-  */
-  const touchpointDetail = useMemo(
-    () =>
-      selectedCell
-        ? resolveTouchpointDetail(
-            {
-              summary: selectedCell.summary,
-              touchpoints: selectedCell.touchpoints,
-            },
-            selection?.techItem,
-          )
-        : null,
-    [selectedCell, selection?.techItem],
-  )
-
-  /*
-    The cell's buttons: every featured link — the selected placement's, then
-    the cell's own — named by its host.
-  */
-  const featured = useMemo(
-    () =>
-      selection
-        ? featuredPresentation({
-            placementId: selectedPlacement?.id ?? null,
-            resources: cellResourceList,
-          })
-        : { buttons: [] },
-    [cellResourceList, selection, selectedPlacement],
-  )
-
-  // Lane row position of the selected cell — orients up/down direction
-  // glyphs on same-step dependency rows.
-  const selectedLaneRowPosition = useMemo(() => {
-    const pathId = pathEntry?.pathId
-    if (!resolvedCellId || !pathId) return -1
-    const blueprint = getBlueprintForPath(blueprints, pathId)
-    if (!blueprint) return -1
-    return getSelectedCellLaneRowPosition(blueprint, resolvedCellId)
-  }, [blueprints, pathEntry?.pathId, resolvedCellId])
-
-  /**
-   * Every other cell in this version, as somewhere an arrow could point.
-   *
-   * Scoped to the version on purpose — the RPC refuses a cross-version
-   * dependency, and offering one here would only be a way to reach that
-   * refusal. Versions are alternatives, not stages.
-   *
-   * Labels lead with the column number because step *names* repeat: Discovery
-   * holds several columns all named the same thing, so name-and-lane alone
-   * names three different cells and the picker becomes a guess. The column
-   * number is the only part of a cell's position that is always unique, and
-   * ordering by it puts the list in the reading order of the grid.
-   */
-  const dependencyCandidates = useMemo<DependencyEndpoint[]>(() => {
-    const pathId = pathEntry?.pathId
-    if (!resolvedCellId || !pathId) return []
-    const blueprint = getBlueprintForPath(blueprints, pathId)
-    if (!blueprint) return []
-
-    const laneNames = new Map(
-      blueprint.lanes.map((lane) => [lane.id, lane.name]),
-    )
-    const stepOrder = new Map(
-      blueprint.steps.map((step, index) => [step.id, { index, name: step.name }]),
-    )
-
-    return blueprint.cells
-      .filter((cell) => cell.id !== resolvedCellId)
-      .map((cell) => {
-        const step = stepOrder.get(cell.step_id)
-        return {
-          cellId: cell.id,
-          pathId,
-          stepIndex: step?.index ?? Number.MAX_SAFE_INTEGER,
-          label: cellPositionLabel(
-            step?.index ?? -1,
-            step?.name ?? 'Unknown step',
-            laneNames.get(cell.lane_id) ?? 'Unknown lane',
-          ),
-        }
-      })
-      .sort(
-        (a, b) =>
-          a.stepIndex - b.stepIndex || a.label.localeCompare(b.label),
-      )
-      .map(({ cellId, pathId: path, label }) => ({
-        cellId,
-        pathId: path,
-        label,
-      }))
-  }, [blueprints, pathEntry?.pathId, resolvedCellId])
-
-  // Only outgoing arrows: this cell owns the ones it is the source of, and
-  // those are the ones it may change or remove. An incoming arrow belongs to
-  // the cell at the other end, and is edited from there.
-  const existingDependencies = useMemo<ExistingDependency[]>(
-    () =>
-      connections.outgoing.map((connection) => ({
-        id: connection.dependencyId,
-        targetCellId: connection.cellId,
-        targetLabel: cellPositionLabel(
-          connection.stepIndex,
-          connection.stepName,
-          connection.laneName,
-        ),
-        kind: connection.linkKind,
-        note: connection.linkNote,
-      })),
-    [connections.outgoing],
-  )
-
-  const dependencySource = useMemo<DependencyEndpoint | null>(() => {
-    const pathId = pathEntry?.pathId
-    if (!resolvedCellId || !pathId || !selection) return null
-    return {
-      cellId: resolvedCellId,
-      pathId,
-      label: cellPositionLabel(
-        selection.stepIndex,
-        selection.stepName,
-        selection.laneName,
-      ),
-    }
-  }, [pathEntry?.pathId, resolvedCellId, selection])
-
-  const storyboardStepEntries = useMemo(() => {
-    const stepId = selection?.stepId
-    const pathId = pathEntry?.pathId
-    if (!stepId || !pathId) return []
-
-    const blueprint = getBlueprintForPath(blueprints, pathId)
-    if (!blueprint) return []
-
-    return resolveStoryboardStripEntries(blueprint, stepId)
-  }, [blueprints, pathEntry?.pathId, selection?.stepId])
 
   // Fully closed and the exit animation has completed — nothing to render.
   if (activeSurface === null) return null
@@ -824,10 +302,7 @@ function BlueprintCellDetailPanelBody() {
     selectCell(nextSelection)
   }
 
-  /*
-    The Differences surface — the compare ledger, a true sibling of the
-    cell-detail view inside the same drawer. Needs no selection.
-  */
+  // Differences: a sibling of the cell view, and needs no selection.
   if (activeSurface === 'differences') {
     return (
       <PanelDrawerShell
@@ -836,62 +311,19 @@ function BlueprintCellDetailPanelBody() {
         onCloseRequest={clearSelection}
         onClosed={handleClosed}
       >
-        <DrawerHeader className="flex-row items-center justify-between gap-2 border-b border-muted px-4 py-2 text-left">
-          <DrawerTitle className="sr-only">Path differences</DrawerTitle>
-          <DrawerDescription className="sr-only">
-            Every difference between the compared paths, grouped by step
-          </DrawerDescription>
-          {comparing ? (
-            <PanelSurfaceSwitcher
-              value="differences"
-              onValueChange={setPanelSurface}
-            />
-          ) : (
-            <span className="min-w-0 text-sm font-semibold text-foreground">
-              Differences
-            </span>
-          )}
-          <div className="flex shrink-0 items-center gap-0.5">
-            {expandToggle}
-            <IconTooltip label="Close the difference ledger" side="left">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="shrink-0 text-muted-foreground hover:text-foreground"
-                aria-label="Close differences"
-                onClick={clearSelection}
-              >
-                <X />
-              </Button>
-            </IconTooltip>
-          </div>
-        </DrawerHeader>
-        {compareRegistration ? (
-          <div className="flex min-h-0 flex-1 flex-col pt-3">
-            <CompareDifferencesSurface
-              registration={compareRegistration}
-              onOpenCell={handleOpenCellFromDifferences}
-            />
-          </div>
-        ) : (
-          // Reachable only during the exit animation after a comparison
-          // ended — the provider is already routing panelState away.
-          <div className="flex min-h-0 flex-1 items-center justify-center px-6 pb-8">
-            <p className="text-center text-xs text-muted-foreground">
-              No comparison is active.
-            </p>
-          </div>
-        )}
+        <CellDetailDifferencesSurface
+          comparing={comparing}
+          registration={compareRegistration}
+          expandToggle={expandToggle}
+          onSurfaceChange={setPanelSurface}
+          onClose={clearSelection}
+          onOpenCell={handleOpenCellFromDifferences}
+        />
       </PanelDrawerShell>
     )
   }
 
-  /*
-    Draft creation: the panel opens on an empty slot's target and nothing is
-    written until Save. Closing the drawer (✕, Escape, Cancel) discards the
-    draft entirely — a cancelled cell never existed.
-  */
+  // A draft cell: an empty slot's target, written only on Save.
   if (!selection && draft) {
     return (
       <PanelDrawerShell
@@ -900,50 +332,19 @@ function BlueprintCellDetailPanelBody() {
         onCloseRequest={clearSelection}
         onClosed={handleClosed}
       >
-        {surfaceSwitcher}
-        <DrawerHeader className="flex-row items-center justify-between gap-2 pb-3 text-left">
-          <div className="min-w-0 flex-1">
-            <DrawerTitle className="min-w-0 text-sm font-semibold text-foreground">
-              New cell
-            </DrawerTitle>
-            <DrawerDescription className="text-xs text-muted-foreground">
-              {[
-                draft.phaseName,
-                draft.scenarioName,
-                `${draft.stepIndex + 1}. ${draft.stepName}`,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-            </DrawerDescription>
-          </div>
-          <IconTooltip label="Discard this new cell" side="left">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="shrink-0 text-muted-foreground hover:text-foreground"
-              aria-label="Discard new cell"
-              onClick={clearSelection}
-            >
-              <X />
-            </Button>
-          </IconTooltip>
-        </DrawerHeader>
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4 blueprint-scroll">
-          {laneBadge}
-          <CellPanelEditor cellId={null} draft={draft} onDone={clearSelection} />
-        </div>
+        <CellDetailDraftSurface
+          draft={draft}
+          laneBadge={laneBadge}
+          surfaceSwitcher={surfaceSwitcher}
+          onClose={clearSelection}
+        />
         {/* The editor portals Create/Cancel here — panel-level footing. */}
         <PanelFooterHost id={CELL_PANEL_FOOTER_ID} />
       </PanelDrawerShell>
     )
   }
 
-  /*
-    Details surface with nothing selected — a ledger-era state: the drawer
-    can sit open on Details after a surface switch with no cell picked.
-    A quiet placeholder rather than a vanished drawer.
-  */
+  // Details with nothing picked — a placeholder, not a vanished drawer.
   if (!selection) {
     return (
       <PanelDrawerShell
@@ -952,90 +353,20 @@ function BlueprintCellDetailPanelBody() {
         onCloseRequest={clearSelection}
         onClosed={handleClosed}
       >
-        {surfaceSwitcher}
-        <DrawerHeader className="flex-row items-center justify-between gap-2 pb-3 text-left">
-          <div className="min-w-0 flex-1">
-            <DrawerTitle className="min-w-0 text-sm font-semibold text-foreground">
-              Cell details
-            </DrawerTitle>
-            <DrawerDescription className="sr-only">
-              No cell selected
-            </DrawerDescription>
-          </div>
-          <IconTooltip label="Close cell details" side="left">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="shrink-0 text-muted-foreground hover:text-foreground"
-              aria-label="Close cell details"
-              onClick={clearSelection}
-            >
-              <X />
-            </Button>
-          </IconTooltip>
-        </DrawerHeader>
-        <div className="flex min-h-0 flex-1 items-center justify-center px-6 pb-8">
-          <p className="text-center text-xs text-muted-foreground">
-            No cell selected — click a cell on the board.
-          </p>
-        </div>
+        <CellDetailEmptySurface
+          surfaceSwitcher={surfaceSwitcher}
+          onClose={clearSelection}
+        />
       </PanelDrawerShell>
     )
   }
 
+  // View mode presents everything read-only, so the form — and the one Save
+  // it portals into the footer below — exists only where an author may write.
+  const editingCell = canEdit && resolvedCellId !== null
   const isStoryboardLane = Boolean(
     selectedLane && shouldUseStoryboardContent(selectedLane),
   )
-  const cellContent =
-    selection.paths[0]?.content.trim() ||
-    selection.techItem ||
-    ''
-  const detailBodyText = touchpointDetail?.text ?? cellContent
-  const isTechLane = Boolean(
-    selectedLane && shouldUseTouchpointCellContent(selectedLane),
-  )
-  /*
-    The touchpoint's name, where there IS one to name.
-
-    `isTechLane` alone was the test, and it is right for the general case: on
-    an actor lane a cell's content is a sentence, and naming it "the
-    touchpoint" would be the label join a placement row exists to unwind. But
-    it is wrong for a cell that carries a real placement on a lane that does
-    not draw touchpoints — a document or a recording attached to a support
-    row — which had its summary rendered while the name it belongs to was
-    suppressed.
-
-    A row id is what tells the two apart: only a real `cell_touchpoints` row
-    has one. So the field appears wherever the placement is real, which is
-    also what gives the role badge below a reader on those cells — a control
-    an author can set and nobody can see is the shape this panel exists to
-    avoid, and it would have been reintroduced here.
-  */
-  const hasRealPlacement = Boolean(selectedPlacement?.id)
-  const techDetailLabel =
-    isTechLane || hasRealPlacement ? (touchpointDetail?.name ?? null) : null
-  const detailSummaryText =
-    techDetailLabel && detailBodyText.trim() === techDetailLabel
-      ? ''
-      : detailBodyText
-  // The featured image is the frame: what is stored is what shows.
-  const storedFrame = selectedCell?.frame?.trim() || null
-  const featuredImage =
-    storedFrame && !isBlueprintStepStoryboardPlaceholder(storedFrame)
-      ? storedFrame
-      : null
-  // A logo when it IS the registry icon of a touchpoint placed here — a string
-  // on the registry row, not a tool name matched against a table in code.
-  const frameIsLogo = cellTouchpointList.some(
-    (placement) => placement.iconUrl?.trim() === featuredImage,
-  )
-  const showImages = Boolean(featuredImage) && !isStoryboardLane
-  // Widened from "is a touchpoint lane" to "names a touchpoint at all", so a
-  // real placement on a lane that draws no touchpoints still shows its name
-  // — see `hasRealPlacement`.
-  const showTouchpoint = Boolean(techDetailLabel)
-
   const handleConnectionSelect = (cellId: string) => {
     const pathId = pathEntry?.pathId
     if (!pathId) return
@@ -1102,225 +433,10 @@ function BlueprintCellDetailPanelBody() {
     })
   }
 
-  const pathName = pathEntry?.pathName.trim() ?? ''
-  const scenarioName = selection.scenarioName.trim()
-  const phaseName = selection.phaseName?.trim() ?? ''
-  const hasPath = Boolean(pathName && pathEntry)
-  const hasScenario = Boolean(scenarioName)
-  const stepCrumbLabel = `Step ${selection.stepIndex + 1}`
-
   const cellBreadcrumb = (
-    <Breadcrumb className="min-w-0">
-      <BreadcrumbList className="flex-nowrap gap-0.5 text-xs text-muted-foreground">
-        {phaseName ? (
-          <>
-            <BreadcrumbItem className="min-w-0">
-              <span className="block max-w-[5.5rem] truncate font-normal">
-                {phaseName}
-              </span>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator className="[&>svg]:size-3" />
-          </>
-        ) : null}
-        {hasScenario ? (
-          <>
-            <BreadcrumbItem className="shrink-0">
-              <span title={scenarioName} className="cursor-default">
-                <BreadcrumbEllipsis className="size-4 text-muted-foreground [&>svg]:size-3.5" />
-                <span className="sr-only">{scenarioName}</span>
-              </span>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator className="shrink-0 [&>svg]:size-3" />
-          </>
-        ) : null}
-        {hasPath ? (
-          <>
-            <BreadcrumbItem className="min-w-0">
-              <span className="block max-w-[5.5rem] truncate font-normal">
-                {pathName}
-              </span>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator className="shrink-0 [&>svg]:size-3" />
-          </>
-        ) : null}
-        <BreadcrumbItem className="min-w-0">
-          <BreadcrumbPage className="truncate font-medium tracking-tight text-foreground">
-            {stepCrumbLabel}
-          </BreadcrumbPage>
-        </BreadcrumbItem>
-      </BreadcrumbList>
-    </Breadcrumb>
+    <CellDetailBreadcrumb selection={selection} pathEntry={pathEntry} />
   )
 
-  // Panel v2 header: title is the cell content snippet; the lane appears as
-  // one role-colored badge (colored by lane_role, never by name).
-  const cellTitleText =
-    cellContent.split('\n')[0]?.trim() || selection.laneName
-
-  /*
-    One image: the frame, which is the cell's featured image. Nothing else
-    leads — not a featured attachment, not a logo row beside it. A frame that
-    IS a placed touchpoint's registry icon is drawn at the logo size and stays
-    inert: there is nothing inside a brand mark to read closer, and making one
-    open a viewer spends the signal a real picture depends on.
-  */
-  const imageBlock = showImages && featuredImage ? (
-    <div className="flex w-full flex-col items-center gap-3">
-      {frameIsLogo ? (
-        <img src={featuredImage} alt="" className={CELL_DETAIL_LOGO_CLASS} />
-      ) : (
-        <div className={CELL_DETAIL_PICTURE_FRAME_CLASS}>
-          <ZoomableImage
-            src={featuredImage}
-            alt={cellTitleText}
-            triggerLabel={`Expand: ${cellTitleText}`}
-            triggerClassName="absolute inset-0 block cursor-pointer"
-          >
-            <img src={featuredImage} alt="" className={CELL_DETAIL_PICTURE_CLASS} />
-          </ZoomableImage>
-        </div>
-      )}
-    </div>
-  ) : null
-
-  // A touchpoint that says exactly what the title says is the title twice —
-  // one of them yields. The touchpoint keeps its own identity; the plain-text
-  // title only renders when it adds words the touchpoint does not have. Same
-  // rule for the summary paragraph: a cell with no authored summary falls back
-  // to its own content, and printing the title again as "summary" is the
-  // same word twice pretending to be two facts.
-  const titleRepeatsTouchpoint =
-    showTouchpoint && techDetailLabel?.trim() === cellTitleText.trim()
-  const summaryRepeatsTitle =
-    detailSummaryText.trim() === cellTitleText.trim() ||
-    detailSummaryText.trim() === cellContent.trim()
-  const editingCell = canEdit && resolvedCellId !== null
-
-  /* The LANE badge leads, on a touchpoint cell as on every other kind. It is
-     the row the reader clicked in, and the tool badge beside it is one of
-     possibly several things that row holds — so the tool reading first made a
-     touchpoint cell the only cell whose identity block started somewhere
-     other than its lane. */
-  const identityBadges = (
-    <div className="flex min-w-0 flex-wrap items-center gap-1.5">{laneBadge}</div>
-  )
-
-  /*
-    The touchpoint, as a LABELLED field rather than a second badge beside the
-    lane.
-
-    Two badges in a row read as two facts of the same kind — "this row, and
-    also this row" — when they are a lane and the tool used in it. Naming the
-    field says which is which, and it matches how Owner already presents a
-    value: label above, value below. The definition rides the label's own
-    hint popover, the affordance every other field label uses.
-  */
-  const touchpointField = showTouchpoint ? (
-    <Field label="Touchpoint" hint={PANEL_TERMS.touchpoint}>
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-        <PanelKindBadge
-          label={techDetailLabel!}
-          tone={resolveTouchpointTone(techDetailLabel!)}
-          title={techDetailLabel!}
-        />
-        {/*
-          ROLE, beside the name it qualifies, and ONLY when somebody set it.
-
-          Nothing renders for the unmarked case — no badge, no dash, no
-          "Unmarked". Most placements will never be marked, and a grey badge
-          on all of them would put a judgement on screen that nobody made,
-          which is the specific misreading the column has to avoid. Absence is
-          the honest rendering of "not judged", and it is what tells the
-          unmarked case apart from a placement someone deliberately called
-          peripheral.
-
-          Nor while EDITING: the form below carries the same fact as a
-          control, and a badge beside a select for one value is two mechanisms
-          for one fact.
-        */}
-        {!editingCell && touchpointDetail?.role ? (
-          <PanelKindBadge
-            label={TOUCHPOINT_ROLE_LABEL[touchpointDetail.role]}
-            title={TOUCHPOINT_ROLE_LABEL[touchpointDetail.role]}
-            description={TOUCHPOINT_ROLE_DEFINITION[touchpointDetail.role]}
-          />
-        ) : null}
-      </div>
-    </Field>
-  ) : null
-
-  const overviewContent = (
-    <>
-      {imageBlock}
-      {!editingCell && featured.buttons.length > 0 ? (
-        <FeaturedButtons buttons={featured.buttons} className="px-1" />
-      ) : null}
-      {/*
-        Identity, then prose — one group, tight spacing.
-
-        A touchpoint cell used to STACK a round tool badge above a differently
-        sized lane badge, and the summary then floated away from both behind a
-        `-mt-3` correction. Two badges naming two things about one cell belong
-        side by side at one size, and the sentence about the cell belongs
-        directly under the name of it.
-      */}
-      <div className="flex min-w-0 flex-col gap-1.5">
-        {/* In edit mode the form's CONTENT field *is* the title; repeating it
-            above the field would be the same word twice on one screen. */}
-        {editingCell ? (
-          identityBadges
-        ) : (
-          <PanelIdentity
-            badge={identityBadges}
-            // Empty when the touchpoint field below already carries it.
-            title={titleRepeatsTouchpoint ? '' : cellTitleText}
-            meta={
-              selection.paths.length > 1
-                ? `${selection.paths.length} paths`
-                : ''
-            }
-          />
-        )}
-        {touchpointField}
-        {/* LABELLED, like every other panel's summary. This was the one place
-            in five panels where a field's read-only rendering skipped the
-            label and printed bare prose, which is why "Summary" appeared on
-            some things and not others. The editor shows the same text inside
-            its own Summary field. */}
-        {!editingCell && detailSummaryText.trim() && !summaryRepeatsTitle ? (
-          <Field label="Summary" hint="What the detail fields add up to.">
-            <p className="whitespace-pre-wrap text-sm font-normal text-foreground">
-              {detailSummaryText.trim()}
-            </p>
-          </Field>
-        ) : null}
-      </div>
-      {editingCell ? (
-        <CellPanelEditor
-          cellId={resolvedCellId}
-          // The placement the reader clicked, so its detail fields join the
-          // cell's form under one Save rather than arriving as a second
-          // editor with a second Save button.
-          placement={selectedPlacement}
-          placementResources={cellResourceList}
-          frame={selectedCell?.frame ?? null}
-          // Never seed the field with the title wearing a summary's
-          // clothes — only prose that actually says more than the cell text.
-          fallbackSummary={
-            summaryRepeatsTitle ? '' : detailSummaryText.trim()
-          }
-          onDone={clearSelection}
-        />
-      ) : (
-        <>
-          {/* Basic info (text, summary, owners) first; the function/form/
-              value spec is a deeper layer of the same cell and reads below it. */}
-          <CellContentSection cellId={resolvedCellId} />
-          <CellOverviewSpec cellId={resolvedCellId} />
-        </>
-      )}
-    </>
-  )
 
   return (
     <PanelDrawerShell
@@ -1389,84 +505,24 @@ function BlueprintCellDetailPanelBody() {
             */}
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto blueprint-scroll">
               <div className="flex flex-col gap-5 px-4 pb-5">
-                {overviewContent}
+                <CellDetailOverview
+                  facts={facts}
+                  selection={selection}
+                  laneBadge={laneBadge}
+                  editingCell={editingCell}
+                  onDone={clearSelection}
+                />
               </div>
-              <Tabs
-                value={activeTab}
-                onValueChange={(value) => setActiveTab(value as PanelTab)}
-                className="gap-0"
-              >
-                <TabsList
-                  variant="line"
-                  className="h-auto w-full justify-start gap-4 rounded-none border-b border-muted px-4 pb-0"
-                >
-                  {PANEL_TABS.map(({ value, label, icon: TabIcon }) => (
-                    <TabsTrigger
-                      key={value}
-                      value={value}
-                      className="h-auto flex-none gap-1.5 rounded-none px-0 pb-2 pt-0 text-xs font-normal text-tertiary-foreground hover:text-muted-foreground data-active:text-foreground after:bottom-[-1px] after:bg-foreground/70"
-                    >
-                      <TabIcon className="size-3" aria-hidden />
-                      {label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-                {/*
-                  Reserved height: the three tabs have very different
-                  content lengths, and without a floor the panel jumped a
-                  couple of hundred pixels on every switch. Cheaper and
-                  steadier than easing the height.
-                */}
-                <div className="flex min-h-56 flex-col gap-5 px-4 pt-4 pb-4">
-                  {activeTab === 'dependencies' ? (
-                    <>
-                      <CellDependencySections
-                        // Keyed on the cell, so the row whose note field is
-                        // open does not carry over to the next cell.
-                        key={resolvedCellId ?? 'no-cell'}
-                        connections={connections}
-                        otherTech={otherTechEntries}
-                        selectedLaneRowPosition={selectedLaneRowPosition}
-                        editing={dependencyEditing}
-                        onCellSelect={handleConnectionSelect}
-                        onTechSelect={handleTechSelect}
-                      />
-                      {canEdit && dependencySource ? (
-                        addingDependency ? (
-                          <CellDependencyEditor
-                            source={dependencySource}
-                            candidates={dependencyCandidates}
-                            existing={existingDependencies}
-                            onDone={() => setAddingDependency(false)}
-                          />
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="self-start px-2 text-muted-foreground hover:text-foreground"
-                            onClick={() => setAddingDependency(true)}
-                          >
-                            <Plus className="size-3" aria-hidden />
-                            Add dependency
-                          </Button>
-                        )
-                      ) : null}
-                    </>
-                  ) : null}
-                  {activeTab === 'evidence' ? (
-                    <CellEvidenceTab cellId={resolvedCellId} />
-                  ) : null}
-                  {activeTab === 'resources' ? (
-                    <CellResourcesTab
-                      cellId={resolvedCellId}
-                      resources={cellResourceList}
-                      touchpoints={cellTouchpointList}
-                      frame={selectedCell?.frame ?? null}
-                    />
-                  ) : null}
-                </div>
-              </Tabs>
+              <CellDetailTabs
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                facts={facts}
+                dependencyEditing={dependencyEditing}
+                addingDependency={addingDependency}
+                onAddingDependencyChange={setAddingDependency}
+                onCellSelect={handleConnectionSelect}
+                onTechSelect={handleTechSelect}
+              />
             </div>
             {/* The editor portals Save/Cancel here — below the tabs, shared
                 footing for every property the panel holds. */}

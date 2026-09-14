@@ -278,10 +278,85 @@ behaviour. The ordering claim this record made stands — the instrument came
 before the surgery — and the slices stay as the exit condition for any future
 hold of the same shape.
 
-## Outcomes, one per component
+## Amended 2026-09-14: the annotation layer is split, and the slice held
 
-The hold is lifted, so what is recorded here from now on is what each split
-did, and what said it was safe.
+The first of the three surgeries this record held back has happened.
+`src/components/editor/CanvasAnnotationLayer.tsx` went from 2229 lines to 943,
+and what is left in it is the thing the file is named for: the pointer, drag,
+resize and selection machine, the draft types it is written in, and the
+composition that hands each annotation to the node that draws it. It holds no
+style bar, no node component and no geometry helper.
+
+What came out, and where it went. A split module sits beside the file it came
+out of, which is how this tree names one; the single exception is the focus
+hook, which goes to `src/hooks/` with the rest of them:
+
+| out of the layer | into |
+|---|---|
+| the chrome anchor, the camera un-projection, the live layer scale, the pen path builder | `canvasAnnotationGeometry.ts` |
+| the textarea focus hook | `src/hooks/useFocusTextarea.ts` |
+| the colour and stroke-weight pickers | `CanvasAnnotationSwatches.tsx` |
+| the four corner grips | `CanvasAnnotationResizeHandles.tsx` |
+| the plate, rule and tooltip the bars share | `CanvasAnnotationBarChrome.tsx`, over `canvasAnnotationChromeStyles.ts` |
+| the three style bars | `AnnotationShapeStyleBar.tsx`, `AnnotationStickyStyleBar.tsx`, `AnnotationTextStyleBar.tsx` |
+| the three annotation nodes | `ShapeAnnotationNode.tsx`, `StickyAnnotationNode.tsx`, `TextAnnotationNode.tsx` |
+| what passes between the layer and a node | `canvasAnnotationNodeProps.ts` |
+
+The interface between the layer and a node is `MovableProps`, which was
+already the interface — `movableFor` mints one per mark and a node reads
+nothing else — so the split wrote it down rather than invented it. No new prop
+reaches the layer from outside: `ZoomPanViewport` still passes `zoom` and
+nothing more.
+
+**The instrument did its job, which is the part this record exists for.** The
+slice and the browser drag case were run before the first move — 3 tests
+green, 1 browser case green — and after every move since, on the same
+assertions, with no assertion edited anywhere in the suite. One guard did go
+red, and it was the right one: `tokenDiscipline.test.ts` refuses an exemption that no longer
+matches an offender, so moving the line-style preview swatch out of the layer
+made the layer's var-ramp exemption stale within the same commit that moved
+it. That is a check noticing a file moved, which is what a path-pinned
+exemption is for.
+
+Two components remained at that point, each with its own slice: the cell
+panel, whose split is the amendment below, and the agent panel.
+
+## Amended 2026-09-14: the cell panel is split, and its slice says nothing moved
+
+The second of the three splits this record held is done.
+`src/components/blueprint/BlueprintCellDetailPanel.tsx` went from 1481 lines
+to 553, and its body — one function from line 223 to the end — is nine
+modules beside it: the facts a cell is read from (`cellDetailFacts.ts`), the
+overview and its readings, the tab row, the breadcrumb, the three sibling
+surfaces the drawer can show instead of a cell, the surface switcher, and the
+panel's agent commands. What stayed is the drawer: which surface, how wide,
+what closes it, and the footer the one save portals into.
+
+**Nothing moved with it, and the slice is why anybody can say so.** `npm run
+slice:cell-edit` was run before the first move and after every one of them,
+green each time and with no assertion edited — which is the whole point of a
+pure refactor having an instrument: the test had no way to notice, because
+there was nothing to notice. The same holds for the 285 tests over
+`src/components/blueprint` and for the suite as a whole. The PostgREST form
+was not run here: no machine in this estate carries a PostgREST binary and
+this work downloaded none, so `npm run slice:cell-edit:postgrest` is CI's
+proof, exactly as the amendment above anticipated.
+
+**What the split is NOT is a redesign.** No class, no `data-` attribute, no
+aria label and no test id changed; the one save still writes the same columns
+in the same shape; every section that derived its fields from
+`src/lib/cellFields.ts` still derives them from there, through the same
+`CellPanelEditor` it always did. The interfaces between the new modules are
+the cell's facts, the selection, and the callbacks the panel owns — no module
+takes a prop from outside the panel that the panel did not already hold.
+
+**`src/components/editor/AgentPanel.tsx` was the one still to do** at that
+point; its split is the amendment below.
+
+## Amended 2026-09-14: the agent panel is split, and the slice held
+
+The third of the three splits this record held is done, and with it every
+component this record named.
 
 **`src/components/editor/AgentPanel.tsx` — split 2026-09-14.** 1462 lines and
 twelve `useState` calls became 60 lines and none (the table at the top of this

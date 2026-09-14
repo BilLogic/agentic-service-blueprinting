@@ -4,6 +4,7 @@
 Usage:
     python3 scripts/generate_fallbacks.py <ir-file> --locale <tag>
         [--out src/data/generatedBlueprints.ts] [--register]
+        [--registry-out <path> --nav-out <path>]
         [--skip-validation]
 
 This is the no-DB fallback adapter (references/adapter-contract.md): "import"
@@ -33,6 +34,13 @@ the registry (PACKAGE_SAMPLE_BLUEPRINTS) in a marker-delimited block:
     `sample.blueprints` — since a nav replaces rather than merges.
   * Without --register (or if the markers are missing), it prints the exact
     blocks to paste, so nothing is guessed about a hand-modified file.
+  * --registry-out/--nav-out is the same pass for a tree that has no markers
+    to rewrite: a DEPLOYMENT, which reads the application out of the package
+    and holds both halves as modules of its own. They write two standalone
+    modules — `SAMPLE_BLUEPRINTS` and `SAMPLE_NAV` — that name their types by
+    package name rather than through an '@/…' path their tree does not have.
+    Required together, because the two are one board, and refused alongside
+    --register, which is the marker rewrite of this repository's own src/.
 
 Output is tsc-clean by construction: all literals are emitted through JSON
 serialization (double-quoted, control characters escaped, U+2028/U+2029
@@ -66,6 +74,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -133,6 +142,15 @@ NAV_MARKER_END = "GENERATED-NAV:END"
 DEFAULT_OUT = Path("src/data/generatedBlueprints.ts")
 REGISTRY_FILE = Path("src/data/blueprintFallbacks.ts")
 NAV_FILE = Path("src/data/sampleNav.ts")
+
+# The name a deployment imports this package by. Only the standalone modules
+# below spell it: the blocks written into this repository's own src/ import
+# through '@/…', because there the package IS the tree.
+PACKAGE_NAME = "agentic-service-blueprinting"
+# Where the generated data module names `BlueprintData` when it is written
+# into this repository's own src/ — the alias, since there the package IS the
+# tree. A deployment's copy names the package instead.
+REPO_TYPE_IMPORT = "@/types/blueprint"
 
 
 def ts_literal(value) -> str:
@@ -210,7 +228,7 @@ def blueprint_data_for_path(scenario: dict, path: dict) -> dict:
     }
 
 
-def emit_module(model: dict, ir_name: str) -> str:
+def emit_module(model: dict, ir_name: str, type_specifier: str = REPO_TYPE_IMPORT) -> str:
     fallbacks_by_scenario = {
         scenario["id"]: [blueprint_data_for_path(scenario, path) for path in scenario["paths"]]
         for scenario in model["scenarios"]
@@ -236,7 +254,7 @@ def emit_module(model: dict, ir_name: str) -> str:
 // Dimensions:
 {dimensions}
 
-import type {{ BlueprintData }} from '@/types/blueprint'
+import type {{ BlueprintData }} from '{type_specifier}'
 
 /** Locale this module was generated for. */
 export const GENERATED_BLUEPRINT_LOCALE = {ts_literal(model['locale'])}
@@ -268,6 +286,26 @@ def module_specifier(out_path: Path, repo_root: Path) -> str | None:
     return "@/" + rel.with_suffix("").as_posix()
 
 
+def registry_value(name: str) -> str:
+    """The registry literal itself, under whichever name is exporting it.
+
+    ONE payload with two homes — the marker block here and the standalone
+    module a deployment gets — so a field added to SampleBlueprintRegistry is
+    added once rather than in two emitters that drift the way the field lists
+    of the two adapters once did."""
+    return f"""export const {name}: SampleBlueprintRegistry = {{
+  blueprintsByScenario: GENERATED_PATH_FALLBACKS_BY_SCENARIO,
+  // Paths hidden from pickers/grids until ready in the UI (generated: none).
+  uiHiddenPathIdsByScenario: {{}},
+}}"""
+
+
+def nav_value(model: dict) -> str:
+    """The nav list itself, shared by the marker block and the standalone
+    module for the same reason `registry_value` is."""
+    return f"export const SAMPLE_NAV: NavItem[] = {ts_literal(nav_items(model))}"
+
+
 def registry_block(specifier: str) -> str:
     return f"""// {MARKER_BEGIN} — managed by scripts/generate_fallbacks.py --register.
 // Everything between the BEGIN/END markers is replaced wholesale on
@@ -288,11 +326,7 @@ export const SAMPLE_SCENARIO_ID = GENERATED_PRIMARY_SCENARIO_ID
  * scenarios, this draws them, and one without the other is rows over an empty
  * canvas.
  */
-export const PACKAGE_SAMPLE_BLUEPRINTS: SampleBlueprintRegistry = {{
-  blueprintsByScenario: GENERATED_PATH_FALLBACKS_BY_SCENARIO,
-  // Paths hidden from pickers/grids until ready in the UI (generated: none).
-  uiHiddenPathIdsByScenario: {{}},
-}}
+{registry_value('PACKAGE_SAMPLE_BLUEPRINTS')}
 // {MARKER_END}"""
 
 
@@ -366,8 +400,112 @@ def nav_block(model: dict) -> str:
     return f"""// {NAV_MARKER_BEGIN} — managed by scripts/generate_fallbacks.py --register.
 // Replaced wholesale on registration; do not hand-edit. Offline nav derived
 // from the IR service (phases + their scenarios) for locale {model['locale']}.
-export const SAMPLE_NAV: NavItem[] = {ts_literal(nav_items(model))}
+{nav_value(model)}
 // {NAV_MARKER_END}"""
+
+
+# ---------------------------------------------------------------------------
+# Standalone modules for a deployment (--registry-out / --nav-out)
+# ---------------------------------------------------------------------------
+#
+# A deployment that reads the application out of the package has no marker
+# block to rewrite: the registry and the nav it hands to `sample.blueprints`
+# and `sample.nav` are its OWN modules, held beside its cover copy. So these
+# two are written whole rather than spliced, they name their types by package
+# name because no '@/…' path of the writing tree can reach them, and they come
+# as a pair for the reason the config field documents — one half without the
+# other is rows over an empty canvas, not a partial board.
+
+
+def sibling_label(from_file: Path, to_file: Path) -> str:
+    """One generated module's name as the other's header should write it —
+    relative, so the sentence says the same thing wherever the pair was
+    generated from and a committed file is not stamped with somebody's cwd."""
+    return os.path.relpath(
+        to_file.resolve(), start=from_file.resolve().parent
+    ).replace(os.sep, "/")
+
+
+def relative_specifier(from_file: Path, to_file: Path) -> str:
+    """Extensionless relative import specifier from one module to another,
+    always prefixed so a bundler reads it as a path rather than a package."""
+    rel = sibling_label(from_file, to_file.with_suffix(""))
+    return rel if rel.startswith(".") else f"./{rel}"
+
+
+def standalone_registry_module(data_specifier: str, nav_label: str) -> str:
+    return f"""// GENERATED by scripts/generate_fallbacks.py --registry-out — edit the IR and
+// regenerate; do not hand-edit.
+//
+// This deployment's offline board, in the shape `sample.blueprints` takes.
+// Hand it to the config with the nav generated in the same run ({nav_label}).
+// Why both, and why the type comes by package name:
+// references/customization.md § The offline board is two fields, in the
+// installed package.
+import type {{ SampleBlueprintRegistry }} from '{PACKAGE_NAME}'
+import {{ GENERATED_PATH_FALLBACKS_BY_SCENARIO }} from '{data_specifier}'
+
+{registry_value('SAMPLE_BLUEPRINTS')}
+"""
+
+
+def standalone_nav_module(model: dict, registry_label: str) -> str:
+    return f"""// GENERATED by scripts/generate_fallbacks.py --nav-out — edit the IR and
+// regenerate; do not hand-edit.
+//
+// The phases and scenarios this deployment shows before a database answers.
+// Locale: {model['locale']}.
+// What each row draws is the registry generated in the same run
+// ({registry_label}); hand both to the config.
+import type {{ NavItem }} from '{PACKAGE_NAME}'
+
+{nav_value(model)}
+"""
+
+
+def deployment_invocation_refusal(args, default_out: str) -> str | None:
+    """Why this --registry-out/--nav-out run cannot proceed, or None.
+
+    Every one of these is answered BEFORE the IR is read, so a wrong invocation
+    writes nothing at all rather than leaving one generated file behind."""
+    if not (args.registry_out and args.nav_out):
+        return (
+            "--registry-out and --nav-out go together. The nav lists the scenarios "
+            "and the registry draws them, each REPLACES rather than merges, and one "
+            "without the other is rows over an empty canvas in every no-database "
+            "build."
+        )
+    if args.register:
+        return (
+            f"--register rewrites the marker blocks in this package's own "
+            f"{REGISTRY_FILE} and {NAV_FILE}; --registry-out/--nav-out write a "
+            "deployment's own modules. Pick the tree you are generating for."
+        )
+    # A deployment that mounts this package MUST NOT grow a `src`: the '@/…'
+    # alias tries the host's root first, so a src holding only the host's files
+    # captures every one of the application's own imports and resolves none of
+    # them. Every path this run writes is held to that, not just --out.
+    for flag, value in (
+        ("--out", args.out),
+        ("--registry-out", args.registry_out),
+        ("--nav-out", args.nav_out),
+    ):
+        if "src" not in Path(value).parts:
+            continue
+        named = (
+            f"{flag} {value}"
+            if flag != "--out" or value != default_out
+            else f"the default output path ({value})"
+        )
+        return (
+            f"{named} puts a generated module under src/, and a deployment that "
+            "mounts this package must not have one: the '@/…' alias tries the "
+            "host's root first, so a src holding only the host's files captures "
+            "every one of the application's own imports and resolves none of "
+            "them. Generate beside your other content instead (for example "
+            "--out deployment/data/generatedBlueprints.ts)."
+        )
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -385,9 +523,23 @@ def main(argv=None) -> int:
                         help=f"output module path (default: {DEFAULT_OUT})")
     parser.add_argument("--register", action="store_true",
                         help="rewrite the marker-delimited registry block in src/data/blueprintFallbacks.ts")
+    parser.add_argument("--registry-out", metavar="PATH",
+                        help="write a standalone registry module (SAMPLE_BLUEPRINTS) at PATH, "
+                             "for a deployment that has no marker block to rewrite; "
+                             "requires --nav-out")
+    parser.add_argument("--nav-out", metavar="PATH",
+                        help="write a standalone nav module (SAMPLE_NAV) at PATH; "
+                             "requires --registry-out")
     parser.add_argument("--skip-validation", action="store_true",
                         help="skip the validate_ir.py pre-flight (not recommended)")
     args = parser.parse_args(argv)
+
+    deployment_out = bool(args.registry_out or args.nav_out)
+    if deployment_out:
+        refusal = deployment_invocation_refusal(args, parser.get_default("out"))
+        if refusal is not None:
+            print(f"ERROR: {refusal}", file=sys.stderr)
+            return 1
 
     repo_root = Path(__file__).resolve().parent.parent
     ir_path = Path(args.ir_file)
@@ -418,7 +570,9 @@ def main(argv=None) -> int:
         return 1
 
     model = build_model(doc, args.locale)
-    module_text = emit_module(model, ir_path.name)
+    module_text = emit_module(
+        model, ir_path.name, PACKAGE_NAME if deployment_out else REPO_TYPE_IMPORT
+    )
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -431,6 +585,32 @@ def main(argv=None) -> int:
             f"  scenario {scenario['key']} ({scenario['id']}): "
             f"{len(scenario['paths'])} paths, {len(scenario['steps'])} steps, {cells} cells, {dependencies} dependencies"
         )
+
+    if deployment_out:
+        registry_out_path = Path(args.registry_out)
+        nav_out_path = Path(args.nav_out)
+        for path in (registry_out_path, nav_out_path):
+            path.parent.mkdir(parents=True, exist_ok=True)
+        registry_out_path.write_text(
+            standalone_registry_module(
+                relative_specifier(registry_out_path, out_path),
+                sibling_label(registry_out_path, nav_out_path),
+            ),
+            encoding="utf-8",
+        )
+        print(f"Wrote {registry_out_path} (SAMPLE_BLUEPRINTS)")
+        nav_out_path.write_text(
+            standalone_nav_module(
+                model, sibling_label(nav_out_path, registry_out_path)
+            ),
+            encoding="utf-8",
+        )
+        print(f"Wrote {nav_out_path} (SAMPLE_NAV)")
+        print(
+            "Hand both to your deployment config: "
+            "sample: { nav: SAMPLE_NAV, blueprints: SAMPLE_BLUEPRINTS }"
+        )
+        return 0
 
     specifier = module_specifier(out_path, repo_root)
     registry_path = repo_root / REGISTRY_FILE
