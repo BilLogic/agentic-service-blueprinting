@@ -19,11 +19,12 @@
  *
  * Run: npm test
  */
-import { test } from 'vitest'
+import { afterAll, test } from 'vitest'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import {
@@ -166,4 +167,19 @@ test('the config falls back to the port the runner defaults to', () => {
 
   assert.notEqual(fallback, null, 'the config no longer falls back to a literal port')
   assert.equal(Number(fallback[1]), DEFAULT_PORT)
+})
+
+afterAll(() => {
+  // These cases take real claims, and a vitest worker does not always reach an
+  // exit handler. A claim this run wrote is this run's to remove; one written
+  // by a walk is left alone, since it may be walking right now.
+  for (const name of readdirSync(tmpdir())) {
+    if (!name.startsWith('render-walk-port-')) continue
+    const path = join(tmpdir(), name)
+    try {
+      if (readFileSync(path, 'utf8') === String(process.pid)) rmSync(path, { force: true })
+    } catch {
+      // Gone, or somebody else's to read. Either way not ours to remove.
+    }
+  }
 })
