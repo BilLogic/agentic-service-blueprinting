@@ -67,8 +67,7 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
-      - run: npm run check:write-surface
-      # One level below the two surface guards: the write tools post their
+      # The write tools post their
       # arguments BY NAME, and PostgREST resolves an RPC by matching those
       # names to a function's parameters. A key the function does not have is
       # a 404 at the seam, and #168 shipped one for a release — the panel could
@@ -91,12 +90,10 @@ jobs:
       # doc that states no summary fails here rather than landing as a blank
       # row in the map an agent routes by.
       - run: npm run check:docs-index
-      # The other half of the write-surface guard above: the canvas agent
-      # also calls the READ tools its rulebook names, and writes the enum
-      # values its rulebook states. Both had drifted — docs/engineering/checks.md.
-      - run: npm run check:read-surface
+      # The canvas agent writes the enum values its rulebook states, and
+      # those had drifted — docs/engineering/checks.md.
       - run: npm run check:dependency-kinds
-      # One level out from the two surface guards: every repository path the
+      # Every repository path the
       # plugin surface NAMES still exists. An installed skill opens the paths
       # its documents write down, so a rename that never looked at the prose
       # hands the agent a dead end mid-run.

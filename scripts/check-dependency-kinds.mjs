@@ -9,7 +9,8 @@
  * agent that trusted it wrote a call that could not land. This file is the
  * check that keeps the two from drifting again, in either direction.
  *
- * So two assertions, mirroring check-read-surface.mjs:
+ * So two assertions, the shape the read-surface check had before the adapter's
+ * rows were rendered from the roster:
  *
  *   1. THE ENUM. `references/data-model.md`'s Enums section states the values;
  *      the schema's CHECK constraint states the values; they must be the same
@@ -320,7 +321,7 @@ function main() {
   process.exit(1)
 }
 
-// Same shape as scripts/check-write-surface.mjs: comparing against a
+// Same shape as scripts/check-version-agreement.mjs: comparing against a
 // hand-built `file://` URL silently no-ops whenever the path needs escaping.
 const isMain =
   process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)

@@ -28,12 +28,22 @@ import { appSourceRoot } from '../app-source.mjs'
  * browser.
  */
 const RAW_SUFFIX = '?raw'
-const rawImports = {
-  name: 'vite-raw-imports',
+/**
+ * Vite's asset imports, likewise. The cell-budget module reads the
+ * deployment config, and the config names the cover's figures — SVGs the
+ * harness never draws. Each is the URL string it would be in the browser,
+ * which is what an asset import evaluates to there.
+ */
+const ASSET = /\.(?:svg|png|jpe?g|gif|webp|woff2?)$/
+const viteImports = {
+  name: 'vite-imports',
   load(id) {
-    if (!id.endsWith(RAW_SUFFIX)) return null
-    const text = readFileSync(id.slice(0, -RAW_SUFFIX.length), 'utf8')
-    return `export default ${JSON.stringify(text)}`
+    if (id.endsWith(RAW_SUFFIX)) {
+      const text = readFileSync(id.slice(0, -RAW_SUFFIX.length), 'utf8')
+      return `export default ${JSON.stringify(text)}`
+    }
+    if (ASSET.test(id)) return `export default ${JSON.stringify(id)}`
+    return null
   },
 }
 
@@ -45,7 +55,7 @@ async function loadAppSurface() {
     input: resolve(ROOT, 'scripts/agent-harness/app-surface.entry.ts'),
     // Honor tsconfig's `@/*` path alias, on whichever root holds the application.
     resolve: { alias: { '@': appSourceRoot(ROOT) } },
-    plugins: [rawImports],
+    plugins: [viteImports],
     logLevel: 'silent',
   })
   const { output } = await bundle.generate({ format: 'esm' })
@@ -56,4 +66,5 @@ async function loadAppSurface() {
 }
 
 export const surface = await loadAppSurface()
-export const { TOOL_SPECS, WRITE_TOOL_NAMES, MOBILE_READ_TOOL_NAMES } = surface
+export const { TOOL_SPECS, TOOL_DEFINITIONS, WRITE_TOOL_NAMES, MOBILE_READ_TOOL_NAMES, renderCanvasAdapter } =
+  surface

@@ -23,15 +23,14 @@ import type { AgentProviderId } from '@/lib/agent/settings'
  * a person on an Anthropic key, where a keyword-only search offered as
  * "search" would read as the same search everyone else gets.
  *
- * Quiet, not silent, and the difference is worth stating. The shared canvas
- * adapter reference is injected whole on every send and lists the full read
- * surface, this tool among it — so the model does read the NAME even where
- * the roster withholds the tool. That row says a tool missing from the tool
- * list does not exist in the session, that nothing substitutes for it, and
- * that there is nothing for the person to change, which is what keeps the
- * mention from becoming an offer. Withholding the name from that reference
- * instead would leave the one surface that claims to be the complete read
- * surface incomplete.
+ * Quiet all the way down. The canvas adapter reference is injected whole on
+ * every send, and its read-surface row is rendered from this session's
+ * roster — so where the roster withholds the tool, the row does not name it
+ * either, and the one surface that claims to be the complete read surface
+ * stays complete for the session it describes. The prose that names the
+ * tool elsewhere in that document says a tool absent from the tool list does
+ * not exist here and nothing substitutes for it, which is what keeps a
+ * mention from becoming an offer.
  */
 export type AgentSearchPlan =
   | { offered: false }

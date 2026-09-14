@@ -88,7 +88,7 @@ test('harness imports the app tool specs instead of forking them', () => {
   )
   assert.match(
     harness,
-    /\{\s*TOOL_SPECS,\s*WRITE_TOOL_NAMES,\s*MOBILE_READ_TOOL_NAMES\s*\}\s*=\s*surface/,
+    /\{\s*TOOL_SPECS,\s*TOOL_DEFINITIONS,\s*WRITE_TOOL_NAMES,\s*MOBILE_READ_TOOL_NAMES,\s*renderCanvasAdapter\s*\}\s*=\s*surface/,
     'run.mjs no longer destructures the rosters from the bundled surface',
   )
   // And no fork crept back: a local spec array would re-declare tool

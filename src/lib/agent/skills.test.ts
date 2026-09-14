@@ -4,7 +4,8 @@ import {
   parseSkillDraft,
   skillMatchesQuery,
 } from '@/lib/agent/skills'
-import { readReference, REFERENCE_NAMES } from '@/lib/agent/tools/read'
+import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
+import { readReference, referenceNames } from '@/lib/agent/tools/references'
 
 describe('agent skills (vendored SKILL.md)', () => {
   it('ships all four skills with content', () => {
@@ -37,15 +38,15 @@ describe('agent skills (vendored SKILL.md)', () => {
 })
 
 describe('vendored references', () => {
-  // Importing read.ts also fires its init assertion that REFERENCES and
-  // REFERENCE_NAMES agree — this test existing is what runs it.
+  // Importing references.ts also fires its init assertion that the record
+  // and REFERENCE_NAMES agree — this test existing is what runs it.
   it('serves every published name with real content', () => {
-    for (const name of REFERENCE_NAMES) {
-      expect(readReference(name).length, name).toBeGreaterThan(100)
+    for (const name of referenceNames()) {
+      expect(readReference(name, TOOL_DEFINITIONS).length, name).toBeGreaterThan(100)
     }
   })
 
   it('answers an unknown name with the available list, not a throw', () => {
-    expect(readReference('nope')).toContain('Unknown reference')
+    expect(readReference('nope', TOOL_DEFINITIONS)).toContain('Unknown reference')
   })
 })

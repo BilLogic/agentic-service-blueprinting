@@ -8,10 +8,15 @@ nothing here relaxes one.
 
 ## Surface mapping
 
+The two surface rows below are rendered when this document is served to a
+session: `{{write_tools}}` and `{{read_tools}}` become the write and read tools
+on that session's roster, so the lists are always the tools that session can
+call. A reader holding this file rather than a session sees the placeholders.
+
 | Skill-world operation | Here |
 |---|---|
-| Edit IR JSON | call write tools: `create_phase`, `create_scenario`, `create_path`, `duplicate_path`, `duplicate_scenario`, `update_path`, `create_step`, `create_lane`, `upsert_cell`, `update_cell`, `create_cell_dependency`, `create_slice`, `update_slice`, `replace_slides`, `create_evidence`, `update_evidence`, `create_finding`, `update_finding`, `create_stakeholder`, `update_stakeholder` — plus `ui_command`'s few commands marked "[changes data]". That is the FULL write surface; nothing else writes. Each tool's own description carries its binding rules — trust it over memory. |
-| Read the blueprint | call read tools: `get_reference`, `list_references`, `list_blueprint`, `search_blueprint` (not every deployment has it; if it is not in your tool list it does not exist here, no other tool substitutes for it, and there is nothing for the user to change), `get_blueprint`, `compare_blueprint`, `get_cell`, `list_lanes`, `list_cell_dependencies`, `list_slices`, `get_slice`, `list_owner_tags`, `list_stakeholders`, `list_evidence`, `get_evidence`, `get_business_model`, `list_sessions`, `get_session`, `get_ui_state`, `get_change_history`, `measure_deletion_impact`, `list_findings`, `list_ui_commands` — none of them move the user's canvas or change a row. That is the FULL read surface; nothing else reads. Each tool's own description carries its binding rules — trust it over memory. |
+| Edit IR JSON | call write tools: {{write_tools}} — plus `ui_command`'s few commands marked "[changes data]". That is the FULL write surface; nothing else writes. Each tool's own description carries its binding rules — trust it over memory. |
+| Read the blueprint | call read tools: {{read_tools}} — none of them move the user's canvas or change a row. That is the FULL read surface; nothing else reads. Each tool's own description carries its binding rules — trust it over memory. |
 | Save / rework a slice | `create_slice`, `update_slice`, `replace_slides` |
 | Cite a source for a cell | `list_evidence` / `get_evidence` to read what a claim already rests on, `create_evidence` / `update_evidence` to record one the human gives you. Never invent a source, and never attach one to a cell you have not read |
 | Name an actor | `list_stakeholders` before writing a value_props audience or a lane label — the cast is one shared list and its aliases are where two spellings of one person are reconciled. `create_stakeholder` is for a genuinely new actor; a new SPELLING goes in an existing row's aliases via `update_stakeholder` |

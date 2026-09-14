@@ -1,35 +1,41 @@
 import { z } from 'zod'
 import { arg, defineTool } from '@/lib/agent/tools/definition'
-import { listReferences, readReference } from '@/lib/agent/tools/read'
-import { REFERENCE_NAMES } from '@/lib/agent/tools/referenceNames'
+import {
+  fetchableReferenceNames,
+  listReferences,
+  readReference,
+} from '@/lib/agent/tools/references'
 
 /**
  * The rulebook. Neither tool has a database behind it — the references are
- * bundled — so the no-database trial serves the same implementation the live
- * app does, not a stand-in.
+ * bundled, and a deployment's own arrive through its config — so the
+ * no-database trial serves the same implementation the live app does.
  */
 
 /**
  * The first-read pointer at a deployment's own account of its blueprint.
  *
- * The template ships no `blueprint` reference; a deployment registers one
- * through the reference registry before the app loads. So the pointer is
- * written only when that name is served — standalone, it would aim the
- * model's first call at a reference that does not exist.
+ * The template ships no `blueprint` reference; a deployment supplies one as
+ * `agent.references`. So the pointer is written only when that name is
+ * served — standalone, it would aim the model's first call at a reference
+ * that does not exist. The description is a function for the same reason:
+ * the names are the deployment's, read when the roster is assembled.
  */
-const READ_FIRST = REFERENCE_NAMES.includes('blueprint')
-  ? 'Read blueprint first for what this blueprint is, what a status licenses you to say and what absence means; lane-roles'
-  : 'Read lane-roles'
-
 export const getReferenceTool = defineTool({
   name: 'get_reference',
-  description: `Read a rulebook reference before acting on its topic. Available: ${REFERENCE_NAMES.filter((name) => name !== 'canvas-adapter').join(', ')}. ${READ_FIRST} and lane-vocabulary before any lane/role work; cocreate-playbook and elicitation-protocol before co-creating a scenario from conversation or notes.`,
+  description: () => {
+    const names = fetchableReferenceNames()
+    const readFirst = names.includes('blueprint')
+      ? 'Read blueprint first for what this blueprint is, what a status licenses you to say and what absence means; lane-roles'
+      : 'Read lane-roles'
+    return `Read a rulebook reference before acting on its topic. Available: ${names.join(', ')}. ${readFirst} and lane-vocabulary before any lane/role work; cocreate-playbook and elicitation-protocol before co-creating a scenario from conversation or notes.`
+  },
   surface: 'read',
   args: z.object({
     name: arg.text('Reference name, e.g. "lane-roles"'),
   }),
   availability: { sample: true, mobile: true },
-  run: async ({ name }) => readReference(name),
+  run: async ({ name }, ctx) => readReference(name, ctx.roster),
 })
 
 export const listReferencesTool = defineTool({

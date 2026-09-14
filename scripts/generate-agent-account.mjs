@@ -43,8 +43,8 @@
  * is correct and it is now also visible. Same stance as
  * `check-target-schema.mjs`, which asks a live target whether it was
  * migrated. A deployment that has a database runs this against it and
- * registers the generated account through `registerReferenceDocs` or
- * `REFERENCE_NAMES_EXTRA`; the template's reference loader never imports that
+ * supplies the generated account as `agent.references.blueprint` on its
+ * deployment config; the template's reference loader never imports that
  * file by path.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'

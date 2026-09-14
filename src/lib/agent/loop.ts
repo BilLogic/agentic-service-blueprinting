@@ -20,7 +20,9 @@ import { collectAgentUiContext } from '@/lib/agent/uiBridge'
 import { agentUiCommandMutates } from '@/lib/agent/uiCommands'
 import type { AgentAttachment } from '@/lib/agent/attachments'
 import type { AgentSkillCommand } from '@/lib/agent/skills'
-import { REFERENCE_DOCS } from '@/lib/agent/tools/referenceDocs'
+import { readReference } from '@/lib/agent/tools/references'
+import { agentDoctrine } from '@/lib/agent/doctrine'
+import type { ToolDefinition } from '@/lib/agent/tools/definition'
 import roleDoc from '@/lib/agent/role.md?raw'
 import {
   hasKey,
@@ -59,21 +61,25 @@ const ADAPTERS: Record<string, AgentProviderAdapter> = {
 const ROLE = roleDoc.trimEnd()
 
 /**
- * The adapter comes out of the same record `get_reference` serves, not from a
- * file import of its own. A deployment that registers a replacement
- * `canvas-adapter` through `registerReferenceDocs` means it for the agent, and
- * the prompt is where the adapter binds — in full, every turn. Read from its
- * own import, the prompt kept the template's rules while the tool served the
- * deployment's.
+ * The adapter comes out of the same record `get_reference` serves, rendered
+ * against the same roster, not from a file import of its own. A deployment
+ * that supplies a replacement `canvas-adapter` in `agent.references` means it
+ * for the agent, and the prompt is where the adapter binds — in full, every
+ * turn; a deployment that narrows its roster narrows the adapter's surface
+ * rows with it. The deployment's doctrine, when it has one, follows the
+ * adapter: an overlay on the template's prompt, never a replacement of it.
  */
 export function buildSystem(
   contextNote: string,
-  skill?: AgentSkillCommand | null,
+  skill: AgentSkillCommand | null | undefined,
+  roster: readonly ToolDefinition[],
 ): string {
+  const doctrine = agentDoctrine()
   return [
     ROLE,
     '\n\n--- canvas-adapter reference (FULL text — get_reference serves the other, deeper references) ---\n',
-    REFERENCE_DOCS['canvas-adapter'],
+    readReference('canvas-adapter', roster),
+    doctrine ? `\n\n--- deployment doctrine ---\n${doctrine}` : '',
     skill?.content
       ? `\n\n--- active skill: ${skill.label} (invoked by the user; the same SKILL.md IDE agents follow) ---\n${skill.content}\n\nYou are the canvas agent, not an IDE agent: skip the skill's file/script/CLI mechanics and act through your tools, translated by the canvas-adapter above. The skill's judgment — what makes a good blueprint/slice, the order of questions, the quality bars — applies in full.`
       : '',
@@ -414,10 +420,6 @@ export async function sendToAgent(input: {
         : null,
     signal: controller.signal,
   }
-  // The stable system prefix (role + adapter + skill — everything before
-  // the live context) is byte-identical across this send's rounds; its
-  // length lets caching providers put a cache breakpoint there.
-  const systemStableLength = buildSystem('', skill).length
 
   try {
     for (let round = 0; round < MAX_ROUNDS; round += 1) {
@@ -432,12 +434,27 @@ export async function sendToAgent(input: {
       // keep a roster the shell on screen no longer matches. UX gate only;
       // the server-side RPC tier enforcement is the real wall.
       const mobileReading = isMobileViewport()
+      // One pass, and the gates' ORDER is part of the contract — it lives
+      // in `sessionRoster`, with the definitions it derives from. The same
+      // list is what the prompt's adapter renders and what each tool call
+      // is served against.
+      const roster = sessionRoster({
+        sampleTrial,
+        mobileReading,
+        allowWrites,
+        searchOffered: searchPlan.offered,
+      })
+      // The stable system prefix (role + adapter + doctrine + skill —
+      // everything before the live context) is byte-identical across this
+      // send's rounds while the roster holds; its length lets caching
+      // providers put a cache breakpoint there.
+      const systemStableLength = buildSystem('', skill, roster).length
       const liveContext = [contextNote, collectAgentUiContext()]
         .filter(Boolean)
         .join('\n')
       const result = await adapter.chat({
         system:
-          buildSystem(liveContext, skill) +
+          buildSystem(liveContext, skill, roster) +
           // The mobile paragraph subsumes the tier one — and they disagree
           // about annotations (viewer tier has annotate_cells; the mobile
           // roster does not), so only one may speak per send.
@@ -454,14 +471,7 @@ export async function sendToAgent(input: {
             : ''),
         systemStableLength,
         messages: run.messages,
-        // One pass, and the gates' ORDER is part of the contract — it lives
-        // in `sessionRoster`, with the definitions it derives from.
-        tools: sessionRoster({
-          sampleTrial,
-          mobileReading,
-          allowWrites,
-          searchOffered: searchPlan.offered,
-        }).map(toolSpec),
+        tools: roster.map(toolSpec),
         apiKey,
         model: modelFor(settings),
         signal: controller.signal,
@@ -608,7 +618,7 @@ export async function sendToAgent(input: {
             sessionId,
             call.name,
             call.args,
-            dispatchContext,
+            { ...dispatchContext, roster },
           )
           // Counted AFTER success: a write that failed changed nothing and
           // must not eat batch budget.
@@ -666,6 +676,7 @@ export async function sendToAgent(input: {
           system: buildSystem(
             [contextNote, collectAgentUiContext()].filter(Boolean).join('\n'),
             skill,
+            roster,
           ),
           systemStableLength,
           messages: run.messages,

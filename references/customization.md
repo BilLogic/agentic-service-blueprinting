@@ -119,19 +119,19 @@ npm run check:agent-account            # fail if the account or the ratchet drif
 ```
 
 With no database configured, both commands print a skip and exit 0. Nothing
-is generated, nothing is registered, and the agent's `get_reference` list
+is generated, nothing is supplied, and the agent's `get_reference` list
 is this template's own.
 
-A deployment that has generated the account registers it through the existing
-seams — never by teaching the template's reference loader a path:
+A deployment that has generated the account supplies it through its config —
+never by teaching the template's reference loader a path:
 
-- **Copying this repo:** add the name to `REFERENCE_NAMES_EXTRA` and the
-  `?raw` import to `referenceDocs.ts`.
-- **Mounting the package:** call `registerReferenceDocs({ blueprint: account })`
-  from a module imported before the app (`bootstrap.ts` is the example).
+- Put it on the deployment config: `agent: { references: { blueprint: account } }`,
+  where `account` is the document's text (the host holds the `?raw` import).
+  A name the template already serves replaces that document; a new name is
+  listed to the agent right after the canvas adapter.
 
 After adopting a release, the reference loader stays byte-identical to this
-template's: extra names go through those two seams, not a path import of another
+template's: extra names go through the config, not a path import of another
 repository's file.
 
 ## Agent search
@@ -156,9 +156,10 @@ const config: DeploymentConfig = {
 
 - `enabled: false` or no `agent.search` at all: the tool is absent from the
   agent's roster, so nothing can call it and nobody is told they are missing
-  it. The shared read-surface reference still lists the name, and says a tool
-  absent from the tool list does not exist in the session — a name the model
-  cannot act on, rather than an offer.
+  it. The canvas adapter's read-surface row is rendered from the roster, so
+  it does not list the name either; where the adapter's prose mentions the
+  tool, it says a tool absent from the tool list does not exist in the
+  session — a name the model cannot act on, rather than an offer.
 - `enabled: true`, `indexes` empty or omitted: the tool is offered to
   everyone, and matches words and structure only.
 - `enabled: true` with indexes listed: a person whose own chat provider

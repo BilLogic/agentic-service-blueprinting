@@ -73,8 +73,8 @@ import { getUiStateTool, listUiCommandsTool } from '@/lib/agent/tools/definition
  * nowhere else — the spec table, the roster and the dispatcher all read it.
  *
  * The check scripts that read tool names from source (`check:manifest`,
- * `check:read-surface`) read this folder alongside the spec table, so a
- * tool stays a tool they can see.
+ * the ownership test) read this folder alongside the spec table, so a tool
+ * stays a tool they can see.
  */
 export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   getReferenceTool,

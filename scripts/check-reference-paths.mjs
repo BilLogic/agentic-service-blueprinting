@@ -53,16 +53,14 @@ const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
  *     . --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=docs \
  *     | sed 's/?raw//' | sort -u
  *
- * Its agent's read tool names most of them, its skill loader the four skills,
- * and its own write-surface guard the canvas adapter, which it reads out of
- * `node_modules/`. A change on the consumer's side — a new import, or one it
+ * Its agent's read tool names most of them, and its skill loader the four
+ * skills, which it reads out of `node_modules/`. A change on the consumer's side — a new import, or one it
  * stops making — must update this list in the same pull request: a list that
  * has drifted from the consumer's imports guards paths nobody reads and
  * misses the ones they do.
  */
 export const CONSUMER_IMPORTS = [
-  // Read by the canvas agent's `get_reference` tool, and — for the canvas
-  // adapter — by the deployment's own write-surface guard.
+  // Read by the canvas agent's `get_reference` tool.
   'references/audit-playbook.md',
   'references/canvas-adapter.md',
   'references/data-model.md',

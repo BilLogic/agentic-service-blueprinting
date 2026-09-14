@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { TOOL_SPECS } from '@/lib/agent/tools/specs'
-import { readReference } from '@/lib/agent/tools/read'
+import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
+import { configureAgentReferences, readReference } from '@/lib/agent/tools/references'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import {
@@ -205,30 +206,29 @@ describe('the words about an omitted service match the behaviour', () => {
   /*
    * Read from the record the agent is actually served — the one `get_reference`
    * answers from and the system prompt quotes in full — never from a file at a
-   * fixed path. A deployment receives the adapter through the package's
-   * generated copy or registers a replacement of its own, and either way the
-   * served text is what a model reads and what has to name every tool.
+   * fixed path. A deployment receives the adapter through the package or
+   * supplies a replacement in its config, and either way the served text is
+   * what a model reads and what has to name every tool.
    */
   it('the adapter the agent is served says the same, and names every such tool', () => {
     const names = scoped.map((spec) => spec.name)
     expect(names.length).toBeGreaterThan(0)
-    expect(serviceRowProblems(readReference('canvas-adapter'), names)).toEqual([])
+    expect(serviceRowProblems(readReference('canvas-adapter', TOOL_DEFINITIONS), names)).toEqual([])
   })
 
-  it('a registered replacement adapter is the one held to the tools', async () => {
-    vi.resetModules()
-    const { registerReferenceDocs } = await import('@/lib/agent/tools/referenceRegistry')
-    registerReferenceDocs({
+  it('a replacement adapter from the config is the one held to the tools', () => {
+    configureAgentReferences({
       'canvas-adapter': '| Work across several services | Omitting it searches every service. |\n',
     })
-    const { readReference: served } = await import('@/lib/agent/tools/read')
-    const { TOOL_SPECS: specs } = await import('@/lib/agent/tools/specs')
-    const names = specs.filter(takesService).map((spec) => spec.name)
-
-    expect(names.length).toBeGreaterThan(0)
-    expect(serviceRowProblems(served('canvas-adapter'), names)).toEqual(
-      names.map((name) => `the row does not name \`${name}\``),
-    )
+    try {
+      const names = scoped.map((spec) => spec.name)
+      expect(names.length).toBeGreaterThan(0)
+      expect(serviceRowProblems(readReference('canvas-adapter', TOOL_DEFINITIONS), names)).toEqual(
+        names.map((name) => `the row does not name \`${name}\``),
+      )
+    } finally {
+      configureAgentReferences(undefined)
+    }
   })
 
   /*

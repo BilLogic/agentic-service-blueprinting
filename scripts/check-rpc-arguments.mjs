@@ -316,7 +316,7 @@ function main() {
   process.exit(1)
 }
 
-// Same shape as scripts/check-write-surface.mjs: comparing against a
+// Same shape as scripts/check-version-agreement.mjs: comparing against a
 // hand-built `file://` URL silently no-ops whenever the path needs escaping.
 const isMain =
   process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
