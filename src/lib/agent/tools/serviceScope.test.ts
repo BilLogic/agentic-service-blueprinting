@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { TOOL_SPECS } from '@/lib/agent/tools/specs'
 import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
 import { configureAgentReferences, readReference } from '@/lib/agent/tools/references'
@@ -10,7 +10,6 @@ import {
   serviceStakeholderIds,
 } from '@/lib/agent/tools/serviceScope'
 import { setActiveServiceSlug } from '@/contexts/activeServiceStore'
-import { __resetActiveServiceIdCache } from '@/lib/service'
 
 /*
  * The scope seam. `resolveServiceScope` is what replaced the global
@@ -82,12 +81,8 @@ const TWO = [
 const servicesClient = (rows: unknown[]) =>
   fakeClient((rec) => (rec.table === 'services' ? { data: rows, error: null } : { data: [], error: null }))
 
-beforeEach(() => {
-  __resetActiveServiceIdCache()
-})
 afterEach(() => {
   setActiveServiceSlug(null)
-  __resetActiveServiceIdCache()
 })
 
 describe('resolveServiceScope', () => {

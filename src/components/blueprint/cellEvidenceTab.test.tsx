@@ -25,6 +25,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CellEvidenceTab } from '@/components/blueprint/CellEvidenceTab'
 import { PANEL_TEXTAREA_CLASS } from '@/components/blueprint/panelShell'
 import type { Evidence } from '@/types/database'
+import { setActiveService } from '@/contexts/activeService'
 
 /** The draft the tab hands the mutation — the agent-facing half of the claim. */
 type Draft = Record<string, unknown>
@@ -44,9 +45,9 @@ const draftOf = (call: number): Draft => {
 vi.mock('@/contexts/SupabaseProvider', () => ({
   useSupabase: () => ({ client: {}, configured: true, canWrite: true }),
 }))
-vi.mock('@/lib/service', () => ({
-  resolveActiveServiceId: async () => 'svc-1',
-}))
+// The service is the resolved store's; the root that would set it is stood
+// in for below.
+setActiveService({ id: 'svc-1', slug: 'svc-1' })
 
 let rows: Evidence[] = []
 vi.mock('@/hooks/useEvidence', () => ({

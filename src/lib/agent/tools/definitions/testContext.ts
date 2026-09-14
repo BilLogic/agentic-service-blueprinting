@@ -42,10 +42,14 @@ export function recordingUi(mutating: ReadonlySet<string> = new Set()): {
   return { ui, log }
 }
 
+/** The service a test's writes land on unless it names another. */
+export const TEST_SERVICE = { id: 'svc-1', slug: 'svc-1' }
+
 export function fakeToolContext(overrides: Partial<ToolContext> = {}): ToolContext {
   return {
     client: null,
     scope: SCOPE_ALL,
+    service: TEST_SERVICE,
     session: { id: 'test-session', attributed: (work) => work() },
     ui: recordingUi().ui,
     roster: TOOL_DEFINITIONS,

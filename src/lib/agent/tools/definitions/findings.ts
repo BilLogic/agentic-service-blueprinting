@@ -1,9 +1,14 @@
 import { z } from 'zod'
-import { arg, defineTool, defineWriteTool, requireClient } from '@/lib/agent/tools/definition'
+import {
+  arg,
+  defineTool,
+  defineWriteTool,
+  requireActiveService,
+  requireClient,
+} from '@/lib/agent/tools/definition'
 import { listFindings } from '@/lib/agent/tools/read'
 import { findingFingerprint } from '@/lib/findingFingerprint'
 import { recordFinding, updateFinding } from '@/lib/findingMutations'
-import { resolveActiveServiceId } from '@/lib/service'
 
 /** The findings ledger: what an audit or a what-if run recorded, and its status. */
 
@@ -45,7 +50,7 @@ export const createFindingTool = defineWriteTool({
     ),
     run_id: arg.optionalText('The run identity returned by the first create_finding of this run'),
   }),
-  run: async ({ source, check_key, severity, summary, cell_ids, scope, run_id }, { client }) => {
+  run: async ({ source, check_key, severity, summary, cell_ids, scope, run_id }, ctx) => {
     const cellIds = cell_ids ?? []
     if (cellIds.length === 0 && !scope)
       throw new Error('A zero-cell finding needs a scope (e.g. "scenario:Intake Call").')
@@ -54,8 +59,8 @@ export const createFindingTool = defineWriteTool({
     // The dedupe branch and both its writes live in findingMutations, so
     // every one of them reaches the session ledger. The tool's job here is
     // the sentence the model reads back, which differs per outcome.
-    const outcome = await recordFinding(client, {
-      serviceId: await resolveActiveServiceId(client),
+    const outcome = await recordFinding(ctx.client, {
+      serviceId: requireActiveService(ctx),
       runId,
       source,
       checkKey: check_key,

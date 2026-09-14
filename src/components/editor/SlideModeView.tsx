@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { SlideNavLoadingSkeleton } from '@/components/editor/EditorLoadingSkeletons'
 import {
@@ -11,8 +11,7 @@ import { CreatePhaseDialog } from '@/components/editor/CreatePhaseDialog'
 import { CreateBlueprintDialog } from '@/components/editor/CreateBlueprintDialog'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { useActiveServiceSlug } from '@/contexts/activeServiceStore'
-import { resolveActiveServiceId } from '@/lib/service'
+import { useActiveServiceId } from '@/contexts/activeService'
 import { SlicesSidebarSection } from '@/components/editor/SlicesSidebarSection'
 import { SlideNav } from '@/components/editor/SlideNav'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -41,7 +40,7 @@ export function SlideModeSidebarNav({
     setPhaseExpanded,
   } = useEditor()
   const { activeKey, activateTab } = useViewState()
-  const { client, canWrite } = useSupabase()
+  const { canWrite } = useSupabase()
   const canvasMode = useCanvasModeValue()
   // Creating is authoring, so the sidebar's `+`s belong to Edit mode — in
   // View the sidebar navigates and nothing more.
@@ -50,38 +49,14 @@ export function SlideModeSidebarNav({
   const [phaseDialogOpen, setPhaseDialogOpen] = useState(false)
   const [scenarioPhaseId, setScenarioPhaseId] = useState<string | null>(null)
 
-  // The service a new phase would belong to: the one the URL names, not the
-  // first by `created_at`. The sidebar draws the ACTIVE service's phases (the
-  // resolved store's id), so a `+` that wrote to the first service put the
-  // new phase on a board nobody was looking at.
-  //
-  // Keyed on the slug so switching service re-resolves rather than leaving
-  // the previous service's id behind — this sidebar outlives a switch, which
-  // changes the store without remounting anything.
-  //
-  // `resolveActiveServiceId` caches per slug, so this is a state read rather
-  // than a query in the common case.
-  const activeSlug = useActiveServiceSlug()
-  const [serviceId, setServiceId] = useState<string | null>(null)
-  useEffect(() => {
-    if (!client || !canWrite) return
-    let cancelled = false
-    void resolveActiveServiceId(client)
-      .then((id) => {
-        if (!cancelled) setServiceId(id)
-      })
-      .catch(() => {
-        // No service to attach one to — an empty database, or a slug no
-        // service answers to — means no `+` on the section header, and the
-        // rest of the sidebar is unaffected. Both are states where the board
-        // has nothing to add a phase to, so neither may fall back to a
-        // service the reader is not looking at.
-        if (!cancelled) setServiceId(null)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [activeSlug, canWrite, client])
+  // The service a new phase would belong to: the active one, from the store
+  // the shell resolved once — the same id the sidebar's phases are read
+  // under. `null` — an empty database, a slug no service answers to — means
+  // no `+` on the section header, and the rest of the sidebar is unaffected:
+  // a board with nothing to add a phase to must not fall back to a service
+  // the reader is not looking at. This used to resolve the slug here, in an
+  // effect keyed on it; the resolution is the shell's now.
+  const serviceId = useActiveServiceId()
 
   // The phase/scenario nav always drives the app-level (base blueprint
   // view) editor state. When a tab is active that would be invisible, so

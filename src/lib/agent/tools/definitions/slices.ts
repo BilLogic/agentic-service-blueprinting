@@ -1,8 +1,7 @@
 import { z } from 'zod'
-import { arg, defineTool, defineWriteTool } from '@/lib/agent/tools/definition'
+import { arg, defineTool, defineWriteTool, requireActiveService } from '@/lib/agent/tools/definition'
 import { getSlice, listSlices } from '@/lib/agent/tools/read'
 import { sampleGetSlice, sampleListSlices } from '@/lib/agent/tools/sampleRead'
-import { resolveActiveServiceId } from '@/lib/service'
 import { createSlice, patchSliceMeta, replaceSlides } from '@/lib/sliceMutations'
 
 /** The tools that read and author a slice — a stakeholder's view of the journey. */
@@ -51,11 +50,11 @@ export const createSliceTool = defineWriteTool({
     cell_ids: arg.strings('Existing cell ids, in journey order'),
   }),
   aliases: SUMMARY_ALIAS,
-  run: async ({ title, summary, kind, actor, cell_ids }, { client }) => {
+  run: async ({ title, summary, kind, actor, cell_ids }, ctx) => {
     if (cell_ids.length === 0)
       throw new Error('cell_ids must be a non-empty array of existing cell ids.')
-    const slice = await createSlice(client, {
-      serviceId: await resolveActiveServiceId(client),
+    const slice = await createSlice(ctx.client, {
+      serviceId: requireActiveService(ctx),
       title,
       summary: summary ?? '',
       sliceKind: kind,

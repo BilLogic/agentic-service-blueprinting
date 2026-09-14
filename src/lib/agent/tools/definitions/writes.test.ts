@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { clearSession, sessionSnapshot } from '@/lib/authoringSession'
@@ -32,10 +32,6 @@ import {
 } from '@/lib/agent/tools/definitions/stakeholders'
 import { fakeToolContext } from '@/lib/agent/tools/definitions/testContext'
 import { dispatchTool } from '@/lib/agent/tools/registry'
-
-vi.mock('@/lib/service', () => ({
-  resolveActiveServiceId: async () => 'svc-1',
-}))
 
 /*
  * Every write tool, through its own interface: `run(args, ctx)` with a
