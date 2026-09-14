@@ -158,3 +158,36 @@ write path was proved by hand against the stack and the end-to-end run, with
 the measurement the ticket asked for, is CI's — its first run measured 3.9 seconds for the slice and 4.4 for the
 proof, about ten seconds for the step with the release cached — and this
 record is amended again if it stops being near a minute.
+
+## Amended 2026-09-14: an agent session is covered
+
+**An agent session — covered.** `src/slices/agentSession.slice.test.tsx`
+opens the real `AgentPanel`, starts a session from its own ＋, types a
+sentence into the composer and presses Send. The loop is the real
+`sendToAgent`; the model is the scripted provider adapter #694 introduced, so
+there is no network and no key beyond the string that unlocks the send. The
+script calls one read tool and then one write tool — `get_cell`, then
+`update_cell` — over the real definitions, the real one save and the real
+content and spec mutations. What the slice then asks is what the loop test
+could not: what a PERSON sees, and what the database holds. The transcript
+renders the turn, each tool call and the result its row discloses; the row
+holds both halves of the edit and nothing else moved; the ledger holds one
+entry per write path, each wearing that session's agent attribution, and the
+real `SessionChangesSheet` shows a ✦ per row; both reverts from that sheet
+put the row back column for column; and the transcript READS BACK from the
+persisted rows after the panel is closed and reopened — the slice forgets the
+in-process run between the two (`forgetAgentRun`) after checking the close
+really emptied the screen, so the reopen hydrates `agent_messages` the way a
+session reopened in another browser does, and it asserts what those rows
+actually carry: the message, the narrations, the answer and the tool names,
+but not the stripped-out tool payload. It fails on a wrong read-back, and has
+been watched fail on two, each encoded as its own case: one drops a written
+column, so the panel reports a write that did not land; the other mocks the
+live tool context into running the write unattributed, and the ledger's
+author, session id and ✦ all go with it. CI runs it as `npm run slice:agent-session`
+(and inside `npm test`). The database is the in-memory table the cell-edit
+slice uses; what it cannot see — a grant, a policy — `check:seed-load` asks
+the real database for every column this flow writes, and the cell-edit
+slice's PostgREST form asks of the same two writes. Mocked: the Supabase
+provider, the provider adapter, and the viewport probe jsdom has no
+`matchMedia` for. **The agent panel's split is unblocked.**
