@@ -1,23 +1,16 @@
 import { useEffect, useState } from 'react'
-import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
-import {
-  FileSearch,
-  Link2,
-  PanelRightClose,
-  PanelRightOpen,
-  Plus,
-  Workflow,
-  X,
-} from 'lucide-react'
-import { ArrowLeft } from 'lucide-react'
-import { CellDependencyEditor } from '@/components/blueprint/CellDependencyEditor'
-import { CellDependencySections } from '@/components/blueprint/CellDependencySections'
-import { CellEvidenceTab } from '@/components/blueprint/CellEvidenceTab'
+import { ArrowLeft, PanelRightClose, PanelRightOpen, X } from 'lucide-react'
 import { CellInSlicesFooter } from '@/components/blueprint/CellInSlicesFooter'
 import { CellDetailDifferencesSurface } from '@/components/blueprint/CellDetailDifferencesSurface'
 import { CellDetailDraftSurface } from '@/components/blueprint/CellDetailDraftSurface'
 import { CellDetailEmptySurface } from '@/components/blueprint/CellDetailEmptySurface'
 import { CellDetailOverview } from '@/components/blueprint/CellDetailOverview'
+import { CellDetailBreadcrumb } from '@/components/blueprint/CellDetailBreadcrumb'
+import {
+  CellDetailTabs,
+  type PanelTab,
+} from '@/components/blueprint/CellDetailTabs'
+import { useCellPanelAgentCommands } from '@/components/blueprint/cellDetailAgentCommands'
 import { PanelSurfaceSwitcher } from '@/components/blueprint/PanelSurfaceSwitcher'
 import { useCellDetailFacts } from '@/components/blueprint/cellDetailFacts'
 import {
@@ -28,7 +21,6 @@ import {
   PanelIdentity,
   PanelKindBadge,
 } from '@/components/blueprint/panelShell'
-import { CellResourcesTab } from '@/components/blueprint/CellResourcesTab'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { StoryboardStepDetailStack } from '@/components/blueprint/StoryboardStepDetailStack'
 import { Button } from '@/components/ui/button'
@@ -37,15 +29,6 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from '@/components/ui/drawer'
-import {
-  Breadcrumb,
-  BreadcrumbEllipsis,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   useBlueprintCellDetail,
   type BlueprintPanelSurface,
@@ -72,18 +55,6 @@ import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import { panelEditorBusy } from '@/lib/panelEditorBusy'
 import type { DraftCellTarget } from '@/components/blueprint/CellPanelEditor'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
-
-type PanelTab = 'dependencies' | 'evidence' | 'resources'
-
-const PANEL_TABS: Array<{
-  value: PanelTab
-  label: string
-  icon: typeof Workflow
-}> = [
-  { value: 'dependencies', label: 'Dependencies', icon: Workflow },
-  { value: 'evidence', label: 'Evidence', icon: FileSearch },
-  { value: 'resources', label: 'Resources', icon: Link2 },
-]
 
 
 /**
@@ -155,38 +126,7 @@ function BlueprintCellDetailPanelBody() {
   const compareRegistration = useCompareReviewState().registration
   const comparing = compareRegistration !== null
 
-  // Agent parity: the panel's own controls, registered while it is open.
-  useEffect(() => {
-    const unregister = [
-      registerAgentUiCommand({
-        name: 'cell_panel_tab',
-        summary: "Switch the open cell panel's tab. arg: dependencies | evidence | resources",
-        run: (arg) => {
-          const tab = arg === 'evidence' || arg === 'resources' ? arg : 'dependencies'
-          setActiveTab(tab)
-          return `Cell panel is on the ${tab} tab.`
-        },
-      }),
-      registerAgentUiCommand({
-        name: 'cell_panel_expand',
-        summary: 'Widen or shrink the open cell panel. arg: true (wide) | false (normal)',
-        run: (arg) => {
-          const wide = arg !== 'false'
-          setExpanded(wide)
-          return wide ? 'Cell panel expanded.' : 'Cell panel back to normal width.'
-        },
-      }),
-      registerAgentUiCommand({
-        name: 'cell_panel_close',
-        summary: 'Close the open cell detail panel.',
-        run: () => {
-          clearSelection()
-          return 'Cell panel closed.'
-        },
-      }),
-    ]
-    return () => unregister.forEach((fn) => fn())
-  }, [clearSelection])
+  useCellPanelAgentCommands({ setActiveTab, setExpanded, clearSelection })
   const [addingDependency, setAddingDependency] = useState(false)
   const { canWrite } = useSupabase()
   // View mode presents everything read-only; every edit affordance in this
@@ -291,13 +231,7 @@ function BlueprintCellDetailPanelBody() {
   const {
     pathEntry,
     resolvedCellId,
-    connections,
-    selectedCell,
-    cellTouchpointList,
-    cellResourceList,
     laneResolution,
-    otherTechEntries,
-    selectedLaneRowPosition,
     dependencyCandidates,
     existingDependencies,
     dependencySource,
@@ -512,54 +446,8 @@ function BlueprintCellDetailPanelBody() {
     })
   }
 
-  const pathName = pathEntry?.pathName.trim() ?? ''
-  const scenarioName = selection.scenarioName.trim()
-  const phaseName = selection.phaseName?.trim() ?? ''
-  const hasPath = Boolean(pathName && pathEntry)
-  const hasScenario = Boolean(scenarioName)
-  const stepCrumbLabel = `Step ${selection.stepIndex + 1}`
-
   const cellBreadcrumb = (
-    <Breadcrumb className="min-w-0">
-      <BreadcrumbList className="flex-nowrap gap-0.5 text-xs text-muted-foreground">
-        {phaseName ? (
-          <>
-            <BreadcrumbItem className="min-w-0">
-              <span className="block max-w-[5.5rem] truncate font-normal">
-                {phaseName}
-              </span>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator className="[&>svg]:size-3" />
-          </>
-        ) : null}
-        {hasScenario ? (
-          <>
-            <BreadcrumbItem className="shrink-0">
-              <span title={scenarioName} className="cursor-default">
-                <BreadcrumbEllipsis className="size-4 text-muted-foreground [&>svg]:size-3.5" />
-                <span className="sr-only">{scenarioName}</span>
-              </span>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator className="shrink-0 [&>svg]:size-3" />
-          </>
-        ) : null}
-        {hasPath ? (
-          <>
-            <BreadcrumbItem className="min-w-0">
-              <span className="block max-w-[5.5rem] truncate font-normal">
-                {pathName}
-              </span>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator className="shrink-0 [&>svg]:size-3" />
-          </>
-        ) : null}
-        <BreadcrumbItem className="min-w-0">
-          <BreadcrumbPage className="truncate font-medium tracking-tight text-foreground">
-            {stepCrumbLabel}
-          </BreadcrumbPage>
-        </BreadcrumbItem>
-      </BreadcrumbList>
-    </Breadcrumb>
+    <CellDetailBreadcrumb selection={selection} pathEntry={pathEntry} />
   )
 
 
@@ -640,82 +528,17 @@ function BlueprintCellDetailPanelBody() {
                   onDone={clearSelection}
                 />
               </div>
-              <Tabs
-                value={activeTab}
-                onValueChange={(value) => setActiveTab(value as PanelTab)}
-                className="gap-0"
-              >
-                <TabsList
-                  variant="line"
-                  className="h-auto w-full justify-start gap-4 rounded-none border-b border-muted px-4 pb-0"
-                >
-                  {PANEL_TABS.map(({ value, label, icon: TabIcon }) => (
-                    <TabsTrigger
-                      key={value}
-                      value={value}
-                      className="h-auto flex-none gap-1.5 rounded-none px-0 pb-2 pt-0 text-xs font-normal text-tertiary-foreground hover:text-muted-foreground data-active:text-foreground after:bottom-[-1px] after:bg-foreground/70"
-                    >
-                      <TabIcon className="size-3" aria-hidden />
-                      {label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-                {/*
-                  Reserved height: the three tabs have very different
-                  content lengths, and without a floor the panel jumped a
-                  couple of hundred pixels on every switch. Cheaper and
-                  steadier than easing the height.
-                */}
-                <div className="flex min-h-56 flex-col gap-5 px-4 pt-4 pb-4">
-                  {activeTab === 'dependencies' ? (
-                    <>
-                      <CellDependencySections
-                        // Keyed on the cell, so the row whose note field is
-                        // open does not carry over to the next cell.
-                        key={resolvedCellId ?? 'no-cell'}
-                        connections={connections}
-                        otherTech={otherTechEntries}
-                        selectedLaneRowPosition={selectedLaneRowPosition}
-                        editing={dependencyEditing}
-                        onCellSelect={handleConnectionSelect}
-                        onTechSelect={handleTechSelect}
-                      />
-                      {canEdit && dependencySource ? (
-                        addingDependency ? (
-                          <CellDependencyEditor
-                            source={dependencySource}
-                            candidates={dependencyCandidates}
-                            existing={existingDependencies}
-                            onDone={() => setAddingDependency(false)}
-                          />
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="self-start px-2 text-muted-foreground hover:text-foreground"
-                            onClick={() => setAddingDependency(true)}
-                          >
-                            <Plus className="size-3" aria-hidden />
-                            Add dependency
-                          </Button>
-                        )
-                      ) : null}
-                    </>
-                  ) : null}
-                  {activeTab === 'evidence' ? (
-                    <CellEvidenceTab cellId={resolvedCellId} />
-                  ) : null}
-                  {activeTab === 'resources' ? (
-                    <CellResourcesTab
-                      cellId={resolvedCellId}
-                      resources={cellResourceList}
-                      touchpoints={cellTouchpointList}
-                      frame={selectedCell?.frame ?? null}
-                    />
-                  ) : null}
-                </div>
-              </Tabs>
+              <CellDetailTabs
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                facts={facts}
+                dependencyEditing={dependencyEditing}
+                addingDependency={addingDependency}
+                onAddingDependencyChange={setAddingDependency}
+                canAddDependency={canEdit}
+                onCellSelect={handleConnectionSelect}
+                onTechSelect={handleTechSelect}
+              />
             </div>
             {/* The editor portals Save/Cancel here — below the tabs, shared
                 footing for every property the panel holds. */}
