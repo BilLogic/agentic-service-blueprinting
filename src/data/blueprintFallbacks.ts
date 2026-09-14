@@ -15,7 +15,7 @@
  * answers as `sample.nav`, and the nav REPLACES rather than merges — so a
  * deployment whose nav rows are its own, over a registry that is this
  * template's, draws its phases and scenarios above an empty canvas in every
- * no-database build, and no walk over that build can see a board (#754). The
+ * no-database build, and no walk over that build can see a board. The
  * two halves of one offline board therefore arrive together: the nav on
  * `sample.nav`, the content behind it on `sample.blueprints`, as a
  * {@link SampleBlueprintRegistry} of exactly the shape the generated block
