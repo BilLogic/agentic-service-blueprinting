@@ -1,0 +1,128 @@
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { defineConfig, devices } from '@playwright/test'
+
+/**
+ * The browser render walk — this repository's, and a deployment's.
+ *
+ * Every other guard in this tree reads a file, a schema or a module graph.
+ * None of them opens the application in a browser, and the two findings
+ * recorded in `docs/adr/0017-large-component-splits-wait-for-an-end-to-end-
+ * round.md` are what that costs: a renamed at-rule whose whole block the
+ * browser dropped, and a lane chip that set `backgroundColor` to a role key
+ * rather than a colour. Both looked right in the source, both passed every
+ * check, and both were broken from the day they shipped.
+ *
+ * So this config drives Chromium over the built distribution, previewed, with
+ * no database configured — the bundled sample board — and walks every phase,
+ * every scenario, every path, and every layout the scenario offers.
+ *
+ * ── WHY THE CONFIG RESOLVES ITS OWN DIRECTORY ──────────────────────────────
+ *
+ * `render-walk/` is a published path (`docs/adr/0004-reference-paths-are-a-
+ * published-interface.md`, and `CONSUMER_IMPORTS` in
+ * `scripts/check-reference-paths.mjs` lists both files). A deployment that
+ * installs this package enrols by pointing Playwright at this file inside its
+ * own `node_modules` and running it from its own root:
+ *
+ *   npx playwright test -c \
+ *     node_modules/agentic-service-blueprinting/render-walk/playwright.config.ts
+ *
+ * `testDir` is THIS file's own directory rather than a root, because the spec
+ * that travels with this config is the subject wherever the config is read
+ * from — a `rootDir` would name the deployment's tree and find nothing.
+ *
+ * Nothing else is needed for that, and an earlier version of this comment said
+ * otherwise. Playwright 1.62's default `testIgnore` is the empty list
+ * (`node_modules/playwright/lib/common/index.js`, where the project's
+ * `testIgnore` falls back to `[]`), and the `node_modules` skip lives in the
+ * directory walk: `collectFiles` refuses to RECURSE INTO a child directory
+ * named `node_modules`, and never looks at the name of `testDir` itself. A
+ * `testDir` that sits inside `node_modules` is therefore walked normally, and
+ * the enrolled run collects this spec with no setting at all.
+ *
+ * ── WHAT THE PREVIEW SERVES ────────────────────────────────────────────────
+ *
+ * `cwd: process.cwd()` — the run's own root, not this file's package. A
+ * deployment's `npm run preview` serves the deployment's `dist`, so the walk
+ * reads ITS sample board rather than ours. The walk derives every phase,
+ * scenario and path from the rendered page for the same reason: importing
+ * `src/data/sampleBlueprint.ts` would hold every deployment to this
+ * repository's content.
+ *
+ * `reuseExistingServer` is false in both places. A preview left running from
+ * an earlier build serves an earlier `dist`, and a walk over a stale bundle is
+ * a green run that says nothing about the code in the working tree. With
+ * `--strictPort` beside it that makes a busy port an ABORT rather than a
+ * reuse: if something else already holds 4173, the run says so instead of
+ * quietly walking whatever that something is serving. `RENDER_WALK_PORT`
+ * moves the walk to a free one.
+ *
+ * The deployment's `preview` script has to accept `--port` and `--strictPort`,
+ * which Vite's own does; see `render-walk/README.md` § Enrolling a deployment.
+ */
+const HERE = fileURLToPath(new URL('.', import.meta.url))
+
+const PREVIEW_PORT = Number(process.env.RENDER_WALK_PORT || 4173)
+if (!Number.isInteger(PREVIEW_PORT) || PREVIEW_PORT < 1 || PREVIEW_PORT > 65535) {
+  throw new Error(
+    `render-walk: RENDER_WALK_PORT is not a port number: ${JSON.stringify(process.env.RENDER_WALK_PORT)}`,
+  )
+}
+const PREVIEW_URL = `http://localhost:${PREVIEW_PORT}`
+
+/**
+ * Everything the run writes, under the root it was started from — not under
+ * `node_modules`, where an enrolled deployment would never look for it and a
+ * reinstall would wipe it. `.gitignore` covers it here; CI uploads it whole.
+ */
+export const OUTPUT_DIR = join(process.cwd(), 'render-walk-output')
+
+/** One screenshot per view. The spec takes them; see `screenshot: 'off'`. */
+export const VIEW_SCREENSHOT_DIR = join(OUTPUT_DIR, 'views')
+
+export default defineConfig({
+  testDir: HERE,
+  outputDir: join(OUTPUT_DIR, 'test-results'),
+  // One walk, in order, in one browser. The views share a page and a console
+  // listener, and the address a console error appeared on is the whole report.
+  fullyParallel: false,
+  workers: 1,
+  retries: 0,
+  forbidOnly: Boolean(process.env.CI),
+  // The walk is one test over every view of the board, so its budget is the
+  // whole walk's rather than one navigation's.
+  timeout: 10 * 60 * 1000,
+  reporter: [['list']],
+  use: {
+    baseURL: PREVIEW_URL,
+    // A bounded wait per action. Unbounded, one control that never becomes
+    // clickable spends the whole walk's budget in a retry loop and the run
+    // reports a timeout rather than the control it was waiting on.
+    actionTimeout: 15 * 1000,
+    // The spec takes its own, one per view, under a name that states the
+    // address. Playwright's automatic capture would file them by test name,
+    // and there is one test.
+    screenshot: 'off',
+    trace: 'retain-on-failure',
+  },
+  projects: [
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        // Wider than the device default: a merged board with several paths
+        // has more columns than a 1280px viewport shows, and a screenshot
+        // nobody can read the right-hand edge of is half a screenshot.
+        viewport: { width: 1600, height: 1000 },
+      },
+    },
+  ],
+  webServer: {
+    command: `npm run preview -- --port ${PREVIEW_PORT} --strictPort`,
+    url: PREVIEW_URL,
+    cwd: process.cwd(),
+    reuseExistingServer: false,
+    timeout: 120 * 1000,
+  },
+})

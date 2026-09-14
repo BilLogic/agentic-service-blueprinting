@@ -35,6 +35,11 @@ skills/*/scripts/__pycache__/
 # for the sample blueprint's storyboard frames — the cover imports its own.
 public/cover/
 
+# What the browser render walk writes: one screenshot per view of the sample
+# board, plus Playwright's own artifacts. `render-walk/` itself is tracked —
+# it is a published path a deployment runs by name; only its output is not.
+render-walk-output/
+
 # Agent scratch files. These leaked into the 0.2.2 package twice (9b3adc2,
 # then again by 695cd12) — every file here ships to every adopter, so the
 # ignore is the fix, not the deletion.

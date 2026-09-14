@@ -161,6 +161,97 @@ jobs:
       # document is not what its sources render.
       - run: npm run check:interface-map
 
+  # The application, opened in a browser.
+  #
+  # Every check in the job above reads a file, a schema or a module graph. None
+  # of them renders anything, and docs/adr/0017-large-component-splits-wait-for
+  # -an-end-to-end-round.md records what that costs: a renamed at-rule whose
+  # whole block the browser dropped, and a lane chip that set `backgroundColor`
+  # to a role key rather than a colour. Both shipped past a green build.
+  #
+  # So this job builds the distribution, previews it with no database
+  # configured — the bundled sample board — and walks every phase, every
+  # scenario, every path and both layouts, failing on any console error. It is
+  # its own job because it is the only one that needs a browser, and a job that
+  # installs Chromium should not be in the way of a check that reads a file.
+  render-walk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # The browser, cached on the version that decides where it is looked for.
+      # Playwright resolves its browsers by a build number tied to the package
+      # version, so a key on the runner's OS alone would serve a Chromium the
+      # installed Playwright will not use, and the install step below would
+      # download another one on every run. The version is read from the lock
+      # file rather than from package.json: the lock is what `npm ci` installed.
+      - name: The Playwright version this lock file installs
+        run: |
+          echo "PLAYWRIGHT_VERSION=$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")" \
+            >> "$GITHUB_ENV"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ env.PLAYWRIGHT_VERSION }}
+      # Chromium only — one engine, because this walk is about whether the app
+      # renders at all, not about engine differences. `--with-deps` is the
+      # system libraries the runner lacks, and it runs apt on every run: the
+      # cache saves the browser DOWNLOAD, not the dependency install.
+      - run: npx playwright install --with-deps chromium
+
+      # NO DATABASE. `isSupabaseConfigured()` reads VITE_SUPABASE_URL at BUILD
+      # time and Vite bakes the value into dist, so the mode the walk runs in
+      # is decided here and nowhere else. Empty, explicitly, rather than merely
+      # unset: this states the intent where a reader can see it, and it is the
+      # same line a deployment copies.
+      - name: Build the distribution in no-database mode
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ''
+          VITE_SUPABASE_ANON_KEY: ''
+
+      # The guard, watched failing, BEFORE it is trusted. A walk that reports
+      # no console errors looks identical whether the app is clean or the
+      # listener was never wired up — so one error is injected into every page
+      # and a zero exit is the failure.
+      - name: A console error fails the walk
+        run: |
+          set -euo pipefail
+          if RENDER_WALK_INJECT_CONSOLE_ERROR=1 npm run check:render-walk; then
+            echo "FAIL: an injected console error did not fail the walk" >&2
+            exit 1
+          fi
+          echo "ok: the walk refused a page that logged an error"
+
+      - name: Walk every view of the sample board
+        run: npm run check:render-walk
+
+      # One screenshot per view, kept whichever way the walk went. The failures
+      # this job CANNOT assert — a chip that lost its tint, a colour that is
+      # wrong rather than absent — are read off these by a person, so they are
+      # the deliverable of a green run as much as of a red one. `if: always()`
+      # because a red walk is when they are read most, and it uploads whatever
+      # the two runs left behind, the failing run's trace included.
+      #
+      # `warn` rather than `error`, because `if: always()` also runs this after
+      # a failed BUILD, which leaves no output directory at all. `error` there
+      # turns one real failure into two red steps and points the reader at the
+      # upload rather than at the build that never produced anything to upload.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: render-walk-screenshots
+          path: render-walk-output/**
+          if-no-files-found: warn
+
   # The portability position, executed.
   #
   # The partition between the portable Postgres core and the Supabase recipe is
