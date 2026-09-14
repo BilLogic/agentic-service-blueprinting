@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { createPath, duplicatePath } from '@/lib/authoringRpc'
 import { PATH_KIND_LABELS } from '@/lib/pathKindTheme'
 import { errorMessage } from '@/lib/utils'
@@ -94,7 +93,6 @@ export function CreateVersionDialog({
               pathKind: draft.pathKind,
               laneSourcePathId: draft.sourcePathId,
             })
-      invalidateStructure()
       setDraft(EMPTY)
       onOpenChange(false)
       onCreated?.(pathId)

@@ -45,8 +45,9 @@ import {
   type EvidenceUpdate,
 } from '@/lib/evidenceMutations'
 import { removeSlideUploadObjects } from '@/lib/illustrationUpload'
-import { restoreSlideImageSet, type SlideImageMemberInput } from '@/lib/sliceMutations'
+import { restoreSlideImageSet, sliceWritten, type SlideImageMemberInput } from '@/lib/sliceMutations'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
+import { invalidateAfterRpc } from '@/lib/authoringRpc'
 import { updateFinding, type FindingUpdate } from '@/lib/findingMutations'
 import type { Database } from '@/types/database'
 
@@ -387,6 +388,7 @@ export async function executeRevert(
       for (const slide of dropped) {
         await removeSlideUploadObjects(client, sliceId, slide.id)
       }
+      sliceWritten(sliceId)
       return
     }
     case 'delete_slice_row': {
@@ -405,6 +407,7 @@ export async function executeRevert(
         .select('id')
       if (error) throw toAuthoringError(error)
       requireRowsWritten(data, 'slice')
+      sliceWritten(sliceId)
       return
     }
     case 'restore_slide_images': {
@@ -443,6 +446,7 @@ export async function executeRevert(
         .select('id')
       if (error) throw toAuthoringError(error)
       requireRowsWritten(data, 'slice')
+      sliceWritten(sliceId)
       return
     }
     case 'update_finding': {
@@ -482,14 +486,18 @@ export async function executeRevert(
         .eq('perceived_owner', from)
         .in('id', ids as string[])
       if (perceivedUpdate.error) throw toAuthoringError(perceivedUpdate.error)
+      invalidateAfterRpc(revert.fn, revert.args)
       return
     }
     default: {
       // Authoring RPCs called directly never pass through `call()`, so
-      // nothing here is recorded — same effect as record:false above.
+      // nothing here is recorded — same effect as record:false above. What
+      // the inverse changed on screen is refetched the way the forward
+      // write's was, from the same table.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- same seam as authoringRpc.call()
       const { error } = await (client.rpc as any)(revert.fn, revert.args)
       if (error) throw toAuthoringError(error)
+      invalidateAfterRpc(revert.fn, revert.args)
     }
   }
 }

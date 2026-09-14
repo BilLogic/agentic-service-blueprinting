@@ -4,6 +4,8 @@ import { recordChange } from '@/lib/authoringSession'
 import { toAuthoringError } from '@/lib/authoringErrors'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
 import type { Database } from '@/types/database'
+import { invalidateQueries } from '@/lib/queryClient'
+import { queryKeys } from '@/lib/queryKeys'
 
 type Client = SupabaseClient<Database>
 
@@ -31,6 +33,8 @@ export async function updateScenarioSummary(
   if (error) throw toAuthoringError(error)
   requireRowsWritten(data, 'scenario')
 
+  invalidateQueries(queryKeys.scenarioSpec.of(scenarioId))
+  invalidateQueries(queryKeys.servicePhases.prefix)
   if (options.record !== false) {
     recordChange(
       'update_scenario_spec',
@@ -78,6 +82,9 @@ export async function updatePathSpec(
   if (error) throw toAuthoringError(error)
   requireRowsWritten(data, 'path')
 
+  // The path's scenario is not in hand; every scenario spec is cheap.
+  invalidateQueries(queryKeys.scenarioSpec.prefix)
+  invalidateQueries(queryKeys.servicePhases.prefix)
   if (options.record !== false) {
     recordChange(
       'update_path_spec',

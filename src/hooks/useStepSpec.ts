@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
 import { shouldUseStoryboardContent } from '@/lib/blueprintLayout'
+import { queryKeys } from '@/lib/queryKeys'
 
 export type StepSpec = {
   id: string
@@ -115,7 +116,7 @@ export function useStepSpec(stepId: string | null): QueryResult<StepSpec | null>
   const fallback = useCallback(() => null, [])
 
   return useSupabaseQuery<StepSpec | null>(
-    `step-spec:${stepId ?? 'none'}`,
+    queryKeys.stepSpec.of(stepId ?? 'none'),
     async (client, signal) => {
       if (!stepId) return null
 

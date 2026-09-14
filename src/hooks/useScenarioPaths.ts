@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery'
 import type { ExistingVersion } from '@/components/editor/CreateVersionDialog'
+import { queryKeys } from '@/lib/queryKeys'
 
 export type ScenarioPaths = {
   scenarioName: string
@@ -18,7 +19,7 @@ export type ScenarioPaths = {
 export function useScenarioPaths(scenarioId: string | null) {
   const fallback = useCallback((): ScenarioPaths | null => null, [])
   return useSupabaseQuery<ScenarioPaths>(
-    scenarioId ? `scenario-paths:${scenarioId}` : null,
+    scenarioId ? queryKeys.scenarioPaths.of(scenarioId) : null,
     async (client, signal) => {
       const { data, error } = await client
         .from('paths')

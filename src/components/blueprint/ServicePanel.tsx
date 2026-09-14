@@ -15,7 +15,6 @@ import { PanelTextareaField } from '@/components/blueprint/PanelTextareaField'
 import { cn } from '@/lib/utils'
 import { useServiceSpec, type ServiceSpec } from '@/hooks/useServiceSpec'
 import { usePanelFooterHost } from '@/hooks/usePanelFooterHost'
-import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import {
@@ -199,12 +198,6 @@ function ServicePanelBody({
           baseline.entityExamples,
         )
       }
-      invalidateQueries(`service-spec:first`)
-      // The examples live under their own key, which is a different prefix —
-      // `service-spec:` does not match `service-entity-examples:`. The board's
-      // entity popovers read that one, so without this they keep offering the
-      // old examples until a reload.
-      invalidateQueries('service-entity-examples')
       onDone()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'That did not save.')

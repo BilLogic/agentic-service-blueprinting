@@ -11,10 +11,6 @@ vi.mock('@/contexts/SupabaseProvider', () => ({
 }))
 let canvasMode = 'design'
 vi.mock('@/contexts/canvasModeContext', () => ({ useCanvasModeValue: () => canvasMode }))
-vi.mock('@/hooks/useSupabaseQuery', () => ({
-  invalidateQueries: () => {},
-  invalidateStructure: () => {},
-}))
 vi.mock('@/lib/authoringSession', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/authoringSession')>()),
   recordChange: () => {},

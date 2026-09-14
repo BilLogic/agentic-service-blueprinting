@@ -20,7 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { OptionSelect } from '@/components/blueprint/OptionSelect'
 import { Field, PANEL_TEXTAREA_CLASS } from '@/components/blueprint/panelShell'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { invalidateEvidence, useEvidence } from '@/hooks/useEvidence'
+import { useEvidence } from '@/hooks/useEvidence'
 import { addEvidence } from '@/lib/evidenceMutations'
 import { linkedTextSegments } from '@/lib/linkedText'
 import { resolveActiveServiceId } from '@/lib/service'
@@ -112,11 +112,9 @@ function EvidenceRow({ row }: { row: Evidence }) {
 function AddSourceForm({
   client,
   cellId,
-  onAdded,
 }: {
   client: SupabaseClient<Database>
   cellId: string
-  onAdded: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [kind, setKind] = useState<EvidenceKind>('interview')
@@ -165,7 +163,6 @@ function AddSourceForm({
       setOpen(false)
       setTitle('')
       setNote('')
-      onAdded()
     } catch (submitError) {
       setError(
         submitError instanceof Error
@@ -330,11 +327,7 @@ function EvidenceList({
             ))}
           </ul>
         ) : null}
-        <AddSourceForm
-          client={client}
-          cellId={cellId}
-          onAdded={() => invalidateEvidence(cellId)}
-        />
+        <AddSourceForm client={client} cellId={cellId} />
       </div>
     </DeferredSkeleton>
   )

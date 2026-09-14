@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
+import { queryKeys } from '@/lib/queryKeys'
 
 /**
  * The owner vocabulary: every distinct value currently used by any cell's
@@ -14,7 +15,7 @@ export function useOwnerTags(): QueryResult<string[]> {
   const fallback = useCallback(() => [], [])
 
   return useSupabaseQuery<string[]>(
-    'owner-tags',
+    queryKeys.ownerTags,
     async (client, signal) => {
       const { data, error } = await client
         .from('cells')

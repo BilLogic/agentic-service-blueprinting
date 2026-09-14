@@ -3,8 +3,15 @@ import type { Database } from '@/types/database'
 import { recordChange } from '@/lib/authoringSession'
 import { toAuthoringError } from '@/lib/authoringErrors'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
+import { invalidateQueries } from '@/lib/queryClient'
+import { queryKeys } from '@/lib/queryKeys'
 
 type Client = SupabaseClient<Database>
+
+/** The cell's evidence list, or every cell's when the row's cell is unknown. */
+function evidenceWritten(cellId: string | null | undefined): void {
+  invalidateQueries(cellId ? queryKeys.evidence.of(cellId) : queryKeys.evidence.prefix)
+}
 
 type EvidenceRow = Database['public']['Tables']['evidence']['Row']
 type EvidenceInsert = Database['public']['Tables']['evidence']['Insert']
@@ -78,6 +85,7 @@ export async function addEvidence(
     .single()
   if (error) throw toAuthoringError(error)
 
+  evidenceWritten(draft.cellId)
   if (options.record !== false) {
     recordChange(
       'add_evidence',
@@ -110,7 +118,7 @@ export async function updateEvidence(
 ): Promise<void> {
   const { data: before, error: readError } = await client
     .from('evidence')
-    .select('id, kind, title, note')
+    .select('id, cell_id, kind, title, note')
     .eq('id', evidenceId)
     .maybeSingle()
   if (readError) throw toAuthoringError(readError)
@@ -130,6 +138,7 @@ export async function updateEvidence(
   if (error) throw toAuthoringError(error)
   requireRowsWritten(data, 'evidence')
 
+  evidenceWritten(before.cell_id)
   if (options.record !== false) {
     recordChange(
       'update_evidence',
@@ -163,6 +172,8 @@ export async function deleteEvidence(
 ): Promise<void> {
   const { error } = await client.from('evidence').delete().eq('id', evidenceId)
   if (error) throw toAuthoringError(error)
+  // The row is known only through `previous`; without it, every cell's list.
+  evidenceWritten(previous?.cell_id)
 
   if (options.record !== false) {
     recordChange(
@@ -170,8 +181,6 @@ export async function deleteEvidence(
       {
         evidence_id: evidenceId,
         title: previous?.title ?? '',
-        // The revert path invalidates this cell's evidence query — without
-        // it the delete side of the undo pair is uninvalidatable.
         cell_id: previous?.cell_id ?? null,
       },
       previous
@@ -190,4 +199,5 @@ export async function restoreEvidenceRow(
     .from('evidence')
     .insert(row as EvidenceInsert)
   if (error) throw toAuthoringError(error)
+  evidenceWritten(row.cell_id)
 }

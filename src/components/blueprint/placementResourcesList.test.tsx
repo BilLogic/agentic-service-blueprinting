@@ -9,10 +9,6 @@ const rpc = vi.fn()
 vi.mock('@/contexts/SupabaseProvider', () => ({
   useSupabase: () => ({ client: { rpc }, canWrite: true }),
 }))
-vi.mock('@/hooks/useSupabaseQuery', () => ({
-  invalidateQueries: () => {},
-  invalidateStructure: () => {},
-}))
 const uploadAttachment = vi.fn()
 vi.mock('@/lib/attachmentUpload', () => ({
   uploadAttachment: (...args: unknown[]) => uploadAttachment(...args),

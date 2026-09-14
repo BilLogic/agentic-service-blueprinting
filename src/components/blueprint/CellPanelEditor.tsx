@@ -12,12 +12,10 @@ import {
   PANEL_TEXTAREA_CLASS,
 } from '@/components/blueprint/panelShell'
 import { usePanelFooterHost } from '@/hooks/usePanelFooterHost'
-import { invalidateCanvasBlueprintsForPath } from '@/hooks/useCanvasBlueprints'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useBlueprintCellDetailOptional } from '@/contexts/BlueprintCellDetailContext'
 import { useBlueprintCell } from '@/hooks/useBlueprintCell'
 import { useValueAudiences } from '@/hooks/useValueAudiences'
-import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { useNameOnlyPlacements } from '@/hooks/useRegistryTouchpoints'
 import { upsertCell } from '@/lib/authoringRpc'
 import {
@@ -482,21 +480,8 @@ function CellPanelEditorForm({
         )
       }
 
-      invalidateQueries('service-phases')
-      // Content edit: only the edited path's scenario is stale.
-      // Existing-cell edits mount with draft undefined and don't know their
-      // path, so they fall back to invalidating every scenario's blueprint.
-      if (draft) {
-        invalidateCanvasBlueprintsForPath(draft.pathId)
-      } else {
-        invalidateQueries('canvas-blueprints')
-      }
-      invalidateQueries(`cell-content:${targetId}`)
-      invalidateQueries(`cell-spec:${targetId}`)
-      invalidateQueries('owner-tags')
-      // A save can introduce a new value audience; the autocomplete list
-      // caches under its own key and never refetches on its own.
-      invalidateQueries('value-audiences')
+      // Each write above refetched what it changed — the grid, the board
+      // holding the cell, the owner and audience vocabularies.
       if (aliveRef.current) onDone()
     } catch (saveError) {
       if (aliveRef.current) {
@@ -531,16 +516,6 @@ function CellPanelEditorForm({
               placement={placement}
               cellId={cellId}
               shown={parseCellContentItems(form.content)}
-              onWritten={() => {
-                invalidateQueries(`name-only-placements:${cellId}`)
-                invalidateQueries(`registry-touchpoints:${cellId}`)
-                invalidateQueries(`cell-content:${cellId}`)
-                invalidateQueries('service-phases')
-                if (draft) invalidateCanvasBlueprintsForPath(draft.pathId)
-                // An existing cell's panel does not know its path, so every
-                // board query refetches — the way the editor's own save does.
-                else invalidateQueries('canvas-blueprints')
-              }}
             />
           ))
         : null}

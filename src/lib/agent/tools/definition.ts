@@ -68,9 +68,9 @@ export type ToolUi = {
  * The agent session a tool call belongs to. `attributed` runs a piece of
  * work as this session's on the authoring ledger — the ✦ badge, and how a
  * scoped revert knows which entries are its own. A tool never sets
- * attribution itself. Freshness after the work is the writer's burden under
- * the decision that reads never refetch on their own; until each write
- * module carries its own, the live session settles it here.
+ * attribution itself, and never refetches: the write module it calls
+ * invalidates what it changed, under the decision that reads never refetch
+ * on their own.
  */
 export type ToolSession = {
   id: string

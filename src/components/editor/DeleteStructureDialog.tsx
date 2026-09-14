@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { deletePath, deleteScenario } from '@/lib/authoringRpc'
 import { deleteSlice } from '@/lib/sliceMutations'
 import {
@@ -149,7 +148,6 @@ export function DeleteStructureDialog({
             `This dialog does not delete a ${target.kind} — that is done from its own affordance.`,
           )
       }
-      invalidateStructure()
       onOpenChange(false)
       onDeleted?.(archiveId)
     } catch (deleteError) {

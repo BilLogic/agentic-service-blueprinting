@@ -349,8 +349,8 @@ const DESCRIBERS: Record<WriteFn, (entry: ChangeEntry) => string> = {
     `Showed a scenario ${entry.args.layout === 'merged' ? 'merged' : 'stacked'}`,
   rename_path: (entry) => `Renamed a path${renameTo(entry)}`,
   rename_owner_tag: (entry) => {
-    const from = typeof entry.args.from === 'string' ? entry.args.from : ''
-    const to = typeof entry.args.to === 'string' ? entry.args.to : ''
+    const from = typeof entry.args.from_name === 'string' ? entry.args.from_name : ''
+    const to = typeof entry.args.to_name === 'string' ? entry.args.to_name : ''
     return from && to
       ? `Renamed owner tag “${from}” to “${to}”`
       : 'Renamed an owner tag'

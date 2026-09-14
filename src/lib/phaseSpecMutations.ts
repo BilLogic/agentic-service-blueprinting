@@ -3,6 +3,8 @@ import { recordChange } from '@/lib/authoringSession'
 import { toAuthoringError } from '@/lib/authoringErrors'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
 import type { Database } from '@/types/database'
+import { invalidateQueries } from '@/lib/queryClient'
+import { queryKeys } from '@/lib/queryKeys'
 
 type Client = SupabaseClient<Database>
 
@@ -48,6 +50,9 @@ export async function updatePhaseSpec(
   if (error) throw toAuthoringError(error)
   requireRowsWritten(data, 'phase')
 
+  invalidateQueries(queryKeys.phaseSpec.of(phaseId))
+  // The summary also feeds the overview and the sticky header.
+  invalidateQueries(queryKeys.servicePhases.prefix)
   if (options.record !== false) {
     recordChange(
       'update_phase_spec',

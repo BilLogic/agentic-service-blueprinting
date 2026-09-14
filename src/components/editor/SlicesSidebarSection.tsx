@@ -25,7 +25,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { duplicateSlice, updateSliceMetaFromSeed } from '@/lib/sliceMutations'
 import { isSliceKind } from '@/lib/sliceValidation'
 import { errorMessage } from '@/lib/utils'
@@ -211,7 +210,6 @@ export function SlicesSidebarSection() {
                     if (!client) return
                     void duplicateSlice(client, slice.id)
                       .then((copy) => {
-                        invalidateQueries('slices')
                         openTab({ kind: 'slice', sliceId: copy.id })
                       })
                       .catch((duplicateError) => {
@@ -312,7 +310,6 @@ export function RenameSliceDialog({
     }
     setBusy(false)
     if (outcome.status === 'ok') {
-      invalidateQueries('slices')
       onOpenChange(false)
       return
     }

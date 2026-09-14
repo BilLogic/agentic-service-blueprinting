@@ -20,7 +20,6 @@ import { StakeholderSelect } from '@/components/blueprint/StakeholderSelect'
 import { useLaneSpec, type LaneSpec } from '@/hooks/useLaneSpec'
 import { useOwnerTags } from '@/hooks/useOwnerTags'
 import { usePanelFooterHost } from '@/hooks/usePanelFooterHost'
-import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { updateLaneSpec } from '@/lib/laneSpecMutations'
@@ -150,14 +149,6 @@ function LanePanelBody({
     setError(null)
     try {
       await updateLaneSpec(client, lane.siblingLaneIds, form, baseline)
-      // The save writes every SIBLING lane — one row per scenario carrying this
-      // label — so every sibling's cached spec is now stale, not just this
-      // one's. Invalidating the id alone left a sibling panel serving rows from
-      // before the write (`staleTime` is Infinity, so it would never notice),
-      // and the next save from that panel wrote the stale owner_team back over
-      // all of them. The whole prefix is the honest scope: the write was
-      // prefix-wide.
-      invalidateQueries('lane-spec:')
       onDone()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'That did not save.')

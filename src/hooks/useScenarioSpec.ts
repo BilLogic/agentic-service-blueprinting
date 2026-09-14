@@ -6,6 +6,7 @@ import {
   DEFAULT_ENTITY_STATUS,
   type EntityStatus,
 } from '@/lib/entityStatus'
+import { queryKeys } from '@/lib/queryKeys'
 
 export type ScenarioPathSpec = {
   id: string
@@ -41,7 +42,7 @@ export function useScenarioSpec(
   const fallback = useCallback(() => null, [])
 
   return useSupabaseQuery<ScenarioSpec | null>(
-    `scenario-spec:${scenarioId ?? 'none'}`,
+    queryKeys.scenarioSpec.of(scenarioId ?? 'none'),
     async (client, signal) => {
       if (!scenarioId) return null
 

@@ -314,7 +314,6 @@ export function ResourcesList({
   aside,
   onSave,
   onFeature,
-  onWritten,
   frame = null,
   onSetFeaturedImage,
 }: {
@@ -332,8 +331,6 @@ export function ResourcesList({
   onSave: (rows: ResourceListDraft[]) => Promise<void>
   /** The one-row write: lead with this resource, or stop leading with it. */
   onFeature: (resourceId: string, featured: boolean) => Promise<void>
-  /** After any write landed: the caller refetches what it shows. */
-  onWritten: () => void
   /** The cell's frame, which is its featured image. */
   frame?: string | null
   /** The frame write: make this picture the cell's featured image. */
@@ -415,7 +412,6 @@ export function ResourcesList({
     setError(null)
     try {
       await onSave(sent(rows))
-      onWritten()
     } catch (saveError) {
       setError(errorMessage(saveError))
     } finally {
@@ -429,7 +425,6 @@ export function ResourcesList({
     setError(null)
     try {
       await onFeature(row.id, featured)
-      onWritten()
     } catch (featureError) {
       setError(errorMessage(featureError))
     } finally {
@@ -443,7 +438,6 @@ export function ResourcesList({
     setError(null)
     try {
       await onSetFeaturedImage(row.url)
-      onWritten()
     } catch (writeError) {
       setError(errorMessage(writeError))
     } finally {

@@ -406,6 +406,13 @@ for this session.
 inactive service and no flag that marks one; a reader who takes it as a
 filter over many gets a plural where the code means a singular.
 
+**query key** — the name a read caches under, built in one place
+(`queryKeys`) that the read hook and the write both use. A **family** is a
+prefix and the keys under it (`slice:` and one slice's `slice:<id>`); the
+**structural set** is the families a phase, scenario, path, step, lane or
+cell write can change. A key is invalidated by the mutation module that
+changed its rows (ADR 0016), never by a panel or the agent.
+
 ## The type system
 
 Eight words for how text is sized, weighted and faced. They are set out

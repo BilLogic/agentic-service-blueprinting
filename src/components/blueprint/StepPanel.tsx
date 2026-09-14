@@ -15,8 +15,6 @@ import { ZoomableImage } from '@/components/blueprint/ZoomableImage'
 import { PANEL_TERMS } from '@/lib/panelTerms'
 import { useStepSpec, type StepSpec } from '@/hooks/useStepSpec'
 import { usePanelFooterHost } from '@/hooks/usePanelFooterHost'
-import { invalidateQueries } from '@/hooks/useSupabaseQuery'
-import { invalidateCanvasBlueprintsForScenario } from '@/hooks/useCanvasBlueprints'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { updateStepSummary } from '@/lib/stepSpecMutations'
@@ -90,10 +88,6 @@ function StepPanelBody({
     setError(null)
     try {
       await updateStepSummary(client, step.id, summary, baseline)
-      invalidateQueries(`step-spec:${step.id}`)
-      // The summary is ALSO the storyboard caption, so the grid holding it is
-      // now stale — this is the one panel whose save changes the canvas.
-      invalidateCanvasBlueprintsForScenario(step.scenarioId)
       onDone()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'That did not save.')

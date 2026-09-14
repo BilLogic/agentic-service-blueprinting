@@ -77,11 +77,6 @@ vi.mock('@/lib/sliceMutations', () => ({
     createSlice(client, input),
 }))
 
-vi.mock('@/hooks/useSupabaseQuery', () => ({
-  invalidateQueries: () => {},
-  invalidateStructure: () => {},
-}))
-
 vi.mock('@/contexts/viewStateStore', () => ({
   useViewState: () => ({ openTab: () => {}, activeKey: null, activateTab: () => {} }),
 }))

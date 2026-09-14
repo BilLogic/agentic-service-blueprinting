@@ -3,6 +3,7 @@ import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
 import { SAMPLE_ENTITY_EXAMPLES } from '@/data/sampleBlueprint'
 import type { EntityExamples } from '@/lib/panelTerms'
 import { awaitOrAbort, findActiveServiceId } from '@/lib/service'
+import { FIRST_SERVICE, queryKeys } from '@/lib/queryKeys'
 
 /**
  * The active service's six per-kind examples, read once for the whole board.
@@ -29,7 +30,7 @@ export function useServiceEntityExamples(): QueryResult<EntityExamples> {
   )
 
   return useSupabaseQuery<EntityExamples>(
-    'service-entity-examples:first',
+    queryKeys.serviceEntityExamples.of(FIRST_SERVICE),
     async (client, signal) => {
       const serviceId = await awaitOrAbort(findActiveServiceId(client), signal)
       if (!serviceId) return {}

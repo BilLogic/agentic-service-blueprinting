@@ -5,7 +5,6 @@ import { ZoomableImage } from '@/components/blueprint/ZoomableImage'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { Button } from '@/components/ui/button'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import { useSliceBlueprint } from '@/hooks/useSliceBlueprint'
 import {
   ALLOWED_ILLUSTRATION_TYPES,
@@ -100,11 +99,6 @@ export function SlideImagesField({
     .filter((image) => image.src.length > 0)
     .map((image) => ({ src: image.src, alt: '' }))
 
-  const refresh = () => {
-    invalidateQueries(`slice:${sliceId}`)
-    invalidateQueries('slices')
-  }
-
   /**
    * Persist an explicit image set. Every editor gesture leaves the slide
    * authored rather than returning it to the untouched default.
@@ -119,7 +113,6 @@ export function SlideImagesField({
         showsAllImages: false,
         members: withPositions(ordered),
       })
-      refresh()
     } catch (writeError) {
       console.error('[slide-images] write failed:', errorMessage(writeError))
       setProblem(errorMessage(writeError))

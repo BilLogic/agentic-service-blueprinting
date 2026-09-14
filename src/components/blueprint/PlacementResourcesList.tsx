@@ -3,7 +3,6 @@ import {
   type ResourceListDraft,
 } from '@/components/blueprint/ResourcesList'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { invalidateQueries, invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { setCellFeaturedImage } from '@/lib/authoringRpc'
 import {
   setFeaturedResource,
@@ -25,15 +24,12 @@ export function PlacementResourcesList({
   placement,
   resources,
   frame = null,
-  onWritten,
 }: {
   placement: { id: string; cellId: string | null; name: string }
   /** The cell's frame, which is its featured image. */
   frame?: string | null
   /** The cell's resources — this list keeps the placement's. */
   resources: readonly CellResource[]
-  /** After any write landed: the caller refetches what it shows. */
-  onWritten?: () => void
 }) {
   const { client } = useSupabase()
 
@@ -54,8 +50,6 @@ export function PlacementResourcesList({
   const setFeaturedImage = async (url: string) => {
     if (!client || !placement.cellId) return
     await setCellFeaturedImage(client, { cellId: placement.cellId, imageUrl: url })
-    invalidateStructure()
-    invalidateQueries('step-spec:')
   }
 
   return (
@@ -73,12 +67,6 @@ export function PlacementResourcesList({
         onFeature={feature}
         frame={frame}
         onSetFeaturedImage={placement.cellId ? setFeaturedImage : undefined}
-        onWritten={() => {
-          invalidateQueries('service-phases')
-          invalidateQueries('canvas-blueprints')
-          if (placement.cellId) invalidateQueries(`cell-content:${placement.cellId}`)
-          onWritten?.()
-        }}
       />
     </div>
   )

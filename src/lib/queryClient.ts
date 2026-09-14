@@ -1,5 +1,6 @@
 import { QueryClient } from '@tanstack/react-query'
 import { SupabaseTimeoutError } from '@/lib/supabaseFetchTimeout'
+import { STRUCTURE_KEYS, queryKeys } from '@/lib/queryKeys'
 
 /**
  * How long an unused response is kept before it is collected. Long enough
@@ -60,12 +61,13 @@ export const queryClient = new QueryClient({
 
 /**
  * Drop every cached query whose key starts with `prefix` and refetch the
- * mounted ones (e.g. `invalidateQueries('slices')` after deleting a slice).
- * Mounted hooks keep serving their last value while the refetch is in flight.
+ * mounted ones. Mounted hooks keep serving their last value while the
+ * refetch is in flight. Prefixes come from `queryKeys` — a family's `prefix`
+ * or one member's key — and the writer that changed the rows is the caller:
+ * a mutation module, never the panel or the tool that asked it to.
  *
  * Keys are single-element string arrays, so this is a prefix match on element
- * zero rather than TanStack's usual structural key matching — it preserves the
- * `'slice:'`-style namespacing the call sites already use.
+ * zero rather than TanStack's usual structural key matching.
  */
 export function invalidateQueries(prefix: string): void {
   void queryClient.invalidateQueries({
@@ -73,31 +75,67 @@ export function invalidateQueries(prefix: string): void {
   })
 }
 
-/**
- * Every cache a structural write can invalidate — phases, scenarios, paths,
- * lanes, cells, arrows, slices.
- *
- * One list rather than a hand-rolled subset at each mutation site. The subsets
- * had already drifted five ways: the delete dialog cleared six keys, the
- * rename and create-version paths four, the duplicate menu three, and the
- * session sheet's revert two — so reverting a `duplicate_path` left a ghost
- * row in the paths catalog whose id 404s, and `staleTime: Infinity` means a
- * missed key stays stale until a reload rather than until the next refetch.
- *
- * Over-invalidating is a refetch of data that is already correct; missing a
- * key is a screen that lies. Prefix matches are no-ops for the kinds they do
- * not apply to, so the whole set is cheap enough to always send.
- */
-const STRUCTURE_KEYS = [
-  'service-phases',
-  'canvas-blueprints',
-  'scenario-paths',
-  'lane-sources',
-  'slices',
-  // A slice's own detail is keyed separately, and a cascade can empty it.
-  'slice:',
-] as const
-
+/** Every cache a structural write can change — see `STRUCTURE_KEYS`. */
 export function invalidateStructure(): void {
   for (const prefix of STRUCTURE_KEYS) invalidateQueries(prefix)
+}
+
+/** The rows one canvas query caches: paths with their cells. */
+type CachedCanvasRows = Array<{ id: string; cells?: Array<{ id: string }> }> | undefined
+
+function invalidateCanvasWhere(matches: (key: string, rows: CachedCanvasRows) => boolean): void {
+  void queryClient.invalidateQueries({
+    predicate: (query) => {
+      const key = String(query.queryKey[0] ?? '')
+      return (
+        key.startsWith(queryKeys.canvasBlueprints.prefix) &&
+        matches(key, query.state.data as CachedCanvasRows)
+      )
+    },
+  })
+}
+
+/**
+ * Invalidate exactly the scenario a write touched — one refetch, not a
+ * board-wide storm, which is what the per-scenario canvas keys buy.
+ * Membership changes (create/delete/duplicate scenario) go through
+ * `invalidateStructure()`, whose bare canvas prefix matches every scenario.
+ */
+export function invalidateCanvasBlueprintsForScenario(scenarioId: string): void {
+  // Exact, not the prefix match every other invalidation makes: scenario
+  // `s1`'s key is a prefix of `s10`'s.
+  const key = queryKeys.canvasBlueprints.of(scenarioId)
+  invalidateCanvasWhere((candidate) => candidate === key)
+}
+
+/**
+ * The one scenario query whose cached rows hold this path. A query with no
+ * cached data yet counts as matching — stale to be safe.
+ */
+export function invalidateCanvasBlueprintsForPath(pathId: string): void {
+  invalidateCanvasWhere((_key, rows) => rows === undefined || rows.some((row) => row.id === pathId))
+}
+
+/**
+ * The one scenario query whose cached rows hold this cell, for the writers
+ * that know a cell and not its path. Same rule for an empty cache.
+ */
+export function invalidateCanvasBlueprintsForCell(cellId: string): void {
+  invalidateCanvasWhere(
+    (_key, rows) =>
+      rows === undefined ||
+      rows.some((row) => (row.cells ?? []).some((cell) => cell.id === cellId)),
+  )
+}
+
+/**
+ * What every cell-level write changes on screen: the grid, and the board
+ * holding the cell — or every board, when the writer knows no cell. One
+ * function because six writers (text, spec, placements, their links and
+ * resources, the restored text of a revert) had each spelled the pair.
+ */
+export function invalidateCellBoard(cellId: string | null | undefined): void {
+  invalidateQueries(queryKeys.servicePhases.prefix)
+  if (cellId) invalidateCanvasBlueprintsForCell(cellId)
+  else invalidateQueries(queryKeys.canvasBlueprints.prefix)
 }

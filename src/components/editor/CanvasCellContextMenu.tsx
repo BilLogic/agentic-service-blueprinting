@@ -3,7 +3,6 @@ import { Eye, Plus, Minus, Trash2 } from 'lucide-react'
 import { useCellPick } from '@/contexts/cellPickContext'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { invalidateStructure } from '@/hooks/useSupabaseQuery'
 import { deleteCell } from '@/lib/authoringRpc'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
 import { reportWriteFailure } from '@/lib/writeFailures'
@@ -114,7 +113,6 @@ export function CanvasCellContextMenu() {
     setDeleting(true)
     try {
       await deleteCell(client, pickId)
-      invalidateStructure()
       setMenu(null)
       setConfirmingDelete(false)
     } catch (error) {

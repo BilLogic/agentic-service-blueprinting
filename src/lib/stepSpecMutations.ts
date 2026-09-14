@@ -3,6 +3,8 @@ import { recordChange } from '@/lib/authoringSession'
 import { toAuthoringError } from '@/lib/authoringErrors'
 import { requireRowsWritten } from '@/lib/optimisticConcurrency'
 import type { Database } from '@/types/database'
+import { invalidateQueries } from '@/lib/queryClient'
+import { queryKeys } from '@/lib/queryKeys'
 
 type Client = SupabaseClient<Database>
 
@@ -29,6 +31,9 @@ export async function updateStepSummary(
   if (error) throw toAuthoringError(error)
   requireRowsWritten(data, 'step')
 
+  invalidateQueries(queryKeys.stepSpec.of(stepId))
+  // The summary doubles as the storyboard caption the canvas draws.
+  invalidateQueries(queryKeys.canvasBlueprints.prefix)
   if (options.record !== false) {
     recordChange(
       'update_step_spec',

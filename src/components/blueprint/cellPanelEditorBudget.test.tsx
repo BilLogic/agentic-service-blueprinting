@@ -62,10 +62,6 @@ vi.mock('@/hooks/useRegistryTouchpoints', () => ({
   useRegistryTouchpoints: () => ({ status: 'ready', data: [] }),
   useNameOnlyPlacements: () => ({ status: 'ready', data: [] }),
 }))
-vi.mock('@/hooks/useSupabaseQuery', () => ({ invalidateQueries: () => {} }))
-vi.mock('@/hooks/useCanvasBlueprints', () => ({
-  invalidateCanvasBlueprintsForPath: () => {},
-}))
 vi.mock('@/components/blueprint/OwnerTagSelect', () => ({
   OwnerTagSelect: ({
     value,

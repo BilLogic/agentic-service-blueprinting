@@ -5,6 +5,7 @@ import { hostOf } from '@/lib/cellResources'
 import { validateResourceUrl } from '@/lib/resourceUrl'
 import type { Database, Json } from '@/types/database'
 import type { CellResource } from '@/types/blueprint'
+import { invalidateCellBoard } from '@/lib/queryClient'
 
 type Client = SupabaseClient<Database>
 
@@ -61,7 +62,7 @@ export async function updatePlacementResources(
     })
   }
 
-  await writePlacementResources(client, placement.id, rows)
+  await writePlacementResources(client, placement.id, rows, placement.cellId)
   recordChange(
     'update_placement_resources',
     {
@@ -85,17 +86,23 @@ export async function updatePlacementResources(
   )
 }
 
-/** The write itself, shared by the save and by its revert. */
+/**
+ * The write itself, shared by the save and by its revert. The overview
+ * counts a placement's resources and the grid draws the featured one, so
+ * the cell's board refetches — every board, when the caller knows no cell.
+ */
 export async function writePlacementResources(
   client: Client,
   placementId: string,
   rows: readonly PlacementResourceRowInput[],
+  cellId: string | null = null,
 ): Promise<void> {
   const { error } = await client.rpc('sync_placement_resources', {
     p_placement_id: placementId,
     p_rows: rows as unknown as Json,
   })
   if (error) throw toAuthoringError(error)
+  invalidateCellBoard(cellId)
 }
 
 /** A row's `featured` as it was before a featuring write — the inverse's unit. */
@@ -125,6 +132,7 @@ export async function setFeaturedResource(
   if (previous.length === 0) {
     throw new Error('That resource no longer exists — nothing was written.')
   }
+  invalidateCellBoard(resource.cellId)
   recordChange(
     'set_featured_resource',
     {

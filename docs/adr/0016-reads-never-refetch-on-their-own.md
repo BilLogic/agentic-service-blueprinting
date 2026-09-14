@@ -34,6 +34,14 @@ simply stale for one user in one session. That is the cost of the trade, and it
 is why the invalidation call sits next to the write in every mutation module
 rather than being inferred anywhere.
 
+**The module that writes the rows is the one that invalidates** — not the
+panel, dialog or agent tool that called it. Callers used to: eight sites
+invalidated two keys nothing read, five hand-rolled structural subsets
+drifted, and the agent cleared the whole cache after every write. Every key
+is built in `src/lib/queryKeys.ts`, which the read hooks and the writers both
+use, so a read and a write cannot spell one cache two ways; a test writes
+through each module against a recording stand-in and asserts the keys.
+
 **If a second writer ever appears** — a second app surface, a bot that edits, a
 webhook — this decision is the first thing to revisit. It is not a tuning
 parameter; it is a claim about who writes.

@@ -28,10 +28,6 @@ vi.mock('@/contexts/SupabaseProvider', () => ({
   useSupabase: () => ({ client: { rpc }, canWrite: true }),
 }))
 vi.mock('@/contexts/canvasModeContext', () => ({ useCanvasModeValue: () => 'design' }))
-vi.mock('@/hooks/useSupabaseQuery', () => ({
-  invalidateQueries: () => {},
-  invalidateStructure: () => {},
-}))
 vi.mock('@/lib/authoringSession', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/authoringSession')>()),
   recordChange: () => {},

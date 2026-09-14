@@ -1,6 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { updateScenarioLayout } from '@/lib/authoringRpc'
-import { invalidateStructure } from '@/lib/queryClient'
 import type { Database } from '@/types/database'
 import type { SlideViewType } from '@/types/nav'
 
@@ -18,8 +17,9 @@ export type LayoutChangeOutcome = 'written' | 'session-only'
  * is a row and a viewer's choice is not:
  *
  *   - an editor (`canWrite`) writes `scenarios.layout` through the recorded
- *     `update_scenario_layout`, inverse included, and the structure queries
- *     refetch so the stored value comes back as the slide's own `layout`;
+ *     `update_scenario_layout`, inverse included; the write refetches the
+ *     structure queries so the stored value comes back as the slide's own
+ *     `layout`;
  *   - anon and view-only sessions hold no write on the column, so their
  *     choice is `session-only` and lives in the editor's override map.
  *
@@ -42,6 +42,5 @@ export async function persistScenarioLayout(
     layout: input.layout,
     previousLayout: input.previous,
   })
-  invalidateStructure()
   return 'written'
 }

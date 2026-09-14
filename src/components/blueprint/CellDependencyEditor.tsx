@@ -9,7 +9,6 @@ import { OptionSelect } from '@/components/blueprint/OptionSelect'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { invalidateQueries } from '@/hooks/useSupabaseQuery'
 import {
   clearCellDependency,
   setCellDependency,
@@ -75,12 +74,6 @@ const TARGET_SELECT_CLASS = 'h-7 min-w-0 flex-1 gap-0.5 px-1.5 text-xs'
 
 /** Indents the note field and the kind hint under the row they belong to. */
 const ROW_DETAIL_INDENT = 'pl-1'
-
-function refresh() {
-  // Arrows are drawn from the grid read, so the canvas has to re-read —
-  // invalidating a panel-local query would leave the line on screen.
-  invalidateQueries('service-phases')
-}
 
 /**
  * The trailing control on an editable row: remove, or — while its write is in
@@ -241,7 +234,6 @@ export function DependencyEditRow({
         targetCellId: next.targetCellId,
         note: next.note.trim() || null,
       })
-      refresh()
     } catch (writeError) {
       setError(errorMessage(writeError))
     } finally {
@@ -255,7 +247,6 @@ export function DependencyEditRow({
     setError(null)
     try {
       await clearCellDependency(client, dependencyId)
-      refresh()
     } catch (removeError) {
       setError(errorMessage(removeError))
     } finally {
@@ -417,7 +408,6 @@ export function CellDependencyEditor({
         kind: draft.kind,
         note: draft.note,
       })
-      refresh()
       setDraft((current) => ({ ...current, targetCellId: null, note: '' }))
     } catch (addError) {
       setError(errorMessage(addError))

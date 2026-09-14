@@ -6,6 +6,7 @@ import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
 import { isBundledSampleActive } from '@/lib/bundledSample'
 import { awaitOrAbort, findActiveServiceId } from '@/lib/service'
 import type { Slice, Slide } from '@/types/database'
+import { FIRST_SERVICE, queryKeys } from '@/lib/queryKeys'
 
 /** Slim frame projection carried on the list — powers client-side
  * membership checks (panel "In slices" footer) without per-cell queries. */
@@ -51,7 +52,7 @@ const slicesFallback = (): SliceListEntry[] | null =>
  */
 export function useSlices(serviceId?: string): QueryResult<SliceListEntry[]> {
   return useSupabaseQuery<SliceListEntry[]>(
-    `slices:${serviceId ?? 'first'}`,
+    queryKeys.slices.of(serviceId ?? FIRST_SERVICE),
     async (client, signal) => {
       let resolvedServiceId = serviceId
       if (!resolvedServiceId) {

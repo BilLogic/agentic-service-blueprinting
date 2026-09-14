@@ -316,7 +316,6 @@ vi.mock('@/hooks/useServicePhases', () => ({
 }))
 vi.mock('@/hooks/useSupabaseQuery', () => ({
   useSupabaseQuery: () => ({ status: 'ready', data: [] }),
-  invalidateStructure: () => {},
 }))
 
 afterEach(cleanup)

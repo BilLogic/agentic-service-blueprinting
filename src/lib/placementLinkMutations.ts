@@ -2,8 +2,22 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { recordChange } from '@/lib/authoringSession'
 import { toAuthoringError } from '@/lib/authoringErrors'
 import type { Database, Json } from '@/types/database'
+import { invalidateCellBoard, invalidateQueries } from '@/lib/queryClient'
+import { queryKeys } from '@/lib/queryKeys'
 
 type Client = SupabaseClient<Database>
+
+/** A placement's link changed: the cell's registry reads, and the grid that draws the badge. */
+function placementLinkWritten(cellId: string | null | undefined): void {
+  invalidateCellBoard(cellId)
+  if (cellId) {
+    invalidateQueries(queryKeys.nameOnlyPlacements.of(cellId))
+    invalidateQueries(queryKeys.registryTouchpoints.of(cellId))
+  } else {
+    invalidateQueries(queryKeys.nameOnlyPlacements.prefix)
+    invalidateQueries(queryKeys.registryTouchpoints.prefix)
+  }
+}
 
 /**
  * A placement's identity, and its removal.
@@ -49,6 +63,7 @@ export async function setPlacementTouchpoint(
   if (error) throw toAuthoringError(error)
   const previous = readPrevious(data)
 
+  placementLinkWritten(placement.cellId)
   recordChange(
     'set_placement_touchpoint',
     {
@@ -84,6 +99,7 @@ export async function removePlacement(
     throw new Error('The placement was removed but nothing came back to restore it with.')
   }
 
+  placementLinkWritten(placement.cellId)
   recordChange(
     'remove_placement',
     {
