@@ -88,7 +88,7 @@ test('harness imports the app tool specs instead of forking them', () => {
   )
   assert.match(
     harness,
-    /\{\s*TOOL_SPECS,\s*TOOL_DEFINITIONS,\s*WRITE_TOOL_NAMES,\s*MOBILE_READ_TOOL_NAMES,\s*BATCH_LIMIT_REFUSAL,\s*MOBILE_SHELL_REFUSAL,\s*VIEW_ONLY_REFUSAL,\s*WRITE_BATCH_LIMIT,\s*renderCanvasAdapter,?\s*\}\s*=\s*surface/,
+    /\{\s*TOOL_SPECS,\s*TOOL_DEFINITIONS,\s*WRITE_TOOL_NAMES,\s*MOBILE_READ_TOOL_NAMES,\s*BATCH_LIMIT_REFUSAL,\s*MOBILE_SHELL_REFUSAL,\s*VIEW_ONLY_REFUSAL,\s*WRITE_BATCH_LIMIT,\s*AGENT_CELL_FIELDS,\s*renderCanvasAdapter,?\s*\}\s*=\s*surface/,
     'run.mjs no longer destructures the rosters and refusals from the bundled surface',
   )
   // The refusals the harness answers gates with are the loop's, re-exported

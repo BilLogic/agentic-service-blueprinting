@@ -65,3 +65,11 @@ export {
   VIEW_ONLY_REFUSAL,
   WRITE_BATCH_LIMIT,
 } from '@/lib/agent/tools/refusals'
+/**
+ * The cell fields the agent may edit, derived the way `update_cell` derives
+ * its arguments, so the harness's database read of a cell asks for the
+ * columns the tool writes.
+ */
+import { agentCellFields } from '@/lib/agent/tools/definitions/cellArgs'
+import { EDITABLE_CELL_FIELDS } from '@/lib/cellFields'
+export const AGENT_CELL_FIELDS = agentCellFields(EDITABLE_CELL_FIELDS)

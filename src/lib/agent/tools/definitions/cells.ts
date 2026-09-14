@@ -1,16 +1,23 @@
 import { z } from 'zod'
+import {
+  agentCellFields,
+  cellFieldArgs,
+  describeCellFields,
+  type AgentCellField,
+} from '@/lib/agent/tools/definitions/cellArgs'
 import { arg, defineTool, defineWriteTool } from '@/lib/agent/tools/definition'
 import { getCell, listCellDependencies } from '@/lib/agent/tools/read'
 import { sampleGetCell, sampleListCellDependencies } from '@/lib/agent/tools/sampleRead'
 import { setCellDependency } from '@/lib/authoringRpc'
 import { getCellContentLengthGuidance } from '@/lib/cellContentLimits'
+import { createCell, laneBudgetKind, readCellBeforeEdit } from '@/lib/cellContentMutations'
 import {
-  createCell,
-  laneBudgetKind,
-  readCellBeforeEdit,
-  updateCellContent,
-} from '@/lib/cellContentMutations'
-import { updateCellSpec } from '@/lib/cellSpecMutations'
+  EDITABLE_CELL_FIELDS,
+  type CellEditValue,
+  type CellEdits,
+  type EditableCellField,
+} from '@/lib/cellFields'
+import { saveCell } from '@/lib/cellSave'
 
 /**
  * The tools that act on a cell, grouped by the noun they act on the same
@@ -48,18 +55,35 @@ export const listCellDependenciesTool = defineTool({
       : sampleListCellDependencies(cell_id),
 })
 
+/**
+ * The fields `upsert_cell` takes, in the list's vocabulary: the structure
+ * the agent may name (the slot), and what a create must be handed — the one
+ * editable field the row cannot exist without.
+ */
+const CREATE_FIELDS = agentCellFields().filter(
+  (descriptor) => descriptor.group === 'structure' || descriptor.required,
+)
+
 export const upsertCellTool = defineWriteTool({
   name: 'upsert_cell',
   description:
     'Create the cell at (path, lane, step). Creation ONLY — the call refuses if a cell already exists there (edit with update_cell instead). content is REQUIRED and must be real journey text — an empty or placeholder cell is invisible in the grid.',
+  // The slot and the text come from the cell field list — the same
+  // descriptors the panel's draft form renders — with the path, which is
+  // not a column the board reads for a cell, named here.
+  //
+  // The shape is built from the list, so its keys are the list's at runtime;
+  // the assertion spells the arguments the list yields today, which is what
+  // `run` destructures. `cellArgs.test.ts` holds the two to each other.
   args: z.object({
     path_id: arg.text('Path id'),
-    lane_id: arg.text('Lane id from get_blueprint'),
-    step_id: arg.text('Step id (from get_blueprint)'),
-    content: arg.text(
-      'The cell text — a journey moment, not a system capability. Aim for the canvas budget: the canvas reads at a glance and shows what fits, so put detail in the summary. Longer text is written in full and comes back with a note naming the thresholds. Good: "Dispatcher confirms the address and books a crew". Bad: "Scheduling module".',
-    ),
-  }),
+    ...cellFieldArgs(CREATE_FIELDS, { required: true }),
+  }) as unknown as z.ZodObject<{
+    path_id: z.ZodString
+    lane_id: z.ZodString
+    step_id: z.ZodString
+    content: z.ZodString
+  }>,
   run: async ({ path_id, lane_id, step_id, content }, { client }) => {
     const written = await createCell(client, {
       pathId: path_id,
@@ -87,101 +111,88 @@ export const upsertCellTool = defineWriteTool({
   },
 })
 
+/**
+ * The editable fields the agent may set, in the panel's order — what the
+ * cell says and who owns it, then what it is like — which is the order the
+ * description reads in and the model sees the arguments in.
+ */
+const EDIT_FIELDS = agentCellFields(EDITABLE_CELL_FIELDS) as (AgentCellField & { agentArg: AgentEditKey })[]
+const EDIT_ARG_NAMES = EDIT_FIELDS.map((descriptor) => descriptor.agentArg)
+
+/** The editable fields the list hands the agent — `status` is not among them. */
+type AgentEditKey = Extract<EditableCellField, { agentArg: string }>['key']
+
+/** A partial edit as the model sends it: the id, and any of the agent's editable arguments. */
+type CellEditArgShape = { cell_id: z.ZodString } & {
+  [K in AgentEditKey]: z.ZodType<CellEditValue<K> | undefined>
+}
+
 export const updateCellTool = defineWriteTool({
   name: 'update_cell',
-  description:
-    'Edit a cell. Text side: content, summary (the tl;dr — never a copy of the text), owner and perceived_owner (existing tags — see list_owner_tags). Spec side: function (what it does), form (how it appears), value_props (audience/value pairs). Reads the current values first, so pass only the fields you mean to change. Fields cannot be CLEARED here — an empty string means keep; ask the human to clear one in the panel.',
+  // The field sentences are the descriptors' hints — the words a person
+  // reads above the panel's controls — so the model and the panel describe
+  // one field the same way.
+  description: `Edit a cell. Text side: ${describeCellFields('content')}. Spec side: ${describeCellFields('spec')}. Reads the current values first, so pass only the fields you mean to change. Fields cannot be CLEARED here — an empty string means keep; ask the human to clear one in the panel.`,
+  // Built from the list; the assertion spells the arguments the list yields
+  // today, every one optional, which is what `run` reads by key.
   args: z.object({
     cell_id: arg.text('Cell id'),
-    content: arg.optionalText(
-      'New cell text; aim for the canvas budget, and longer text is written in full with a note back naming the thresholds (detail belongs in summary); omit to keep',
-    ),
-    summary: arg.optionalText('New summary; omit to keep'),
-    owner: arg.optionalText('Owner tag; omit to keep'),
-    perceived_owner: arg.optionalText('Perceived-owner tag; omit to keep'),
-    function: arg.optionalText('Function text — what the cell does; omit to keep'),
-    form: arg.optionalText('Form text — how it appears; omit to keep'),
-    value_props: z
-      .array(
-        z.object({
-          for: z.string().describe('Audience'),
-          value: z.string().describe('The value delivered'),
-        }),
-      )
-      .describe('Full replacement list of {for, value}; omit to keep')
-      .optional(),
-  }),
-  // ONE tool over two writers, because a cell is one thing to the person
-  // editing it. The split exists for the mutation layer's benefit —
-  // `updateCellContent` and `updateCellSpec` capture separate inverses, and
-  // the ledger wants them separate — but an agent asked to "say what this
-  // step does and who it is for" should not have to know that `function`
-  // lives behind a different tool from `content`.
+    ...cellFieldArgs(EDIT_FIELDS, { required: false }),
+  }) as unknown as z.ZodObject<CellEditArgShape>,
+  // ONE tool over the one save, because a cell is one thing to the person
+  // editing it. The save routes each field to its own write — the content
+  // mutation and the spec mutation capture separate inverses, and the
+  // ledger wants them separate — so an agent asked to "say what this step
+  // does and who it is for" need not know that `function` lands behind a
+  // different write from `content`.
   run: async (args, { client }) => {
-    const touchesText =
-      args.content !== undefined ||
-      args.summary !== undefined ||
-      args.owner !== undefined ||
-      args.perceived_owner !== undefined
-    const touchesSpec =
-      args.function !== undefined || args.form !== undefined || args.value_props !== undefined
+    const named = EDIT_FIELDS.filter((descriptor) => args[descriptor.agentArg] !== undefined)
     // Refused rather than treated as a no-op: a call naming no field is a
     // call whose author believed they were changing something.
-    if (!touchesText && !touchesSpec)
-      throw new Error(
-        'Name at least one field to change: content, summary, owner, perceived_owner, function, form or value_props.',
-      )
+    if (named.length === 0)
+      throw new Error(`Name at least one field to change: ${EDIT_ARG_NAMES.join(', ')}.`)
 
     const before = await readCellBeforeEdit(client, args.cell_id)
-    const done: string[] = []
-    const notes: string[] = []
-
-    if (touchesText) {
-      const lengthGuidance =
-        args.content === undefined
-          ? null
-          : getCellContentLengthGuidance(args.content, await laneBudgetKind(client, before.laneId))
-      await updateCellContent(
-        client,
-        args.cell_id,
-        {
-          content: args.content ?? before.content.content,
-          summary: args.summary ?? before.content.summary,
-          owner: args.owner ?? before.content.owner,
-          perceivedOwner: args.perceived_owner ?? before.content.perceivedOwner,
-          // The tool takes no `status` argument, so this write must not move
-          // one: an edit to a cell's wording that quietly marked a proposed
-          // surface live would be the sentence the agent never said out loud.
-          status: before.content.status,
-        },
-        before.content,
-      )
-      done.push('text')
-      if (lengthGuidance?.message) notes.push(lengthGuidance.message)
+    // The tool takes no `status` argument, so the save must not move one:
+    // an edit to a cell's wording that quietly marked a proposed surface
+    // live would be the sentence the agent never said out loud. The
+    // baseline carries the status and the values leave it alone.
+    const baseline: CellEdits = {
+      content: before.content.content,
+      summary: before.content.summary,
+      owner: before.content.owner,
+      perceived_owner: before.content.perceivedOwner,
+      status: before.content.status,
+      function: before.spec.function,
+      form: before.spec.form,
+      value_props: before.spec.valueProps,
     }
-
-    if (touchesSpec) {
-      await updateCellSpec(
-        client,
-        args.cell_id,
-        {
-          function: args.function ?? before.spec.function,
-          form: args.form ?? before.spec.form,
-          valueProps: args.value_props ?? before.spec.valueProps,
-        },
-        before.spec,
-      )
-      done.push('spec')
+    const values: CellEdits = { ...baseline }
+    for (const descriptor of named) {
+      ;(values as Record<string, unknown>)[descriptor.key] = args[descriptor.agentArg]
     }
+    const lengthGuidance =
+      args.content === undefined
+        ? null
+        : getCellContentLengthGuidance(args.content, await laneBudgetKind(client, before.laneId))
+
+    const { routes } = await saveCell(client, { cellId: args.cell_id, values, baseline })
 
     // Two ledger entries when both halves moved, and the reply says so —
     // the change sheet will show two rows, and a reply claiming one write
     // would leave the reader counting.
+    const halves = routes.map((route) => (route === 'content' ? 'text' : route))
     const reply =
-      done.length === 2
-        ? 'Cell updated (text and spec — two entries in the change list).'
-        : `Cell ${done[0]} updated.`
-    return notes.length ? `${reply} ${notes.join(' ')}` : reply
+      halves.length === 0
+        ? 'Nothing changed: the fields named already hold those values.'
+        : halves.length === 2
+          ? 'Cell updated (text and spec — two entries in the change list).'
+          : `Cell ${halves[0]} updated.`
+    // The length note rides a write of the text, not a call that changed
+    // nothing: advice about copy that was not written would be advice
+    // about nothing.
+    const note = routes.includes('content') && lengthGuidance?.message ? ` ${lengthGuidance.message}` : ''
+    return `${reply}${note}`
   },
 })
 

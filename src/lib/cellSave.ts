@@ -20,11 +20,10 @@ type Client = SupabaseClient<Database>
  * says and who owns it is written by the content mutation over its column
  * grant; what it is like is written by the spec mutation over its own. The
  * panel used to know all three — which fields went where, in what order,
- * which write logged itself. This takes a cell id and the edits, and routes
- * each changed field by the route its descriptor declares; the panel no
- * longer knows there are three paths. The agent's `update_cell` still
- * routes on its own, in the tool's file; it moves onto this save when its
- * arguments derive from the same list, which is the next ticket's work.
+ * which write logged itself — and so did the agent's `update_cell`, in a
+ * second copy. This takes a cell id and the edits, and routes each changed
+ * field by the route its descriptor declares. Neither caller knows there
+ * are three paths.
  *
  * The order is fixed and load-bearing: the create first, because the other
  * writes need its id; content before spec, because the content write syncs
