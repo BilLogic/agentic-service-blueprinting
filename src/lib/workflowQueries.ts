@@ -1,9 +1,13 @@
 /** Supabase nested selects for the Service Blueprint schema */
+import { CELL_SELECT_COLUMNS } from '@/lib/cellFields'
 
 export const PATH_LIST_SELECT =
   'id, name, summary, note, kind, scenario_id, created_at, updated_at'
 
-/** Blueprint grid: path with lanes, path_steps, and cells */
+/**
+ * Blueprint grid: path with lanes, path_steps, and cells. The cells block's
+ * columns come from the cell field list, which the normalizer maps from too.
+ */
 export const PATH_BLUEPRINT_SELECT = `
   id,
   name,
@@ -27,19 +31,7 @@ export const PATH_BLUEPRINT_SELECT = `
     )
   ),
   cells (
-    id,
-    lane_id,
-    step_id,
-    position,
-    content,
-    frame,
-    summary,
-    status,
-    "function",
-    form,
-    value_props,
-    owner,
-    perceived_owner,
+    ${CELL_SELECT_COLUMNS},
     resources!resources_cell_id_fkey (
       id,
       position,

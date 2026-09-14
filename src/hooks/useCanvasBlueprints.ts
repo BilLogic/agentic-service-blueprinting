@@ -177,7 +177,11 @@ export function useCanvasBlueprints(scenarioIds: string[]) {
             .eq('scenario_id', scenarioId)
             .abortSignal(deadline)
           if (error) throw new Error(error.message)
-          return (data ?? []) as CanvasRawPath[]
+          // The select is built from the cell field list, so its type is
+          // `string` rather than a literal supabase-js can parse a row shape
+          // from; the row type is asserted, as the agent's reads of the same
+          // select already do. The normalizer is the typed side.
+          return (data ?? []) as unknown as CanvasRawPath[]
         }),
     })),
   })

@@ -155,6 +155,12 @@ Owner — never "spec fields". The ban is on the *interface*, not the glossary,
 and reading it as both is how a word the skills are told to use went undefined
 on both sides.
 
+**Cell field** — one column of a cell, with everything the application says
+about it: the label and hint a person sees, the group (structure, content or
+spec), the write route, the argument name the agent sets it under, and
+whether the canvas budget applies. The **cell field list** is the one place
+those are said; what reads or writes a cell's columns derives from it.
+
 **Line of visibility** — the divider between what the recipient of the service
 can see and what they cannot. It is derived from lane roles rather than
 stored: it draws below the last customer-facing lane. Its companion, the
