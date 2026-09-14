@@ -1,31 +1,25 @@
 import { describe, expect, it } from 'vitest'
-import {
-  MOBILE_READ_TOOL_NAMES,
-  READ_TOOL_NAMES,
-  TOOL_SPECS,
-  WRITE_TOOL_NAMES,
-} from '@/lib/agent/tools/specs'
+import { sessionRoster } from '@/lib/agent/tools/roster'
 
 /**
  * The mobile shell is view-only for every tier — this pins the agent's
- * mobile roster to reading and navigation. If a write tool ever lands in
- * the mobile whitelist, or the whitelist drifts from the registry, this
- * fails before a phone ever sees the hole.
+ * mobile roster to reading and navigation. The roster is derived from each
+ * definition's `availability.mobile`, so what this holds is that no
+ * definition claims mobile it should not, and none withholds it that should
+ * not: a write tool that said `mobile: true`, or a read a phone can answer
+ * that said `false`, fails here before a phone ever sees the difference.
  */
 describe('mobile agent tool roster', () => {
-  it('contains zero write tools', () => {
-    const leaked = [...MOBILE_READ_TOOL_NAMES].filter((name) =>
-      WRITE_TOOL_NAMES.has(name),
-    )
-    expect(leaked).toEqual([])
+  const mobile = sessionRoster({
+    sampleTrial: false,
+    mobileReading: true,
+    allowWrites: true,
+    searchOffered: true,
   })
+  const offered = new Set(mobile.map((tool) => tool.name))
 
-  it('only names tools that exist in the registry', () => {
-    const specNames = new Set(TOOL_SPECS.map((spec) => spec.name))
-    const phantom = [...MOBILE_READ_TOOL_NAMES].filter(
-      (name) => !specNames.has(name),
-    )
-    expect(phantom).toEqual([])
+  it('contains zero write tools, even for a service account', () => {
+    expect(mobile.filter((tool) => tool.surface === 'write')).toEqual([])
   })
 
   it('withholds the authoring-posture surface tools', () => {
@@ -39,7 +33,7 @@ describe('mobile agent tool roster', () => {
       'list_ui_commands',
       'set_sidebar',
     ]) {
-      expect(MOBILE_READ_TOOL_NAMES.has(name), name).toBe(false)
+      expect(offered.has(name), name).toBe(false)
     }
   })
 
@@ -54,19 +48,26 @@ describe('mobile agent tool roster', () => {
       'open_cell_panel',
       'get_ui_state',
     ]) {
-      expect(MOBILE_READ_TOOL_NAMES.has(name), name).toBe(true)
+      expect(offered.has(name), name).toBe(true)
     }
   })
 
   it('carries every read tool a phone can answer from', () => {
     // Mobile is view-only, not read-poor: a phone asking who an actor is, or
-    // what a claim rests on, is exactly the Q&A the shell exists for. The two
-    // reads deliberately withheld are the desktop-surface ones the
+    // what a claim rests on, is exactly the Q&A the shell exists for. The one
+    // read deliberately withheld is the desktop-surface one the
     // authoring-posture test above already names.
+    const desktop = sessionRoster({
+      sampleTrial: false,
+      mobileReading: false,
+      allowWrites: false,
+      searchOffered: true,
+    })
     const withheld = new Set(['list_ui_commands'])
-    const missing = [...READ_TOOL_NAMES].filter(
-      (name) => !withheld.has(name) && !MOBILE_READ_TOOL_NAMES.has(name),
-    )
+    const missing = desktop
+      .filter((tool) => tool.surface === 'read' && !withheld.has(tool.name))
+      .filter((tool) => !offered.has(tool.name))
+      .map((tool) => tool.name)
     expect(missing).toEqual([])
   })
 })

@@ -4,15 +4,15 @@ import { test } from 'vitest'
 import assert from 'node:assert/strict'
 
 import { readAppFile } from '../app-source.mjs'
-import { toolSources } from '../tool-sources.mjs'
+import { toolSources, toolsOnSurface } from '../tool-sources.mjs'
 
 /**
  * The eval harness must run against the app's tool surface. The spec
  * DECLARATIONS are one-sourced — `surface.mjs` bundles `app-surface.entry.ts`
- * with rolldown once per run, that entry re-exports TOOL_SPECS /
- * WRITE_TOOL_NAMES / MOBILE_READ_TOOL_NAMES from specs.ts, and every harness
- * module imports them from `surface.mjs` — so the check is that the import
- * wiring still exists and no fork has crept back in.
+ * with rolldown once per run, that entry re-exports TOOL_SPECS from specs.ts
+ * and derives WRITE_TOOL_NAMES / MOBILE_READ_TOOL_NAMES from the definitions,
+ * and every harness module imports them from `surface.mjs` — so the check is
+ * that the import wiring still exists and no fork has crept back in.
  *
  * Deliberately text-parsed: `registry.ts` imports supabase-js and Vite
  * `?raw` markdown, so it cannot be loaded from Node without a bundler.
@@ -39,15 +39,8 @@ function readApp(path) {
   return readAppFile(REPO_ROOT, path)
 }
 
-/** The string members of a `new Set([...])` assigned to `name`. */
-function setMembers(source, name) {
-  const at = source.indexOf(`${name} = new Set([`)
-  assert.ok(at !== -1, `${name} not found`)
-  const body = source.slice(at, source.indexOf('])', at))
-  return new Set([...body.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]))
-}
 
-// Specs and rosters live in specs.ts (pure data); dispatch stays in
+// The spec table lives in specs.ts (pure data); dispatch stays in
 // registry.ts. The parity checks read each from where it lives.
 const specs = readApp('src/lib/agent/tools/specs.ts')
 const registry = readApp('src/lib/agent/tools/registry.ts')
@@ -56,8 +49,8 @@ const bundler = read('scripts/agent-harness/surface.mjs')
 const surfaceEntry = read('scripts/agent-harness/app-surface.entry.ts')
 
 test('harness imports the app tool specs instead of forking them', () => {
-  // The wiring: surface.mjs bundles the surface entry, the entry re-exports
-  // the rosters from specs.ts, and the runner destructures them from the
+  // The wiring: surface.mjs bundles the surface entry, the entry derives
+  // the rosters from the definitions, and the runner destructures them from the
   // bundle surface.mjs hands it.
   assert.ok(
     bundler.includes('scripts/agent-harness/app-surface.entry.ts'),
@@ -70,8 +63,21 @@ test('harness imports the app tool specs instead of forking them', () => {
   )
   assert.match(
     surfaceEntry,
-    /export\s*\{\s*TOOL_SPECS,\s*WRITE_TOOL_NAMES,\s*MOBILE_READ_TOOL_NAMES,?\s*\}\s*from\s*'@\/lib\/agent\/tools\/specs'/,
-    'app-surface.entry.ts no longer re-exports TOOL_SPECS/WRITE_TOOL_NAMES/MOBILE_READ_TOOL_NAMES from specs.ts',
+    /export\s*\{\s*TOOL_SPECS\s*\}\s*from\s*'@\/lib\/agent\/tools\/specs'/,
+    'app-surface.entry.ts no longer re-exports TOOL_SPECS from specs.ts',
+  )
+  // The two rosters the harness gates on are derived from the app's
+  // definitions inside the entry — the surface and availability each
+  // definition states — not listed there.
+  assert.match(
+    surfaceEntry,
+    /WRITE_TOOL_NAMES = new Set\(\s*TOOL_DEFINITIONS\.filter\(\(tool\) => tool\.surface === 'write'\)/,
+    'app-surface.entry.ts no longer derives WRITE_TOOL_NAMES from the definitions',
+  )
+  assert.match(
+    surfaceEntry,
+    /MOBILE_READ_TOOL_NAMES = new Set\(\s*TOOL_DEFINITIONS\.filter\(\(tool\) => tool\.availability\.mobile\)/,
+    'app-surface.entry.ts no longer derives MOBILE_READ_TOOL_NAMES from the definitions',
   )
   // The reference list too, so the harness offers exactly the list the app
   // offers.
@@ -97,10 +103,13 @@ test('harness imports the app tool specs instead of forking them', () => {
       !/TOOL_SPECS\s*(?::[^=]*)?=\s*\[/.test(source),
       `${file} declares a local TOOL_SPECS array — the fork is back`,
     )
-    assert.ok(
-      !/WRITE_TOOL(?:_NAME)?S\s*=\s*new Set/.test(source),
-      `${file} declares a local write set — the fork is back`,
-    )
+    // The entry DERIVES the write set from the definitions (asserted above);
+    // a `new Set` of names in either harness module would be a fork of it.
+    if (file !== 'app-surface.entry.ts')
+      assert.ok(
+        !/WRITE_TOOL(?:_NAME)?S\s*=\s*new Set/.test(source),
+        `${file} declares a local write set — the fork is back`,
+      )
     assert.ok(
       !/^\s*\{\s*name: '[a-z_]+', description:/m.test(source),
       `${file} contains inline tool-spec declarations — the fork is back`,
@@ -153,12 +162,14 @@ test('the spec table declares nothing and the dispatcher switches on nothing', (
   )
 })
 
-test('every write tool on the roster is a definition', () => {
+test('every write tool is a defineWriteTool definition', () => {
   const definitions = toolSources(REPO_ROOT)
-  for (const name of setMembers(specs, 'WRITE_TOOL_NAMES')) {
+  const writes = toolsOnSurface(definitions, 'write')
+  assert.equal(writes.length, 20, `expected the twenty write tools, found ${writes.length}`)
+  for (const name of writes) {
     assert.ok(
-      definitions.includes(`name: '${name}'`),
-      `${name} is listed as a write tool but no definition declares it`,
+      /^export const \w+ = defineWriteTool\(/m.test(definitions) && definitions.includes(`name: '${name}'`),
+      `${name} is on the write surface but no definition declares it`,
     )
   }
 })

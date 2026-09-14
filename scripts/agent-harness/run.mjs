@@ -850,8 +850,8 @@ async function runCaseLLM(caseDef) {
   const trace = []
   const replies = [] // final text per user turn
   const messages = []
-  // One pass, mirroring loop.ts: mobile's whitelist already contains zero
-  // write tools, so it subsumes the tier filter.
+  // One pass, mirroring loop.ts: no tool available on mobile is a write,
+  // so the mobile gate subsumes the tier filter.
   const offered = TOOL_SPECS.filter((spec) =>
     caseDef.mobile
       ? MOBILE_READ_TOOL_NAMES.has(spec.name)

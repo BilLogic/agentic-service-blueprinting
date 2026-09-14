@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { TOOL_SPECS, sessionRoster } from '@/lib/agent/tools/specs'
+import { sessionRoster } from '@/lib/agent/tools/roster'
 import { agentSearchPlan, configureAgentSearch } from '@/lib/agent/searchPlan'
 
 /*
@@ -31,8 +31,8 @@ const DESKTOP = {
   allowWrites: true,
 }
 
-function names(session: Parameters<typeof sessionRoster>[1]): string[] {
-  return sessionRoster(TOOL_SPECS, session).map((spec) => spec.name)
+function names(session: Parameters<typeof sessionRoster>[0]): string[] {
+  return sessionRoster(session).map((tool) => tool.name)
 }
 
 describe('the search tool on a session roster', () => {
@@ -95,8 +95,9 @@ describe('the search tool on a session roster', () => {
 
   it('stays absent in the no-database trial even when it is offered', () => {
     // Nothing to search: the trial answers from a bundled fixture, and the
-    // whitelist does not name it. A session gate cannot add to a whitelist —
-    // a tool reaches that roster only by being put in it with a sample answer.
+    // definition says it does not run without a database. A session gate
+    // cannot add to that — a tool reaches the trial only by saying so and
+    // carrying a sample answer.
     expect(
       names({
         sampleTrial: true,

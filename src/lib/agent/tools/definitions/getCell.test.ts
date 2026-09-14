@@ -3,16 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { runTool, toolSpec } from '@/lib/agent/tools/definition'
 import { getCellTool } from '@/lib/agent/tools/definitions/cells'
-import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
 import { fakeToolContext } from '@/lib/agent/tools/definitions/testContext'
 import { dispatchTool } from '@/lib/agent/tools/registry'
-import {
-  INTERFACE_TOOL_NAMES,
-  MOBILE_READ_TOOL_NAMES,
-  READ_TOOL_NAMES,
-  SAMPLE_TRIAL_TOOL_NAMES,
-  WRITE_TOOL_NAMES,
-} from '@/lib/agent/tools/specs'
 
 /*
  * The first tool that is one definition: its schema, its surface, its
@@ -109,26 +101,10 @@ describe('get_cell as a tool definition', () => {
     })
   })
 
-  it('declares its surface and where it may run, and the name sets agree', () => {
+  it('declares its surface and where it may run', () => {
     expect(getCellTool.surface).toBe('read')
     expect(getCellTool.availability).toEqual({ sample: true, mobile: true })
   })
-})
-
-describe('every definition agrees with the name sets the roster still reads', () => {
-  // Two statements of one fact exist while the roster derives from the sets
-  // and the definitions carry the same fact for the day it derives from them.
-  // This is the test that keeps them one fact.
-  for (const tool of TOOL_DEFINITIONS) {
-    it(`${tool.name}: surface`, () => {
-      const sets = { read: READ_TOOL_NAMES, interface: INTERFACE_TOOL_NAMES, write: WRITE_TOOL_NAMES }
-      expect(sets[tool.surface].has(tool.name)).toBe(true)
-    })
-    it(`${tool.name}: availability`, () => {
-      expect(SAMPLE_TRIAL_TOOL_NAMES.has(tool.name)).toBe(tool.availability.sample)
-      expect(MOBILE_READ_TOOL_NAMES.has(tool.name)).toBe(tool.availability.mobile)
-    })
-  }
 })
 
 describe('the dispatcher runs a definition, and refuses one the trial does not offer', () => {

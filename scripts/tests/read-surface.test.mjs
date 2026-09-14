@@ -34,16 +34,19 @@ test('the documented list stops at the em dash, before the claim', () => {
   assert.deepEqual(documentedReadTools(row), ['get_cell', 'list_slices'])
 })
 
-test('the declared set is read out of its own Set literal, not a neighbour', () => {
+test('the read surface is read out of the definitions, by each one\'s surface', () => {
   const source = [
-    "export const WRITE_TOOL_NAMES = new Set(['upsert_cell'])",
-    'export const READ_TOOL_NAMES = new Set([',
-    "  'get_cell',",
-    "  'list_slices',",
-    '])',
+    "export const upsertCellTool = defineWriteTool({ name: 'upsert_cell', args: z.object({}) })",
+    "export const getCellTool = defineTool({",
+    "  name: 'get_cell',",
+    "  surface: 'read',",
+    '})',
+    "export const openPhaseTool = defineTool({ name: 'open_phase', surface: 'interface' })",
+    "export const listSlicesTool = defineTool({ name: 'list_slices', surface: 'read' })",
     "const other = 'get_blueprint'",
   ].join('\n')
   assert.deepEqual(declaredReadTools(source), ['get_cell', 'list_slices'])
+  assert.deepEqual(registeredTools(source), ['upsert_cell', 'get_cell', 'open_phase', 'list_slices'])
 })
 
 test('a difference names the tool, in either direction', () => {
@@ -96,4 +99,5 @@ test('a missing claim fails loudly rather than comparing an empty list', () => {
   assert.throws(() => documentedReadTools('# Canvas adapter\n\nNo such row.\n'))
   assert.throws(() => declaredReadTools('export const TOOL_SPECS = []\n'))
   assert.throws(() => registeredTools('export const TOOL_SPECS = []\n'))
+  assert.throws(() => declaredReadTools("defineTool({ name: 'get_cell' })"))
 })

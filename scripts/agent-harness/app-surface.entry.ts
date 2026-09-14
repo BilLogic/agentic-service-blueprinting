@@ -5,11 +5,19 @@
  * runs keyless are the EXACT functions the app serves in the browser.
  * No copies, so no drift.
  */
-export {
-  TOOL_SPECS,
-  WRITE_TOOL_NAMES,
-  MOBILE_READ_TOOL_NAMES,
-} from '@/lib/agent/tools/specs'
+export { TOOL_SPECS } from '@/lib/agent/tools/specs'
+import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
+/**
+ * The two rosters the harness gates on, derived here from the definitions
+ * the way the app's roster derives them: a write is a tool on the write
+ * surface, and the mobile roster is every tool whose availability says so.
+ */
+export const WRITE_TOOL_NAMES = new Set(
+  TOOL_DEFINITIONS.filter((tool) => tool.surface === 'write').map((tool) => tool.name),
+)
+export const MOBILE_READ_TOOL_NAMES = new Set(
+  TOOL_DEFINITIONS.filter((tool) => tool.availability.mobile).map((tool) => tool.name),
+)
 /**
  * The app's own sample-data readers — the same functions the no-database
  * agent trial serves in the browser. The harness used to reimplement these

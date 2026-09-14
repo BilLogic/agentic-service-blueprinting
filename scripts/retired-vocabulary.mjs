@@ -168,7 +168,7 @@
  * Nothing in the catalogue ever moved, which is why no migration carries either
  * word. What enforces the replacement is not this vocabulary map but the write
  * surface: `scripts/tests/who-writes-what.test.mjs` holds the ownership table
- * against `WRITE_TOOL_NAMES`, so a renamed tool or an unowned new write fails
+ * against the write surface, so a renamed tool or an unowned new write fails
  * `npm test`. That is the check neither collective noun ever had — both were
  * adopted, both went stale, and nothing anywhere noticed.
  *

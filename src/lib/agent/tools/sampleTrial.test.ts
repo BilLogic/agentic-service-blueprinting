@@ -14,12 +14,8 @@ import {
   SAMPLE_BLUEPRINTS_BY_SCENARIO,
   SAMPLE_DEMO_SLICES,
 } from '@/data/sampleBlueprint'
-import {
-  INTERFACE_TOOL_NAMES,
-  SAMPLE_TRIAL_TOOL_NAMES,
-  TOOL_SPECS,
-  WRITE_TOOL_NAMES,
-} from '@/lib/agent/tools/specs'
+import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
+import { sessionRoster } from '@/lib/agent/tools/roster'
 
 /**
  * The no-database trial: a developer with no backend gets the agent's
@@ -30,28 +26,24 @@ import {
  * would be offered to the model before any refusal could catch it.
  */
 describe('the sample-trial tool roster', () => {
-  it('contains zero write tools', () => {
-    const leaked = [...SAMPLE_TRIAL_TOOL_NAMES].filter((name) =>
-      WRITE_TOOL_NAMES.has(name),
-    )
-    expect(leaked).toEqual([])
+  const trial = sessionRoster({
+    sampleTrial: true,
+    mobileReading: false,
+    allowWrites: true,
+    searchOffered: true,
   })
 
-  it('only names tools that exist in the registry', () => {
-    const specNames = new Set(TOOL_SPECS.map((spec) => spec.name))
-    const phantom = [...SAMPLE_TRIAL_TOOL_NAMES].filter(
-      (name) => !specNames.has(name),
-    )
-    expect(phantom).toEqual([])
+  it('contains zero write tools, whatever the tier', () => {
+    expect(trial.filter((tool) => tool.surface === 'write')).toEqual([])
   })
 
-  it('registers only reading and navigation for the provider', () => {
-    const offered = TOOL_SPECS.filter((spec) =>
-      SAMPLE_TRIAL_TOOL_NAMES.has(spec.name),
-    ).map((spec) => spec.name)
-    expect(offered.length).toBe(SAMPLE_TRIAL_TOOL_NAMES.size)
-    expect(offered.some((name) => WRITE_TOOL_NAMES.has(name))).toBe(false)
-    for (const name of ['list_blueprint', 'get_blueprint', 'get_cell'])
+  it('is exactly the definitions that answer without a database', () => {
+    expect(trial).toEqual(TOOL_DEFINITIONS.filter((tool) => tool.availability.sample))
+  })
+
+  it('registers reading and navigation for the provider', () => {
+    const offered = trial.map((tool) => tool.name)
+    for (const name of ['list_blueprint', 'get_blueprint', 'get_cell', 'open_phase'])
       expect(offered).toContain(name)
   })
 })
@@ -189,13 +181,14 @@ describe('trial dispatch never reaches a database', () => {
   })
 
   /**
-   * EVERY data tool, not just the roster: the trial registers only
-   * SAMPLE_TRIAL_TOOL_NAMES, but a model can still emit a name it invented or
-   * remembered from a database session. None of them may throw, and none may
-   * dereference a client that is null — an unhandled name has to come back as
-   * a sentence saying which environment this is.
+   * EVERY data tool, not just the roster: the trial registers only the
+   * definitions that say they run without a database, but a model can still
+   * emit a name it invented or remembered from a database session. None of
+   * them may throw, and none may dereference a client that is null — an
+   * unhandled name has to come back as a sentence saying which environment
+   * this is.
    *
-   * `INTERFACE_TOOL_NAMES` is excluded because those calls reach for a canvas
+   * The interface surface is excluded because those calls reach for a canvas
    * through `document`, and this suite has no DOM; what they do with a null
    * client is not a question about the trial's data path.
    */
@@ -214,18 +207,11 @@ describe('trial dispatch never reaches a database', () => {
       measure_deletion_impact: { kind: 'scenario', target_id: 'nope' },
       create_cell_dependency: { source_cell_id: 'a', target_cell_id: 'b' },
     }
-    const dataTools = TOOL_SPECS.filter(
-      (spec) => !INTERFACE_TOOL_NAMES.has(spec.name),
-    )
-    for (const spec of dataTools) {
-      const text = await dispatchTool(
-        null,
-        'session',
-        spec.name,
-        stubs[spec.name] ?? {},
-      )
-      expect(typeof text, spec.name).toBe('string')
-      expect(text.length, spec.name).toBeGreaterThan(0)
+    const dataTools = TOOL_DEFINITIONS.filter((tool) => tool.surface !== 'interface')
+    for (const tool of dataTools) {
+      const text = await dispatchTool(null, 'session', tool.name, stubs[tool.name] ?? {})
+      expect(typeof text, tool.name).toBe('string')
+      expect(text.length, tool.name).toBeGreaterThan(0)
     }
   })
 

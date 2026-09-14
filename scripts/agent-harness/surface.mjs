@@ -2,7 +2,7 @@
  * The app surface the harness runs against, bundled once per run.
  *
  * rolldown bundles app-surface.entry.ts from the application, honouring the
- * `@/` alias, so the tool declarations, the rosters and the offline readers
+ * `@/` alias, so the tool declarations, the derived rosters and the offline readers
  * are the exact objects the app hands its providers. The alias is pointed at
  * the root `app-source.mjs` resolves rather than at `<root>/src`, because the
  * two are the same directory only in a tree that keeps its own copy of the

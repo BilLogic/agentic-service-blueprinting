@@ -11,9 +11,10 @@
  *
  * Two assertions, because the two failures are different shapes:
  *
- *   1. THE ROW. `READ_TOOL_NAMES` in `src/lib/agent/tools/specs.ts` is the
- *      source of truth; the adapter's read-surface row must list exactly it,
- *      in both directions — same comparison the write check makes.
+ *   1. THE ROW. The read surface is every definition under
+ *      `src/lib/agent/tools/definitions/` whose `surface` is `read`; the
+ *      adapter's read-surface row must list exactly it, in both directions —
+ *      same comparison the write check makes.
  *
  *   2. THE WHOLE DOCUMENT. Four of those five wrong names were in prose,
  *      not in a row, so a row-scoped check would have walked past them. Every
@@ -29,8 +30,7 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { readAppFile } from './app-source.mjs'
-import { toolSources } from './tool-sources.mjs'
+import { toolSources, toolSurfaces, toolsOnSurface } from './tool-sources.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
 
@@ -38,17 +38,16 @@ const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
  * The two sides, and the two places they live.
  *
  * The adapter is a file of THIS tree — a deployment holds it byte-identical
- * beside this script, and that copy is the one its agent reads. The specs are
- * the APPLICATION's, which a deployment does not keep a `src` for: it depends
- * on this repository as a package and reads them out of
- * `node_modules/agentic-service-blueprinting/src`. `readAppFile` is what knows
+ * beside this script, and that copy is the one its agent reads. The
+ * definitions are the APPLICATION's, which a deployment does not keep a `src`
+ * for: it depends on this repository as a package and reads them out of
+ * `node_modules/agentic-service-blueprinting/src`. `toolSources` is what knows
  * the difference, and it refuses a tree that has the application in neither
  * place rather than comparing the document against an empty roster — which is
  * the shape this check fails in most expensively, because a document that
  * declares tools nobody has and a roster with nobody in it agree perfectly.
  */
 const ADAPTER = 'references/canvas-adapter.md'
-const SPECS = 'src/lib/agent/tools/specs.ts'
 
 /**
  * Backticked snake_case tokens in the adapter that are NOT tool names.
@@ -62,18 +61,14 @@ const SPECS = 'src/lib/agent/tools/specs.ts'
  */
 const NOT_TOOLS = new Set(['position', 'whatif', 'leads_to'])
 
-/** The tool names in `READ_TOOL_NAMES`. */
+/** The tools on the read surface, from their definitions. */
 export function declaredReadTools(source) {
-  const block = /export const READ_TOOL_NAMES = new Set\(\[([\s\S]*?)^\]\)/m.exec(source)
-  if (!block) throw new Error(`no READ_TOOL_NAMES set found in ${SPECS}`)
-  return [...block[1].matchAll(/'([a-z_]+)'/g)].map(([, name]) => name)
+  return toolsOnSurface(source, 'read')
 }
 
-/** Every tool name `TOOL_SPECS` registers, read the same textual way. */
+/** Every tool name the definitions register, read the same textual way. */
 export function registeredTools(source) {
-  const names = [...source.matchAll(/^\s*name: '([a-z_]+)',$/gm)].map(([, name]) => name)
-  if (names.length === 0) throw new Error(`no TOOL_SPECS entries found in ${SPECS}`)
-  return names
+  return [...toolSurfaces(source).keys()]
 }
 
 /**
@@ -111,12 +106,10 @@ export function differences(documented, declared) {
 
 export function compare(root = REPO_ROOT) {
   const adapter = readFileSync(join(root, ADAPTER), 'utf8')
-  const specs = readAppFile(root, SPECS)
+  const definitions = toolSources(root)
   return {
-    ...differences(documentedReadTools(adapter), declaredReadTools(specs)),
-    // Registered tools live in the spec table AND the definitions folder;
-    // a tool that moved to a definition is still a tool the document may name.
-    phantom: phantomTools(adapter, registeredTools(toolSources(root))),
+    ...differences(documentedReadTools(adapter), declaredReadTools(definitions)),
+    phantom: phantomTools(adapter, registeredTools(definitions)),
   }
 }
 
@@ -131,17 +124,17 @@ function main() {
     console.error(`${name} is a read tool that ${ADAPTER} does not list`)
   }
   for (const name of unknown) {
-    console.error(`${ADAPTER} lists ${name}, which is not in READ_TOOL_NAMES`)
+    console.error(`${ADAPTER} lists ${name}, which is not a read tool`)
   }
   for (const name of duplicated) {
     console.error(`${ADAPTER} lists ${name} more than once`)
   }
   for (const name of phantom) {
-    console.error(`${ADAPTER} names \`${name}\`, which is not a tool in TOOL_SPECS`)
+    console.error(`${ADAPTER} names \`${name}\`, which is not a tool`)
   }
   console.error(
-    `\nThe agent calls what this document names. Fix ${ADAPTER}, or the sets in` +
-      ` ${SPECS}, so the two agree.`,
+    `\nThe agent calls what this document names. Fix ${ADAPTER}, or the tool` +
+      ' definitions, so the two agree.',
   )
   process.exit(1)
 }
