@@ -1,13 +1,15 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { resolveDeploymentConfig } from './deploymentConfig'
 import {
   getBlueprintFallback,
   getFallbackPathsForScenario,
   hasBlueprintFallback,
 } from './data/blueprintFallbacks'
+import { agentDoctrine, configureAgentDoctrine } from './lib/agent/doctrine'
+import { configureAgentReferences, readReference, referenceNames } from './lib/agent/tools/references'
 import type { CoverContent } from './components/cover/coverModel'
 import type { NavItem } from './types/nav'
 
@@ -95,6 +97,14 @@ describe('what arrives through the deployment config', () => {
     { id: 'acme-intake', index: 1, label: 'Intake', summary: 'How work arrives.' },
   ]
 
+  // Two of the readers below hold module-level state the config provider sets
+  // at boot; each test leaves it the way it found it, whatever the assertions
+  // did — the same reset the agent reference tests make.
+  afterEach(() => {
+    configureAgentDoctrine(undefined)
+    configureAgentReferences(undefined)
+  })
+
   /**
    * `config.ts` holds two values and both are already fields: the wordmark and
    * the accent. A deployment that names either gets its own, and the template's
@@ -122,6 +132,63 @@ describe('what arrives through the deployment config', () => {
   it('carries the pre-database navigation in place of the template’s data module', () => {
     const resolved = resolveDeploymentConfig({ sample: { nav } })
 
+    expect(resolved.sample.nav).toEqual(nav)
+  })
+
+  /**
+   * `lib/agent/role.md`: the deployment's account of itself to the agent. The
+   * template's role document stays the template's; what a deployment used to
+   * hold as its own copy of that file arrives as `agent.doctrine`, laid after
+   * the role on every send.
+   */
+  it('carries the agent doctrine in place of a deployment’s own role document', () => {
+    const resolved = resolveDeploymentConfig({
+      agent: { doctrine: '  Acme speaks plainly and never promises a date.  ' },
+    })
+    expect(resolved.agent?.doctrine).toBe('  Acme speaks plainly and never promises a date.  ')
+
+    // And the reader the prompt builds from takes it, trimmed, the way the
+    // config provider hands it over at boot.
+    configureAgentDoctrine(resolved.agent?.doctrine)
+    expect(agentDoctrine()).toBe('Acme speaks plainly and never promises a date.')
+  })
+
+  /**
+   * The reference documents under `lib/agent/`: a deployment's own arrive as
+   * `agent.references`, by the name `get_reference` serves them under. A
+   * name the template serves is replaced; a new one is listed to the agent.
+   */
+  it('carries the reference documents in place of files under the agent’s own directory', () => {
+    const resolved = resolveDeploymentConfig({
+      agent: { references: { blueprint: '# Acme’s account', 'acme-house-style': '# House style' } },
+    })
+    expect(resolved.agent?.references).toEqual({
+      blueprint: '# Acme’s account',
+      'acme-house-style': '# House style',
+    })
+
+    configureAgentReferences(resolved.agent?.references)
+    expect(readReference('blueprint', [])).toBe('# Acme’s account')
+    expect(readReference('acme-house-style', [])).toBe('# House style')
+    expect(referenceNames()).toContain('acme-house-style')
+  })
+
+  /**
+   * All four at once, and nothing under `src` to carry any of them: the org
+   * name, the role, the references and the sample navigation are the four
+   * files a deployment kept inside the application tree, and each has a home
+   * on the config now. This is the shape a deployment with no residents
+   * supplies.
+   */
+  it('carries the four owned inputs together, with no file in the application tree', () => {
+    const resolved = resolveDeploymentConfig({
+      brand: { name: 'Acme Service Design' },
+      agent: { doctrine: 'House rules.', references: { blueprint: '# Acme' } },
+      sample: { nav },
+    })
+    expect(resolved.brand.name).toBe('Acme Service Design')
+    expect(resolved.agent?.doctrine).toBe('House rules.')
+    expect(resolved.agent?.references).toEqual({ blueprint: '# Acme' })
     expect(resolved.sample.nav).toEqual(nav)
   })
 })
