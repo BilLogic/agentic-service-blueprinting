@@ -1,5 +1,101 @@
 # Changelog
 
+## 1.44.12
+
+**The package owns the claims for the files it ships, and a deployment's
+offline board can stay out of its production bundle.** Two follow-ups the
+first deployment's enrolments surfaced: every pin that added a module turned
+the deployment's composition-claims check red for files it never touched, and
+a supplied offline board rode in every build. Now the ten composition
+documents live here with claims for every assembled file, one shared check
+runs in both trees and overlays documents per name, and `sample.blueprints`
+takes a loader so the registry lands in its own chunk.
+
+**Upgrading a deployment:**
+
+- Delete your `docs/guidelines/composition/` documents and your own claims
+  check; take `scripts/check-harness-claims.mjs` byte-identical, add
+  `composition: { documents, claimed }` to `scripts/repo-config.mjs` naming
+  the trees you still assemble yourself (or `claimed: []`), and keep only a
+  document for those. Repair inbound links that pointed at the deleted
+  documents; the customization reference says how prose is overridden.
+- Hand `sample.blueprints` a loader — `() => import('./data/sampleBlueprints')
+  .then((m) => m.SAMPLE_BLUEPRINTS)` — and the registry leaves your main
+  chunk; the eager value keeps working.
+
+### Patch Changes
+
+- 8a00e4e: The package claims the files it ships: the composition documents, and the
+  claims check that reads them, are here now.
+
+  `docs/guidelines/composition/` — ten documents, one per assembled surface, each
+  carrying a `claims:` list — and `scripts/check-harness-claims.mjs`, which holds
+  those lists against `src/components/{blueprint,editor,cover,mobile}` in both
+  directions. It runs in this package's own CI as `npm run check:harness`, so a
+  module added without a document is red here, in the repository that added it.
+
+  **For a deployment that already runs a composition-claims check.** The claim for
+  a file is now written where the file lives, which is the whole of what changes:
+
+  - **Delete** every composition document of yours that claims files under
+    `src/components/…`, and delete your own copy of the check. Those files are
+    this package's, and this package's documents claim all of them; a document you
+    keep under a name this package also ships REPLACES ours for that surface,
+    claims included, which is the supported way to disagree with our prose.
+
+    **Check what links to them before you delete.** These documents are usually
+    linked from an index, a codebase guide, a standards document and the root
+    README, and those links are relative paths into your own tree — the prose they
+    point at now lives inside `node_modules/`, where a relative link cannot reach
+    it. Your pointer check and your generated index will go red on the same day.
+    Two answers, both fine: keep the documents and accept that yours override ours
+    by name, or re-point the links (an index row naming
+    `docs/guidelines/composition/overview.md` in this package is the shortest
+    landing place) and delete.
+
+  - **Keep** a composition document for each tree of assembled files you hold
+    outside this application, claiming those files. Name those trees in
+    `composition.claimed` in your `scripts/repo-config.mjs`, beside
+    `composition.documents`, which is where your composition folder is.
+  - **Hold** `scripts/check-harness-claims.mjs` byte-identical from this package,
+    the way you already hold `sweep.mjs`, and point `check:harness` at it. It
+    reads your composition folder and this package's underneath it.
+
+  `composition.documents` has to name the folder this package publishes, not a
+  folder of your choosing: it addresses both your documents and ours, and an
+  installed package that holds nothing at that name is reported as exactly that
+  rather than as two hundred unclaimed files.
+
+  An upstream module that no document of ours claims is an upstream bug — report
+  it, do not write the claim. Our own build fails on it before the tag is cut,
+  which is the whole of why your build no longer has to.
+
+  A deployment with no assembled files of its own sets `claimed: []`, keeps no
+  composition folder, and pins a release that adds thirty-one modules without
+  writing a line. `references/customization.md` § Composition claims is the whole
+  recipe.
+
+- ce7c0dc: `sample.blueprints` takes a loader, so an offline board rides only in the builds that draw it
+
+  A deployment's offline board is the largest value it hands the config — around
+  1.2 MB of cells for an export of a real board, roughly 140 kB gzipped — and it is read on one
+  condition, `isBundledSampleActive()`. Handed over as a value it was reachable
+  from the config module, so every build carried it, including the production
+  build with a database where nothing ever asks for it.
+
+  The field now takes either the registry or a
+  `SampleBlueprintRegistryLoader` — `() => import('./data/sampleBlueprints').then((m) => m.SAMPLE_BLUEPRINTS)` —
+  and a loader's only reference to those bytes is inside a dynamic import, which
+  is a chunk boundary to every bundler. `DeploymentConfigProvider` calls it only
+  when the bundled sample is reachable, and awaits it before rendering the tree
+  below, because the board reads the registry while it draws. A loader that
+  rejects throws rather than falling back to the template's own board, which
+  answers a deployment's identifiers nothing — the provider is outermost, so that
+  surfaces as a blank page and a console error unless the host supplies a
+  boundary above `App`.
+
+  The eager form is unchanged and needs no migration.
+
 ## 1.44.11
 
 **The three large components are split, and their slices said nothing moved.**
@@ -20,7 +116,7 @@ name, with the generator writing both halves for a tree that has no `src`.
 - A generated registry or nav module can now import
   `SampleBlueprintRegistry`, `NavItem` and the board's shapes from
   `agentic-service-blueprinting`; `scripts/generate_fallbacks.py --registry-out
-  … --nav-out …` writes both halves as standalone modules outside `src`.
+… --nav-out …` writes both halves as standalone modules outside `src`.
 
 ### Patch Changes
 
@@ -6845,8 +6941,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                      ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                      "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                        ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                        "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
