@@ -97,6 +97,7 @@ already and are listed so the table is the whole answer.
 | `agent.doctrine` | `src/lib/agent/role.md` — the deployment's own copy of the agent's role document | Laid after the template's role and the canvas adapter on every send. The template's role stays the template's; the doctrine is what one deployment adds: its house rules, its posture, its account of itself. |
 | `agent.references` | Reference documents under `src/lib/agent/` — the deployment's own account, house style, whatever it authored for `get_reference` | A map of bare name to document text; the host holds the `?raw` imports. A name the template already serves is replaced, a new name is listed to the agent right after the canvas adapter. |
 | `sample.nav` | `src/data/sampleNav.ts` — the board shown before a database answers | Read by the editor context as the slides shown before the first fetch answers (`fallbackSlides`); the template's generated sample stands in only when the field is absent. |
+| `sample.blueprints` | `src/data/blueprintFallbacks.ts` — the CONTENT those nav rows resolve to | The registry every offline lookup goes through: `DeploymentConfigProvider` writes it onto that module with `configureSampleBlueprints` while it renders, because the board reads the module as it draws. Supply it WITH `sample.nav` — see § The offline board is two fields. |
 
 The generated database types (`src/types/database.ts`) are the one file a
 deployment keeps in its tree on purpose: a deployment generates its own against
@@ -105,8 +106,40 @@ its own project and holds it to the template's with the superset check
 
 `src/deploymentOwnedContent.test.ts` is the inventory behind this table — it
 fails when a module appears in the template's content directories without a
-config home, and it carries all four inputs through the config with no file
-in the application tree.
+config home, and it carries every input through the config with no file in the
+application tree.
+
+### The offline board is two fields
+
+`sample.nav` lists the phases and scenarios; `sample.blueprints` is what each
+of those scenarios draws. Both are REPLACED, never merged, and that is why one
+without the other is a broken board rather than a partial one: a deployment
+that named its own nav and left the content to the template got its own rows
+over a registry keyed by the template's ids, which answers none of them — rows
+above an empty canvas in every no-database build, and a render walk over that
+build with no board to find (#754).
+
+`scripts/generate_fallbacks.py --register` writes both halves in one pass, and
+the config field takes the registry in exactly the shape that run emits, so a
+deployment hands over what its own pipeline already produced:
+
+```ts
+import { PACKAGE_SAMPLE_BLUEPRINTS } from './data/blueprintFallbacks'
+import { SAMPLE_NAV } from './data/sampleNav'
+
+const config: DeploymentConfig = {
+  sample: { nav: SAMPLE_NAV, blueprints: PACKAGE_SAMPLE_BLUEPRINTS },
+}
+```
+
+Those two modules are the deployment's own generated content, held wherever it
+keeps its content — beside its cover copy, not as residents under `src`. A
+deployment that registered against an earlier release re-runs `--register` once
+after adopting this one: the block that run writes is what exports the registry
+the config field takes.
+Omitting either field is the template's own half, which is the right answer for
+a deployment still evaluating the template and the wrong one for a deployment
+with a board of its own.
 
 ## Layouts & path kinds
 
