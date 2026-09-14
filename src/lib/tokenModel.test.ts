@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { sweep } from '../../scripts/sweep.mjs'
 import {
   consumersOf,
   contrast,
@@ -163,7 +161,17 @@ describe('the cascade', () => {
  * at line 15, on an import statement.
  */
 describe('the source reader', () => {
-  const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+  // The raw file, opened the way the model opens it: the `app` subject of
+  // `scripts/sweep.mjs`, whose paths read `src/…` wherever the file is. A
+  // reader resolved from THIS file's location would agree with the model here
+  // and disagree with it in a deployment, where the model reads the overlay
+  // and the test would still be reading the package.
+  const app = sweep({ subject: 'app', what: 'file of the application' })
+  const raw = (file: string): string => {
+    const text = app.read(`src/${file}`)
+    if (text === null) throw new Error(`src/${file} went away mid-test`)
+    return text
+  }
 
   it('reads the whole of src, not a chosen list of roots', () => {
     // The rule this model absorbed already read every `.ts`/`.tsx` under
@@ -181,8 +189,8 @@ describe('the source reader', () => {
 
   it('keeps every line, so a stripped file numbers the same as the raw one', () => {
     for (const source of sourceFiles()) {
-      const raw = readFileSync(resolve(SRC, source.file), 'utf8')
-      expect(source.code.split('\n')).toHaveLength(raw.split('\n').length)
+      const text = raw(source.file)
+      expect(source.code.split('\n')).toHaveLength(text.split('\n').length)
     }
   })
 
@@ -193,8 +201,8 @@ describe('the source reader', () => {
     expect(matches.length).toBeGreaterThan(0)
     for (const match of matches) {
       const [file, line] = match.split(':')
-      const raw = readFileSync(resolve(SRC, file), 'utf8').split('\n')
-      expect(raw[Number(line) - 1]).toContain('ARROW_COLOR = ')
+      const lines = raw(file).split('\n')
+      expect(lines[Number(line) - 1]).toContain('ARROW_COLOR = ')
     }
   })
 

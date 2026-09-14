@@ -1,6 +1,3 @@
-import { readdirSync, statSync } from 'node:fs'
-import { dirname, relative, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import {
@@ -11,6 +8,7 @@ import {
   type TokenLayer,
 } from '@/lib/tokenModel'
 import { BRAND } from '@/config'
+import { sweep } from '../../scripts/sweep.mjs'
 
 /**
  * The token-discipline rule, enforced — now against the one model.
@@ -143,25 +141,29 @@ const UTILITY_PREFIXES =
  */
 const VARIANTS = '(?:[\\w-]+(?:-\\[[^\\]]*\\])?:|\\[[^\\]]*\\]:)*'
 
-const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-
 /**
- * Every non-test `.ts`/`.tsx` under `src`, enumerated independently.
+ * Every non-test `.ts`/`.tsx` of the application, enumerated independently.
  *
  * A second walk in a file whose whole point is that there should be one — and
  * deliberately so. It reads no file and applies no rule; it lists paths, and
  * it exists precisely to be compared against the model's own list. A guard
  * that asked the model whether the model reads enough could only ever agree
  * with itself.
+ *
+ * Independent of the MODEL, not of the build. Both lists now come from the
+ * `app` subject of `scripts/sweep.mjs`, because which files the application
+ * has is the build's rule — a deployment's `src` over the package's — and a
+ * counterpart that answered that question its own way would fail in a
+ * deployment while the model was right. What stays independent is the filter
+ * and the enumeration: this walk decides for itself what a source file is, and
+ * the model has to have read exactly those.
  */
-function everySourceFile(dir: string = SRC): string[] {
-  return readdirSync(dir).flatMap((entry) => {
-    const path = resolve(dir, entry)
-    if (statSync(path).isDirectory()) return everySourceFile(path)
-    if (!/\.tsx?$/.test(entry)) return []
-    if (entry.includes('.test.')) return []
-    return [relative(SRC, path).split('\\').join('/')]
-  })
+function everySourceFile(): string[] {
+  return sweep({
+    subject: 'app',
+    where: (path) => /\.tsx?$/.test(path) && !path.includes('.test.'),
+    what: 'source file of the application',
+  }).files.map((path) => path.slice('src/'.length))
 }
 
 test('the sample is the whole tree, file for file', () => {

@@ -1,6 +1,4 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { dirname, relative, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { type Sweep, sweep } from '../../scripts/sweep.mjs'
 import {
   composite,
   hexToRgb,
@@ -65,11 +63,44 @@ import {
  * a registration without knowing it.
  */
 
-const HERE = dirname(fileURLToPath(import.meta.url))
-const SRC = resolve(HERE, '..')
-const STYLES = resolve(SRC, 'styles')
+/**
+ * WHOSE FILES THE MODEL READS is the build's answer, not this file's.
+ *
+ * The two walkers below used to resolve `src/` from this module's own
+ * location and walk it. That is right in this tree and wrong everywhere else:
+ * a deployment installs the package under `node_modules`, so the walk found
+ * the PACKAGE's stylesheets and never the deployment's own — `styles/brand.css`
+ * beside them, which is exactly where a deployment's dials live. Every rule
+ * riding this model then judged the package inside a consumer, and passed,
+ * having measured nothing about the application that consumer builds.
+ *
+ * So the sample is the `app` subject of `scripts/sweep.mjs`: the deployment's
+ * `src` laid over the package's, per path, which is the same overlay the build
+ * applies. The paths read `src/…` wherever the file is, the sweep's `read`
+ * opens them, and the root is the tree the run is in — never this file's
+ * location, which is the rule `sweep.mjs`'s header states for every check.
+ */
+const SRC_PREFIX = 'src/'
+const STYLES_PREFIX = 'src/styles/'
 /** The stylesheet entry. Import order is read from it, never restated here. */
-const ENTRY = resolve(STYLES, 'tailwind.config.css')
+const ENTRY = `${STYLES_PREFIX}tailwind.config.css`
+
+/**
+ * The text of one file the sweep listed.
+ *
+ * The sweep's `read` hands back null for a path that has gone between the
+ * listing and the read — a skip a walk over a moving tree can afford, and this
+ * model cannot. Every rule below is an assertion about a COMPLETE sample, and
+ * a sample that quietly lost a file passes each one of them. So the vanishing
+ * is a failure here, and it says which file did it.
+ */
+function readListed(walk: Sweep, path: string): string {
+  const text = walk.read(path)
+  if (text === null) {
+    throw new Error(`${path} went away between the listing and the read`)
+  }
+  return text
+}
 
 export type Theme = 'light' | 'dark'
 
@@ -208,33 +239,28 @@ let cachedSheets: Stylesheet[] | null = null
  */
 export function stylesheets(): Stylesheet[] {
   if (cachedSheets) return cachedSheets
-  const entry = readFileSync(ENTRY, 'utf8')
+  const walk = sweep({
+    subject: 'app',
+    where: (path) => path.startsWith(STYLES_PREFIX) && path.endsWith('.css'),
+    what: 'stylesheet of the application',
+  })
+  const entry = readListed(walk, ENTRY)
   const imported = [...entry.matchAll(/@import\s+'\.\/([^']+)'/g)].map(
     ([, path]) => path,
   )
-  const onDisk = cssFiles(STYLES).map((path) =>
-    relative(STYLES, path).split('\\').join('/'),
-  )
+  const swept = walk.files.map((path) => path.slice(STYLES_PREFIX.length))
   const ordered = [
     ...imported,
-    ...onDisk.filter((file) => !imported.includes(file)).sort(),
+    ...swept.filter((file) => !imported.includes(file)).sort(),
   ]
   cachedSheets = ordered.map((file, order) => ({
     file,
-    text: readFileSync(resolve(STYLES, file), 'utf8'),
+    text: readListed(walk, `${STYLES_PREFIX}${file}`),
     // Files the entry never imports sort after everything it does, and are
     // excluded from cascade resolution below.
     order: imported.includes(file) ? order : Number.POSITIVE_INFINITY,
   }))
   return cachedSheets
-}
-
-function cssFiles(dir: string): string[] {
-  return readdirSync(dir).flatMap((entry) => {
-    const path = resolve(dir, entry)
-    if (statSync(path).isDirectory()) return cssFiles(path)
-    return entry.endsWith('.css') ? [path] : []
-  })
 }
 
 /** One stylesheet by its path relative to `src/styles`. */
@@ -597,23 +623,18 @@ let cachedSource: SourceFile[] | null = null
  */
 export function sourceFiles(): SourceFile[] {
   if (cachedSource) return cachedSource
-  cachedSource = tsFiles(SRC)
+  const walk = sweep({
+    subject: 'app',
+    where: (path) => /\.tsx?$/.test(path) && !path.includes('.test.'),
+    what: 'source file of the application',
+  })
+  cachedSource = walk.files
     .map((path) => ({
-      file: relative(SRC, path).split('\\').join('/'),
-      code: stripComments(readFileSync(path, 'utf8')),
+      file: path.slice(SRC_PREFIX.length),
+      code: stripComments(readListed(walk, path)),
     }))
     .sort((a, b) => a.file.localeCompare(b.file))
   return cachedSource
-}
-
-function tsFiles(dir: string): string[] {
-  return readdirSync(dir).flatMap((entry) => {
-    const path = resolve(dir, entry)
-    if (statSync(path).isDirectory()) return tsFiles(path)
-    if (!/\.tsx?$/.test(entry)) return []
-    if (entry.includes('.test.')) return []
-    return [path]
-  })
 }
 
 /**
@@ -812,8 +833,8 @@ export function sourceMatching(pattern: RegExp): string[] {
  * Colour, re-exported.
  *
  * The arithmetic itself lives in `oklch.ts`, so the brand-accent reader — which
- * runs in a browser — can reach it without dragging this module's `node:fs`
- * reads along. Re-exported here rather than moved out of sight, because every
+ * runs in a browser — can reach it without dragging this module's file reads
+ * along. Re-exported here rather than moved out of sight, because every
  * colour rule in the suite asks this model its questions and the seam ADR says
  * there is one place to ask.
  */
