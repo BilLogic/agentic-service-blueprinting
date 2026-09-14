@@ -95,7 +95,7 @@ a role is authored content.
 
 All layout logic is role-agnostic where it can be: e.g. backward in-lane
 loop corridors are computed from dependency geometry for ANY lane, `null`
-role included (`blueprintLaneHasBackwardInLaneLoop`).
+role included (`laneHasInLaneLoopCorridor`).
 
 ## Adding a role
 

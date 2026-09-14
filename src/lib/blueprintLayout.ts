@@ -9,7 +9,26 @@ import {
   STORYBOARD_ROLE,
   SUPPORT_ACTIONS_ROLE,
 } from '@/lib/laneRoles'
+import {
+  BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN,
+  BLUEPRINT_OVERHEAD_RAIL_CORRIDOR_MARGIN,
+  BLUEPRINT_WRAP_CORRIDOR_MARGIN,
+  laneHasInLaneLoopCorridor,
+  laneHasOverheadArrowCorridor,
+  rowTrackHeight,
+} from '@/lib/laneCorridor'
 import type { BlueprintData, BlueprintLane } from '@/types/blueprint'
+
+/**
+ * The corridor rule lives in `laneCorridor`; its margins are re-exported
+ * here because the rails, the arrow geometry and the compare shell read
+ * every layout number from this module.
+ */
+export {
+  BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN,
+  BLUEPRINT_OVERHEAD_RAIL_CORRIDOR_MARGIN,
+  BLUEPRINT_WRAP_CORRIDOR_MARGIN,
+}
 
 /** Minimal lane shape for role-driven layout checks. */
 type LaneRoleSource = { name: string; role?: string | null }
@@ -27,13 +46,27 @@ export const STORYBOARD_LANE_ROLES = [STORYBOARD_ROLE] as const
 export const STORYBOARD_ROW_MIN_HEIGHT = 176
 export const STORYBOARD_ROW_MIN_HEIGHT_COMPACT = 168
 
+/**
+ * The cell shell's vertical inset — the padding above and below a cell's
+ * face in the service and compare grids. One number, pushed into the shell
+ * as a style and summed here; the compare layout and the single board used
+ * to each write `compact ? 24 : 32` for the pair.
+ */
+export function getCellShellInsetY(compact = false): number {
+  return compact ? 12 : 16
+}
+
+/** Both insets: what the shell adds to a face's height. */
+export function getCellShellPaddingY(compact = false): number {
+  return getCellShellInsetY(compact) * 2
+}
+
 /** Max height for the storyboard cell button inside a swimlane row (excludes shell padding). */
 export function getStoryboardCellButtonMaxHeight(compact = false): number {
   const rowHeight = compact
     ? STORYBOARD_ROW_MIN_HEIGHT_COMPACT
     : STORYBOARD_ROW_MIN_HEIGHT
-  const shellVerticalPad = compact ? 24 : 32
-  return rowHeight - shellVerticalPad
+  return rowHeight - getCellShellPaddingY(compact)
 }
 
 export function shouldUseTouchpointCellContent(lane: LaneRoleSource): boolean {
@@ -196,130 +229,6 @@ export const INTERNAL_INTERACTION_LINE_LABEL = 'LINE OF INTERNAL INTERACTION'
 export const BLUEPRINT_DIVIDER_ROW_HEIGHT = 28
 /** Right inset so interaction / visibility lines stop before the board edge. */
 export const BLUEPRINT_DIVIDER_LINE_END_INSET = 16
-/** Transparent margin above the interaction line for loop-back arrows. */
-export const BLUEPRINT_WRAP_CORRIDOR_MARGIN = 36
-/** Space above a lane row for overhead-rail arrows that skip columns in it. */
-export const BLUEPRINT_OVERHEAD_RAIL_CORRIDOR_MARGIN = 36
-/** Space at the top of a lane row for in-lane loop-back arrows. */
-export const BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN = 32
-
-/**
- * Step column each cell in one lane sits in, keyed by cell id.
- *
- * Both lane corridors are decided by comparing the columns a dependency's two
- * ends occupy, so the shape of that question is the same either way: restrict
- * to the lane, then resolve `step_id` through `steps.position`. Reading
- * the data this way (rather than parsing anything out of an id) is what keeps
- * the rule true for any blueprint.
- */
-function getLaneCellColumns(
-  data: BlueprintData,
-  laneId: string,
-): Map<string, number> {
-  const columnByStepId = new Map<string, number>()
-  for (const step of data.steps) {
-    columnByStepId.set(step.id, step.position)
-  }
-
-  const columnByCellId = new Map<string, number>()
-  for (const cell of data.cells) {
-    if (cell.lane_id !== laneId) continue
-    const column = columnByStepId.get(cell.step_id)
-    if (column === undefined) continue
-    columnByCellId.set(cell.id, column)
-  }
-  return columnByCellId
-}
-
-/**
- * Does this blueprint hold a dependency that stays inside `laneId` and whose
- * two step columns satisfy `matches`? Dependencies that leave the lane at
- * either end are not the lane's business — they are routed between rows, not
- * around one.
- */
-function blueprintHasInLaneDependency(
-  data: BlueprintData,
-  laneId: string,
-  matches: (sourceColumn: number, targetColumn: number) => boolean,
-): boolean {
-  const columnByCellId = getLaneCellColumns(data, laneId)
-  if (columnByCellId.size === 0) return false
-
-  return data.dependencies.some((dependency) => {
-    const sourceColumn = columnByCellId.get(dependency.source_cell_id)
-    const targetColumn = columnByCellId.get(dependency.target_cell_id)
-    if (sourceColumn === undefined || targetColumn === undefined) return false
-    return matches(sourceColumn, targetColumn)
-  })
-}
-
-function anyBlueprintHasInLaneDependency(
-  lane: BlueprintLane,
-  data: BlueprintData | readonly BlueprintData[] | undefined,
-  matches: (sourceColumn: number, targetColumn: number) => boolean,
-): boolean {
-  if (!data) return false
-  const blueprints = Array.isArray(data) ? data : [data]
-  return blueprints.some((blueprint) =>
-    blueprintHasInLaneDependency(blueprint, lane.id, matches),
-  )
-}
-
-/**
- * A lane needs the overhead rail when one of its own dependencies runs FORWARD
- * and clears at least one column on the way (target column >= source + 2).
- * Such a connector cannot travel along the row — the cells it skips are in the
- * way — so it climbs into a strip above the row, runs across, and drops back
- * in.
- *
- * The arrow engine asks the same question of the rendered grid when it picks a
- * detour lane; the two must agree or the rail would be drawn where no space
- * was reserved.
- */
-export function laneHasOverheadArrowCorridor(
-  lane: BlueprintLane,
-  data?: BlueprintData | readonly BlueprintData[],
-): boolean {
-  return anyBlueprintHasInLaneDependency(
-    lane,
-    data,
-    (sourceColumn, targetColumn) => targetColumn >= sourceColumn + 2,
-  )
-}
-
-/**
- * A lane needs the in-lane loop corridor when one of its own dependencies runs
- * BACKWARD — its target sits in an earlier column than its source. That arrow
- * loops back over the row it started on, so the row reserves a thin strip
- * above itself for the horizontal leg.
- */
-export function laneHasInLaneLoopCorridor(
-  lane: BlueprintLane,
-  data?: BlueprintData | readonly BlueprintData[],
-): boolean {
-  return anyBlueprintHasInLaneDependency(
-    lane,
-    data,
-    (sourceColumn, targetColumn) => targetColumn < sourceColumn,
-  )
-}
-
-export function countInLaneLoopCorridorMargins(
-  lanes: BlueprintLane[],
-  data?: BlueprintData,
-): number {
-  if (!data) return 0
-  return lanes.filter((lane) => laneHasInLaneLoopCorridor(lane, data)).length
-}
-
-export function countOverheadRailCorridorMargins(
-  lanes: BlueprintLane[],
-  data: BlueprintData,
-): number {
-  return lanes.filter((lane) => laneHasOverheadArrowCorridor(lane, data))
-    .length
-}
-
 /**
  * Does a corridor open UNDER this lane row? Only the row the line of
  * interaction is drawn after has one: the standard blueprint already leaves a
@@ -351,12 +260,13 @@ export function countBlueprintDividerRows(lanes: BlueprintLane[]): number {
 }
 
 /**
- * Both counts above are read as HEIGHT — one is multiplied by
- * BLUEPRINT_DIVIDER_ROW_HEIGHT and the other by
- * BLUEPRINT_WRAP_CORRIDOR_MARGIN — so a count that disagrees with what the
+ * The divider count above is read as HEIGHT — multiplied by
+ * BLUEPRINT_DIVIDER_ROW_HEIGHT — so a count that disagrees with what the
  * renderer draws is a grid taller than its own contents by exactly the rows
- * it over-counted. Each therefore has to ask the question the renderer asks,
- * board and all.
+ * it over-counted. It therefore has to ask the question the renderer asks,
+ * board and all. The wrap corridor is priced per lane through the corridor
+ * rule's row track now; the count below is kept for the tests that hold the
+ * band's floor to one corridor.
  */
 export function countBlueprintWrapCorridorMargins(
   lanes: BlueprintLane[],
@@ -592,8 +502,7 @@ function getDefaultCellMinHeight(
   const faceHeight = compact
     ? NARRATIVE_CELL_HEIGHT_COMPACT
     : NARRATIVE_CELL_HEIGHT
-  const shellPadding = compact ? 24 : 32
-  return faceHeight + shellPadding
+  return faceHeight + getCellShellPaddingY(compact)
 }
 
 export function getLaneRowMinHeight(
@@ -627,31 +536,22 @@ export function getBlueprintGridMinHeight(
   const header = compact ? BLUEPRINT_HEADER_HEIGHT_COMPACT : BLUEPRINT_HEADER_HEIGHT
   const dividers =
     countBlueprintDividerRows(data.lanes) * BLUEPRINT_DIVIDER_ROW_HEIGHT
-  const wrapCorridorMargins =
-    countBlueprintWrapCorridorMargins(data.lanes) *
-    BLUEPRINT_WRAP_CORRIDOR_MARGIN
-  const overheadRailCorridorMargins =
-    countOverheadRailCorridorMargins(data.lanes, data) *
-    BLUEPRINT_OVERHEAD_RAIL_CORRIDOR_MARGIN
-  const inLaneLoopCorridorMargins =
-    countInLaneLoopCorridorMargins(data.lanes, data) *
-    BLUEPRINT_IN_LANE_LOOP_CORRIDOR_MARGIN
+  // Each lane's row track — its height plus the corridors it reserves —
+  // priced by the one rule the compare layout prices its rows with.
   const laneRows = data.lanes.reduce(
-    (sum, lane) => sum + getLaneRowMinHeight(lane, data, compact),
+    (sum, lane) =>
+      sum +
+      rowTrackHeight(getLaneRowMinHeight(lane, data, compact), {
+        overheadRailAbove: laneHasOverheadArrowCorridor(lane, data),
+        inLaneLoopAbove: laneHasInLaneLoopCorridor(lane, data),
+        wrapBelow: laneHasWrapCorridorBelow(lane, data.lanes),
+      }),
     0,
   )
   const rowCount =
     data.lanes.length + countBlueprintDividerRows(data.lanes)
   const rowGaps = Math.max(0, rowCount - 1) * BLUEPRINT_LANE_ROW_GAP
-  return (
-    (includeHeader ? header : 0) +
-    laneRows +
-    dividers +
-    wrapCorridorMargins +
-    overheadRailCorridorMargins +
-    inLaneLoopCorridorMargins +
-    rowGaps
-  )
+  return (includeHeader ? header : 0) + laneRows + dividers + rowGaps
 }
 
 /** Gap between side-by-side blueprint grids on canvas. */

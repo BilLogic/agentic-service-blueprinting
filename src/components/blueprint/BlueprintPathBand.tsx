@@ -34,8 +34,8 @@ import type { CompareGridTrack } from '@/lib/compareGridTracks'
 import {
   type BlueprintLabelRowSpec,
   getComparePathArrowData,
-  resolveBlueprintLane,
 } from '@/lib/sideBySideCompareLayout'
+import { resolveBlueprintLane } from '@/lib/laneCorridor'
 import { cn } from '@/lib/utils'
 import { resolveStoryboardStripEntries } from '@/lib/storyboardWalkthrough'
 import { isBlueprintStoryboardWalkthroughEnabled } from '@/lib/blueprintDisplayFlags'
