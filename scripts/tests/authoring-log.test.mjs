@@ -25,6 +25,18 @@
  * anything. Each red case is a shape the scanner has to report, written out so
  * that a scanner that stopped examining its subject fails here first.
  *
+ * THE FIXTURE MEMBERS ARE SPELLED UNDER `notes/`, AND NOT AS MIGRATION
+ * FILENAMES, DELIBERATELY. They belong to a sweep that exists only inside
+ * this file — no tree holds them, and a fixture is not a citation. But this
+ * file is read from two repositories at once, and the gate that decides
+ * whether a deployment may hold it is line-based over bytes; it has to be,
+ * because it reads a foreign repository's file with no parser for the
+ * language. It cannot tell a fixture from an address, and the two
+ * repositories do not share a migration series, so a member of one resolves
+ * in at most one tree. Spelling them where neither tree claims them costs
+ * nothing and saves the reader the same second it saves the scan — the same
+ * reason the router suite's fixture paths sit under `notes/`.
+ *
  * Run: npm test
  */
 import { test } from 'vitest'
@@ -102,9 +114,8 @@ test('the union is taken over the files the subject handed in', () => {
   // the empty case above is the one that must not pass.
   const swept = {
     base: '/deployment/supabase/migrations',
-    files: ['21000101000000_one.sql', '21000102000000_two.sql', 'notes.txt'],
-    read: (path) =>
-      path === '21000101000000_one.sql' ? archiver('delete_cell', 'cell') : null,
+    files: ['notes/one.sql', 'notes/two.sql', 'notes/plain.txt'],
+    read: (path) => (path === 'notes/one.sql' ? archiver('delete_cell', 'cell') : null),
   }
   assert.deepEqual(archivingFunctionsIn(swept), ['delete_cell'])
 })

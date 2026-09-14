@@ -77,6 +77,14 @@ export const SHARED_SCRIPTS = new Map([
     'scripts/tests/the-router-is-a-router.test.mjs',
     'the router’s three checks, proven the same way on both sides',
   ],
+  [
+    'scripts/authoring-archivers.mjs',
+    'which SQL functions archive is a question about a series, asked the same way of whichever one is mounted',
+  ],
+  [
+    'scripts/tests/authoring-log.test.mjs',
+    'the one seam between the log’s two writers, held from both sides in either tree',
+  ],
 ])
 
 /**
