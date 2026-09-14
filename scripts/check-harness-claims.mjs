@@ -62,7 +62,7 @@
  *   node scripts/check-harness-claims.mjs   (also: npm run check:harness)
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative, resolve, sep } from 'node:path'
+import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { repoConfig } from './repo-config.mjs'
@@ -94,9 +94,6 @@ export const isTest = (path) => /\.test\.[cm]?[jt]sx?$/.test(path)
 export const isAssembled = (path) =>
   ASSEMBLED.some((dir) => path.startsWith(`${dir}/`)) && !isTest(path)
 
-/** `path`, spelled the way a finding prints it. */
-const slashed = (path) => path.split(sep).join('/')
-
 /**
  * The composition folders in play under `root`, this tree's first and the
  * package's second, each present on disk.
@@ -105,12 +102,37 @@ const slashed = (path) => path.split(sep).join('/')
  * is the same rule: a deployment's copy of a name wins, and the package's
  * answers everything the deployment did not name. In this repository the
  * package is not installed, there is one layer, and nothing overlays anything.
+ *
+ * ONE FOLDER NAME SERVES BOTH LAYERS, and that is the one place this arrangement
+ * asks a deployment to agree with the package rather than to state its own
+ * value. A deployment that names its folder something else builds a package
+ * layer that is not there, gets one layer, and hears that every file the
+ * package ships is unclaimed — a failure that names two hundred files and none
+ * of the cause. So `missingPackageLayer` below asks the question separately: an
+ * installed package that holds no folder at this name is reported as exactly
+ * that, once, instead of as the flood it would otherwise become.
  */
 export function compositionLayers(root, documents) {
   return [
-    resolve(root, documents),
-    resolve(root, 'node_modules', APP_PACKAGE, documents),
-  ].filter((layer) => existsSync(layer))
+    { path: resolve(root, documents), packaged: false },
+    { path: resolve(root, 'node_modules', APP_PACKAGE, documents), packaged: true },
+  ].filter((layer) => existsSync(layer.path))
+}
+
+/**
+ * The complaint to make when the package is installed and its composition
+ * folder is not where this repository's value says — or null when there is
+ * nothing to complain about.
+ */
+export function missingPackageLayer(root, documents) {
+  const installed = resolve(root, 'node_modules', APP_PACKAGE)
+  if (!existsSync(installed)) return null
+  if (existsSync(resolve(installed, documents))) return null
+  return (
+    `${APP_PACKAGE} is installed and holds no ${documents} — \`composition.documents\` in ` +
+    'repo-config.mjs has to name the folder the package publishes, because it addresses both ' +
+    "this repository's documents and the package's"
+  )
 }
 
 /**
@@ -123,16 +145,17 @@ export function compositionLayers(root, documents) {
  */
 export function resolveDocuments(layers, documents) {
   const found = new Map()
-  layers.forEach((layer, index) => {
-    for (const name of readdirSync(layer).sort()) {
+  for (const layer of layers) {
+    for (const name of readdirSync(layer.path).sort()) {
       if (!name.endsWith('.md') || name === 'index.md' || found.has(name)) continue
       found.set(name, {
         name,
-        path: join(layer, name),
-        label: index === 0 ? `${documents}/${name}` : `${APP_PACKAGE}/${documents}/${name}`,
+        path: join(layer.path, name),
+        packaged: layer.packaged,
+        label: layer.packaged ? `${APP_PACKAGE}/${documents}/${name}` : `${documents}/${name}`,
       })
     }
-  })
+  }
   return [...found.values()].sort((a, b) => a.name.localeCompare(b.name))
 }
 
@@ -173,16 +196,29 @@ export function frontmatter(text) {
   return out
 }
 
-/** Every file under an absolute directory, as a path relative to `root`. */
-function walk(abs, root, out = []) {
-  for (const entry of readdirSync(abs, { withFileTypes: true }).sort((a, b) =>
-    a.name.localeCompare(b.name),
-  )) {
-    const full = join(abs, entry.name)
-    if (entry.isDirectory()) walk(full, root, out)
-    else if (!isTest(entry.name)) out.push(slashed(relative(root, full)))
-  }
-  return out
+/**
+ * The files of this repository's OWN assembled trees, as a commit would carry
+ * them.
+ *
+ * Asked of the `commit` subject rather than walked for, because `sweep.mjs`
+ * exists so that no check walks: the ignored directory, the dotted entry and
+ * the file that vanished between the listing and the read are its rules, and a
+ * private walk here would have re-decided all three and got at least the first
+ * wrong — a `node_modules` or a build cache inside a named tree would have been
+ * demanded as claims. `commit` is also the honest universe for the question:
+ * these are files a repository SHIPS, so a build artifact git already ignores
+ * was never one of them, and a file written and checked before `git add` is one
+ * a reader can already open.
+ */
+function ownFiles(repo, claimed) {
+  if (claimed.length === 0) return []
+  const under = (path) => claimed.some((dir) => path === dir || path.startsWith(`${dir}/`))
+  return sweep({
+    subject: 'commit',
+    root: repo,
+    where: (path) => under(path) && !isTest(path),
+    what: `assembled file under ${claimed.join(', ')}`,
+  }).files
 }
 
 /**
@@ -198,6 +234,16 @@ function walk(abs, root, out = []) {
  */
 export function sweepClaims({ root = process.cwd(), composition = repoConfig.composition } = {}) {
   const repo = resolve(root)
+  if (!composition || !Array.isArray(composition.claimed) || !composition.documents) {
+    // The first thing a repository adopting this check meets, so it is a
+    // sentence rather than a stack: the values are the seam, and a repository
+    // that states none of them has not adopted the check, it has installed it.
+    throw new Error(
+      'repo-config.mjs states no usable `composition`: this check needs `documents` (where ' +
+        "this repository's composition documents live) and `claimed` (the trees of its own " +
+        'assembled files, possibly empty). See references/customization.md.',
+    )
+  }
   const problems = []
   const application = sweep({
     subject: 'app',
@@ -207,17 +253,23 @@ export function sweepClaims({ root = process.cwd(), composition = repoConfig.com
   })
   const sources = [...application.files]
 
-  for (const dir of composition.claimed) {
+  const absent = composition.claimed.filter((dir) => {
     const abs = resolve(repo, dir)
-    if (!existsSync(abs) || !statSync(abs).isDirectory()) {
-      problems.push(
-        `${dir} is named as a claimed tree and this repository does not have it — ` +
-          'correct the name in repo-config.mjs, or drop it',
-      )
-      continue
-    }
-    sources.push(...walk(abs, repo))
+    return !existsSync(abs) || !statSync(abs).isDirectory()
+  })
+  for (const dir of absent) {
+    // Fail closed, the way every named list here does: a tree nobody can reach
+    // is a tree nobody is watching, and a misspelt name would otherwise sweep
+    // nothing and report success.
+    problems.push(
+      `${dir} is named as a claimed tree and this repository does not have it — ` +
+        'correct the name in repo-config.mjs, or drop it',
+    )
   }
+  sources.push(...ownFiles(repo, composition.claimed.filter((dir) => !absent.includes(dir))))
+
+  const absentLayer = missingPackageLayer(repo, composition.documents)
+  if (absentLayer) problems.push(absentLayer)
 
   const layers = compositionLayers(repo, composition.documents)
   if (layers.length === 0) {
@@ -244,9 +296,22 @@ export function sweepClaims({ root = process.cwd(), composition = repoConfig.com
       )
     }
     for (const claim of claims) {
-      if (!existsSync(locate(claim))) {
+      // A PACKAGE DOCUMENT CLAIMS THE APPLICATION AND NOTHING ELSE. Anything
+      // else it named would be resolved against the reader's own root, where
+      // it is either absent — a failure in a document that reader cannot edit
+      // — or present, and then quietly claimed out from under the document
+      // whose repository actually owns it.
+      if (doc.packaged && !/^src(?:\/|$)/.test(claim)) {
         problems.push(
-          `${doc.label} claims ${claim}, which no longer exists — drop the claim or restore the file`,
+          `${doc.label} claims ${claim}, which is not an application path — a document the ` +
+            'package ships claims only what the package ships',
+        )
+        continue
+      }
+      const at = locate(claim)
+      if (!existsSync(at) || !statSync(at).isFile()) {
+        problems.push(
+          `${doc.label} claims ${claim}, which is no file — drop the claim or restore the file`,
         )
         continue
       }
@@ -273,7 +338,20 @@ export function sweepClaims({ root = process.cwd(), composition = repoConfig.com
 }
 
 function main() {
-  const { problems, sources, docs } = sweepClaims()
+  // A REFUSAL IS A SENTENCE, NOT A STACK. Everything below this line is a
+  // finding about the tree; everything `sweepClaims` throws is a fact about the
+  // repository it was pointed at — no `composition` stated, no application to
+  // sweep — and the first of those is what a repository adopting this check
+  // meets before it meets anything else.
+  let result
+  try {
+    result = sweepClaims()
+  } catch (error) {
+    console.error(`::error::${error.message}`)
+    process.exitCode = 1
+    return
+  }
+  const { problems, sources, docs } = result
   if (problems.length > 0) {
     for (const problem of problems) console.error(`::error::${problem}`)
     console.error(

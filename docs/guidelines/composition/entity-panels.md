@@ -1,7 +1,5 @@
 ---
-audience: designers, developers
 summary: One shell, six subjects — the drawer chrome every entity panel is made of, what the six panels share, where they legitimately differ, and the invariants a well-meaning edit breaks.
-sources: src/components/blueprint/panelShell.tsx, src/components/blueprint/EntityDetailPanel.tsx, src/components/blueprint/BlueprintCellDetailPanel.tsx, src/components/blueprint/panelLoading.tsx, src/lib/panelEditorBusy.ts
 claims:
   - src/components/blueprint/BlueprintCellDetailPanel.tsx
   - src/components/blueprint/CellDetailBreadcrumb.tsx
@@ -42,7 +40,6 @@ claims:
   - src/components/blueprint/StepPanel.tsx
   - src/components/blueprint/panelLoading.tsx
   - src/components/blueprint/panelShell.tsx
-last-reviewed: 2026-09-14
 ---
 
 # Entity panels

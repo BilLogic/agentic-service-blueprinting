@@ -1,14 +1,11 @@
 ---
-audience: designers, developers
 summary: The icon rail's two groups, the one disclosure vocabulary every twisty in the sidebar obeys, the slices section, where path selection went and what it kept, the single persisted width shared by all three surfaces, and the collapse that never moves the camera.
-sources: src/components/editor/EditorRail.tsx, src/components/editor/SidebarNav.tsx, src/components/editor/PathSelectorMenu.tsx, src/components/editor/SlicesSidebarSection.tsx, src/lib/layoutTokens.ts, src/lib/canvasChromeResize.ts
 claims:
   - src/components/editor/EditorRail.tsx
   - src/components/editor/EditorSidebarRail.tsx
   - src/components/editor/SidebarNav.tsx
   - src/components/editor/SlicesSidebarSection.tsx
   - src/components/editor/StructureRowMenu.tsx
-last-reviewed: 2026-09-14
 ---
 
 # Sidebar
@@ -168,8 +165,8 @@ the pointer's x *is* the aside width. The width transition is disabled during
 the drag, because easing against the pointer reads as lag rather than motion,
 and the write to storage happens once at the end of the gesture — width memory
 is a nicety, and a failed write is tolerated. No handle renders while collapsed:
-there is no edge. The numbers live in `src/lib/layoutTokens.ts`; the layout
-foundations own the rule they are set against.
+there is no edge. The numbers live in `src/lib/layoutTokens.ts`, which is the
+one home for a layout number the runtime does arithmetic on.
 
 Collapse is one state covering presenting, explicit collapse and the landing
 page. The aside animates its width to zero over the structural duration while

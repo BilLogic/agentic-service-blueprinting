@@ -1,7 +1,5 @@
 ---
-audience: designers, developers
 summary: The board and the chrome around it — click grammar, canvas modes, panel-as-selection, camera behaviour, the phase-row height contract and the touch contract.
-sources: src/components/blueprint/BlueprintCellButton.tsx, src/contexts/canvasModeContext.ts, src/hooks/useZoomPanViewport.ts, src/lib/canvasScrollRegions.ts
 claims:
   - src/components/blueprint/BlueprintArrowMarkerDefs.tsx
   - src/components/blueprint/BlueprintCellButton.tsx
@@ -79,7 +77,6 @@ claims:
   - src/components/editor/ZoomPanViewport.tsx
   - src/components/editor/canvasPhaseSectionLayout.ts
   - src/components/editor/menubarHeaderLayout.ts
-last-reviewed: 2026-09-14
 ---
 
 # Canvas
@@ -122,8 +119,8 @@ mode.
 **The Edit switch is absent, never disabled.** When a session cannot write
 (`available: false`) — and on all mobile — the switch does not render. A
 disabled Edit button would advertise a capability the session doesn't have;
-discoverability is handled in copy instead, which is the content foundations'
-rule rather than this surface's.
+discoverability is handled in copy instead — the words tell a reader what they
+would need in order to edit, which a greyed control never does.
 
 ## The annotation layer, in pieces
 
@@ -193,7 +190,9 @@ contract in short:
 - Exactly one camera animation per intent; reduced motion makes every fit a
   jump. What holds that up — one writer per navigation, geometric scale
   interpolation, and a fit that takes off once the named target exists and
-  retargets while live — belongs to the motion foundations.
+  retargets while live — is the camera's own contract, and
+  `src/lib/canvasCameraPolicy.ts` and `src/lib/cameraTransition.ts` are where
+  it is written down.
   Automatic travel follows a bounded distance-aware camera flight: zoom is
   geometric, screen-space travel is monotonic, and compatible velocity carries
   across superseding destinations. A zoom-in from the blocks tier keeps that
@@ -339,5 +338,6 @@ third mechanism again — WebKit `gesture*` events, with no touch pointers and
 no synthesised ctrl+wheel behind them — so the canvas reads their cumulative
 `scale` and zooms from it, gated on the touch-pointer count being zero so
 that iOS, where the pointer map already pinches, never applies scale twice.
-Breakpoint questions — what exists on a phone at all — belong to the layout
-foundations rather than here.
+What exists on a phone at all is a question for
+[mobile-shell.md](mobile-shell.md), not for this surface: below the gate this
+canvas is not what renders.

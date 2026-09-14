@@ -1,7 +1,5 @@
 ---
-audience: designers, developers
 summary: One conversation in two postures — the dock and the float, what survives a drag, where transcripts and settings live, the mobile sheet and fab, and the two limits the UI has to say out loud.
-sources: src/lib/agent/placement.ts, src/lib/agent/panelState.ts, src/lib/agent/loop.ts, src/lib/agent/sessions.ts, src/lib/agent/persistence.ts, src/lib/agent/settings.ts, src/components/editor/AgentDock.tsx, src/components/editor/AgentPanel.tsx
 claims:
   - src/components/editor/AgentDock.tsx
   - src/components/editor/AgentMarkdown.tsx
@@ -24,7 +22,6 @@ claims:
   - src/components/mobile/MobileAgentFab.tsx
   - src/components/mobile/MobileAgentSheet.tsx
   - src/components/mobile/mobileAgentBridge.ts
-last-reviewed: 2026-09-14
 ---
 
 # Agent session
@@ -264,8 +261,8 @@ The agent's canvas annotations draw in a deliberate attention-red that no human
 swatch offers, so "the agent drew this" is legible at a glance. It is still a
 **token**, so dark mode follows and a screen reader hears "Red" rather than
 "Custom". Human swatch sets are built from the annotation families at fixed
-steps, which is what reserves that step by construction — the colour
-foundations own how a family is built and where its steps come from.
+steps, which is what reserves that step by construction: a family is a hue and
+a ladder of steps down it, and a swatch names a step rather than a value.
 
 ## Two limits the UI has to say out loud
 

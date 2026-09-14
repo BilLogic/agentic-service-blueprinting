@@ -1,7 +1,5 @@
 ---
-audience: designers, developers
 summary: The shell's landing view — a content model supplied by the deployment, one navigating action, click-to-expand figures that never write or fetch, and one measure down the whole page.
-sources: src/components/cover/CoverPage.tsx, src/components/cover/coverModel.ts, src/components/cover/coverMeasure.ts, src/components/cover/CoverFigure.tsx, src/content/coverContent.ts
 claims:
   - src/components/cover/CoverCommandCopy.tsx
   - src/components/cover/CoverFigure.tsx
@@ -13,7 +11,6 @@ claims:
   - src/components/cover/coverMeasure.ts
   - src/components/cover/coverModel.ts
   - src/components/cover/packageCoverFigures.ts
-last-reviewed: 2026-09-12
 ---
 
 # Cover page

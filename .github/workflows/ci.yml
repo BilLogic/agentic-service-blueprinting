@@ -123,7 +123,6 @@ jobs:
       # writes nothing, and a surface nobody documented is red in the
       # repository that added it.
       - run: npm run check:harness
-
       # Every repository path the
       # plugin surface NAMES still exists. An installed skill opens the paths
       # its documents write down, so a rename that never looked at the prose

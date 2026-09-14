@@ -1,7 +1,5 @@
 ---
-audience: designers, developers
 summary: The slice focus tab and its dim, presentation's dark subtree, the two editing surfaces that split by what they are good at, the set of images a slide shows, and slide mode.
-sources: src/components/editor/SliceView.tsx, src/components/editor/SlicePresentation.tsx, src/components/editor/SliceSlideEditor.tsx, src/components/editor/SlideImagesField.tsx, src/components/editor/SliceSlideComposer.tsx, src/lib/slideImages.ts, src/styles/blueprint.css, src/styles/semantic.css
 claims:
   - src/components/blueprint/ScenarioSlideFilters.tsx
   - src/components/blueprint/ScenarioSlideHeader.tsx
@@ -17,7 +15,6 @@ claims:
   - src/components/editor/SlideModeView.tsx
   - src/components/editor/SlideNav.tsx
   - src/components/editor/SlideStickyHeader.tsx
-last-reviewed: 2026-08-26
 ---
 
 # Slice view
@@ -123,8 +120,8 @@ override a dial** (`:root, .dark, .light`). Custom properties resolve their
 `var()`s at computed-value time, which happens *before* inheritance — so a
 descendant that re-declares a dial cannot retroactively re-derive anything
 declared only at `:root`. `.light` is in the list for the same reason: it lets a
-subtree force light inside a dark ancestor — the colour foundations carry the
-whole of that rule.
+subtree force light inside a dark ancestor. `src/styles/` is where the dials
+themselves are declared.
 
 `SliceHeaderBand` is one component in two modes, so switching between them reads
 as a mode change on one object rather than two unrelated screens. Every colour
@@ -148,7 +145,7 @@ from the pointer's Y against the badge's midpoint — top half inserts before,
 bottom half after — and shown as a 2px primary rule above or below the badge.
 (Those two indicators are the file's arbitrary `shadow-[…]` literals; they are
 hairline rules, not shadows, and there is no token for a directional insertion
-bar, which is a gap in the elevation foundations rather than a licence here.)
+bar — a gap in the token set rather than a licence to invent shadows.)
 
 Badge labels use the cell's described label, not its id: `070110` is an address,
 and nobody recognises their content by address.

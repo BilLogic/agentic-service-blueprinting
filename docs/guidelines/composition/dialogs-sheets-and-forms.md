@@ -1,7 +1,5 @@
 ---
-audience: designers, developers
 summary: The drawer/sheet posture contract (single owner), the create and delete dialogs, the slice sheet, the session-changes sheet, the shared image viewer, and the field primitives that keep a vocabulary from becoming free text.
-sources: src/components/blueprint/panelShell.tsx, src/components/blueprint/ZoomableImage.tsx, src/components/editor/DeleteStructureDialog.tsx, src/components/editor/SessionChangesSheet.tsx, src/hooks/useImageZoom.ts, src/lib/imageZoomReducer.ts, src/lib/deletionSafety.ts, src/lib/writeFailures.ts, src/lib/entityStatus.ts, src/lib/touchpointRole.ts
 claims:
   - src/components/blueprint/OptionSelect.tsx
   - src/components/blueprint/OwnerTagSelect.tsx
@@ -21,7 +19,6 @@ claims:
   - src/components/editor/SlideRemovalDialog.tsx
   - src/components/editor/SessionChangesSheet.tsx
   - src/components/editor/WriteFailureNotices.tsx
-last-reviewed: 2026-08-25
 ---
 
 # Dialogs, sheets and forms

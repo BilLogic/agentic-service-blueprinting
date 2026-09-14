@@ -119,6 +119,12 @@ export const CONSUMER_IMPORTS = [
   // folder is a published path for exactly that reason, and a document that
   // moves or vanishes without a deployment's config moving with it turns that
   // check red one pin later, over a surface nobody touched.
+  //
+  // They reach a deployment because `package.json` states no `files` allowlist
+  // and an install therefore carries the whole tree. Adding one later without
+  // these paths in it would leave every consumer's claims check reading a
+  // folder that is not there — a break with no local signal, which is the
+  // reason this is written beside the list rather than left to be rediscovered.
   'docs/guidelines/composition/agent-session.md',
   'docs/guidelines/composition/canvas.md',
   'docs/guidelines/composition/compare.md',

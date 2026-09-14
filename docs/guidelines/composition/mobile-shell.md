@@ -1,21 +1,18 @@
 ---
-audience: designers, developers
 summary: The one forked surface — the phone's view-only, scenario-scoped canvas, its chrome, the single-select path control, and the non-goals that are decided rather than deferred.
-sources: src/components/mobile/MobileShell.tsx, src/components/mobile/MobileScenarioTransition.tsx, src/components/mobile/MobileNavSheet.tsx, src/components/mobile/MobilePathSelector.tsx, src/hooks/useMobileShell.ts
 claims:
   - src/components/mobile/MobileShell.tsx
   - src/components/mobile/MobileScenarioTransition.tsx
   - src/components/mobile/MobileTopBar.tsx
   - src/components/mobile/MobileNavSheet.tsx
   - src/components/mobile/MobilePathSelector.tsx
-last-reviewed: 2026-09-09
 ---
 
 # Mobile shell
 
 The one surface that forks. Every other document here describes a tree the
-phone and the desktop share; below the 768px gate — which the layout
-foundations own — this shell renders instead of the desktop one. Directly above
+phone and the desktop share; below the 768px gate (`MOBILE_BREAKPOINT` in
+`src/hooks/use-mobile.ts`) this shell renders instead of the desktop one. Directly above
 it the desktop shell renders, with its [sidebar](sidebar.md) collapsed or open
 as the reader left it, so the two meet with nothing between them.
 
@@ -86,8 +83,7 @@ navigate.
   ([dialogs-sheets-and-forms.md](dialogs-sheets-and-forms.md) owns the posture
   contract); slices are viewable read-only, with presentation as a full-screen
   takeover.
-- **44px touch targets** throughout (the `size-11` pattern the iconography
-  foundations set).
+- **44px touch targets** throughout, as the `size-11` pattern.
 
 ## Non-goals — deliberate, not deferred
 

@@ -1,8 +1,5 @@
 ---
-audience: designers, developers
 summary: The nine assembled surfaces, why they are cut by name rather than by source folder, the declared claim mapping the build enforces, and which side of the package seam owns each claim.
-sources: scripts/check-harness-claims.mjs, src/components/blueprint/, src/components/editor/, src/components/cover/, src/components/mobile/
-last-reviewed: 2026-09-14
 ---
 
 # Composition

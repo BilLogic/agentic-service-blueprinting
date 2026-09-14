@@ -54,6 +54,14 @@ summary: How a release is cut — changesets bump package.json, plugin.json and 
 ---
 ```
 
+A composition document carries one key more — `claims:`, the files it
+documents — and nothing else. Both are held by a check: the summary by
+`npm run check:docs-index`, the claims by `npm run check:harness`. Keys beyond
+those two are not the grammar here, and were dropped when the composition
+documents arrived: an unheld `sources:` or `last-reviewed:` is a second list of
+the same kind of fact with no guard on it, which goes stale exactly as quietly
+as a hand-maintained index does.
+
 It is not decoration. `scripts/generate-docs-index.mjs` builds `INDEX.md` and
 `docs/index.md` out of these lines, so the summary is what an agent reads when
 deciding whether to open the file. A document without one **fails

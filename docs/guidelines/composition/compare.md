@@ -1,7 +1,5 @@
 ---
-audience: designers, developers
 summary: The three compare arrangements over one shared axis, the merged view's per-slot membership encoding, the resizable panel's measurement contract, and the differences ledger's two grains.
-sources: src/components/blueprint/MergedCompareGrid.tsx, src/components/blueprint/StackedCompareGrid.tsx, src/components/blueprint/ResizableComparePanel.tsx, src/components/blueprint/CompareDifferencesSurface.tsx, src/lib/compareSlots.ts, src/lib/compareReviewStore.ts, src/lib/compareLedger.ts
 claims:
   - src/components/blueprint/CompareCellBlock.tsx
   - src/components/blueprint/CompareDifferencesSurface.tsx
@@ -11,7 +9,6 @@ claims:
   - src/components/blueprint/MergedCompareGrid.tsx
   - src/components/blueprint/ResizableComparePanel.tsx
   - src/components/blueprint/StackedCompareGrid.tsx
-last-reviewed: 2026-08-25
 ---
 
 # Compare

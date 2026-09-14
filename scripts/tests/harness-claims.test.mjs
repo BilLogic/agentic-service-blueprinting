@@ -27,7 +27,7 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { spawnSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -67,6 +67,11 @@ function repo(files = {}) {
     mkdirSync(dirname(join(root, rel)), { recursive: true })
     writeFileSync(join(root, rel), body)
   }
+  // A checkout, because the check asks the `commit` subject what a repository's
+  // OWN assembled trees hold — which is how a build cache or an ignored folder
+  // inside one of those trees stays out of the source set. An init is enough:
+  // the listing is tracked plus untracked-and-not-ignored.
+  execFileSync('git', ['init', '-q'], { cwd: root, stdio: 'ignore' })
   return { root, done: () => rmSync(root, { recursive: true, force: true }) }
 }
 
@@ -257,8 +262,10 @@ test('the layers are this tree first and the package second, each only if it is 
   try {
     const layers = compositionLayers(root, DOCUMENTS)
     assert.equal(layers.length, 2)
-    assert.match(layers[0], new RegExp(`${DOCUMENTS}$`))
-    assert.match(layers[1], new RegExp(`${APP_PACKAGE}/${DOCUMENTS}$`))
+    assert.equal(layers[0].packaged, false)
+    assert.equal(layers[1].packaged, true)
+    assert.match(layers[0].path, new RegExp(`${DOCUMENTS}$`))
+    assert.match(layers[1].path, new RegExp(`${APP_PACKAGE}/${DOCUMENTS}$`))
     const names = resolveDocuments(layers, DOCUMENTS).map((doc) => doc.label)
     assert.deepEqual(names, [`${DOCUMENTS}/own.md`, `${APP_PACKAGE}/${DOCUMENTS}/upstream.md`])
   } finally {
@@ -272,4 +279,92 @@ test('frontmatter reads the one block list this check needs, and the scalars bes
   assert.deepEqual(fm.claims, ['a/b.tsx', 'a/c.tsx'])
   assert.equal(fm['last-reviewed'], '2026-09-14')
   assert.deepEqual(frontmatter('no frontmatter here\n'), {})
+})
+
+test('a repository that states no `composition` is told what to state', () => {
+  const { root, done } = repo({
+    [packaged('src/components/cover/CoverPage.tsx')]: 'export const page = null\n',
+    ...upstream('cover-page.md', 'src/components/cover/CoverPage.tsx'),
+  })
+  try {
+    // Nothing at all, and the half that names a folder but no trees: both are
+    // a repository that installed the check rather than adopting it.
+    assert.throws(() => sweepClaims({ root, composition: null }), /states no usable `composition`/)
+    assert.throws(
+      () => sweepClaims({ root, composition: { claimed: [] } }),
+      /states no usable `composition`/,
+    )
+  } finally {
+    done()
+  }
+})
+
+test('an installed package with no composition folder says so once, not two hundred times', () => {
+  // The folder name addresses both layers, so a deployment that named its own
+  // something else would otherwise hear that every file the package ships is
+  // unclaimed. The cause is reported instead.
+  const { root, done } = repo({
+    [packaged('src/components/cover/CoverPage.tsx')]: 'export const page = null\n',
+    [`${DOCUMENTS}/cover-page.md`]: claiming('src/components/cover/CoverPage.tsx'),
+  })
+  try {
+    const { problems } = sweepClaims({ root, composition: { documents: 'elsewhere', claimed: [] } })
+    assert.ok(
+      problems.some((problem) => /is installed and holds no elsewhere/.test(problem)),
+      problems.join('\n'),
+    )
+  } finally {
+    done()
+  }
+})
+
+test('a document the package ships claims only what the package ships', () => {
+  const { root, done } = repo({
+    [packaged('src/components/cover/CoverPage.tsx')]: 'export const page = null\n',
+    'deployment/components/TenantBanner.tsx': 'export const banner = null\n',
+    ...upstream(
+      'cover-page.md',
+      'src/components/cover/CoverPage.tsx',
+      'deployment/components/TenantBanner.tsx',
+    ),
+  })
+  try {
+    const { problems } = sweepClaims({ root, composition: composition() })
+    assert.equal(problems.length, 1, problems.join('\n'))
+    assert.match(problems[0], /deployment\/components\/TenantBanner\.tsx/)
+    assert.match(problems[0], /not an application path/)
+  } finally {
+    done()
+  }
+})
+
+test('an ignored folder inside a claimed tree is not a file anyone documents', () => {
+  const { root, done } = repo({
+    [packaged('src/components/cover/CoverPage.tsx')]: 'export const page = null\n',
+    ...upstream('cover-page.md', 'src/components/cover/CoverPage.tsx'),
+    'deployment/components/TenantBanner.tsx': 'export const banner = null\n',
+    'deployment/components/dist/bundle.js': 'built\n',
+    '.gitignore': 'dist/\n',
+    [`${DOCUMENTS}/tenant-banner.md`]: claiming('deployment/components/TenantBanner.tsx'),
+  })
+  try {
+    assert.deepEqual(sweepClaims({ root, composition: composition(['deployment']) }).problems, [])
+  } finally {
+    done()
+  }
+})
+
+test('a claim on a directory is no claim at all', () => {
+  const { root, done } = repo({
+    [packaged('src/components/cover/CoverPage.tsx')]: 'export const page = null\n',
+    ...upstream('cover-page.md', 'src/components/cover/CoverPage.tsx', 'src/components/editor'),
+  })
+  try {
+    const { problems } = sweepClaims({ root, composition: composition() })
+    assert.equal(problems.length, 1, problems.join('\n'))
+    assert.match(problems[0], /src\/components\/editor/)
+    assert.match(problems[0], /is no file/)
+  } finally {
+    done()
+  }
 })
