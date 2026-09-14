@@ -24,13 +24,13 @@ Two conditions send state here, and either one is sufficient:
    drop-target ring, the open session and a half-typed message with it.
 2. **Code with no hooks available to it must read it.** The agent's UI-context
    collector is plain functions, and the agent's dispatcher reads the resolved
-   active service (`contexts/activeService.ts`) to hand each tool call the
-   service it writes under. A value both a component and a bare function must
+   active service (`contexts/activeService.ts`) to hand each tool call its
+   scope — the service its reads cover and its writes land on. A value both a component and a bare function must
    agree on has nowhere else to live.
 
 The live instances each carry their reason in their own header comment:
 `agent/placement.ts`, `agent/panelState.ts`, `agent/settings.ts`,
-`agent/sessions.ts`, `contexts/activeServiceStore.ts`, `contexts/activeService.ts`,
+`agent/sessions.ts`, `contexts/activeService.ts`,
 `contexts/canvasModeContext.ts`, `contexts/shellBootStore.ts`,
 `contexts/sidebarCollapsedContext.ts`, `lib/canvasChromeResize.ts`,
 `lib/compareReviewStore.ts`, `lib/openCellStore.ts`, `lib/authoringSession.ts`,

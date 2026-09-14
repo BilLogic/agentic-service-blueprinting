@@ -1,5 +1,11 @@
 import { z } from 'zod'
-import { arg, defineTool, defineWriteTool, requireActiveService } from '@/lib/agent/tools/definition'
+import {
+  arg,
+  defineTool,
+  defineWriteTool,
+  requireActiveService,
+  requireScope,
+} from '@/lib/agent/tools/definition'
 import { getSlice, listSlices } from '@/lib/agent/tools/read'
 import { sampleGetSlice, sampleListSlices } from '@/lib/agent/tools/sampleRead'
 import { createSlice, patchSliceMeta, replaceSlides } from '@/lib/sliceMutations'
@@ -12,7 +18,8 @@ export const listSlicesTool = defineTool({
   surface: 'read',
   args: z.object({}),
   availability: { sample: true, mobile: true },
-  run: async (_args, ctx) => (ctx.client ? listSlices(ctx.client) : sampleListSlices()),
+  run: async (_args, ctx) =>
+    ctx.client ? listSlices(ctx.client, requireScope(ctx)) : sampleListSlices(),
 })
 
 export const getSliceTool = defineTool({

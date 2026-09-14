@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useState,
   type ReactNode,
 } from 'react'
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery'
@@ -13,12 +14,8 @@ import {
   useActiveServiceRef,
   type ActiveServiceRef,
 } from '@/contexts/activeService'
-import {
-  getActiveServiceSlug,
-  setActiveServiceSlug,
-  useActiveServiceSlug,
-} from '@/contexts/activeServiceStore'
 import { SAMPLE_SERVICE_ID } from '@/data/sampleBlueprint'
+import { parseServiceSlug, serviceRoutePath } from '@/lib/serviceRoute'
 import { resolveServiceBySlug, serviceSlug } from '@/lib/serviceSlug'
 import { queryKeys } from '@/lib/queryKeys'
 
@@ -26,15 +23,17 @@ import { queryKeys } from '@/lib/queryKeys'
  * The active service — the one the URL slug names — resolved to its id and
  * name, ONCE, here, at the surface root.
  *
- * Two module stores meet in this provider. The requested slug lives in
- * `activeServiceStore`: seeded from the boot path, moved by a switch,
- * mirrored into the URL. The resolved service — id and slug together — lives
- * in `activeService`, and this provider is its only writer: once the roster
- * is read, the slug is matched (or the first service taken at the bare
- * root), the answer is written to the store, and the service's own slug is
- * written back to the URL so a single-service installation that booted at `/`
- * ends with its slug in the address bar and a reload lands on the same
- * service.
+ * The question and the answer meet in this provider. The REQUESTED slug is
+ * its own state: seeded from the boot path, moved by a switch, mirrored into
+ * the URL by the two writes below and nowhere else. The RESOLVED service —
+ * id, slug and name together — lives in the `activeService` store, and this
+ * provider is its only writer: once the roster is read, the slug is matched
+ * (or the first service taken at the bare root), the answer is written to the
+ * store, and the service's own slug is written back to the URL so a
+ * single-service installation that booted at `/` ends with its slug in the
+ * address bar and a reload lands on the same service. There used to be a
+ * second module store for the slug, read by a resolver inside plain fetchers;
+ * nothing outside this provider needs the question any more.
  *
  * Everything below reads the resolved store and resolves nothing: a
  * service-scoped read hook takes the id as a parameter, and a hook given
@@ -81,20 +80,38 @@ const ActiveServiceContext = createContext<ActiveServiceContextValue>({
 /**
  * The bundled sample's service, active whenever there is no database. The
  * sample's service row carries no slug and nothing dereferences this one —
- * the URL is left alone in that mode — so the value is a placeholder that
- * only has to be a string.
+ * the URL is left alone in that mode — so the slug is a placeholder that only
+ * has to be a string; the name is what the agent's scope would word a
+ * sentence with.
  */
-const SAMPLE_ACTIVE_SERVICE: ActiveServiceRef = { id: SAMPLE_SERVICE_ID, slug: 'sample' }
+const SAMPLE_ACTIVE_SERVICE: ActiveServiceRef = {
+  id: SAMPLE_SERVICE_ID,
+  slug: 'sample',
+  name: 'Sample service',
+}
 
-/** The store's view of a roster entry: the id and the slug, without the name. */
+/** The store's view of a roster entry. */
 function toRef(service: ActiveService): ActiveServiceRef {
-  return { id: service.id, slug: service.slug }
+  return { id: service.id, slug: service.slug, name: service.name }
+}
+
+/**
+ * Mirror a slug into the URL path, preserving the search string so a
+ * `?cell=`/`?slice=` deep link is not dropped when the service resolves.
+ * `ViewStateProvider` writes the search over the same path.
+ */
+function writeSlugToUrl(slug: string): void {
+  if (typeof window === 'undefined') return
+  if (parseServiceSlug(window.location.pathname) === slug.toLowerCase()) return
+  window.history.replaceState(null, '', serviceRoutePath(slug, window.location.search))
 }
 
 export function ActiveServiceProvider({ children }: { children: ReactNode }) {
   const { configured } = useSupabase()
-  // Subscribe so the context value tracks the slug the store holds.
-  const routeSlug = useActiveServiceSlug()
+  // The requested slug: the boot path's, until a switch moves it.
+  const [routeSlug, setRouteSlug] = useState<string | null>(() =>
+    typeof window === 'undefined' ? null : parseServiceSlug(window.location.pathname),
+  )
   const fallback = useCallback(() => null, [])
 
   const result = useSupabaseQuery<ActiveService[]>(
@@ -139,7 +156,7 @@ export function ActiveServiceProvider({ children }: { children: ReactNode }) {
       return
     }
     setActiveService(picked ? toRef(picked) : null)
-    if (picked && getActiveServiceSlug() !== picked.slug) setActiveServiceSlug(picked.slug)
+    if (picked) writeSlugToUrl(picked.slug)
   }, [configured, picked])
 
   // The context is built OVER the store, not beside it: `service` is the
@@ -154,7 +171,8 @@ export function ActiveServiceProvider({ children }: { children: ReactNode }) {
 
   const switchService = useCallback(
     (slug: string) => {
-      setActiveServiceSlug(slug)
+      setRouteSlug(slug)
+      writeSlugToUrl(slug)
       // Resolved here and now from the roster in hand rather than left to the
       // effect, so no frame reads the old service under the new slug.
       const picked = resolveServiceBySlug(services, slug)

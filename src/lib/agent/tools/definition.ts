@@ -4,7 +4,6 @@ import type { Database } from '@/types/database'
 import type { ToolSpec } from '@/lib/agent/providers/provider'
 import type { AgentSearchIndex } from '@/deploymentConfig'
 import type { ServiceScope } from '@/lib/agent/tools/serviceScope'
-import type { ActiveServiceRef } from '@/contexts/activeService'
 
 /**
  * A Tool is one module: what it is called, which surface it belongs to, the
@@ -86,18 +85,15 @@ export type ToolSession = {
 export type ToolContext = {
   client: Client | null
   /**
-   * The service(s) a READ covers — today always the whole deployment, until
-   * the reads' default becomes the active service and this field carries it,
-   * folding `service` below into it.
+   * The scope the session runs under: the resolved active service — what a
+   * read covers unless its `service` argument says otherwise, and what a
+   * write that creates under the service lands on — or `null` when none is
+   * active (a slug no service carries; a bare script). The active service,
+   * or nothing: a call under `null` names its scope or is refused, never
+   * widened to the deployment on its own. Resolved once, at the surface
+   * root, and handed here; a tool never resolves a slug.
    */
-  scope: ServiceScope
-  /**
-   * The resolved active service the session runs under — what a WRITE that
-   * creates under the service lands on. `null` when none is active: no
-   * database, or a URL naming a slug no service carries. Resolved once, at
-   * the surface root, and handed here; a tool never resolves a slug.
-   */
-  service: ActiveServiceRef | null
+  scope: ServiceScope | null
   session: ToolSession
   ui: ToolUi
   /**
@@ -189,8 +185,20 @@ export function requireClient(ctx: ToolContext): Client {
  * service nobody was looking at.
  */
 export function requireActiveService(ctx: ToolContext): string {
-  if (ctx.service) return ctx.service.id
+  const scope = requireScope(ctx)
+  if (scope.kind === 'service') return scope.serviceId
   throw new Error('No service is active — open a service before creating under it.')
+}
+
+/**
+ * The session's scope for a read of a service-owned table with no `service`
+ * argument of its own. `null` — no service active — is refused with the
+ * sentence a model can act on, rather than widened to every service: the
+ * interface reads nothing in that state, and the agent matches it.
+ */
+export function requireScope(ctx: ToolContext): ServiceScope {
+  if (ctx.scope) return ctx.scope
+  throw new Error('No service is active — open a service, or pass service:"all" for the whole deployment.')
 }
 
 /**

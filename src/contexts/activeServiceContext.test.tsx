@@ -28,7 +28,6 @@ vi.mock('@/contexts/SupabaseProvider', () => ({
 
 import { getActiveService, setActiveService, useActiveServiceId } from '@/contexts/activeService'
 import { ActiveServiceProvider, useActiveService } from '@/contexts/ActiveServiceContext'
-import { setActiveServiceSlug } from '@/contexts/activeServiceStore'
 import { SAMPLE_SERVICE_ID } from '@/data/sampleBlueprint'
 import { useServicePhases } from '@/hooks/useServicePhases'
 import { QUERY_DEFAULTS } from '@/lib/queryClient'
@@ -106,18 +105,20 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
-  setActiveServiceSlug(null)
   setActiveService(null)
 })
 
+/** Boot at a path: the requested slug is read from the URL when the provider mounts. */
+const bootAt = (path: string) => window.history.replaceState(null, '', path)
+
 describe('the provider resolves the route into the store', () => {
   it('a boot slug becomes that service, and the scoped read follows', async () => {
-    setActiveServiceSlug('heat-pump-grants')
+    bootAt('/heat-pump-grants')
     mount(<Probe />)
     expect(
       await screen.findByText('svc-2 / Heat Pump Grants / heat-pump-grants / Apply+Install'),
     ).toBeDefined()
-    expect(getActiveService()).toEqual({ id: 'svc-2', slug: 'heat-pump-grants' })
+    expect(getActiveService()).toEqual({ id: 'svc-2', slug: 'heat-pump-grants', name: 'Heat Pump Grants' })
     expect(phaseFilters).toEqual(['svc-2'])
   })
 
@@ -128,7 +129,7 @@ describe('the provider resolves the route into the store', () => {
   })
 
   it('a slug no service carries resolves to nothing, and nothing is read', async () => {
-    setActiveServiceSlug('billing')
+    bootAt('/billing')
     mount(<Probe />)
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0))
@@ -139,7 +140,7 @@ describe('the provider resolves the route into the store', () => {
   })
 
   it('a switch moves the store, the URL and the read together', async () => {
-    setActiveServiceSlug('rooftop-retrofit')
+    bootAt('/rooftop-retrofit')
     mount(
       <>
         <Probe />
@@ -148,7 +149,7 @@ describe('the provider resolves the route into the store', () => {
     )
     expect(await screen.findByText(/^svc-1 \/ Rooftop Retrofit .* \/ Survey$/)).toBeDefined()
     act(() => screen.getByText('switch').click())
-    expect(getActiveService()).toEqual({ id: 'svc-2', slug: 'heat-pump-grants' })
+    expect(getActiveService()).toEqual({ id: 'svc-2', slug: 'heat-pump-grants', name: 'Heat Pump Grants' })
     expect(window.location.pathname).toBe('/heat-pump-grants')
     expect(
       await screen.findByText('svc-2 / Heat Pump Grants / heat-pump-grants / Apply+Install'),

@@ -416,22 +416,25 @@ describe('list_blueprint service scope', () => {
     expect(log.every((rec) => rec.eq.length === 0)).toBe(true)
   })
 
-  it('the tool call narrows by its service argument and covers all without one', async () => {
+  it("the tool call reads the session's service without an argument, another by name, and all on request", async () => {
     const { client } = fakeDb(BOARD)
+    // No argument: the scope the session was handed — the board's service.
+    expect(
+      await runTool(listBlueprintTool, { granularity: ['phase'] }, fakeToolContext({ client, scope: SALES })),
+    ).toBe(lines('1 of 1:', '[phase] "Prospecting" · Prospecting (ph-3)'))
+    // Named: the argument moves the read off the session's service.
     expect(
       await runTool(
         listBlueprintTool,
-        {
-          granularity: ['phase'],
-          service: 'Sales Pipeline',
-        },
-        fakeToolContext({ client }),
+        { granularity: ['phase'], service: 'Sales Pipeline' },
+        fakeToolContext({ client, scope: { kind: 'all' } }),
       ),
     ).toBe(lines('1 of 1:', '[phase] "Prospecting" · Prospecting (ph-3)'))
+    // "all": the deployment, past the session's service.
     const everywhere = await runTool(
       listBlueprintTool,
-      { granularity: ['phase'] },
-      fakeToolContext({ client }),
+      { granularity: ['phase'], service: 'all' },
+      fakeToolContext({ client, scope: SALES }),
     )
     expect(everywhere.split('\n')[0]).toBe('3 of 3:')
   })

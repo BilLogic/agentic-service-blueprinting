@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
 /**
- * The resolved active service — its id and its slug together — as a
+ * The resolved active service — its id, its slug and its name together — as a
  * module-level fact, under the decision that cross-surface state is a module
  * store — read by non-React code as well as by hooks, and outliving any one
  * mount.
@@ -21,9 +21,11 @@ import { useSyncExternalStore } from 'react'
  *
  * The URL is not written from here. The slug in the address bar is the
  * requested slug, seeded from the boot path and moved by a switch; this store
- * is the answer to it. The provider keeps the two in step.
+ * is the answer to it. The provider keeps the two in step. The name rides
+ * along for the one reader that words a sentence with it — the agent's
+ * scope — so that reader need not hold the roster.
  */
-export type ActiveServiceRef = { id: string; slug: string }
+export type ActiveServiceRef = { id: string; slug: string; name: string }
 
 let active: ActiveServiceRef | null = null
 const listeners = new Set<() => void>()
@@ -39,7 +41,8 @@ export function getActiveService(): ActiveServiceRef | null {
  */
 export function setActiveService(next: ActiveServiceRef | null): void {
   if (active === next) return
-  if (active && next && active.id === next.id && active.slug === next.slug) return
+  if (active && next && active.id === next.id && active.slug === next.slug && active.name === next.name)
+    return
   active = next
   for (const listener of listeners) listener()
 }

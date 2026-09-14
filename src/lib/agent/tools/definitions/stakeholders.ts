@@ -16,7 +16,7 @@ import { SERVICE_ARG, readScope } from '@/lib/agent/tools/definitions/scope'
 export const listStakeholdersTool = defineTool({
   name: 'list_stakeholders',
   description:
-    'The cast: who the blueprint is for, who staffs it, who partners on it, and the provider itself — with the other spellings each name has been written as. ALWAYS read before writing a value_props audience or linking a lane: `owner` and `Blueprint owner` are one person, and the aliases are where that is recorded. The cast is a shared deployment-level catalog, and by default this shows the whole roster; pass service to see only the actors that one service\'s lanes actually pick.',
+    'The cast: who the blueprint is for, who staffs it, who partners on it, and the provider itself — with the other spellings each name has been written as. ALWAYS read before writing a value_props audience or linking a lane: `owner` and `Blueprint owner` are one person, and the aliases are where that is recorded. The cast is a shared deployment-level catalog; by default this shows the actors the active service\'s lanes pick (the whole roster on a single-service deployment), and service:"all" shows every actor in the deployment.',
   surface: 'read',
   args: z.object({
     service: SERVICE_ARG,
@@ -24,7 +24,7 @@ export const listStakeholdersTool = defineTool({
   availability: { sample: false, mobile: true },
   run: async ({ service }, ctx) => {
     const client = requireClient(ctx)
-    return listStakeholders(client, await readScope(client, service))
+    return listStakeholders(client, await readScope(ctx, service))
   },
 })
 

@@ -51,7 +51,7 @@ const KIND_ARG = arg.optionalText(
 export const listBlueprintTool = defineTool({
   name: 'list_blueprint',
   description:
-    'The COMPLETE set of things at one or more levels of the journey, with ids — granularity picks the levels: phase, scenario, path, step, lane, cell. This is your table of contents and your "what exists" answer: every row comes back, up to limit, under a header with the true total, so it is the honest way to say "all N scenarios" or "every exception path". Start here — granularity ["phase","scenario"] is the orientation read. Filters narrow the set, and a filter set below a level drops that level: scenario drops phases, kind drops phases and scenarios, lane_role keeps only lanes and cells. Covers every service by default; pass service to confine it to one. When you already know the scenario and want its grid laid out, use get_blueprint.',
+    'The COMPLETE set of things at one or more levels of the journey, with ids — granularity picks the levels: phase, scenario, path, step, lane, cell. This is your table of contents and your "what exists" answer: every row comes back, up to limit, under a header with the true total, so it is the honest way to say "all N scenarios" or "every exception path". Start here — granularity ["phase","scenario"] is the orientation read. Filters narrow the set, and a filter set below a level drops that level: scenario drops phases, kind drops phases and scenarios, lane_role keeps only lanes and cells. Covers the active service by default; pass service to read another, or "all" for every service. When you already know the scenario and want its grid laid out, use get_blueprint.',
   surface: 'read',
   args: z.object({
     granularity: arg.strings(
@@ -72,7 +72,7 @@ export const listBlueprintTool = defineTool({
     if (!ctx.client) return sampleListBlueprint(options)
     return listBlueprint(ctx.client, {
       ...options,
-      scope: await readScope(ctx.client, service),
+      scope: await readScope(ctx, service),
     })
   },
 })
@@ -111,7 +111,7 @@ export const searchBlueprintTool = defineTool({
       pathKind: kind,
       laneRole: lane_role,
       limit,
-      scope: await readScope(client, service),
+      scope: await readScope(ctx, service),
       meaning: ctx.meaning ?? null,
       signal: ctx.signal,
     })

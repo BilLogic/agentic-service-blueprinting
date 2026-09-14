@@ -19,7 +19,7 @@ import { PATH_KINDS } from '@/lib/versionValidation'
  * model sees and the sentence it reads back.
  *
  * A write that creates under the service lands on the active service the
- * session was handed (`ctx.service`) — never on a service the model picks.
+ * session was handed (`ctx.scope`) — never on a service the model picks.
  */
 
 const PATH_KIND = z.enum(PATH_KINDS)

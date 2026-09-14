@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { afterEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { TOOL_SPECS } from '@/lib/agent/tools/specs'
 import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
 import { configureAgentReferences, readReference } from '@/lib/agent/tools/references'
@@ -7,21 +7,29 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import {
   resolveServiceScope,
+  scopeOf,
   serviceStakeholderIds,
 } from '@/lib/agent/tools/serviceScope'
-import { setActiveServiceSlug } from '@/contexts/activeServiceStore'
+import { runTool } from '@/lib/agent/tools/definition'
+import { listBlueprintTool } from '@/lib/agent/tools/definitions/blueprint'
+import { listEvidenceTool } from '@/lib/agent/tools/definitions/evidence'
+import { listFindingsTool } from '@/lib/agent/tools/definitions/findings'
+import { getBusinessModelTool } from '@/lib/agent/tools/definitions/service'
+import { listSlicesTool } from '@/lib/agent/tools/definitions/slices'
+import { fakeToolContext } from '@/lib/agent/tools/definitions/testContext'
+import { dispatchTool } from '@/lib/agent/tools/registry'
+import { setActiveService } from '@/contexts/activeService'
 
 /*
- * The scope seam. `resolveServiceScope` is what replaced the global
- * single-service cache: a read covers EVERY service unless the call names one,
- * a filter narrows to one or says `all` out loud, and a single-service
- * deployment collapses every scope to the same set so it behaves exactly as
- * before. The multi-service default is the case the old single-service
- * short-circuit hid, so it is asserted here on a two-service fixture —
- * including with a slug set, because the URL scopes the canvas and not the
- * agent's reach. The catalog helpers assert the OTHER half of the decision that
- * a service owns its journey and shares the catalog — that a service's cast is
- * derived by JOIN through its journey, never a `service_id` on the catalog.
+ * The scope seam. A session is handed its scope — the active service, the
+ * same default the interface has — and a read covers that service unless the
+ * call names another or says `all`; a single-service deployment collapses
+ * every scope to the same set. The multi-service default is asserted on a
+ * two-service fixture, at the resolver and through a read tool's `run`,
+ * because it is the case a single-service short-circuit hides. The catalog
+ * helpers assert the OTHER half of the decision that a service owns its
+ * journey and shares the catalog — that a service's cast is derived by JOIN
+ * through its journey, never a `service_id` on the catalog.
  */
 
 type Rec = { table: string; filters: Array<[string, ...unknown[]]>; select?: string }
@@ -63,6 +71,13 @@ function fakeClient(
       maybeSingle() {
         return b
       },
+      range() {
+        return b
+      },
+      contains(...a: unknown[]) {
+        rec.filters.push(['contains', ...a])
+        return b
+      },
       then(onF: (v: unknown) => unknown, onR?: (e: unknown) => unknown) {
         log.push(rec)
         return Promise.resolve(resolve(rec)).then(onF, onR)
@@ -78,12 +93,11 @@ const TWO = [
   { id: 'svc-sales', name: 'Sales Pipeline', slug: 'sales-pipeline', created_at: '2026-02-01' },
 ]
 
-const servicesClient = (rows: unknown[]) =>
-  fakeClient((rec) => (rec.table === 'services' ? { data: rows, error: null } : { data: [], error: null }))
+const servicesClient = (rows: unknown[], log: Rec[] = []) =>
+  fakeClient((rec) => (rec.table === 'services' ? { data: rows, error: null } : { data: [], error: null }), log)
 
-afterEach(() => {
-  setActiveServiceSlug(null)
-})
+/** The session's scope when the board draws Sales Pipeline. */
+const ON_SALES = scopeOf({ id: 'svc-sales', slug: 'sales-pipeline', name: 'Sales Pipeline' })
 
 describe('resolveServiceScope', () => {
   it('collapses to `all` on a single-service deployment, whatever the filter', async () => {
@@ -98,40 +112,40 @@ describe('resolveServiceScope', () => {
     ).resolves.toEqual({ kind: 'all' })
   })
 
-  it('covers the WHOLE deployment when the call names no service', async () => {
-    // The case the single-service short-circuit used to hide: with two
-    // services and no filter, a read is not narrowed to one of them.
-    await expect(resolveServiceScope(servicesClient(TWO), {})).resolves.toEqual({
-      kind: 'all',
-    })
-    // And with no options object at all — the argument is optional.
-    await expect(resolveServiceScope(servicesClient(TWO))).resolves.toEqual({
-      kind: 'all',
-    })
+  it("is the session's scope — the active service — when the call names none", async () => {
+    // The case a single-service short-circuit hides: with two services and
+    // no filter, a read is confined to the one the board draws.
+    await expect(resolveServiceScope(servicesClient(TWO), { active: ON_SALES })).resolves.toEqual(
+      ON_SALES,
+    )
   })
 
-  it('still covers the whole deployment when a slug names one service', async () => {
-    // The URL scopes the CANVAS. It does not scope the agent's reach: the one
-    // service on screen is not a filter on a question that named none.
-    setActiveServiceSlug('sales-pipeline')
-    await expect(resolveServiceScope(servicesClient(TWO), {})).resolves.toEqual({
-      kind: 'all',
-    })
-  })
-
-  it('a filter narrows to one named service and widens with "all"', async () => {
-    // The slug names support, but the filter names sales — the filter decides.
-    setActiveServiceSlug('support-desk')
+  it('is refused when the session has no service — an unresolved slug, a bare script — unless the call names one', async () => {
+    await expect(resolveServiceScope(servicesClient(TWO), {})).rejects.toThrow(/No service is active/)
+    await expect(resolveServiceScope(servicesClient(TWO), { active: null })).rejects.toThrow(
+      /No service is active/,
+    )
     await expect(
-      resolveServiceScope(servicesClient(TWO), { serviceArg: 'Sales Pipeline' }),
-    ).resolves.toEqual({ kind: 'service', serviceId: 'svc-sales', serviceName: 'Sales Pipeline' })
+      resolveServiceScope(servicesClient(TWO), { serviceArg: 'all', active: null }),
+    ).resolves.toEqual({ kind: 'all' })
+    // One service: nothing to be confused about, so nothing to refuse.
+    await expect(resolveServiceScope(servicesClient([TWO[0]]), { active: null })).resolves.toEqual({
+      kind: 'all',
+    })
+  })
+
+  it('a filter moves the read to another named service, and "all" widens past the active one', async () => {
+    // The board draws sales, but the filter names support — the filter decides.
+    await expect(
+      resolveServiceScope(servicesClient(TWO), { serviceArg: 'Support Desk', active: ON_SALES }),
+    ).resolves.toEqual({ kind: 'service', serviceId: 'svc-support', serviceName: 'Support Desk' })
     // by slug, too
     await expect(
-      resolveServiceScope(servicesClient(TWO), { serviceArg: 'sales-pipeline' }),
-    ).resolves.toEqual({ kind: 'service', serviceId: 'svc-sales', serviceName: 'Sales Pipeline' })
-    // "all" is the default said out loud, and still widens past a named one
+      resolveServiceScope(servicesClient(TWO), { serviceArg: 'support-desk', active: ON_SALES }),
+    ).resolves.toEqual({ kind: 'service', serviceId: 'svc-support', serviceName: 'Support Desk' })
+    // "all" is the deployment said out loud, past whatever is active
     await expect(
-      resolveServiceScope(servicesClient(TWO), { serviceArg: 'all' }),
+      resolveServiceScope(servicesClient(TWO), { serviceArg: 'all', active: ON_SALES }),
     ).resolves.toEqual({ kind: 'all' })
   })
 
@@ -143,15 +157,85 @@ describe('resolveServiceScope', () => {
 })
 
 /*
+ * A read, through its own `run`, under the scope its session was handed:
+ * confined to that service with no `service` argument, spanning the
+ * deployment with the explicit one. Asserted on the filter the read sends,
+ * because that is what the database sees.
+ */
+describe('a read tool under the session scope', () => {
+  const phasesFilters = (log: Rec[]) =>
+    log
+      .filter((rec) => rec.table === 'phases')
+      .flatMap((rec) => rec.filters.filter(([, column]) => column === 'service_id').map(([, , value]) => value))
+
+  it('with no scope argument is confined to ctx.scope', async () => {
+    const log: Rec[] = []
+    const client = servicesClient(TWO, log)
+    await runTool(listBlueprintTool, { granularity: ['phase'] }, fakeToolContext({ client, scope: ON_SALES }))
+    expect(phasesFilters(log)).toEqual(['svc-sales'])
+  })
+
+  it('with the explicit deployment scope spans every service', async () => {
+    const log: Rec[] = []
+    const client = servicesClient(TWO, log)
+    await runTool(
+      listBlueprintTool,
+      { granularity: ['phase'], service: 'all' },
+      fakeToolContext({ client, scope: ON_SALES }),
+    )
+    expect(log.some((rec) => rec.table === 'phases')).toBe(true)
+    expect(phasesFilters(log)).toEqual([])
+  })
+
+  it('through the dispatcher, the scope is the store\'s service — and none is refused, not widened', async () => {
+    const log: Rec[] = []
+    const client = servicesClient(TWO, log)
+    setActiveService({ id: 'svc-sales', slug: 'sales-pipeline', name: 'Sales Pipeline' })
+    try {
+      await dispatchTool(client, 'session', 'list_blueprint', { granularity: ['phase'] })
+      expect(phasesFilters(log)).toEqual(['svc-sales'])
+      setActiveService(null)
+      await expect(
+        dispatchTool(client, 'session', 'list_blueprint', { granularity: ['phase'] }),
+      ).rejects.toThrow(/No service is active/)
+      await expect(dispatchTool(client, 'session', 'list_slices', {})).rejects.toThrow(
+        /No service is active/,
+      )
+    } finally {
+      setActiveService(null)
+    }
+  })
+
+  it('the reads with no service argument of their own are confined to the scope by column', async () => {
+    const filtersOf = (log: Rec[], table: string) =>
+      log
+        .filter((rec) => rec.table === table)
+        .flatMap((rec) => rec.filters.filter(([, column]) => column === 'service_id').map(([, , value]) => value))
+    const log: Rec[] = []
+    const client = fakeClient(() => ({ data: [], error: null }), log)
+    const ctx = fakeToolContext({ client, scope: ON_SALES })
+    await runTool(listSlicesTool, {}, ctx)
+    await runTool(listFindingsTool, {}, ctx)
+    await runTool(listEvidenceTool, {}, ctx)
+    await runTool(getBusinessModelTool, {}, ctx)
+    for (const table of ['slices', 'audit_findings', 'evidence', 'business_models'])
+      expect(filtersOf(log, table), table).toEqual(['svc-sales'])
+  })
+})
+
+/*
  * What the agent is TOLD about an omitted service, held to what an omitted
  * service DOES. The two drifted once already: the resolver read every service
  * while the rulebook said an unnamed read stayed on the service on screen, so
  * a model that trusted the words believed a whole-deployment answer covered
- * only the board in front of the human.
+ * only the board in front of the human. The default has since become the
+ * active service, and the words moved with it.
  */
 describe('the words about an omitted service match the behaviour', () => {
-  const EVERY_SERVICE = /omitting it searches every service/i
-  const ACTIVE_SERVICE = /(active service|service on screen|one on screen\))/i
+  const ACTIVE_SERVICE = /omitting it reads the active service/i
+  // The old claim, in any of its spellings: every service as the default.
+  const EVERY_SERVICE_DEFAULT =
+    /omitting it searches every service|cover every service[^.|]*when it is omitted|every service by default|covers every service/i
 
   const takesService = (spec: (typeof TOOL_SPECS)[number]) =>
     Object.keys(spec.parameters.properties ?? {}).includes('service')
@@ -168,8 +252,10 @@ describe('the words about an omitted service match the behaviour', () => {
       .find((line) => line.startsWith('| Work across several services'))
     if (!row) return ['the adapter has no "| Work across several services" row']
     return [
-      ...(/every service/i.test(row) ? [] : ['the row does not say every service']),
-      ...(ACTIVE_SERVICE.test(row) ? ['the row says an omitted service is the one on screen'] : []),
+      ...(/read the active service when it is omitted/i.test(row)
+        ? []
+        : ['the row does not say an omitted service is the active one']),
+      ...(EVERY_SERVICE_DEFAULT.test(row) ? ['the row says an omitted service is every service'] : []),
       ...toolNames
         .filter((name) => !row.includes(`\`${name}\``))
         .map((name) => `the row does not name \`${name}\``),
@@ -181,20 +267,21 @@ describe('the words about an omitted service match the behaviour', () => {
   const SOURCE_ADAPTER = new URL('canvas-adapter.md', SOURCE_REFERENCES)
   const GENERATED_ADAPTER = new URL('../skill/references/canvas-adapter.md', import.meta.url)
 
-  it('omitting `service` resolves to every service on a multi-service deployment', async () => {
-    setActiveServiceSlug('sales-pipeline')
-    await expect(resolveServiceScope(servicesClient(TWO), {})).resolves.toEqual({
-      kind: 'all',
-    })
+  it('omitting `service` resolves to the active service on a multi-service deployment', async () => {
+    await expect(resolveServiceScope(servicesClient(TWO), { active: ON_SALES })).resolves.toEqual(
+      ON_SALES,
+    )
   })
 
-  it('every read that takes `service` says omitting it covers every service', () => {
+  it('every read that takes `service` says omitting it reads the active service', () => {
     expect(scoped.length).toBeGreaterThan(0)
     for (const spec of scoped) {
       const param = (spec.parameters.properties as Record<string, { description?: string }>)
         .service
-      expect(param?.description, spec.name).toMatch(EVERY_SERVICE)
-      expect(spec.description, spec.name).not.toMatch(/default[^.]*\b(active|on screen)\b/i)
+      expect(param?.description, spec.name).toMatch(ACTIVE_SERVICE)
+      expect(param?.description, spec.name).not.toMatch(EVERY_SERVICE_DEFAULT)
+      // The tool's own sentence too — it drifted once while the argument's did not.
+      expect(spec.description, spec.name).not.toMatch(EVERY_SERVICE_DEFAULT)
     }
   })
 
@@ -213,7 +300,7 @@ describe('the words about an omitted service match the behaviour', () => {
 
   it('a replacement adapter from the config is the one held to the tools', () => {
     configureAgentReferences({
-      'canvas-adapter': '| Work across several services | Omitting it searches every service. |\n',
+      'canvas-adapter': '| Work across several services | The reads read the active service when it is omitted. |\n',
     })
     try {
       const names = scoped.map((spec) => spec.name)

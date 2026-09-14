@@ -59,10 +59,10 @@ export const DEFAULT_MODELS: Record<AgentProviderId, string> = {
 }
 
 /*
- * There is no search-scope setting. The agent reads every service in the
- * deployment when a question names none, and a caller who wants one names it in
- * the per-call `service` argument — so there is nothing left for a stored
- * preference to decide. A value left under `serviceScope` in a browser from
+ * There is no search-scope setting. The agent reads the active service — the
+ * one on screen — when a question names none, and a caller who wants another,
+ * or every service, names it in the per-call `service` argument — so there is
+ * nothing left for a stored preference to decide. A value left under `serviceScope` in a browser from
  * before is simply never read.
  */
 
