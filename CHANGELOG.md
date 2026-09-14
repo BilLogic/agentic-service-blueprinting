@@ -1,5 +1,82 @@
 # Changelog
 
+## 1.44.9
+
+**The hot paths are deep modules now: agent tools, service scope, cell fields,
+the build overlay and the repository checks each answer from one place.** The
+work of #681, twenty-five pull requests, all patch-level: the plugin contract's
+identifier layer is unchanged, one alias the roster no longer lists aside.
+
+- **Agent tools.** Every tool is one definition under
+  `src/lib/agent/tools/definitions/` — name, surface, zod arguments, where it
+  may run, and `run(args, ctx)` — and the dispatcher is a lookup. `ctx`
+  carries the client, the service scope, the session and the canvas bridge;
+  no tool imports a registry, a store or a bridge of its own. The roster is
+  derived from the definition list and `agent.enabledTools`; the canvas-adapter
+  document renders its surface lists from it, and references and doctrine
+  come from the deployment config. `list_scenarios` is retired in favour of
+  `list_blueprint` with a granularity. A node test drives the loop from a fake
+  provider through a tool to its result, the harness smoke runs in CI, and a
+  dry-run write in the harness answers in the tool's own words.
+- **Service scope.** One store holds the resolved active service; the scoped
+  read hooks take it explicitly, no component or tool resolves the URL's slug
+  for itself, and the agent receives its scope in `ctx.scope`, with reads
+  defaulting to the active service. A write invalidates what it changed
+  through the one key builder the reads use.
+- **Cell fields.** `cellFields.ts` is one descriptor per column; the board
+  select, the normalizer, the panel's form and read-only rows, the one save,
+  and the cell-writing tools' arguments derive from it. One Lane corridor rule
+  serves both layouts.
+- **The build overlay and the database types.** A deployment's `src` overlays
+  the package's per path (`scripts/overlay.mjs`, exported as
+  `agentic-service-blueprinting/overlay`); the all-or-nothing rule is
+  withdrawn. `src/types/database.ts` is generated whole from the replayed
+  portable core, and a superset check ships for a deployment's own types.
+  Each input a deployment owned inside `src` has a config home, named in one
+  place in `references/customization.md`.
+- **The repository checks.** `scripts/sweep.mjs` answers "give me the files
+  for this subject" for eight subjects — the application, the prose, the
+  scripts, the migrations, the reference surface, the package's reference
+  documents, a deployment's seed and the commit — and every check names one
+  and judges only. No script resolves a root from its own location; the five
+  helpers are gone; CONTEXT.md defines **Subject**. The shared scripts a
+  deployment holds byte-identical reach nothing but each other.
+- **Flows in CI.** The cell-edit-with-revert flow runs as a slice over an
+  in-memory table and, as its primary form, over standalone PostgREST on the
+  CI Postgres with a minted service claim — a grant or policy the recipe
+  forgot fails it. The sample board is opened in a browser on every pull
+  request: a Playwright walk over every phase, scenario, path and layout it
+  offers, failing on a console error, with a screenshot per view. ADR 0017
+  marks cell edit and browser render covered.
+
+**Upgrading a deployment:**
+
+- If your tree carries its own copy of `specs.ts`, `registry.ts` or `read.ts`,
+  take the package's; the definitions folder is new and all three import from
+  it. A roster narrowed by editing a name set becomes `agent.enabledTools` in
+  the deployment config. Move `registerReferenceDocs({ blueprint })` to
+  `agent: { references: { blueprint } }` and a role document of your own to
+  `agent.doctrine`. The reads come first in the tool list now; `get_cell`'s
+  `cell_id` states `minLength: 1`.
+- Replace `list_scenarios` in doctrine or harness cases with `list_blueprint`
+  and a granularity.
+- A surface of your own that imported `resolveActiveServiceId` or
+  `findActiveServiceId` reads `useActiveServiceId()` from
+  `@/contexts/activeService`; a scoped hook called with no argument becomes
+  `useX(useActiveServiceId())`; a tool that creates under the service takes
+  `requireActiveService(ctx)`; a test context passes `scope: scopeOf(...)`.
+  Stop calling `invalidateQueries` / `invalidateStructure` — the write
+  refetches for you; build your own read keys with `queryKeys`.
+- Add `scripts/repo-config.mjs` to your tree and take the shared scripts
+  (`sweep.mjs`, `seed-list.mjs`, `always-loaded.mjs`, the four router checks,
+  the agent-account pair, `check-target-schema.mjs`) byte-identical; they run
+  over the working directory. Run `check:database-types-superset` against
+  your own generated types. To run the render walk against your own sample
+  board, install `@playwright/test@1.62.0` and Chromium and point Playwright
+  at `node_modules/agentic-service-blueprinting/render-walk/playwright.config.ts`
+  (see `render-walk/README.md`). Residents you still keep under `src` are
+  yours to list; every path you delete is answered by the package.
+
 ## 1.44.8
 
 **The service, phase and scenario bars above the canvas hold their name and
@@ -6258,8 +6335,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                  ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                  "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
