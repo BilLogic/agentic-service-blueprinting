@@ -298,20 +298,15 @@ describe('the drawer’s reading', () => {
     })
   })
 
-  it('carries the column’s strip — every frame drawn in it, whichever row drew it', () => {
-    // The strip is the COLUMN's, not the selected row's: the one cell of this
-    // column that carries a frame contributes it, and the row without one
-    // contributes nothing.
+  it('carries the column’s strip, and a touchpoint row’s logo is not in it', () => {
+    // The strip is the COLUMN's, not the selected row's — and the only framed
+    // cell in this column sits on a touchpoint row, where the frame is the
+    // kiosk's icon rather than a drawn moment. The walkthrough roster leaves
+    // the touchpoint rows out, so the stack has nothing to show here; the
+    // cell's own frame is untouched, and the overview below still reads it.
     expect(
       panelFacts(selectionFor('cell-guest-arrives')).storyboardStepEntries,
-    ).toEqual([
-      {
-        frame: KIOSK_ICON,
-        label: 'Tools',
-        laneName: 'Tools',
-        summary: 'The screen beside the door.',
-      },
-    ])
+    ).toEqual([])
     expect(
       panelFacts(selectionFor('cell-guest-chooses')).storyboardStepEntries,
     ).toEqual([])
