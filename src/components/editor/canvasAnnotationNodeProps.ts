@@ -7,6 +7,11 @@ import type { ResizeHandle } from '@/lib/canvasAnnotations'
  * layer to change one of those. The layer mints one of these per mark; a node
  * reads it and never reaches past it, which is why the three nodes can sit in
  * modules of their own without knowing the machine exists.
+ *
+ * It carried an `onStopEdit` for a while, minted by the layer for every mark
+ * and called by nothing: a mark's editor is closed from the layer's own key
+ * and click-outside handling, never from inside the mark. A callback nobody
+ * calls is a claim about the seam that is not true, so it is gone.
  */
 export type MovableProps = {
   selected: boolean
@@ -16,7 +21,6 @@ export type MovableProps = {
   canDrag: boolean
   onSelect: () => void
   onStartEdit: () => void
-  onStopEdit: () => void
   onErase: () => void
   onDragStart: (event: ReactPointerEvent<HTMLElement>) => void
   onResizeStart: (

@@ -4,9 +4,7 @@ import { writeFileSync } from 'node:fs'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { AnnotationStyleBar } from '@/components/editor/AnnotationStyleBar'
-import { ShapeAnnotationNode } from '@/components/editor/ShapeAnnotationNode'
-import { StickyAnnotationNode } from '@/components/editor/StickyAnnotationNode'
-import { TextAnnotationNode } from '@/components/editor/TextAnnotationNode'
+import { AnnotationMarkNode } from '@/components/editor/AnnotationMarkNode'
 import type {
   ShapeAnnotation,
   StickyAnnotation,
@@ -90,22 +88,22 @@ it('dumps every annotation surface', () => {
     ['eraser', { isEraser: true }],
     ['locked', { canInteract: false, canDrag: false, selected: false }],
   ] as Array<[string, Record<string, unknown>]>) {
-    render(<ShapeAnnotationNode annotation={shape} zoom={1} onUpdate={vi.fn()} {...movable(over)} />)
+    render(<AnnotationMarkNode annotation={shape} zoom={1} onUpdate={vi.fn()} {...movable(over)} />)
     snap(`node/shape · ${label}`)
     cleanup()
-    render(<ShapeAnnotationNode annotation={{ ...shape, type: 'ellipse', fillColor: null, color: null, text: '' }} zoom={1} onUpdate={vi.fn()} {...movable(over)} />)
+    render(<AnnotationMarkNode annotation={{ ...shape, type: 'ellipse', fillColor: null, color: null, text: '' }} zoom={1} onUpdate={vi.fn()} {...movable(over)} />)
     snap(`node/shape-empty · ${label}`)
     cleanup()
-    render(<StickyAnnotationNode annotation={sticky} zoom={1} onUpdate={vi.fn()} {...movable(over)} />)
+    render(<AnnotationMarkNode annotation={sticky} zoom={1} onUpdate={vi.fn()} {...movable(over)} />)
     snap(`node/sticky · ${label}`)
     cleanup()
-    render(<StickyAnnotationNode annotation={{ ...sticky, bold: false, strike: false }} zoom={1} onUpdate={vi.fn()} {...movable(over)} />)
+    render(<AnnotationMarkNode annotation={{ ...sticky, bold: false, strike: false }} zoom={1} onUpdate={vi.fn()} {...movable(over)} />)
     snap(`node/sticky-plain · ${label}`)
     cleanup()
-    render(<TextAnnotationNode annotation={text} zoom={1} onUpdate={vi.fn()} {...movable(over)} />)
+    render(<AnnotationMarkNode annotation={text} zoom={1} onUpdate={vi.fn()} {...movable(over)} />)
     snap(`node/text · ${label}`)
     cleanup()
-    render(<TextAnnotationNode annotation={{ ...text, text: '', align: 'right', bold: false, strike: false, fontSize: 32 }} zoom={1} onUpdate={vi.fn()} {...movable(over)} />)
+    render(<AnnotationMarkNode annotation={{ ...text, text: '', align: 'right', bold: false, strike: false, fontSize: 32 }} zoom={1} onUpdate={vi.fn()} {...movable(over)} />)
     snap(`node/text-empty · ${label}`)
     cleanup()
   }

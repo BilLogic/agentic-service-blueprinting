@@ -28,14 +28,12 @@ import {
   releasePointerCapture,
 } from '@/lib/pointerGestures'
 import {
-  annotationTextBox,
+  annotationMarkBox,
   clientToLocal,
   getLayerScale,
   pointsToPath,
 } from '@/components/editor/canvasAnnotationGeometry'
-import { ShapeAnnotationNode } from '@/components/editor/ShapeAnnotationNode'
-import { StickyAnnotationNode } from '@/components/editor/StickyAnnotationNode'
-import { TextAnnotationNode } from '@/components/editor/TextAnnotationNode'
+import { AnnotationMarkNode } from '@/components/editor/AnnotationMarkNode'
 import type { MovableProps } from '@/components/editor/canvasAnnotationNodeProps'
 import { cn } from '@/lib/utils'
 
@@ -798,9 +796,6 @@ export function CanvasAnnotationLayer({ zoom = 1 }: { zoom?: number }) {
         setEditingId(id)
         setTool('select')
       },
-      onStopEdit: () => {
-        setEditingId((current) => (current === id ? null : current))
-      },
       onErase: () => removeAnnotation(id),
       onDragStart: (event) => beginDrag(id, event, box.x, box.y),
       onResizeStart: (handle, event) => beginResize(id, handle, event, box),
@@ -883,60 +878,16 @@ export function CanvasAnnotationLayer({ zoom = 1 }: { zoom?: number }) {
       </svg>
 
       {annotations.map((annotation) => {
-        if (annotation.type === 'rect' || annotation.type === 'ellipse') {
-          return (
-            <ShapeAnnotationNode
-              key={annotation.id}
-              annotation={annotation}
-              zoom={zoom}
-              onUpdate={(patch) => updateAnnotation(annotation.id, patch)}
-              {...movableFor(annotation.id, {
-                x: annotation.x,
-                y: annotation.y,
-                width: annotation.width,
-                height: annotation.height,
-              })}
-            />
-          )
-        }
-
-        if (annotation.type === 'text') {
-          const { width, height } = annotationTextBox(annotation.fontSize)
-          return (
-            <TextAnnotationNode
-              key={annotation.id}
-              annotation={annotation}
-              zoom={zoom}
-              onUpdate={(patch) => updateAnnotation(annotation.id, patch)}
-              {...movableFor(annotation.id, {
-                x: annotation.x,
-                y: annotation.y,
-                width,
-                height,
-                fontSize: annotation.fontSize,
-              })}
-            />
-          )
-        }
-
-        if (annotation.type === 'sticky') {
-          return (
-            <StickyAnnotationNode
-              key={annotation.id}
-              annotation={annotation}
-              zoom={zoom}
-              onUpdate={(patch) => updateAnnotation(annotation.id, patch)}
-              {...movableFor(annotation.id, {
-                x: annotation.x,
-                y: annotation.y,
-                width: annotation.width,
-                height: annotation.height,
-              })}
-            />
-          )
-        }
-
-        return null
+        if (annotation.type === 'pen') return null
+        return (
+          <AnnotationMarkNode
+            key={annotation.id}
+            annotation={annotation}
+            zoom={zoom}
+            onUpdate={(patch) => updateAnnotation(annotation.id, patch)}
+            {...movableFor(annotation.id, annotationMarkBox(annotation))}
+          />
+        )
       })}
     </div>
   )
