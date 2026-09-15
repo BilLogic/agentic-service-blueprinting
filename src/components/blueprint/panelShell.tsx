@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import {
   Breadcrumb,
+  BreadcrumbEllipsis,
   BreadcrumbItem,
   BreadcrumbList,
   BreadcrumbPage,
@@ -85,6 +86,12 @@ export const CELL_PANEL_FOOTER_ID = 'cell-panel-editor-footer'
 export const PANEL_EXIT_MS = 200
 
 /**
+ * A panel heading, in one place: the identity block's name, the header's
+ * heading when a surface shows one rather than reading it out, and the
+ * differences surface's word for itself beside the switcher. Four writers of
+ * one string is how one heading ends up a weight off the other three.
+ */
+/**
  * The multi-line field treatment, in one place.
  *
  * A bare `<textarea>` with the cell panel's border, padding and focus ring —
@@ -94,6 +101,8 @@ export const PANEL_EXIT_MS = 200
  * four-way copy of a focus ring is how one field ends up focusing differently
  * from the field above it.
  */
+export const PANEL_HEADING_CLASS =
+  'min-w-0 text-sm font-semibold text-foreground'
 export const PANEL_TEXTAREA_CLASS =
   'w-full resize-y rounded-md border border-input bg-transparent px-2 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50'
 export const LANE_PANEL_FOOTER_ID = 'lane-panel-editor-footer'
@@ -314,78 +323,229 @@ export function Field({
 }
 
 /**
+ * One crumb in a panel's trail: a name, or a name collapsed to an ellipsis.
+ *
+ * Collapsing is what the cell's trail needed and the entity panels did not.
+ * Four names — phase, scenario, path, step — do not fit the panel's width,
+ * and the step is the crumb the reader came for, so the scenario folds to a ⋯
+ * that carries its name to a screen reader and to the hover. A plain string
+ * is a crumb that does not fold, which is every crumb the other five panels
+ * pass.
+ */
+export type PanelCrumb = string | { label: string; collapsed?: boolean }
+
+/**
+ * The ✕ every panel closes with.
+ *
+ * Five surfaces wrote this block — the cell panel, its draft, empty and
+ * differences surfaces, and the shared header — and five copies of a close
+ * button is how one of them ends up a size larger, or stops saying what it
+ * closes. The tooltip and the label are separate words because one surface
+ * already parts them: the draft's ✕ reads "Discard this new cell" on hover
+ * and announces "Discard new cell".
+ */
+export function PanelCloseButton({
+  label,
+  ariaLabel = label,
+  onClose,
+}: {
+  /** What the hover says, e.g. "Close lane properties". */
+  label: string
+  /** What a screen reader announces, when that is not the hover's words. */
+  ariaLabel?: string
+  onClose: () => void
+}) {
+  return (
+    <IconTooltip label={label} side="left">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="shrink-0 text-muted-foreground hover:text-foreground"
+        aria-label={ariaLabel}
+        onClick={onClose}
+      >
+        <X />
+      </Button>
+    </IconTooltip>
+  )
+}
+
+/**
  * The header every entity panel wears: where the thing sits, then ✕.
  *
  * The crumbs are ancestors and the last one is the thing itself, matching the
  * cell panel's breadcrumb exactly — same sizes, same separators, same
  * truncation — because two headers that are nearly the same read as a bug in
- * one of them.
+ * one of them. The cell surfaces wear this one now: the drawer header's
+ * class list, the crumb loop and the close button each have one definition
+ * here rather than a copy per surface.
  *
- * No expand toggle. Widening the drawer trades canvas width for panel width
- * and pays off when the panel holds a dependency table or a difference ledger;
- * a lane's owner, KPIs and tools do not get easier to read at 1.5× the width.
+ * No expand toggle of its own. Widening the drawer trades canvas width for
+ * panel width and pays off when the panel holds a dependency table or a
+ * difference ledger; a lane's owner, KPIs and tools do not get easier to read
+ * at 1.5× the width. The cell panel has one, and passes it as an action.
  */
-export function PanelHeader({
-  crumbs,
-  onClose,
-  closeLabel,
-  title,
-  description,
-}: {
-  /** Ancestors first, the entity itself last. Empty strings are dropped. */
-  crumbs: string[]
+type PanelHeaderChrome = {
   onClose: () => void
   /** Says what closes, e.g. "Close lane properties". */
   closeLabel: string
-  /** Screen-reader title for the dialog. */
+  /** What the ✕ announces, when that is not the hover's words. */
+  closeAriaLabel?: string
+  /**
+   * Controls that sit beside ✕ — today the cell panel's widen toggle.
+   *
+   * A panel that HAS an action row keeps it even when the row is empty: the
+   * widen toggle is desktop-only and passes `null` on a phone, which is why
+   * the row is drawn for a passed `null` and not for a prop nobody passed.
+   */
+  actions?: ReactNode
+  /**
+   * The bordered band the differences surface wears instead of the plain
+   * header. Not derived from `lead`, which happens to have the same one
+   * caller today: the band is about the surface being a sibling of the whole
+   * panel — a rule under it, the ledger below — and a panel could grow a
+   * switcher without the rule, or the rule without a switcher.
+   */
+  banded?: boolean
+  /** Screen-reader title for the dialog, or the visible one when shown. */
   title: string
   description: string
-}) {
-  const shown = crumbs.filter((crumb) => crumb.trim().length > 0)
+}
+
+/**
+ * The header's left is a block — the title, the description and the trail —
+ * or a node standing in the header row itself. Never both: a lead that
+ * silently dropped the crumbs beside it is a prop that reads as supported
+ * and is not, so the two shapes are two types.
+ */
+type PanelHeaderProps =
+  | (PanelHeaderChrome & {
+      lead?: never
+      /**
+       * Ancestors first, the entity itself last. Empty labels are dropped,
+       * and a trail with nothing left in it draws nothing — an empty
+       * breadcrumb landmark is a landmark a reader lands on for no reason.
+       */
+      crumbs?: PanelCrumb[]
+      /** Draws the title as the heading instead of reading it out. */
+      titleShown?: boolean
+      /** Draws the description under the heading — the draft's placement line. */
+      descriptionShown?: boolean
+    })
+  | (PanelHeaderChrome & {
+      /**
+       * What stands in the header row itself, rather than in the block the
+       * crumbs and the title share — the differences surface's Details │
+       * Differences switcher, which is chrome for the whole panel. Its title
+       * and description are read out, never drawn, so neither flag applies.
+       */
+      lead: ReactNode
+      crumbs?: never
+      titleShown?: never
+      descriptionShown?: never
+    })
+
+export function PanelHeader({
+  crumbs,
+  lead,
+  onClose,
+  closeLabel,
+  closeAriaLabel,
+  actions,
+  banded = false,
+  title,
+  titleShown = false,
+  description,
+  descriptionShown = false,
+}: PanelHeaderProps) {
+  const shown = (crumbs ?? [])
+    .map((crumb) =>
+      typeof crumb === 'string' ? { label: crumb, collapsed: false } : crumb,
+    )
+    .filter((crumb) => crumb.label.trim().length > 0)
   const last = shown.length - 1
   return (
-    <DrawerHeader className="flex-row items-center justify-between gap-2 pb-3 text-left">
-      <div className="min-w-0 flex-1">
-        <DrawerTitle className="sr-only">{title}</DrawerTitle>
-        <DrawerDescription className="sr-only">{description}</DrawerDescription>
-        <Breadcrumb className="min-w-0">
-          <BreadcrumbList className="flex-nowrap gap-0.5 text-xs font-normal text-muted-foreground">
-            {shown.map((crumb, index) => (
-              <Fragment key={`${crumb}-${index}`}>
-                <BreadcrumbItem className="min-w-0">
-                  {index === last ? (
-                    <BreadcrumbPage className="truncate font-medium tracking-tight text-foreground">
-                      {crumb}
-                    </BreadcrumbPage>
-                  ) : (
-                    <span
-                      title={crumb}
-                      className="block max-w-[5.5rem] truncate font-normal"
+    <DrawerHeader
+      className={cn(
+        'flex-row items-center justify-between gap-2 text-left',
+        banded ? 'border-b border-muted px-4 py-2' : 'pb-3',
+      )}
+    >
+      {lead ? (
+        <>
+          <DrawerTitle className="sr-only">{title}</DrawerTitle>
+          <DrawerDescription className="sr-only">
+            {description}
+          </DrawerDescription>
+          {lead}
+        </>
+      ) : (
+        <div className="min-w-0 flex-1">
+          <DrawerTitle
+            className={titleShown ? PANEL_HEADING_CLASS : 'sr-only'}
+          >
+            {title}
+          </DrawerTitle>
+          <DrawerDescription
+            className={
+              descriptionShown ? 'text-xs text-muted-foreground' : 'sr-only'
+            }
+          >
+            {description}
+          </DrawerDescription>
+          {shown.length === 0 ? null : (
+            <Breadcrumb className="min-w-0">
+              <BreadcrumbList className="flex-nowrap gap-0.5 text-xs font-normal text-muted-foreground">
+                {shown.map((crumb, index) => (
+                  <Fragment key={`${crumb.label}-${index}`}>
+                    <BreadcrumbItem
+                      className={crumb.collapsed ? 'shrink-0' : 'min-w-0'}
                     >
-                      {crumb}
-                    </span>
-                  )}
-                </BreadcrumbItem>
-                {index === last ? null : (
-                  <BreadcrumbSeparator className="shrink-0 [&>svg]:size-3" />
-                )}
-              </Fragment>
-            ))}
-          </BreadcrumbList>
-        </Breadcrumb>
-      </div>
-      <IconTooltip label={closeLabel} side="left">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="shrink-0 text-muted-foreground hover:text-foreground"
-          aria-label={closeLabel}
-          onClick={onClose}
-        >
-          <X />
-        </Button>
-      </IconTooltip>
+                      {crumb.collapsed ? (
+                        <span title={crumb.label} className="cursor-default">
+                          <BreadcrumbEllipsis className="size-4 text-muted-foreground [&>svg]:size-3.5" />
+                          <span className="sr-only">{crumb.label}</span>
+                        </span>
+                      ) : index === last ? (
+                        <BreadcrumbPage className="truncate font-medium tracking-tight text-foreground">
+                          {crumb.label}
+                        </BreadcrumbPage>
+                      ) : (
+                        <span
+                          title={crumb.label}
+                          className="block max-w-[5.5rem] truncate font-normal"
+                        >
+                          {crumb.label}
+                        </span>
+                      )}
+                    </BreadcrumbItem>
+                    {index === last ? null : (
+                      <BreadcrumbSeparator className="shrink-0 [&>svg]:size-3" />
+                    )}
+                  </Fragment>
+                ))}
+              </BreadcrumbList>
+            </Breadcrumb>
+          )}
+        </div>
+      )}
+      {actions === undefined ? (
+        <PanelCloseButton
+          label={closeLabel}
+          ariaLabel={closeAriaLabel}
+          onClose={onClose}
+        />
+      ) : (
+        <div className="flex shrink-0 items-center gap-0.5">
+          {actions}
+          <PanelCloseButton
+            label={closeLabel}
+            ariaLabel={closeAriaLabel}
+            onClose={onClose}
+          />
+        </div>
+      )}
     </DrawerHeader>
   )
 }
@@ -421,7 +581,7 @@ export function PanelIdentity({
   return (
     <div className="flex min-w-0 flex-col items-start gap-1.5">
       {badge}
-      {title ? <p className="min-w-0 text-sm font-semibold text-foreground">{title}</p> : null}
+      {title ? <p className={PANEL_HEADING_CLASS}>{title}</p> : null}
       {meta ? <p className="text-xs font-normal text-muted-foreground">{meta}</p> : null}
       {children}
     </div>

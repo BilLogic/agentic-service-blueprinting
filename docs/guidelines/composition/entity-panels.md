@@ -2,7 +2,7 @@
 summary: One shell, six subjects — the drawer chrome every entity panel is made of, what the six panels share, where they legitimately differ, and the invariants a well-meaning edit breaks.
 claims:
   - src/components/blueprint/BlueprintCellDetailPanel.tsx
-  - src/components/blueprint/CellDetailBreadcrumb.tsx
+  - src/components/blueprint/cellDetailCrumbs.ts
   - src/components/blueprint/CellDetailDifferencesSurface.tsx
   - src/components/blueprint/CellDetailDraftSurface.tsx
   - src/components/blueprint/CellDetailEmptySurface.tsx
@@ -54,9 +54,9 @@ behaviour. `panelShell.tsx` is that drawer, lifted rather than duplicated.
 ## What the shell owns
 
 `src/components/blueprint/panelShell.tsx` owns posture, keying, the footer host,
-the field label, the header, the kind badge, the empty state and the Save/Cancel
-row. Two panels sit on it: `EntityDetailPanel` (the five non-cell subjects) and
-`BlueprintCellDetailPanel`.
+the field label, the header, the close control, the kind badge, the empty state
+and the Save/Cancel row. Two panels sit on it: `EntityDetailPanel` (the five
+non-cell subjects) and `BlueprintCellDetailPanel`.
 
 - **Posture** is the drawer/sheet contract, owned by
   [dialogs-sheets-and-forms.md](dialogs-sheets-and-forms.md): a right-pinned
@@ -84,6 +84,22 @@ row. Two panels sit on it: `EntityDetailPanel` (the five non-cell subjects) and
   closing is blocked only while a save is in flight (`panelEditorBusy()`, which
   reads `data-panel-editor[data-busy]` — deliberately not a cell-specific
   attribute, or it would have guarded exactly one panel).
+
+**One header, and one ✕.** `PanelHeader` draws the drawer header for all six
+subjects: the class list of the header row, the crumb trail, the title and
+description — read out or shown — and the close button. The cell's four
+surfaces wore copies of all of it, which is how a trail that truncates a name
+ended up with no way to read the whole name back. Four knobs, each naming a
+difference a surface actually has: `titleShown` and `descriptionShown` draw
+the words instead of reading them out (the draft's "New cell" and its
+placement line), `banded` is the differences surface's bordered band rather
+than the plain header, `lead` puts the surface switcher in the header row
+itself rather than in the block the crumbs sit in, and `actions` is the row
+the cell panel's widen toggle shares with ✕ — a panel that HAS that row keeps
+it even when the toggle is null on a phone, which is why the row follows a
+passed `null` and not a prop nobody passed. A crumb is a name, or a name
+collapsed to an ellipsis: the cell's trail is four names and only the step is
+the one the reader came for.
 
 **Four states, not three.** Loading and error were there; a lane with no owner,
 no KPIs and no tools rendered a full form of blank fields, which reads as a
@@ -181,7 +197,8 @@ dependencies and lists — and each takes the resolution and nothing else, so a
 reading cannot reach past it into the selection and no reader is handed the
 whole set. `CellDetailOverview.tsx` renders the
 top of Details from its own reading, `CellDetailTabs.tsx` owns the three tabs and
-`CellDetailBreadcrumb.tsx` says where the cell sits; the draft, differences
+`cellDetailCrumbs.ts` says where the cell sits — as crumbs for the shared
+header, not a second trail of its own; the draft, differences
 and nothing-selected surfaces are modules of their own
 (`CellDetailDraftSurface.tsx`, `CellDetailDifferencesSurface.tsx`,
 `CellDetailEmptySurface.tsx`) behind `PanelSurfaceSwitcher.tsx`, and the
@@ -354,6 +371,11 @@ it renders as inert prose, not a disabled button.
 14. Saving the lane panel against `lane.id`, or dropping the fan-out alert.
 15. Dropping the canvas invalidation from the step save.
 16. A second ⓘ beside a term label, a tab or a status badge.
+17. Dropping `actions` from a panel that has an action row, or passing crumbs
+    that all resolve empty. The row follows a passed `null` and not a prop
+    nobody passed, because the widen toggle is desktop-only; and a trail with
+    nothing left in it draws no landmark, because a landmark that tells the
+    reader nothing is worse than no landmark.
 
 > `NotionPropertyRow`'s docstring says it belongs to the cell detail panel. It
 > does not — its only consumer is `ScenarioSlideHeader`. The docstring is stale;

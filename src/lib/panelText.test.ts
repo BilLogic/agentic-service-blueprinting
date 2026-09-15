@@ -25,20 +25,28 @@ type PanelRole = keyof typeof FORMER_PANEL_TEXT
 /**
  * Per-file counts of `PANEL_TEXT.*` JSX sites on origin/main, taken after
  * the last batch that moved one. The retirement of the panel role layer
- * cites 28; the tree holds 21. The test enumerates those 21 so a
+ * cites 28; the tree holds 20. The test enumerates those 20 so a
  * coincidental `text-xs font-medium text-muted-foreground` elsewhere
  * cannot satisfy a missing call site.
+ *
+ * A count follows the class list when a file stops writing it. The draft
+ * and empty surfaces each wrote the panel title on their own drawer header;
+ * both headers are the shell's one header now, so the two sites are the
+ * shell's single heading. The list itself is `PANEL_HEADING_CLASS`, which
+ * this reader resolves across files — a site writing the constant is a site
+ * writing the classes, which is why the differences surface still counts as
+ * a writer of the title it shows beside the surface switcher.
  */
 const FORMER_SITE_COUNTS: Readonly<
   Record<string, Partial<Record<PanelRole, number>>>
 > = {
   // The cell panel's four sites moved with the split of its body: its three
-  // titles are each the heading of one drawer surface, and its value is the
-  // summary paragraph in the overview. Same four sites, same four class
-  // lists, re-addressed to the files they now stand in.
+  // titles were each the heading of one drawer surface, and its value is the
+  // summary paragraph in the overview. Two of the three headings are the
+  // shared header's now; the differences surface keeps a site of its own
+  // because its heading is a span beside the surface switcher rather than
+  // the drawer title — the same class list, named rather than retyped.
   'components/blueprint/CellDetailDifferencesSurface.tsx': { title: 1 },
-  'components/blueprint/CellDetailDraftSurface.tsx': { title: 1 },
-  'components/blueprint/CellDetailEmptySurface.tsx': { title: 1 },
   'components/blueprint/CellDetailOverview.tsx': { value: 1 },
   'components/blueprint/CellContentSection.tsx': {
     sectionLabel: 1,
@@ -51,7 +59,8 @@ const FORMER_SITE_COUNTS: Readonly<
   'components/blueprint/StakeholderSelect.tsx': { meta: 3, value: 1 },
   'components/blueprint/StepPanel.tsx': { meta: 1, value: 1 },
   'components/blueprint/panelShell.tsx': {
-    title: 1,
+    // The identity block's name, and the header's heading.
+    title: 2,
     meta: 2,
     sectionLabel: 1,
   },
@@ -75,7 +84,7 @@ describe('the former PANEL_TEXT call sites', () => {
         total += expected
       }
     }
-    expect(total).toBe(21)
+    expect(total).toBe(20)
   })
 
   it('and the tree names no PANEL_TEXT identifier', () => {
