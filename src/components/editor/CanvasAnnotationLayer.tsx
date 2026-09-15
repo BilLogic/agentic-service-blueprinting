@@ -28,6 +28,7 @@ import {
   releasePointerCapture,
 } from '@/lib/pointerGestures'
 import {
+  annotationTextBox,
   clientToLocal,
   getLayerScale,
   pointsToPath,
@@ -900,8 +901,7 @@ export function CanvasAnnotationLayer({ zoom = 1 }: { zoom?: number }) {
         }
 
         if (annotation.type === 'text') {
-          const width = Math.max(80, annotation.fontSize * 8)
-          const height = Math.max(32, annotation.fontSize * 2.2)
+          const { width, height } = annotationTextBox(annotation.fontSize)
           return (
             <TextAnnotationNode
               key={annotation.id}

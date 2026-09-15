@@ -69,6 +69,12 @@ export type CanvasAnnotation =
   | TextAnnotation
   | StickyAnnotation
 
+/**
+ * The marks that own a box on the board — everything but the pen stroke,
+ * which is a path and is drawn, dragged and captured as one.
+ */
+export type PlacedAnnotation = Exclude<CanvasAnnotation, PenAnnotation>
+
 export const ANNOTATION_INK: string = 'var(--color-slate-1200)'
 export const ANNOTATION_PAPER: string = 'var(--color-gray-100)'
 export const ANNOTATION_STICKY_BG: string = 'var(--color-yellow-500)'

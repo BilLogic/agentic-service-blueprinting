@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils'
 import type { TextAnnotation } from '@/lib/canvasAnnotations'
 import { useFocusTextarea } from '@/hooks/useFocusTextarea'
+import { annotationTextBox } from '@/components/editor/canvasAnnotationGeometry'
 import { ResizeHandles } from '@/components/editor/CanvasAnnotationResizeHandles'
 import { AnnotationTextStyleBar } from '@/components/editor/AnnotationTextStyleBar'
 import type { MovableProps } from '@/components/editor/canvasAnnotationNodeProps'
@@ -30,8 +31,9 @@ export function TextAnnotationNode({
   } = movable
 
   const showChrome = selected && !isEraser
-  const approxWidth = Math.max(120, annotation.fontSize * 8)
-  const approxHeight = Math.max(32, annotation.fontSize * 2.2)
+  const { width: approxWidth, height: approxHeight } = annotationTextBox(
+    annotation.fontSize,
+  )
   const showInput = editing || !annotation.text
   const textareaRef = useFocusTextarea(editing)
   const align = annotation.align ?? 'left'
