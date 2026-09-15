@@ -74,7 +74,7 @@ export function EntityTitleAffordance({
           // heading and the button's accessible name.
           className={cn(
             BLUEPRINT_MENUBAR_TITLE_TEXT_CLASS,
-            'w-fit max-w-full cursor-pointer truncate rounded-sm text-left outline-none',
+            'w-fit max-w-full cursor-pointer truncate rounded-md text-left outline-none',
           )}
           onClick={(event) => {
             event.stopPropagation()

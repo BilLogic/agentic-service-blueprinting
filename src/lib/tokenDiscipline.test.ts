@@ -679,6 +679,12 @@ const RADIUS_KIND_ALLOWLIST: Record<string, readonly string[]> = {
   'components/ui/popover.tsx': ['lg'],
   'components/ui/dropdown-menu.tsx': ['lg', 'md'],
   'components/ui/tabs.tsx': ['lg', 'md', 'none'],
+  'components/ui/sidebar.tsx': ['md', 'lg', 'xl', 'none', 'full'],
+  'components/ui/switch.tsx': ['full'],
+  'components/editor/CanvasAnnotationToolbar.tsx': ['2xl', 'md', 'full'],
+  'components/editor/CanvasAnnotationBarChrome.tsx': ['2xl', 'md'],
+  'components/editor/EditorZoomIndicator.tsx': ['lg', 'md'],
+  'components/editor/JumpToSearch.tsx': ['md'],
 }
 
 test('a component kind stays on its assigned radius rung', () => {
@@ -687,7 +693,9 @@ test('a component kind stays on its assigned radius rung', () => {
   )
   const offenders: string[] = []
   for (const use of uses) {
-    const match = use.match(/^(components\/ui\/[^:]+\.tsx):(\d+): .*rounded-(?:(?:l|r|t|b|tl|tr|bl|br|s|e|ss|se|es|ee)-)?(sm|md|lg|xl|2xl|full|none)$/)
+    const match = use.match(
+      /^(components\/(?:ui|editor|blueprint)\/[^:]+\.tsx):(\d+): .*rounded-(?:(?:l|r|t|b|tl|tr|bl|br|s|e|ss|se|es|ee)-)?(sm|md|lg|xl|2xl|full|none)$/,
+    )
     if (!match) continue
     const [, file, , rung] = match
     const allowed = RADIUS_KIND_ALLOWLIST[file]

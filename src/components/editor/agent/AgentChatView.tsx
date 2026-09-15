@@ -270,7 +270,7 @@ export function AgentChatView({
           type="button"
           onClick={() => setRenaming(true)}
           title="Rename session"
-          className="group/title flex min-w-0 flex-1 items-center gap-1 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="group/title flex min-w-0 flex-1 items-center gap-1 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <span className="min-w-0 truncate text-sm font-medium text-foreground">
             {session.title}
@@ -532,7 +532,7 @@ export function AgentChatView({
                       type="button"
                       aria-label="Remove skill"
                       onClick={() => setPendingSkill(null)}
-                      className="rounded-sm p-1 transition-colors hover:bg-primary/15"
+                      className="rounded-md p-1 transition-colors hover:bg-primary/15"
                     >
                       <X className="size-2.5" aria-hidden />
                     </button>

@@ -304,7 +304,10 @@ export function TabStrip({
     <>
       {notice}
       {seed}
-      <div className="flex shrink-0 items-center gap-1 border-b border-border bg-sidebar pr-2 py-2">
+      <div
+        data-editor-top-nav=""
+        className="flex shrink-0 items-center gap-1 border-b border-border bg-sidebar pr-2 py-2"
+      >
         {/* Home occupies the same 48px column as the rail below, centered,
             so the icon stack reads as one continuous left edge. The tabs then
             start exactly where the sidebar panel starts. */}
@@ -390,7 +393,7 @@ export function TabStrip({
                 // ARIA tabs pattern, and close stays reachable via the row's
                 // context menu (and pointer).
                 tabIndex={-1}
-                className="mr-1 rounded-sm p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="mr-1 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 <X className="size-3" />
               </button>

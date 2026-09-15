@@ -67,7 +67,7 @@ function StoryboardPictureStrip({
             /*
               The CONCENTRIC radius, not a token picked by eye. A rounded box
               inset inside another looks wrong unless its radius is the outer
-              radius minus the inset. `rounded-sm` is `--radius - 4px`, one
+              radius minus the inset. `rounded-md` is `--radius - 4px`, one
               pixel proud of that here — invisible while the cell face is
               near-transparent, and obvious the moment selection paints an
               opaque fill behind the frame, because the gap pinches at the

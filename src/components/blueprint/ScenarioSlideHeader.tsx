@@ -52,7 +52,7 @@ export function ScenarioSlideHeader({
             <h1
               className={cn(
                 // geometry: 5xl is a display title; 1.15 is tighter than the rung's box so the scenario name stays one line on the slide.
-                'w-fit rounded-sm text-5xl font-semibold leading-[1.15] tracking-tight text-foreground outline-none',
+                'w-fit rounded-md text-5xl font-semibold leading-[1.15] tracking-tight text-foreground outline-none',
                 'focus-visible:ring-2 focus-visible:ring-ring/50',
               )}
             >
@@ -108,7 +108,7 @@ export function ScenarioSlideHeader({
           <ScenarioTitleDefinition slide={slide}>
             <h1
               className={cn(
-                'w-fit rounded-sm font-semibold tracking-tight text-foreground outline-none',
+                'w-fit rounded-md font-semibold tracking-tight text-foreground outline-none',
                 'focus-visible:ring-2 focus-visible:ring-ring/50',
                 compact ? 'text-xl' : 'text-3xl md:text-4xl',
               )}

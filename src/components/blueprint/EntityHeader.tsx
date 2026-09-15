@@ -78,11 +78,11 @@ function EntityHeaderSkeleton() {
           header's matching negative margin, so the name lands at the column's
           edge, and the placeholder holds the space where it will land. */}
       <div className="flex h-6 items-center">
-        <Skeleton className="h-3.5 w-40 max-w-full rounded-sm" />
+        <Skeleton className="h-3.5 w-40 max-w-full rounded-md" />
       </div>
       {/* The summary's 16px `text-xs` row, on the same edge. */}
       <div className="flex h-4 items-center">
-        <Skeleton className="h-2.5 w-64 max-w-full rounded-sm" />
+        <Skeleton className="h-2.5 w-64 max-w-full rounded-md" />
       </div>
     </div>
   )

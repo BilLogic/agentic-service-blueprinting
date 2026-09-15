@@ -5,6 +5,13 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 /*
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Radius and spacing on the visual-system ladder (md / whole steps); status
+ * keeps rounded-full. Non-status badges are controls on md, not the retired
+ * 4xl capsule.
+ */
+
+/*
   A BADGE DESCRIBES THE THING IT SITS ON, and never reacts to the pointer.
 
   One per thing, not drawn from a set, never interactive — that is what

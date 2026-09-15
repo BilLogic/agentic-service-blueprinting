@@ -153,7 +153,7 @@ export function CoverPageView({
         */
         data-cover-shell
         className={cn(
-          'mx-auto flex w-full flex-col px-8 py-10 sm:px-10 sm:py-12 lg:py-14',
+          'mx-auto flex w-full flex-col px-gutter py-10 sm:py-12 lg:py-14',
           COVER_MEASURE,
         )}
       >
@@ -168,7 +168,7 @@ export function CoverPageView({
           enter. It also stops the action jumping position between a short
           title and a long one.
         */}
-        <header className="flex flex-col items-start gap-5 pb-10">
+        <header className="flex flex-col items-start gap-content pb-10">
           <div className="flex flex-col gap-3">
             <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               {content.title ?? ORG_NAME}
@@ -185,6 +185,7 @@ export function CoverPageView({
           <div className="flex flex-col items-start gap-2">
             <Button
               type="button"
+              variant="brand"
               onClick={onOpenCanvas}
               className="h-9 shrink-0 px-4"
             >

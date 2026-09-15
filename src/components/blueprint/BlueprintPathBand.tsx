@@ -440,7 +440,7 @@ function CompareLaneRow({
     return (
       <div
         className={cn(
-          'relative flex items-stretch rounded-sm shrink-0',
+          'relative flex items-stretch rounded-md shrink-0',
         )}
         style={{ backgroundColor: 'transparent' }}
       >
@@ -490,7 +490,7 @@ function CompareLaneRow({
   return (
     <div
       className={cn(
-        'relative flex items-stretch rounded-sm shrink-0',
+        'relative flex items-stretch rounded-md shrink-0',
       )}
       style={{
         backgroundColor: 'transparent',

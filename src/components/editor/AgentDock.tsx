@@ -84,7 +84,7 @@ function AgentDockChrome({
             type="button"
             aria-label={floating ? 'Dock the agent to the sidebar' : 'Hide the agent'}
             onClick={() => (floating ? dockAgent() : toggleAgentOpen(false))}
-            className="flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             {floating ? (
               <ChevronDown className="size-3" aria-hidden />

@@ -23,18 +23,21 @@ import {
 } from "@/components/ui/tooltip"
 import { PanelLeftIcon } from "lucide-react"
 import { ground } from "@/lib/ground"
-import { RAIL_WIDTH, SIDEBAR_DEFAULT_WIDTH } from "@/lib/layoutTokens"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_KEYBOARD_SHORTCUT = "b"
-
-/**
- * CSS rem length from a pixel layout token, at the 16px root this sheet assumes.
+/*
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Widths are rem literals here so this file does not import `@/lib/layoutTokens`
+ * — vendored primitives stay pristine of product imports. The pixel owners are
+ * `SIDEBAR_DEFAULT_WIDTH` (288 → 18rem) and `RAIL_WIDTH` (48 → 3rem) in that
+ * module; EditorShell reads those for the drag clamp. Keep the rem strings in
+ * lockstep when those pixels move.
  */
-function layoutPxAsRem(px: number): string {
-  return `${px / 16}rem`
-}
+const SIDEBAR_WIDTH = "18rem"
+const SIDEBAR_WIDTH_MOBILE = "18rem"
+const SIDEBAR_WIDTH_ICON = "3rem"
+const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed"
@@ -136,8 +139,8 @@ function SidebarProvider({
         data-slot="sidebar-wrapper"
         style={
           {
-            "--sidebar-width": layoutPxAsRem(SIDEBAR_DEFAULT_WIDTH),
-            "--sidebar-width-icon": layoutPxAsRem(RAIL_WIDTH),
+            "--sidebar-width": SIDEBAR_WIDTH,
+            "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
             ...style,
           } as React.CSSProperties
         }
@@ -196,7 +199,7 @@ function Sidebar({
           className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
           style={
             {
-              "--sidebar-width": layoutPxAsRem(SIDEBAR_DEFAULT_WIDTH),
+              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
             } as React.CSSProperties
           }
           side={side}
@@ -661,6 +664,8 @@ function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
       data-slot="sidebar-menu-sub"
       data-sidebar="menu-sub"
       className={cn(
+        // Half-steps (mx-3.5, px-2.5, py-0.5) sit off the 4px grid. The
+        // indent still reads as nested; timings are untouched.
         "mx-4 flex min-w-0 translate-x-px flex-col gap-1 border-l border-sidebar-border px-2 py-1 group-data-[collapsible=icon]:hidden",
         className
       )}

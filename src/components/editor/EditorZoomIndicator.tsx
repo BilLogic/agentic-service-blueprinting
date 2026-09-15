@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 
 /** Elevated chrome shared by the zoom buttons that float over the canvas. */
 const ZOOM_CHROME_BUTTON_CLASS =
-  'pointer-events-auto shrink-0 rounded-lg border-border bg-card text-muted-foreground shadow-md hover:text-foreground hover:shadow-lg'
+  'pointer-events-auto shrink-0 rounded-lg border-border bg-card text-muted-foreground shadow-md hover:text-foreground'
 
 type EditorZoomIndicatorProps = {
   /** Exit canvas focus and reframe the full overview. */

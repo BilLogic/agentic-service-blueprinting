@@ -126,7 +126,7 @@ export function OwnerTagSelect({
           {value ? (
             <button
               type="button"
-              className="flex items-center gap-2 rounded-sm px-2 py-2 text-left text-xs text-muted-foreground hover:bg-muted"
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-muted-foreground hover:bg-muted"
               onClick={() => pick('')}
             >
               <X className="size-3" aria-hidden />
@@ -162,7 +162,7 @@ export function OwnerTagSelect({
             ) : (
               <div
                 key={tag}
-                className="group/tag flex items-center gap-1 rounded-sm hover:bg-muted"
+                className="group/tag flex items-center gap-1 rounded-md hover:bg-muted"
               >
                 <button
                   type="button"
@@ -178,7 +178,7 @@ export function OwnerTagSelect({
                   <button
                     type="button"
                     aria-label={`Rename ${tag}`}
-                    className="mr-1 shrink-0 rounded-sm p-1 text-muted-foreground opacity-0 transition-opacity group-hover/tag:opacity-100 focus-visible:opacity-100 hover:text-foreground"
+                    className="mr-1 shrink-0 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity group-hover/tag:opacity-100 focus-visible:opacity-100 hover:text-foreground"
                     onClick={() => {
                       setRenaming(tag)
                       setRenameText(tag)
@@ -193,7 +193,7 @@ export function OwnerTagSelect({
           {trimmedFilter && !exactExists ? (
             <button
               type="button"
-              className="flex items-center gap-2 rounded-sm px-2 py-2 text-left text-xs text-primary hover:bg-muted"
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-primary hover:bg-muted"
               onClick={() => pick(trimmedFilter)}
             >
               Create “{trimmedFilter}”

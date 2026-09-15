@@ -140,7 +140,7 @@ function markSurface(
 } {
   if (annotation.type === 'sticky') {
     return {
-      base: 'absolute box-border rounded-sm p-2 shadow-md',
+      base: 'absolute box-border rounded-md p-2 shadow-md',
       // The sticky is the one kind that wears a border either way — an
       // unselected note still has to read as a card on the board.
       chrome: showChrome
@@ -339,7 +339,7 @@ function TextBody({
           annotation.strike && 'line-through',
           showChrome
             ? 'border-0 bg-transparent text-inherit'
-            : 'rounded-sm border border-muted bg-card/95 text-foreground shadow-sm focus:border-ring',
+            : 'rounded-md border border-muted bg-card/95 text-foreground shadow-sm focus:border-ring',
         )}
         style={{ fontSize: annotation.fontSize }}
         onChange={(e) => onUpdate({ text: e.target.value })}

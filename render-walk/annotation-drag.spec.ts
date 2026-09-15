@@ -71,16 +71,16 @@ type CellBox = { id: string; x: number; y: number; width: number; height: number
 async function openFirstBoard(page: Page): Promise<Locator> {
   await page.goto('/')
 
-  await expect(
-    page.getByText('sample data'),
-    'the preview is in no-database mode, showing the bundled sample board',
-  ).toBeVisible()
-
   const coverCta = page.locator('[data-cover-page] header button')
   if ((await coverCta.count()) > 0) {
     await coverCta.first().click()
     await expect(page.locator('[data-cover-page]')).toHaveCount(0)
   }
+
+  await expect(
+    page.locator('[data-editor-top-nav]').getByText('sample data', { exact: true }),
+    'the preview is in no-database mode, showing the bundled sample board',
+  ).toBeVisible()
 
   const phaseRows = page.locator(
     '[data-nav-row]:has(button[aria-controls^="phase-panel-"])',

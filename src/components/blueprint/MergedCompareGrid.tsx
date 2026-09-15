@@ -487,7 +487,7 @@ function MergedLaneRow({
   const flushBottom = lanePrecedesBlueprintDivider(lane, lanes)
 
   return (
-    <div className="relative flex items-stretch rounded-sm">
+    <div className="relative flex items-stretch rounded-md">
       {tracks.map((track, trackIndex) => {
         const isLast = trackIndex === tracks.length - 1
         // The gap element the arrow router measures, indexed in the CANONICAL

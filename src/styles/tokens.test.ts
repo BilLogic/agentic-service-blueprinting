@@ -727,6 +727,11 @@ function themeDials(): string[] {
       ...namesIn('themes/dark.css'),
     ]),
   ]
+    /*
+     * Elevation lives in the plain `@theme` block so dark can override it.
+     * Dark restates `--shadow-*`; light does not. They are not dials the
+     * print override must chase — print restates them explicitly.
+     */
     .filter((name) => !name.startsWith('--shadow-'))
     .sort()
 }

@@ -100,7 +100,7 @@ export function SliceHeaderBand({
               that tint in light and 14:1 in dark, with the edge a quiet
               1.24–1.27:1 off it. */}
           {missingCellCount > 0 && (
-            <span className="shrink-0 rounded-sm border border-border-warning bg-surface-warning px-2 py-1 text-sm text-foreground">
+            <span className="shrink-0 rounded-md border border-border-warning bg-surface-warning px-2 py-1 text-sm text-foreground">
               {missingCellCount} {missingCellCount === 1 ? 'cell' : 'cells'} no
               longer in the blueprint
             </span>

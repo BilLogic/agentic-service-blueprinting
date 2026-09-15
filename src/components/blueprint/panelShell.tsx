@@ -293,7 +293,7 @@ export function Field({
         // alone. The help cursor and the dotted rule went with every other
         // announcement that a word is defined.
         hint &&
-          'rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+          'rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
       )}
     >
       {label}

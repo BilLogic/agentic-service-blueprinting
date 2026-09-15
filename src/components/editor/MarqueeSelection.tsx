@@ -174,7 +174,7 @@ export function MarqueeSelection() {
     <div
       aria-hidden
       data-marquee=""
-      className="pointer-events-none fixed z-50 rounded-sm border border-primary bg-primary/10"
+      className="pointer-events-none fixed z-50 rounded-md border border-primary bg-primary/10"
       style={{
         left: rect.left,
         top: rect.top,

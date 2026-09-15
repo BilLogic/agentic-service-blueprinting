@@ -242,7 +242,7 @@ export function DeleteStructureDialog({
                 className="text-sm font-medium text-foreground"
               >
                 Type{' '}
-                <span className="rounded-sm border border-border bg-background px-2 py-1 font-mono text-foreground">
+                <span className="rounded-md border border-border bg-background px-2 py-1 font-mono text-foreground">
                   {target.label}
                 </span>{' '}
                 to confirm

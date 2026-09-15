@@ -361,19 +361,20 @@ test.describe('the bundled sample board', () => {
     address = '/'
     await page.goto(address)
 
-    // NO DATABASE, and the app says so. `isSupabaseConfigured()` in
-    // `src/lib/supabase.ts` reads `VITE_SUPABASE_URL` at BUILD time, so a
-    // `.env` holding real values bakes them into `dist` and the preview then
-    // serves somebody's live rows. That walk would be measuring a database's
-    // content, and it would go red or green for reasons nothing in this
-    // repository controls. Build with the variables cleared — see
-    // `render-walk/README.md`.
+    const phases = await readInventory(page)
+
+    // NO DATABASE, and the app says so. Asserted on the top nav after the
+    // cover is dismissed so the cover's "Sample data shown." line cannot
+    // match the same locator. `isSupabaseConfigured()` in `src/lib/supabase.ts`
+    // reads `VITE_SUPABASE_URL` at BUILD time, so a `.env` holding real values
+    // bakes them into `dist` and the preview then serves somebody's live rows.
+    // That walk would be measuring a database's content, and it would go red
+    // or green for reasons nothing in this repository controls. Build with
+    // the variables cleared — see `render-walk/README.md`.
     await expect(
-      page.getByText('sample data'),
+      page.locator('[data-editor-top-nav]').getByText('sample data', { exact: true }),
       'the preview is in no-database mode, showing the bundled sample board',
     ).toBeVisible()
-
-    const phases = await readInventory(page)
     assertNoProblems()
 
     const views: View[] = []

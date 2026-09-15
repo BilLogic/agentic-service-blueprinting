@@ -62,7 +62,7 @@ function VerdictBadge({ verdict }: { verdict: CompareStatus }) {
       <span
         className={cn(
           // geometry: packs the count into a fitted badge, not a prose line.
-          'inline-flex shrink-0 items-center rounded-sm px-1 py-px text-xs leading-none',
+          'inline-flex shrink-0 items-center rounded-md px-1 py-px text-xs leading-none',
           MONO_NUM_CLASS,
           'bg-surface-info text-on-surface-info',
         )}
@@ -76,7 +76,7 @@ function VerdictBadge({ verdict }: { verdict: CompareStatus }) {
     <span
       className={cn(
         // geometry: packs the count into a fitted badge, not a prose line.
-        'inline-flex shrink-0 items-center rounded-sm px-1 py-px text-xs leading-none',
+        'inline-flex shrink-0 items-center rounded-md px-1 py-px text-xs leading-none',
         MONO_NUM_CLASS,
         'bg-surface-warning text-on-surface-warning',
       )}

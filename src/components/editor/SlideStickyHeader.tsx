@@ -85,7 +85,7 @@ function SlideHeaderContent({
             >
               <h1
                 className={cn(
-                  'w-fit rounded-sm text-base font-semibold tracking-tight text-foreground outline-none',
+                  'w-fit rounded-md text-base font-semibold tracking-tight text-foreground outline-none',
                   'focus-visible:ring-2 focus-visible:ring-ring/50',
                 )}
               >

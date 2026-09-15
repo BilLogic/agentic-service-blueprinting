@@ -66,7 +66,7 @@ module.exports = {
             // h5 isn't included in --tw-prose-headings.
             h5: { color: 'var(--color-scale-1200)' },
             h1: { fontWeight: '400' },
-            'h2, h3, h4, h5, h6': { fontWeight: 'var(--font-weight-medium)' },
+            'h2, h3, h4, h5, h6': { fontWeight: 'var(--font-weight-heading)' },
             'article h2, article h3, article h4, article h5, article h6': {
               marginTop: '2em',
               marginBottom: '1em',
@@ -240,7 +240,8 @@ module.exports = {
             '--tw-prose-invert-quotes': 'var(--canvas)',
             '--tw-prose-invert-quote-borders': 'var(--border)',
             '--tw-prose-invert-captions': 'var(--muted)',
-            'h1, h2, h3, h4, h5': { fontWeight: 'var(--font-weight-medium)' },
+            h1: { fontWeight: '400' },
+            'h2, h3, h4, h5': { fontWeight: 'var(--font-weight-heading)' },
           },
         },
       },

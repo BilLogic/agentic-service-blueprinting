@@ -30,7 +30,7 @@ import { cn } from '@/lib/utils'
 
 /** Fixed chevron slot. Its width is also the indent step for child rows. */
 const CHEVRON_SLOT_CLASS =
-  'flex size-4 shrink-0 items-center justify-center rounded-sm'
+  'flex size-4 shrink-0 items-center justify-center rounded-md'
 
 /** Hidden at rest, revealed by hover or focus anywhere in the row. Coarse
  * pointers have no hover, so there it is always shown — same rule

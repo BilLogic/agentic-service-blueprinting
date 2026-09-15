@@ -3,6 +3,13 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+/*
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Radius on the visual-system ladder (md); brand is its own variant so the
+ * identity fill does not paint every default Button — a filled control keeps
+ * the primary contrast floor; brand is for the four identity jobs only.
+ */
+
 const buttonVariants = cva(
   // Weight 400, not 500. Supabase's Button base is `font-regular`, and a
   // filled brand button at 500 is what read as "too bold" — the label was
@@ -17,6 +24,10 @@ const buttonVariants = cva(
         // weight the muted fill gave up. Hover still rides alpha on the
         // resting token; no `--*-hover` state token exists.
         default:
+          "rounded-md border-primary-border bg-primary text-primary-foreground shadow-none hover:bg-primary/90",
+        // Identity fill. The four brand jobs are CTA, prose links, switch-on,
+        // and the path-selector status dot. Filled controls stay on primary.
+        brand:
           "rounded-md border-border-brand bg-brand text-brand-foreground shadow-none hover:bg-brand/90",
         // Page-coloured in BOTH themes. The dark-mode `input/30` wash this
         // dropped made an outline button read as a filled one at night, so

@@ -564,7 +564,7 @@ function PresentationFilmstrip({
                 onClick={() => onSelect(index)}
                 className={cn(
                   // h-auto/p-0 keeps the raw button's exact text hit area.
-                  'h-auto max-w-48 justify-start rounded-sm border-0 p-0 text-sm font-medium hover:bg-transparent dark:hover:bg-transparent',
+                  'h-auto max-w-48 justify-start rounded-md border-0 p-0 text-sm font-medium hover:bg-transparent dark:hover:bg-transparent',
                   active
                     ? 'text-foreground'
                     : 'text-foreground',

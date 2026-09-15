@@ -64,7 +64,7 @@ export function JumpToSearch() {
       >
         <Search className="size-3.5 shrink-0" aria-hidden />
         <span className="min-w-0 flex-1 truncate text-left">Jump to…</span>
-        <kbd className="rounded-sm border border-border px-1 font-sans text-xs text-tertiary-foreground">
+        <kbd className="rounded-md border border-border px-1 font-sans text-xs text-tertiary-foreground">
           ⌘K
         </kbd>
       </button>

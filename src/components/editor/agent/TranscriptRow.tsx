@@ -110,7 +110,7 @@ function ToolRow({ event }: { event: ToolEvent }) {
             type="button"
             className={cn(
               markerVariants({ variant: 'default' }),
-              'cursor-pointer rounded-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              'cursor-pointer rounded-md transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               event.isError && 'text-destructive',
             )}
           >
