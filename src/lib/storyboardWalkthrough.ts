@@ -1,5 +1,8 @@
-import { TOUCHPOINT_CELL_LANE_ROLES } from '@/lib/blueprintLayout'
-import { getLaneRole, STORYBOARD_ROLE } from '@/lib/laneRoles'
+import {
+  getLaneRole,
+  isTouchpointLaneRole,
+  STORYBOARD_ROLE,
+} from '@/lib/laneRoles'
 import { buildCellLookup, getCellAt } from '@/lib/normalizeBlueprint'
 import { isBlueprintStepStoryboardPlaceholder } from '@/lib/blueprintStoryboardPlaceholder'
 import { pickPreferredPath } from '@/lib/pathSelection'
@@ -147,9 +150,7 @@ function getWalkthroughLaneNames(
     .filter((lane) => {
       const role = getLaneRole(lane)
       if (role === STORYBOARD_ROLE) return false
-      return !TOUCHPOINT_CELL_LANE_ROLES.some(
-        (touchpointRole) => touchpointRole === role,
-      )
+      return !isTouchpointLaneRole(role)
     })
     .map((lane) => lane.name)
 }

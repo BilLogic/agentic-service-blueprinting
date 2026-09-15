@@ -65,7 +65,8 @@ elicitation), or to none.
 - A touchpoint cell's `frame` is its **logo**: placing a touchpoint fills an
   empty frame with that touchpoint's icon. So the storyboard walkthrough — the
   step's stack, the canvas strip and the walkthrough deck, which share one
-  roster — steps through every lane except the storyboard rows and these two.
+  roster — steps through every lane except the storyboard rows and these two,
+  `frontstage_touchpoints` and `backstage_touchpoints`.
   A frame drawn for a moment comes from an actor lane; a logo is not a moment.
   Nothing is cleared to arrange that: the cell panel still draws the
   touchpoint's frame at logo size.

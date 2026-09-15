@@ -25,6 +25,7 @@ import type { BlueprintData } from '@/types/blueprint'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 
 const KIOSK_ICON = 'https://example.invalid/kiosk.png'
+const DOORWAY_FRAME = 'https://example.invalid/doorway.png'
 
 const BOARD: BlueprintData = {
   path: {
@@ -54,7 +55,7 @@ const BOARD: BlueprintData = {
       lane_id: 'lane-guest',
       step_id: 'step-arrives',
       content: 'Walks up to the desk',
-      frame: null,
+      frame: DOORWAY_FRAME,
       summary: 'The first minute of the visit.',
       touchpoints: [],
       resources: [],
@@ -299,14 +300,25 @@ describe('the drawer’s reading', () => {
   })
 
   it('carries the column’s strip, and a touchpoint row’s logo is not in it', () => {
-    // The strip is the COLUMN's, not the selected row's — and the only framed
-    // cell in this column sits on a touchpoint row, where the frame is the
-    // kiosk's icon rather than a drawn moment. The walkthrough roster leaves
-    // the touchpoint rows out, so the stack has nothing to show here; the
-    // cell's own frame is untouched, and the overview below still reads it.
+    // Two things at once, which is what this column is shaped to show. The
+    // strip is the COLUMN's, not the selected row's: the guest row's own frame
+    // is in it whichever cell of the column is selected. And the kiosk's frame
+    // is not, because it sits on a touchpoint row, where a frame is the
+    // touchpoint's logo rather than a drawn moment — the cell keeps it, and
+    // the overview below still reads it.
+    const arrivesStrip = {
+      frame: DOORWAY_FRAME,
+      label: 'Guest',
+      laneName: 'Guest',
+      summary: 'The first minute of the visit.',
+    }
+
     expect(
       panelFacts(selectionFor('cell-guest-arrives')).storyboardStepEntries,
-    ).toEqual([])
+    ).toEqual([arrivesStrip])
+    expect(
+      panelFacts(selectionFor('cell-tools-arrives')).storyboardStepEntries,
+    ).toEqual([arrivesStrip])
     expect(
       panelFacts(selectionFor('cell-guest-chooses')).storyboardStepEntries,
     ).toEqual([])

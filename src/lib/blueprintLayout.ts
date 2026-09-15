@@ -1,11 +1,11 @@
 import { parseCellContentItems } from '@/lib/parseCellContent'
 import {
   BACKSTAGE_ACTIONS_ROLE,
-  BACKSTAGE_TOUCHPOINTS_ROLE,
   CUSTOMER_ACTIONS_ROLE,
   FRONTSTAGE_ACTIONS_ROLE,
   FRONTSTAGE_TOUCHPOINTS_ROLE,
   getLaneRole,
+  isTouchpointLaneRole,
   STORYBOARD_ROLE,
   SUPPORT_ACTIONS_ROLE,
 } from '@/lib/laneRoles'
@@ -32,12 +32,6 @@ export {
 
 /** Minimal lane shape for role-driven layout checks. */
 type LaneRoleSource = { name: string; role?: string | null }
-
-/** Roles whose cells list each touchpoint as its own inline cell (newline-separated content). */
-export const TOUCHPOINT_CELL_LANE_ROLES = [
-  FRONTSTAGE_TOUCHPOINTS_ROLE,
-  BACKSTAGE_TOUCHPOINTS_ROLE,
-] as const
 
 /** Roles rendered as storyboard frame rows instead of text cells. */
 export const STORYBOARD_LANE_ROLES = [STORYBOARD_ROLE] as const
@@ -69,12 +63,16 @@ export function getStoryboardCellButtonMaxHeight(compact = false): number {
   return rowHeight - getCellShellPaddingY(compact)
 }
 
+/**
+ * Whether a lane's cells list one touchpoint per line rather than prose.
+ *
+ * The roles are `laneRoles`' — which rows hold touchpoints is what a row
+ * MEANS, not how this module draws it — so this is the drawing question
+ * asked of the one predicate. The walkthrough's roster asks the same
+ * predicate a different question about the same rows.
+ */
 export function shouldUseTouchpointCellContent(lane: LaneRoleSource): boolean {
-  const role = getLaneRole(lane)
-  return (
-    role !== null &&
-    (TOUCHPOINT_CELL_LANE_ROLES as readonly string[]).includes(role)
-  )
+  return isTouchpointLaneRole(getLaneRole(lane))
 }
 
 /** Which face a lane's cells wear — touchpoint stack, storyboard, or plain cell. */
