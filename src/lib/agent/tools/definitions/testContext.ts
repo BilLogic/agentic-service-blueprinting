@@ -1,4 +1,5 @@
 import type { ToolContext, ToolUi } from '@/lib/agent/tools/definition'
+import { PACKAGE_OFFLINE_BOARD } from '@/data/blueprintFallbacks'
 import { scopeOf } from '@/lib/agent/tools/serviceScope'
 import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
 
@@ -51,6 +52,7 @@ export function fakeToolContext(overrides: Partial<ToolContext> = {}): ToolConte
     scope: scopeOf(TEST_SERVICE),
     session: { id: 'test-session', attributed: (work) => work() },
     ui: recordingUi().ui,
+    offlineBoard: PACKAGE_OFFLINE_BOARD,
     roster: TOOL_DEFINITIONS,
     meaning: null,
     ...overrides,

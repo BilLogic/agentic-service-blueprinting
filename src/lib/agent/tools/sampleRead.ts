@@ -2,6 +2,7 @@ import { SAMPLE_NAV } from '@/data/sampleNav'
 import {
   getBlueprintFallback,
   getFallbackPathsForScenario,
+  type OfflineBoard,
 } from '@/data/blueprintFallbacks'
 import { FALLBACK_SLICES, FALLBACK_SLICE_ITEMS } from '@/data/sliceFallbacks'
 import {
@@ -39,23 +40,26 @@ import type { BlueprintData } from '@/types/blueprint'
  * availability says `sample`, so a write tool is absent rather than refused.
  */
 
-function sampleBlueprintsFor(scenarioId: string): BlueprintData[] {
-  const paths = getFallbackPathsForScenario(scenarioId)
+function sampleBlueprintsFor(
+  board: OfflineBoard,
+  scenarioId: string,
+): BlueprintData[] {
+  const paths = getFallbackPathsForScenario(board, scenarioId)
   if (paths.length > 0) {
     return paths
       .map((path) =>
-        getBlueprintFallback(scenarioId, path.id, path.kind),
+        getBlueprintFallback(board, scenarioId, path.id, path.kind),
       )
       .filter((blueprint): blueprint is BlueprintData => Boolean(blueprint))
   }
-  const single = getBlueprintFallback(scenarioId)
+  const single = getBlueprintFallback(board, scenarioId)
   return single ? [single] : []
 }
 
 /** Every sample blueprint, in nav order — the trial's whole universe. */
-function allSampleBlueprints(): BlueprintData[] {
+function allSampleBlueprints(board: OfflineBoard): BlueprintData[] {
   return SAMPLE_NAV.filter((item) => item.parentId).flatMap((scenario) =>
-    sampleBlueprintsFor(scenario.id),
+    sampleBlueprintsFor(board, scenario.id),
   )
 }
 
@@ -67,7 +71,7 @@ type Rows<K extends keyof JourneyTree> = Array<JourneyTree[K][number]>
  * renders. A step is merged by id across its scenario's paths, because it is
  * one column of the scenario that each path places at its own position.
  */
-function sampleJourneyTree(): JourneyTree {
+function sampleJourneyTree(board: OfflineBoard): JourneyTree {
   const phases: Rows<'phases'> = []
   const scenarios: Rows<'scenarios'> = []
   const paths: Rows<'paths'> = []
@@ -89,7 +93,7 @@ function sampleJourneyTree(): JourneyTree {
       summary: item.summary,
       position: item.index,
     })
-    for (const blueprint of sampleBlueprintsFor(item.id)) {
+    for (const blueprint of sampleBlueprintsFor(board, item.id)) {
       const { path } = blueprint
       paths.push({ id: path.id, scenarioId: item.id, name: path.name, summary: path.summary, kind: path.kind })
       for (const step of blueprint.steps) {
@@ -124,21 +128,31 @@ function sampleJourneyTree(): JourneyTree {
  * service, so there is no scope to apply — exactly as a single-service
  * deployment ignores the argument.
  */
-export function sampleListBlueprint(options: BlueprintListOptions): string {
-  return formatBlueprintList(sampleJourneyTree(), listBlueprintRequest(options))
+export function sampleListBlueprint(
+  board: OfflineBoard,
+  options: BlueprintListOptions,
+): string {
+  return formatBlueprintList(
+    sampleJourneyTree(board),
+    listBlueprintRequest(options),
+  )
 }
 
-export function sampleGetBlueprint(scenarioId: string): string {
-  const blueprints = sampleBlueprintsFor(scenarioId)
+export function sampleGetBlueprint(
+  board: OfflineBoard,
+  scenarioId: string,
+): string {
+  const blueprints = sampleBlueprintsFor(board, scenarioId)
   if (blueprints.length === 0) return 'No paths in this scenario.'
   return formatBlueprints(blueprints)
 }
 
 export function sampleGetCompareDiff(
+  board: OfflineBoard,
   scenarioId: string,
   pathIds?: string[],
 ): string {
-  return formatCompareDiff(sampleBlueprintsFor(scenarioId), pathIds)
+  return formatCompareDiff(sampleBlueprintsFor(board, scenarioId), pathIds)
 }
 
 /**
@@ -147,8 +161,8 @@ export function sampleGetCompareDiff(
  * props) and the cell's resources, so the keyless answer is the DB answer
  * minus the database.
  */
-export function sampleGetCell(cellId: string): string {
-  for (const blueprint of allSampleBlueprints()) {
+export function sampleGetCell(board: OfflineBoard, cellId: string): string {
+  for (const blueprint of allSampleBlueprints(board)) {
     const cell = blueprint.cells.find((entry) => entry.id === cellId)
     if (!cell) continue
     return formatFields([
@@ -184,9 +198,9 @@ export function sampleGetSlice(sliceId: string): string {
  * (label, role). A sample lane appears once per path it is on, exactly as a
  * row does.
  */
-export function sampleListLanes(): string {
+export function sampleListLanes(board: OfflineBoard): string {
   return formatLaneVocabulary(
-    allSampleBlueprints().flatMap((blueprint) =>
+    allSampleBlueprints(board).flatMap((blueprint) =>
       blueprint.lanes.map((lane) => ({
         name: lane.name,
         lane_role: lane.role ?? null,
@@ -199,8 +213,11 @@ export function sampleListLanes(): string {
  * The sample board's arrows. Same text as the live read, and the same
  * source-first direction — these are the edges the sample canvas draws.
  */
-export function sampleListCellDependencies(cellId?: string): string {
-  const edges = allSampleBlueprints().flatMap(
+export function sampleListCellDependencies(
+  board: OfflineBoard,
+  cellId?: string,
+): string {
+  const edges = allSampleBlueprints(board).flatMap(
     (blueprint) => blueprint.dependencies,
   )
   const scoped = cellId
@@ -218,8 +235,8 @@ export function sampleListCellDependencies(cellId?: string): string {
  * `perceived_owner`, deduped and sorted. A sample with no tags produces the
  * same sentence a live-but-untagged database produces.
  */
-export function sampleListOwnerTags(): string {
+export function sampleListOwnerTags(board: OfflineBoard): string {
   return formatOwnerTags(
-    allSampleBlueprints().flatMap((blueprint) => blueprint.cells),
+    allSampleBlueprints(board).flatMap((blueprint) => blueprint.cells),
   )
 }

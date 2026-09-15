@@ -1,4 +1,7 @@
-import { hasBlueprintFallback } from '@/data/blueprintFallbacks'
+import {
+  hasBlueprintFallback,
+  type OfflineBoard,
+} from '@/data/blueprintFallbacks'
 import { ORG_NAME } from '@/config'
 
 /**
@@ -113,10 +116,21 @@ export function isSubslide(slide: NavItem): boolean {
   return Boolean(slide.parentId)
 }
 
-/** Scenario id for blueprint loading — subsides use their id; single-scenario phases use phase id. */
-export function getBlueprintScenarioId(slide: NavItem): string | undefined {
+/**
+ * Scenario id for blueprint loading — subslides use their id; single-scenario
+ * phases use phase id.
+ *
+ * Takes the offline board because the phase case is a question about content:
+ * a phase is its own scenario when the board behind this installation has
+ * something under that id. A pure function with no React around it, so the
+ * board arrives as an argument from whoever has one.
+ */
+export function getBlueprintScenarioId(
+  board: OfflineBoard,
+  slide: NavItem,
+): string | undefined {
   if (isSubslide(slide)) return slide.id
-  if (hasBlueprintFallback(slide.id)) return slide.id
+  if (hasBlueprintFallback(board, slide.id)) return slide.id
   return undefined
 }
 
@@ -140,14 +154,15 @@ export function getSlideViewType(slide: NavItem): SlideViewType {
 }
 
 export function showsBlueprintFilters(
+  board: OfflineBoard,
   slide: NavItem,
   slides: NavItem[],
 ): boolean {
-  if (getBlueprintScenarioId(slide) !== undefined) return true
+  if (getBlueprintScenarioId(board, slide) !== undefined) return true
 
   if (!isSubslide(slide)) {
     return getSubslides(slide.id, slides).some(
-      (scenario) => getBlueprintScenarioId(scenario) !== undefined,
+      (scenario) => getBlueprintScenarioId(board, scenario) !== undefined,
     )
   }
 

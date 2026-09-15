@@ -15,14 +15,13 @@
  */
 import type { ReactNode } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { renderHook } from '@testing-library/react'
+import { cleanup, render, renderHook } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { DeploymentConfigProvider } from '@/contexts/DeploymentConfigContext'
 import { SupabaseProvider } from '@/contexts/SupabaseProvider'
 import {
-  configureSampleBlueprints,
-  getBlueprintFallback,
   hasBlueprintFallback,
+  PACKAGE_OFFLINE_BOARD,
   SAMPLE_SCENARIO_ID,
   type SampleBlueprintRegistry,
 } from '@/data/blueprintFallbacks'
@@ -98,8 +97,8 @@ describe('a deployment’s offline board', () => {
   })
 
   afterEach(() => {
+    cleanup()
     queryClient.clear()
-    configureSampleBlueprints(undefined)
   })
 
   const wrapperFor =
@@ -143,16 +142,23 @@ describe('a deployment’s offline board', () => {
   })
 
   it('replaces the package’s rather than joining it', () => {
-    renderHook(() => useCanvasBlueprints([SCENARIO_ID]), {
-      wrapper: wrapperFor(DEPLOYMENT),
-    })
+    const { result } = renderHook(
+      () => useCanvasBlueprints([SCENARIO_ID, SAMPLE_SCENARIO_ID]),
+      { wrapper: wrapperFor(DEPLOYMENT) },
+    )
 
-    // The template's own sample answers nothing while a deployment's registry
-    // is in force: a board that merged the two would show this template's
-    // content under a deployment's name, which is the failure the whole
-    // fallback rule exists to prevent.
-    expect(hasBlueprintFallback(SAMPLE_SCENARIO_ID)).toBe(false)
-    expect(getBlueprintFallback(SAMPLE_SCENARIO_ID)).toBeNull()
+    // The template's own sample answers nothing under a deployment's registry:
+    // a board that merged the two would show this template's content under a
+    // deployment's name, which is the failure the whole fallback rule exists
+    // to prevent. The package's board is still itself — it is simply not this
+    // tree's — which is what the second line says.
+    expect(result.current.blueprintsByScenario.get(SCENARIO_ID)).toBeDefined()
+    expect(
+      result.current.blueprintsByScenario.get(SAMPLE_SCENARIO_ID),
+    ).toBeUndefined()
+    expect(hasBlueprintFallback(PACKAGE_OFFLINE_BOARD, SAMPLE_SCENARIO_ID)).toBe(
+      true,
+    )
   })
 
   it('is the package’s own when a deployment supplies none', () => {
@@ -165,6 +171,92 @@ describe('a deployment’s offline board', () => {
     expect(
       result.current.blueprintsByScenario.get(SAMPLE_SCENARIO_ID),
     ).toBeDefined()
-    expect(hasBlueprintFallback(SCENARIO_ID)).toBe(false)
+    expect(hasBlueprintFallback(PACKAGE_OFFLINE_BOARD, SCENARIO_ID)).toBe(false)
+  })
+
+  /**
+   * The seam, stated as the property that a module global could not have: the
+   * board a surface draws is the one the provider ABOVE IT holds. Two
+   * providers, two registries, one tree — and neither reads a word of the
+   * other's. While the registry was a module-level slot with one writer, this
+   * was last-render-wins: whichever provider rendered second settled the slot
+   * and both halves of the tree drew its board.
+   */
+  it('is the provider above it, when a tree holds two of them', () => {
+    const OTHER_SCENARIO_ID = 'c0000000-0000-4000-8000-0000000000b2'
+    const OTHER_PATH_ID = 'c0000000-0000-4000-8000-0000000000c3'
+    const other: DeploymentConfig = {
+      sample: {
+        nav: [
+          { id: PHASE_ID, index: 1, label: 'Leaving', summary: 'How it ends.' },
+          {
+            id: OTHER_SCENARIO_ID,
+            index: 1,
+            label: 'Last contact',
+            parentId: PHASE_ID,
+            layout: 'stacked',
+          },
+        ],
+        blueprints: {
+          blueprintsByScenario: {
+            [OTHER_SCENARIO_ID]: [
+              board(OTHER_PATH_ID, 'Said goodbye', 'happy', 'They hand it back'),
+            ],
+          },
+        },
+      },
+    }
+
+    function Drawn({ scenarioIds }: { scenarioIds: string[] }) {
+      const { blueprintsByScenario } = useCanvasBlueprints(scenarioIds)
+      return (
+        <span>
+          {scenarioIds
+            .map(
+              (id) =>
+                blueprintsByScenario
+                  .get(id)
+                  ?.cells.map((cell) => cell.content)
+                  .join(' ') ?? 'nothing',
+            )
+            .join(' | ')}
+        </span>
+      )
+    }
+
+    const tree = (ids: string[]) => (
+      <QueryClientProvider client={queryClient}>
+        <SupabaseProvider>
+          <div data-testid="first">
+            <DeploymentConfigProvider config={DEPLOYMENT}>
+              <Drawn scenarioIds={ids} />
+            </DeploymentConfigProvider>
+          </div>
+          <div data-testid="second">
+            <DeploymentConfigProvider config={other}>
+              <Drawn scenarioIds={ids} />
+            </DeploymentConfigProvider>
+          </div>
+        </SupabaseProvider>
+      </QueryClientProvider>
+    )
+    const ids = [SCENARIO_ID, OTHER_SCENARIO_ID]
+    const { getByTestId, rerender } = render(tree(ids))
+
+    const drawnIn = (half: string) =>
+      (getByTestId(half).textContent ?? '').split(' | ').slice(0, 2)
+    const bothDraw = () => {
+      expect(drawnIn('first')).toEqual(['They fill the form in', 'nothing'])
+      expect(drawnIn('second')).toEqual(['nothing', 'They hand it back'])
+    }
+    bothDraw()
+
+    // And again once something below has re-derived its maps — the half of
+    // this a mount-ordered write passes by luck. Adding a scenario id busts
+    // the hook's memo in BOTH halves, so both rebuild their boards against
+    // whatever they can reach at that moment, long after either provider last
+    // settled anything.
+    rerender(tree([...ids, 'c0000000-0000-4000-8000-0000000000b3']))
+    bothDraw()
   })
 })

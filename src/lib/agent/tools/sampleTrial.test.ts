@@ -14,6 +14,7 @@ import {
   SAMPLE_BLUEPRINTS_BY_SCENARIO,
   SAMPLE_DEMO_SLICES,
 } from '@/data/sampleBlueprint'
+import { PACKAGE_OFFLINE_BOARD as BOARD } from '@/data/blueprintFallbacks'
 import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
 import { sessionRoster } from '@/lib/agent/tools/roster'
 
@@ -50,7 +51,7 @@ describe('the sample-trial tool roster', () => {
 
 describe('sample reads resolve from the bundled fallbacks', () => {
   it('lists every sample phase and every sample scenario with ids', () => {
-    const text = sampleListBlueprint({ granularity: ['phase', 'scenario'] })
+    const text = sampleListBlueprint(BOARD, { granularity: ['phase', 'scenario'] })
     for (const scenarioId of Object.keys(SAMPLE_BLUEPRINTS_BY_SCENARIO))
       expect(text).toContain(scenarioId)
   })
@@ -59,7 +60,7 @@ describe('sample reads resolve from the bundled fallbacks', () => {
     for (const [scenarioId, blueprints] of Object.entries(
       SAMPLE_BLUEPRINTS_BY_SCENARIO,
     )) {
-      const grid = sampleGetBlueprint(scenarioId)
+      const grid = sampleGetBlueprint(BOARD, scenarioId)
       expect(grid).toMatch(/Steps: \d+\. "/)
       expect(grid).toContain('Lane "')
       // Every path in the scenario, so a two-path scenario reads as two.
@@ -71,7 +72,7 @@ describe('sample reads resolve from the bundled fallbacks', () => {
   it('reads a cell from any scenario, not only the first', () => {
     for (const blueprints of Object.values(SAMPLE_BLUEPRINTS_BY_SCENARIO)) {
       const cellId = blueprints[0]!.cells[0]!.id
-      expect(sampleGetCell(cellId)).toContain('lane_id:')
+      expect(sampleGetCell(BOARD, cellId)).toContain('lane_id:')
     }
   })
 
@@ -81,7 +82,7 @@ describe('sample reads resolve from the bundled fallbacks', () => {
       .flatMap((blueprint) => blueprint.cells)
       .find((cell) => cell.owner && cell.function && cell.value_props?.length)
     expect(spec).toBeTruthy()
-    const text = sampleGetCell(spec!.id)
+    const text = sampleGetCell(BOARD, spec!.id)
     expect(text).toContain(`owner: ${spec!.owner}`)
     expect(text).toContain(`perceived_owner: ${spec!.perceived_owner}`)
     expect(text).toContain('function:')
@@ -97,7 +98,7 @@ describe('sample reads resolve from the bundled fallbacks', () => {
         if (cell.perceived_owner) expected.add(cell.perceived_owner)
       }
     expect(expected.size).toBeGreaterThan(0)
-    const text = sampleListOwnerTags()
+    const text = sampleListOwnerTags(BOARD)
     expect(text).not.toBe('No owner tags in use yet.')
     for (const tag of expected) expect(text).toContain(tag)
   })
@@ -107,7 +108,7 @@ describe('sample reads resolve from the bundled fallbacks', () => {
       SAMPLE_BLUEPRINTS_BY_SCENARIO,
     ).find(([, list]) => list.some((blueprint) => blueprint.dependencies.length > 0))!
     const edge = blueprints.flatMap((blueprint) => blueprint.dependencies)[0]!
-    const grid = sampleGetBlueprint(scenarioId)
+    const grid = sampleGetBlueprint(BOARD, scenarioId)
     expect(grid).toContain('Edges (')
     expect(grid).toContain(
       `${edge.source_cell_id} --${edge.kind ?? 'leads_to'}--> ${edge.target_cell_id}`,
@@ -121,12 +122,12 @@ describe('sample reads resolve from the bundled fallbacks', () => {
       .find((entry) => (entry.resources ?? []).length > 0)
     expect(cell).toBeTruthy()
     const first = cell!.resources![0]!
-    expect(sampleGetCell(cell!.id)).toContain(`resources: ${first.name}`)
+    expect(sampleGetCell(BOARD, cell!.id)).toContain(`resources: ${first.name}`)
   })
 
   it('answers for an unknown scenario or cell instead of throwing', () => {
-    expect(sampleGetBlueprint('nope')).toBe('No paths in this scenario.')
-    expect(sampleGetCell('nope')).toBe('No cell with id nope.')
+    expect(sampleGetBlueprint(BOARD, 'nope')).toBe('No paths in this scenario.')
+    expect(sampleGetCell(BOARD, 'nope')).toBe('No cell with id nope.')
   })
 
   it('lists every demo slice and reads each one back with frames', () => {
@@ -149,7 +150,7 @@ describe('the sample answers the catalog reads it can', () => {
         .flatMap((blueprint) => blueprint.lanes.map((lane) => lane.name)),
     )
     expect(labels.size).toBeGreaterThan(0)
-    const text = sampleListLanes()
+    const text = sampleListLanes(BOARD)
     expect(text).not.toBe('No lanes defined yet.')
     for (const label of labels) expect(text).toContain(label)
   })
@@ -159,14 +160,14 @@ describe('the sample answers the catalog reads it can', () => {
       .flat()
       .flatMap((blueprint) => blueprint.dependencies)[0]
     expect(edge).toBeTruthy()
-    expect(sampleListCellDependencies()).toContain(edge!.id)
-    const scoped = sampleListCellDependencies(edge!.source_cell_id)
+    expect(sampleListCellDependencies(BOARD)).toContain(edge!.id)
+    const scoped = sampleListCellDependencies(BOARD, edge!.source_cell_id)
     expect(scoped).toContain(edge!.target_cell_id)
     expect(scoped).toContain(`touching ${edge!.source_cell_id}`)
   })
 
   it('says there are no links rather than nothing, for a cell with none', () => {
-    expect(sampleListCellDependencies('no-such-cell')).toBe(
+    expect(sampleListCellDependencies(BOARD, 'no-such-cell')).toBe(
       'No links on cell no-such-cell.',
     )
   })
