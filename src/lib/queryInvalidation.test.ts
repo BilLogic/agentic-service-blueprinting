@@ -23,7 +23,14 @@ import { clearSession, sessionSnapshot } from '@/lib/authoringSession'
 import { updateCellContent } from '@/lib/cellContentMutations'
 import { updateCellSpec } from '@/lib/cellSpecMutations'
 import { addEvidence, deleteEvidence } from '@/lib/evidenceMutations'
+import { updateLaneSpec } from '@/lib/laneSpecMutations'
 import { updatePhaseSpec } from '@/lib/phaseSpecMutations'
+import { updatePathSpec, updateScenarioSummary } from '@/lib/scenarioSpecMutations'
+import {
+  updateBusinessModel,
+  updateServiceEntityExamples,
+  updateServiceSummary,
+} from '@/lib/serviceSpecMutations'
 import { executeRevert } from '@/lib/revertChange'
 import { replaceSlides } from '@/lib/sliceMutations'
 import { updateStakeholder } from '@/lib/stakeholderMutations'
@@ -142,6 +149,56 @@ describe('the row-level modules', () => {
   it('a step summary refetches its own key and the boards that caption with it', async () => {
     await updateStepSummary(fakeClient(), 'st1', 'Caption')
     expect(invalidated).toEqual([queryKeys.stepSpec.of('st1'), queryKeys.canvasBlueprints.prefix])
+  })
+
+  it('a lane spec refetches the whole lane family, because every sibling moved', async () => {
+    await updateLaneSpec(fakeClient(), ['l1', 'l2'], {
+      ownerTeam: 'Ops',
+      kpis: [],
+      tools: [],
+      stakeholderId: null,
+    })
+    expect(invalidated).toEqual([queryKeys.laneSpec.prefix])
+  })
+
+  it("a scenario summary refetches its own key and the overview that repeats it", async () => {
+    await updateScenarioSummary(fakeClient(), 'sc1', 'S')
+    expect(invalidated).toEqual([queryKeys.scenarioSpec.of('sc1'), queryKeys.servicePhases.prefix])
+  })
+
+  it('a path spec refetches every scenario, because the path does not name its own', async () => {
+    await updatePathSpec(fakeClient(), 'p1', { summary: 'S', note: '', status: 'live' })
+    expect(invalidated).toEqual([queryKeys.scenarioSpec.prefix, queryKeys.servicePhases.prefix])
+  })
+
+  it("a service's summary refetches the service spec and the examples beside it", async () => {
+    await updateServiceSummary(fakeClient(), 'svc1', 'S')
+    expect(invalidated).toEqual([
+      queryKeys.serviceSpec.prefix,
+      queryKeys.serviceEntityExamples.prefix,
+    ])
+  })
+
+  it('a business model refetches the same pair — one panel, two rows', async () => {
+    await updateBusinessModel(fakeClient(), 'svc1', {
+      funding: 'F',
+      pricing: '',
+      deliveryCost: '',
+      revenueModel: '',
+      partners: '',
+    })
+    expect(invalidated).toEqual([
+      queryKeys.serviceSpec.prefix,
+      queryKeys.serviceEntityExamples.prefix,
+    ])
+  })
+
+  it('the entity examples refetch the same pair', async () => {
+    await updateServiceEntityExamples(fakeClient(), 'svc1', { service: 'A retrofit' })
+    expect(invalidated).toEqual([
+      queryKeys.serviceSpec.prefix,
+      queryKeys.serviceEntityExamples.prefix,
+    ])
   })
 
   it("a slice's slides refetch the catalog and the slice's own detail", async () => {

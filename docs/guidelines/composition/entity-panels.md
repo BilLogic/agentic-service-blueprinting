@@ -172,9 +172,15 @@ field, not a second badge. Printing the same word twice as two facts is the
 failure each of them prevents.
 
 What answers "what is there to show" is `cellDetailFacts.ts` — one module,
-asked once, for the connections, the lane, the placement, the arrows and the
-storyboard strip. `CellDetailOverview.tsx` renders the top of Details from
-those facts, `CellDetailTabs.tsx` owns the three tabs and
+asked once. `useSelectedCell` is the whole of the looking-up: the path's board,
+the cell in it, the lane it sits in and the dependencies that reach it,
+resolved once per selection rather than re-derived per question. Three readings
+hang off that resolution, one per reader — the drawer's position and dependency
+endpoints, the overview's placement and featured links, the tab row's
+dependencies and lists — and each takes the resolution and nothing else, so a
+reading cannot reach past it into the selection and no reader is handed the
+whole set. `CellDetailOverview.tsx` renders the
+top of Details from its own reading, `CellDetailTabs.tsx` owns the three tabs and
 `CellDetailBreadcrumb.tsx` says where the cell sits; the draft, differences
 and nothing-selected surfaces are modules of their own
 (`CellDetailDraftSurface.tsx`, `CellDetailDifferencesSurface.tsx`,
