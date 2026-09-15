@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import {
   AlignCenter,
   AlignLeft,
@@ -76,6 +76,9 @@ import { cn } from '@/lib/utils'
  * between groups and nothing between the members of one — so a fourth kind of
  * mark adds a row rather than a file.
  */
+/** What a control does when it is used: patch the mark it was drawn for. */
+type ChangeStyle = (patch: Partial<PlacedAnnotation>) => void
+
 export function AnnotationStyleBar({
   mark,
   zoom,
@@ -84,7 +87,7 @@ export function AnnotationStyleBar({
 }: {
   mark: PlacedAnnotation
   zoom: number
-  onChange: (patch: Partial<PlacedAnnotation>) => void
+  onChange: ChangeStyle
   onDelete: () => void
 }) {
   const box = annotationMarkBox(mark)
@@ -93,7 +96,11 @@ export function AnnotationStyleBar({
   return (
     <AnnotationStyleBarFrame x={box.x} y={box.y} width={box.width} zoom={zoom}>
       {controls.map((group, index) => (
-        <Group key={group.map((control) => control.id).join('+')}>
+        // A group is a grouping, not a box: the plate is one flex row, and a
+        // wrapper around two of its children would space them differently
+        // from the rest. So the rule between groups is drawn here, and
+        // nothing at all is drawn between the members of one.
+        <Fragment key={group.map((control) => control.id).join('+')}>
           {index > 0 ? <AnnotationBarDivider /> : null}
           {group.map((control) => (
             <Control
@@ -104,19 +111,10 @@ export function AnnotationStyleBar({
               onDelete={onDelete}
             />
           ))}
-        </Group>
+        </Fragment>
       ))}
     </AnnotationStyleBarFrame>
   )
-}
-
-/**
- * A group is a grouping, not a box: it draws no element of its own, because
- * the bar's plate is one flex row and a wrapper around two of its children
- * would space them differently from the rest.
- */
-function Group({ children }: { children: React.ReactNode }) {
-  return <>{children}</>
 }
 
 /** The one place a control id becomes a control. */
@@ -128,7 +126,7 @@ function Control({
 }: {
   control: AnnotationBarControl
   mark: PlacedAnnotation
-  onChange: (patch: Partial<PlacedAnnotation>) => void
+  onChange: ChangeStyle
   onDelete: () => void
 }) {
   // Narrowed once, here, rather than in every control: the table already
@@ -193,7 +191,7 @@ function ShapeTypeControl({
   onChange,
 }: {
   shape: ShapeAnnotation
-  onChange: (patch: Partial<PlacedAnnotation>) => void
+  onChange: ChangeStyle
 }) {
   const ShapeIcon = shape.type === 'ellipse' ? Circle : Square
   return (
@@ -245,7 +243,7 @@ function FillControl({
   onChange,
 }: {
   shape: ShapeAnnotation
-  onChange: (patch: Partial<PlacedAnnotation>) => void
+  onChange: ChangeStyle
 }) {
   const [open, setOpen] = useState(false)
   const preview = shape.fillColor
@@ -313,7 +311,7 @@ function StrokeControl({
   onChange,
 }: {
   shape: ShapeAnnotation
-  onChange: (patch: Partial<PlacedAnnotation>) => void
+  onChange: ChangeStyle
 }) {
   const [open, setOpen] = useState(false)
   const preview = shape.color
@@ -417,7 +415,7 @@ function ColorControl({
   color: string
   swatches: readonly string[]
   swatchLabel: string
-  onChange: (patch: Partial<PlacedAnnotation>) => void
+  onChange: ChangeStyle
 }) {
   const [open, setOpen] = useState(false)
   return (
@@ -471,7 +469,7 @@ function FontSizeControl({
   onChange,
 }: {
   fontSize: number
-  onChange: (patch: Partial<PlacedAnnotation>) => void
+  onChange: ChangeStyle
 }) {
   const [open, setOpen] = useState(false)
   return (
@@ -561,7 +559,7 @@ function AlignControl({
   onChange,
 }: {
   align: 'left' | 'center' | 'right'
-  onChange: (patch: Partial<PlacedAnnotation>) => void
+  onChange: ChangeStyle
 }) {
   const [open, setOpen] = useState(false)
   const AlignIcon =
