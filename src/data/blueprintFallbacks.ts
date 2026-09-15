@@ -132,11 +132,16 @@ export const PACKAGE_SAMPLE_BLUEPRINTS: SampleBlueprintRegistry = {
  * business and the thing threaded through the app is one noun.
  */
 export type OfflineBoard = {
-  byPath: Record<string, BlueprintData>
-  pathsByScenario: Record<string, FallbackPathListItem[]>
-  byScenario: Record<string, BlueprintData>
-  hiddenByScenario: Record<string, readonly string[]>
-  /** Every cell by id, built lazily — most sessions never open a panel. */
+  readonly byPath: Record<string, BlueprintData>
+  readonly pathsByScenario: Record<string, FallbackPathListItem[]>
+  readonly byScenario: Record<string, BlueprintData>
+  readonly hiddenByScenario: Record<string, readonly string[]>
+  /**
+   * Every cell by id, built lazily — most sessions never open a panel. The one
+   * field declared mutable, and deliberately: it is a cache of what the tables
+   * beside it already hold, so filling it changes no answer. Every other field
+   * is settled when the board is built.
+   */
   cellsById: Map<string, BlueprintData['cells'][number]> | null
 }
 

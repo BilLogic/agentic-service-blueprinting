@@ -8,6 +8,13 @@ import { queryKeys } from '@/lib/queryKeys'
  * Scenario owning a slice's cells (v1 slices are single-scenario). Pass
  * `null` while the slice detail is still loading — the query is gated (no
  * fetch, no transient error) until the real cell ids exist.
+ *
+ * The key is the cell ids and NOT the offline board those ids may resolve
+ * against, which assumes one board per query client. `App` mounts one
+ * provider, so that holds everywhere this ships; a tree that deliberately
+ * stands two providers over one client — the provider's own test does — would
+ * serve the first board's answer to the second, and this is the line that says
+ * so rather than the cache that discovers it.
  */
 export function useSliceScenarioId(
   cellIds: readonly string[] | null,

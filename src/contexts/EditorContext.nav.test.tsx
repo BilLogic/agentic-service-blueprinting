@@ -249,7 +249,9 @@ describe('the editor navigation', () => {
     expect(SAMPLE_DELETED!.summary?.trim()).toBeTruthy()
     // And the sample must actually register a blueprint for the kept
     // scenario, which is what the old merge keyed its `layout` steal on.
-    expect(hasBlueprintFallback(PACKAGE_OFFLINE_BOARD, SAMPLE_KEPT!.id)).toBe(true)
+    expect(hasBlueprintFallback(PACKAGE_OFFLINE_BOARD, SAMPLE_KEPT!.id)).toBe(
+      true,
+    )
 
     supabase.configured = true
     supabase.client = connectedClient

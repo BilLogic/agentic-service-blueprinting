@@ -36,9 +36,15 @@ export type DispatchContext = {
   signal?: AbortSignal
   /**
    * The offline board the surface that started this run is drawing — the
-   * deployment's when it supplied one, the package's otherwise. A session with
-   * no surface (a test, a script) reads the package's own, which is the board
-   * a clone with no config draws.
+   * deployment's when it supplied one, the package's otherwise. The agent
+   * panel reads it from the provider above it and hands it down here, the way
+   * it hands down the roster.
+   *
+   * OPTIONAL on the same terms as `roster`, and with the same default rule: a
+   * caller with no surface — a test, a script — gets the package's own board,
+   * which is the board a clone with no deployment config draws. It is not a
+   * guess at what the caller meant; it is the one board that exists when
+   * nobody has said otherwise.
    */
   offlineBoard?: OfflineBoard
   /**

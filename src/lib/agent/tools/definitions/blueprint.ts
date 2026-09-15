@@ -160,7 +160,8 @@ export const listLanesTool = defineTool({
   surface: 'read',
   args: z.object({}),
   availability: { sample: true, mobile: true },
-  run: async (_args, ctx) => (ctx.client ? listLanes(ctx.client) : sampleListLanes(ctx.offlineBoard)),
+  run: async (_args, ctx) =>
+    ctx.client ? listLanes(ctx.client) : sampleListLanes(ctx.offlineBoard),
 })
 
 export const listOwnerTagsTool = defineTool({
@@ -170,7 +171,10 @@ export const listOwnerTagsTool = defineTool({
   surface: 'read',
   args: z.object({}),
   availability: { sample: true, mobile: true },
-  run: async (_args, ctx) => (ctx.client ? listOwnerTags(ctx.client) : sampleListOwnerTags(ctx.offlineBoard)),
+  run: async (_args, ctx) =>
+    ctx.client
+      ? listOwnerTags(ctx.client)
+      : sampleListOwnerTags(ctx.offlineBoard),
 })
 
 /**

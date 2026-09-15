@@ -25,13 +25,6 @@ export const WRITE_TOOL_NAMES = new Set(
 export const MOBILE_READ_TOOL_NAMES = new Set(
   TOOL_DEFINITIONS.filter((tool) => tool.availability.mobile).map((tool) => tool.name),
 )
-/**
- * The app's own sample-data readers — the same functions the no-database
- * agent trial serves in the browser. The harness used to reimplement these
- * against the fixture and drifted from `read.ts` line by line; now there is
- * one implementation, over the same `src/data/sampleBlueprint` content, and
- * the harness's keyless run exercises it.
- */
 import {
   sampleGetBlueprint as readBlueprint,
   sampleGetCell as readCell,
@@ -41,12 +34,21 @@ import {
   sampleListOwnerTags as readOwnerTags,
 } from '@/lib/agent/tools/sampleRead'
 import { PACKAGE_OFFLINE_BOARD } from '@/data/blueprintFallbacks'
+import type { BlueprintListOptions } from '@/lib/agent/tools/format'
 export { sampleGetSlice, sampleListSlices } from '@/lib/agent/tools/sampleRead'
 /**
- * Bound to the PACKAGE's own board, which is the board the harness runs
+ * The app's own sample-data readers — the same functions the no-database
+ * agent trial serves in the browser. The harness used to reimplement these
+ * against the fixture and drifted from `read.ts` line by line; now there is
+ * one implementation, over the same `src/data/sampleBlueprint` content, and
+ * the harness's keyless run exercises it.
+ *
+ * Bound here to the PACKAGE's own board, which is the board the harness runs
  * against: it drives this repository's fixture with no deployment config
  * anywhere. In the browser the same functions take the board the provider
- * hands the canvas, so a deployment's trial reads a deployment's content.
+ * hands the canvas, so a deployment's trial reads a deployment's content. The
+ * wrappers are typed against the real signatures, so a change to either breaks
+ * this build rather than drifting.
  */
 export const sampleGetBlueprint = (scenarioId: string) =>
   readBlueprint(PACKAGE_OFFLINE_BOARD, scenarioId)
@@ -54,9 +56,8 @@ export const sampleGetCell = (cellId: string) =>
   readCell(PACKAGE_OFFLINE_BOARD, cellId)
 export const sampleListCellDependencies = (cellId?: string) =>
   readCellDependencies(PACKAGE_OFFLINE_BOARD, cellId)
-export const sampleListBlueprint = (
-  options: Parameters<typeof readBlueprintList>[1],
-) => readBlueprintList(PACKAGE_OFFLINE_BOARD, options)
+export const sampleListBlueprint = (options: BlueprintListOptions) =>
+  readBlueprintList(PACKAGE_OFFLINE_BOARD, options)
 export const sampleListLanes = () => readLanes(PACKAGE_OFFLINE_BOARD)
 export const sampleListOwnerTags = () => readOwnerTags(PACKAGE_OFFLINE_BOARD)
 /**

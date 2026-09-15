@@ -22,6 +22,10 @@ import { queryKeys } from '@/lib/queryKeys'
  * `seedBaseSelection` (not `selectScenario`) is deliberate: it no-ops once the
  * user has navigated, so a slow resolve cannot yank someone away from a place
  * they chose while the query was in flight.
+ *
+ * The key is the cell id and NOT the offline board it may resolve against, on
+ * the same assumption `useSliceScenarioId` states: one board per query client,
+ * which is what `App` mounts.
  */
 
 /** The cell can mount several frames after the scenario does (canvas fit,
