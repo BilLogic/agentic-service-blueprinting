@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readdirSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { hasSource } from '@/lib/sourceTree'
 import { consumersOf, declaredNames } from '@/lib/tokenModel'
 
 /**
@@ -26,8 +24,6 @@ import { consumersOf, declaredNames } from '@/lib/tokenModel'
  * patterns below are anchored rather than substring matches.
  */
 
-const STYLES = resolve(dirname(fileURLToPath(import.meta.url)), '../styles')
-
 /** The three names, in both the raw and the Tailwind-registered spelling. */
 const RETIRED = [
   'foreground-light',
@@ -43,7 +39,7 @@ describe('the retired alias vocabulary', () => {
   })
 
   it('has no alias stylesheet left to import', () => {
-    expect(readdirSync(STYLES)).not.toContain('compat.css')
+    expect(hasSource('styles/compat.css')).toBe(false)
   })
 
   it('leaves nothing consuming them, so the deletion changed no colour', () => {

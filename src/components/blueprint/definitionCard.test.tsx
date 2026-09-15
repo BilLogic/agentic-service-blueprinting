@@ -22,9 +22,8 @@
  */
 import type { ReactElement, ReactNode } from 'react'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, relative, resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { sourceOf, strippedSourcesOn } from '@/lib/sourceTree'
 import {
   DefinitionCard,
   DefinitionPopover,
@@ -445,47 +444,17 @@ describe('the made-up words and the entity kinds', () => {
 
 /* ------------------------------------------- nothing announces a definition */
 
-// `process.cwd()`, not `import.meta.url`: Vite rewrites a module's own URL to
-// its `/@fs/…` serving path, which is not a path on disk.
-const ROOT = process.cwd()
-const SRC = resolve(ROOT, 'src')
-
-function sourceFiles(dir = SRC): string[] {
-  return readdirSync(dir).flatMap((entry) => {
-    const path = join(dir, entry)
-    let directory: boolean
-    try {
-      directory = statSync(path).isDirectory()
-    } catch {
-      return []
-    }
-    if (directory) return sourceFiles(path)
-    if (!/\.tsx?$/.test(entry)) return []
-    if (/\.test\.tsx?$/.test(entry)) return []
-    return [path]
-  })
-}
-
 /**
  * Class strings only — a comment recording why the cue went is not the cue.
  *
- * A vanished file is skipped rather than thrown on: vitest runs files in
- * parallel, so a walk of the tree can list a path that is gone by the time it
- * is read. The subject is every file that IS there.
+ * The comments are blanked by the reading, which holds one stripped sample of
+ * the application for every rule that wants one, so this rule and the ones
+ * beside it cannot be looking at two slightly different texts of one file.
  */
 function liveClassMatches(pattern: RegExp): string[] {
-  return sourceFiles().flatMap((path) => {
-    let source: string
-    try {
-      source = readFileSync(path, 'utf8')
-    } catch {
-      return []
-    }
-    const code = source
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/(^|[^:])\/\/.*$/gm, '$1')
-    return pattern.test(code) ? [relative(ROOT, path)] : []
-  })
+  return strippedSourcesOn().flatMap(({ file, code }) =>
+    pattern.test(code) ? [file] : [],
+  )
 }
 
 describe('nothing on the page announces that a word is defined', () => {
@@ -511,10 +480,7 @@ describe('nothing on the page announces that a word is defined', () => {
   })
 
   it('and the entity title imports no icon at all', () => {
-    const source = readFileSync(
-      join(SRC, 'components/blueprint/EntityTitleAffordance.tsx'),
-      'utf8',
-    )
+    const source = sourceOf('components/blueprint/EntityTitleAffordance.tsx')
     expect(source).not.toMatch(/from 'lucide-react'/)
   })
 
@@ -526,10 +492,7 @@ describe('nothing on the page announces that a word is defined', () => {
     // still stands: the exception is one touch affordance, not a licence to
     // import a sheet of icons.
     for (const file of ['StepHeaderAffordance', 'LaneHeaderAffordance']) {
-      const source = readFileSync(
-        join(SRC, `components/blueprint/${file}.tsx`),
-        'utf8',
-      )
+      const source = sourceOf(`components/blueprint/${file}.tsx`)
       expect(source).not.toMatch(/from 'lucide-react'/)
     }
   })
@@ -556,10 +519,7 @@ describe('a definition hangs off a badge, never off a label', () => {
   })
 
   it('and its source no longer reaches for the definition popover', () => {
-    const source = readFileSync(
-      join(SRC, 'components/blueprint/EntityTitleAffordance.tsx'),
-      'utf8',
-    )
+    const source = sourceOf('components/blueprint/EntityTitleAffordance.tsx')
     expect(source).not.toMatch(/EntityDefinitionPopover/)
   })
 })

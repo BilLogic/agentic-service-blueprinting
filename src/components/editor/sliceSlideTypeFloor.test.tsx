@@ -10,13 +10,12 @@
  * digit stays a circle and two or more grow it. A one-digit fixture
  * would miss both bugs, so every case below is two digits and three.
  */
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SliceSlideComposer } from '@/components/editor/SliceSlideComposer'
 import { SliceSlideEditor } from '@/components/editor/SliceSlideEditor'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { sourceOf } from '@/lib/sourceTree'
 import type { DraftSlide } from '@/lib/sliceValidation'
 
 vi.mock('@/components/editor/SlideImagesField', () => ({
@@ -28,14 +27,8 @@ afterEach(cleanup)
 /** A type-scale class below the 12px floor. */
 const BELOW_XS = /\btext-(?:2xs|3xs|4xs|5xs)\b/
 
-const composerSource = readFileSync(
-  join(process.cwd(), 'src/components/editor/SliceSlideComposer.tsx'),
-  'utf8',
-)
-const editorSource = readFileSync(
-  join(process.cwd(), 'src/components/editor/SliceSlideEditor.tsx'),
-  'utf8',
-)
+const composerSource = sourceOf('components/editor/SliceSlideComposer.tsx')
+const editorSource = sourceOf('components/editor/SliceSlideEditor.tsx')
 
 /**
  * One draft slide for the composer or the sheet.

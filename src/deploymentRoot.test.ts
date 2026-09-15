@@ -21,6 +21,7 @@ import ts from 'typescript'
 import { createServer, resolveConfig } from 'vite'
 import { afterAll, describe, expect, it } from 'vitest'
 import { coverFigures } from '@/components/cover/coverModel'
+import { filesOn, hasSource } from '@/lib/sourceTree'
 import { coverContent } from '@/content/coverContent'
 
 /**
@@ -329,7 +330,7 @@ describe('a deployment that keeps residents in its src', () => {
 
     // Both residents stand for files the package has at the same paths.
     for (const resident of [RESIDENT, NESTED_RESIDENT]) {
-      expect(existsSync(path.join(repoRoot, 'src', resident))).toBe(true)
+      expect(hasSource(resident)).toBe(true)
     }
     const residents = path.join(scratch, 'src')
     mkdirSync(path.dirname(path.join(residents, NESTED_RESIDENT)), { recursive: true })
@@ -460,19 +461,14 @@ describe('the stylesheet built from each root', () => {
   function classesTheMarkupWrites(): Set<string> {
     const written = new Set<string>()
 
-    const visit = (directory: string) => {
-      for (const entry of readdirSync(directory)) {
-        const child = path.join(directory, entry)
-        if (statSync(child).isDirectory()) visit(child)
-        else if (child.endsWith('.tsx') && !child.endsWith('.test.tsx')) {
-          const markup = readFileSync(child, 'utf8')
-          for (const match of markup.matchAll(/className="([^"{}]*)"/g)) {
-            for (const name of match[1].split(/\s+/)) if (name) written.add(name)
-          }
-        }
+    for (const { text } of filesOn(
+      'app',
+      (file) => file.endsWith('.tsx') && !file.includes('.test.'),
+    )) {
+      for (const match of text.matchAll(/className="([^"{}]*)"/g)) {
+        for (const name of match[1].split(/\s+/)) if (name) written.add(name)
       }
     }
-    visit(path.join(repoRoot, 'src'))
 
     return written
   }

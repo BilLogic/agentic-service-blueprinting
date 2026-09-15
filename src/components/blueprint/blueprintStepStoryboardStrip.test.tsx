@@ -8,18 +8,14 @@
  * The walkthrough still names lanes (`STORYBOARD_LANE_SHORT_LABELS`);
  * this strip does not.
  */
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { BlueprintStepStoryboard } from '@/components/blueprint/BlueprintStepStoryboard'
+import { sourceOf } from '@/lib/sourceTree'
 
 afterEach(cleanup)
 
-const source = readFileSync(
-  join(process.cwd(), 'src/components/blueprint/BlueprintStepStoryboard.tsx'),
-  'utf8',
-)
+const source = sourceOf('components/blueprint/BlueprintStepStoryboard.tsx')
 
 const FRAMES = [
   { frame: 'front.png', label: 'Front stage' },

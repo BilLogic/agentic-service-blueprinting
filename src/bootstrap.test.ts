@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { sourceOf } from '@/lib/sourceTree'
 
 /**
  * `bootstrap.ts`'s contract is negative: a host imports it BEFORE the app, so
@@ -17,10 +17,7 @@ const ALLOWED = ['./lib/storageNamespace']
 
 describe('the pre-import entry point', () => {
   it('reaches nothing but the seam it exists to set', () => {
-    const source = readFileSync(
-      new URL('./bootstrap.ts', import.meta.url),
-      'utf8',
-    )
+    const source = sourceOf('bootstrap.ts')
     // Comments stripped first: the module's own docstring shows a host the
     // package specifier to import, and a grep that counted that would be
     // reading the documentation as if it were the code.

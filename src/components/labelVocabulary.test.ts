@@ -1,6 +1,5 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { filesOn, surfaceOf } from '@/lib/sourceTree'
 
 /*
  * TWO WAYS TO LABEL A THING, AND ONLY TWO.
@@ -21,10 +20,11 @@ import { describe, expect, it } from 'vitest'
  * an eyebrow itself. The primitives are exempt, being the place it is spelled.
  */
 
-const ROOT = join(process.cwd(), 'src/components')
-
 /** The primitives, and the vendored tree the component CLI owns. */
-const EXEMPT = new Set(['blueprint/Eyebrow.tsx', 'blueprint/PanelSectionLabel.tsx'])
+const EXEMPT = new Set([
+  'components/blueprint/Eyebrow.tsx',
+  'components/blueprint/PanelSectionLabel.tsx',
+])
 
 /**
  * A capitalised SMALL label written by hand: the eyebrow, spelled out.
@@ -36,22 +36,28 @@ const EXEMPT = new Set(['blueprint/Eyebrow.tsx', 'blueprint/PanelSectionLabel.ts
  */
 const HAND_SPELLED = /(?=.*\buppercase\b)(?=.*\btext-xs\b)/
 
-function componentFiles(dir: string, prefix = ''): string[] {
-  return readdirSync(dir).flatMap((name) => {
-    const path = join(dir, name)
-    const rel = prefix ? `${prefix}/${name}` : name
-    if (statSync(path).isDirectory()) {
-      return name === 'ui' ? [] : componentFiles(path, rel)
-    }
-    if (!name.endsWith('.tsx') || name.includes('.test.')) return []
-    return EXEMPT.has(rel) ? [] : [rel]
-  })
-}
+/**
+ * Every authored component, text and all.
+ *
+ * The vendored tree is skipped by SURFACE rather than by folder name partway
+ * through a walk: the component CLI owns what is under `components/ui`, and
+ * that is a named region of the application rather than a directory this rule
+ * recognised on its way past.
+ */
+const componentFiles = () =>
+  filesOn(
+    'components',
+    (path) =>
+      path.endsWith('.tsx') &&
+      !path.includes('.test.') &&
+      surfaceOf(path) !== 'ui' &&
+      !EXEMPT.has(path),
+  )
 
 describe('an eyebrow is spelled in one place', () => {
   it('is not written by hand in a component', () => {
-    const offenders = componentFiles(ROOT).flatMap((rel) => {
-      const lines = readFileSync(join(ROOT, rel), 'utf8').split('\n')
+    const offenders = componentFiles().flatMap(({ file, text }) => {
+      const lines = text.split('\n')
       return lines.flatMap((line, index) => {
         // Only class strings. Prose about the register — and there is some,
         // in files that explain why they carry a mono one — is not a use.
@@ -61,7 +67,7 @@ describe('an eyebrow is spelled in one place', () => {
         // The mono registers are their own thing: a phase marker and a slide
         // number are identity, not chrome furniture, and they say so.
         if (/font-mono/.test(line)) return []
-        return [`${rel}:${index + 1}: ${line.trim().slice(0, 100)}`]
+        return [`${file}:${index + 1}: ${line.trim().slice(0, 100)}`]
       })
     })
     expect(

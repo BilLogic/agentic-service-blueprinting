@@ -3,13 +3,12 @@
  * The cell budget is advice, not a gate — for the person in the panel as
  * well as for the agent. This file holds the two paths against each other.
  */
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { configureCellBudget, getCellContentLengthGuidance } from '@/lib/cellContentLimits'
 import { resolveDeploymentConfig } from '@/deploymentConfig'
 import { dispatchTool } from '@/lib/agent/tools/registry'
+import { sourceOf } from '@/lib/sourceTree'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 
@@ -124,10 +123,7 @@ afterEach(() => {
 
 describe('the cell editor imposes no maximum length', () => {
   it('does not stop the field at a character cap', () => {
-    const editor = readFileSync(
-      join(process.cwd(), 'src/components/blueprint/CellPanelEditor.tsx'),
-      'utf8',
-    )
+    const editor = sourceOf('components/blueprint/CellPanelEditor.tsx')
     expect(editor).not.toMatch(/maxLength/)
     expect(editor).not.toMatch(/CELL_CONTENT_MAX/)
 

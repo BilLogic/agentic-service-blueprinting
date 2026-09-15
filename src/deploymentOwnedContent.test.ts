@@ -1,7 +1,5 @@
-import { readFileSync, readdirSync } from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
+import { filesOn, pathsOn, sourcesOn, type Surface } from '@/lib/sourceTree'
 import { resolveDeploymentConfig } from './deploymentConfig'
 import {
   getBlueprintFallback,
@@ -67,13 +65,12 @@ const VERDICTS: Record<string, Verdict> = {
   'types/database.ts': 'compile time only',
 }
 
-const srcRoot = path.dirname(fileURLToPath(import.meta.url))
-
-function modulesIn(dir: string): string[] {
-  return readdirSync(path.join(srcRoot, dir), { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
-    .filter((entry) => !entry.name.endsWith('.test.ts'))
-    .map((entry) => `${dir}/${entry.name}`)
+/** The authored modules on a content surface, as the reading lists them. */
+function modulesIn(surface: Surface): string[] {
+  return pathsOn(
+    surface,
+    (file) => file.endsWith('.ts') && !file.endsWith('.test.ts'),
+  )
 }
 
 describe('the template’s own content', () => {
@@ -293,49 +290,26 @@ const UNRENDERED_BREADCRUMB = 'ScenarioMenubarBreadcrumb'
 
 describe('the modules that still read the template’s own name', () => {
   it('are exactly the ones accounted for', () => {
-    const readers: string[] = []
-
-    const walk = (dir: string) => {
-      for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        const full = path.join(dir, entry.name)
-        if (entry.isDirectory()) {
-          walk(full)
-          continue
-        }
-        if (!/\.tsx?$/.test(entry.name)) continue
-        // Tests name it to assert on it; they render nothing.
-        if (/\.test\.tsx?$/.test(entry.name)) continue
-        const source = readFileSync(full, 'utf8')
-        if (/from '(@\/config|\.\.?\/(?:\.\.\/)*config)'/.test(source)) {
-          readers.push(path.relative(srcRoot, full))
-        }
-      }
-    }
-    walk(srcRoot)
+    // Tests name it to assert on it; they render nothing, so the sample is
+    // the application's own modules.
+    const readers = sourcesOn()
+      .filter(({ text }) =>
+        /from '(@\/config|\.\.?\/(?:\.\.\/)*config)'/.test(text),
+      )
+      .map(({ file }) => file)
 
     expect([...readers].sort()).toEqual(Object.keys(CONFIG_READERS).sort())
   })
 
   it('include one whose surface is not rendered, and it stays that way', () => {
-    const importers: string[] = []
-
-    const walk = (dir: string) => {
-      for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        const full = path.join(dir, entry.name)
-        if (entry.isDirectory()) {
-          walk(full)
-          continue
-        }
-        if (!/\.tsx?$/.test(entry.name)) continue
-        // Tests name it to assert on it; the question is what RENDERS it.
-        if (/\.test\.tsx?$/.test(entry.name)) continue
-        if (path.basename(full, path.extname(full)) === UNRENDERED_BREADCRUMB) continue
-        if (readFileSync(full, 'utf8').includes(UNRENDERED_BREADCRUMB)) {
-          importers.push(path.relative(srcRoot, full))
-        }
-      }
-    }
-    walk(srcRoot)
+    // Tests name it to assert on it; the question is what RENDERS it.
+    const importers = sourcesOn()
+      .filter(
+        ({ file, text }) =>
+          file.slice(file.lastIndexOf('/') + 1).replace(/\.tsx?$/, '') !==
+            UNRENDERED_BREADCRUMB && text.includes(UNRENDERED_BREADCRUMB),
+      )
+      .map(({ file }) => file)
 
     expect(importers).toEqual([])
   })
@@ -405,26 +379,17 @@ describe('the database types', () => {
    * at runtime and the paragraph above false in the same commit.
    */
   it('are imported as types and never as values', () => {
-    const offenders: string[] = []
-
-    const walk = (dir: string) => {
-      for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        const full = path.join(dir, entry.name)
-        if (entry.isDirectory()) {
-          walk(full)
-          continue
-        }
-        if (!/\.tsx?$/.test(entry.name)) continue
-        const source = readFileSync(full, 'utf8')
-        for (const line of source.split('\n')) {
-          if (!/from '(@|\.\.?)\/?[^']*types\/database'/.test(line)) continue
-          if (!line.trimStart().startsWith('import type')) {
-            offenders.push(`${path.relative(srcRoot, full)}: ${line.trim()}`)
-          }
-        }
-      }
-    }
-    walk(srcRoot)
+    // Every TypeScript file, tests included: a value import in a test makes
+    // the module real at runtime just as surely.
+    const offenders = filesOn('app', (file) => /\.tsx?$/.test(file)).flatMap(
+      ({ file, text }) =>
+        text.split('\n').flatMap((line) => {
+          if (!/from '(@|\.\.?)\/?[^']*types\/database'/.test(line)) return []
+          return line.trimStart().startsWith('import type')
+            ? []
+            : [`${file}: ${line.trim()}`]
+        }),
+    )
 
     expect(offenders).toEqual([])
   })
