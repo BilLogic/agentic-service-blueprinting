@@ -29,10 +29,9 @@
  */
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 
-import { unverified } from './sweep.mjs'
+import { whenRun } from './verdict.mjs'
 
 /** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
 const REPO_ROOT = process.cwd()
@@ -142,7 +141,7 @@ export function versionAtTag(tag) {
   return JSON.parse(git('show', `${tag}:package.json`)).version
 }
 
-function main() {
+whenRun(import.meta.url, () => {
   const require = process.argv.includes('--require')
   const version = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')).version
   const released = releasedVersions(readFileSync(join(REPO_ROOT, 'CHANGELOG.md'), 'utf8'))
@@ -156,42 +155,35 @@ function main() {
     require,
   })
 
-  if (faults.length === 0) {
-    if (tags.length === 0) {
-      // Every assertion this check makes is written over the tags that exist,
-      // so with none there is nothing for any of them to be true of. A
-      // checkout is normally handed no tags — the workflow fetches them in a
-      // step of its own — and a reader looking at a green job has no way to
-      // tell that run from one where the fetch was dropped.
-      unverified(
-        'every release tag',
+  // Every assertion this check makes is written over the tags that exist, so
+  // with none there is nothing for any of them to be true of. A checkout is
+  // normally handed no tags — the workflow fetches them in a step of its own —
+  // and a reader looking at a green job has no way to tell that run from one
+  // where the fetch was dropped. The green line is the check's own and says
+  // which version is untagged, which the register's sentence does not, so it
+  // is printed here and the register is left to the verdict.
+  if (faults.length === 0 && tags.length === 0) {
+    console.log(`no release tags yet; ${version} is untagged (see docs/engineering/releasing.md)`)
+    return {
+      what: 'every release tag',
+      unverified:
         `this checkout can see no \`v*\` tag, so nothing was held: not that a tag names a ` +
-          `released version, not that ${tagFor(version)} would point at a tree stating ` +
-          `${version}, and not that tagging has gone on once it started. Fetch tags before ` +
-          `this check (see docs/engineering/releasing.md).`,
-      )
-      console.log(`no release tags yet; ${version} is untagged (see docs/engineering/releasing.md)`)
-    } else if (tags.includes(tagFor(version))) {
-      console.log(`${tags.length} release tag(s), and ${tagFor(version)} is among them`)
-    } else {
-      console.log(`${tags.length} release tag(s); ${version} is not tagged yet`)
+        `released version, not that ${tagFor(version)} would point at a tree stating ` +
+        `${version}, and not that tagging has gone on once it started. Fetch tags before ` +
+        `this check (see docs/engineering/releasing.md).`,
     }
-    return
   }
 
-  for (const fault of faults) console.error(fault)
-  console.error(
-    `\nCut the tag on main and push it:\n` +
+  return {
+    what: 'a release tag',
+    count: tags.length,
+    findings: faults,
+    closing:
+      `\nCut the tag on main and push it:\n` +
       `  git tag -a ${tagFor(version)} -m "${tagFor(version)}" && git push origin ${tagFor(version)}\n` +
       `Procedure: docs/engineering/releasing.md`,
-  )
-  process.exit(1)
-}
-
-// Same shape as scripts/check-version-agreement.mjs: a hand-built `file://`
-// comparison no-ops on any path that needs escaping, and a check that quietly
-// does nothing is the failure mode this whole guard set exists to refuse.
-const isMain =
-  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-
-if (isMain) main()
+    line: tags.includes(tagFor(version))
+      ? `${tags.length} release tag(s), and ${tagFor(version)} is among them`
+      : `${tags.length} release tag(s); ${version} is not tagged yet`,
+  }
+})

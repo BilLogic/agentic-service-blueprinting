@@ -117,6 +117,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { RENAME_MAP, replacementFor, retiredFragmentsIn } from './retired-vocabulary.mjs'
 import { sweep } from './sweep.mjs'
+import { whenRun } from './verdict.mjs'
 
 /** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
 const REPO_ROOT = process.cwd()
@@ -709,63 +710,69 @@ export function strayWrites(reported = new Set(), swept = subjects()) {
   return out
 }
 
-function main() {
+whenRun(import.meta.url, () => {
   // One sweep, three assertions over it: the subject is the same files for all
   // three, and walking it three times would be three chances to disagree.
   const swept = subjects()
   const problems = findings(swept)
-  for (const problem of problems) {
-    console.error(
-      `::error file=${problem.file},line=${problem.line}::retired database name in a string ` +
-        `literal — ${problem.kind} names \`${problem.name}\`, which the schema retired ` +
-        `(${problem.words.join(', ')} → ${problem.replacement}). Nothing typechecks this.`,
-    )
-  }
   const strays = strayNames(new Set(problems.map((problem) => problem.identifier)), swept)
-  for (const stray of strays) {
-    const what =
-      stray.kind === 'relation'
-        ? `names \`${stray.name}\`, which is not a table or view in ${SCHEMA}`
-        : `selects \`${stray.name}\`, which is not a column of \`${stray.relation}\` in ${SCHEMA}`
-    console.error(
-      `::error file=${stray.file},line=${stray.line}::PostgREST query string ${what}` +
-        `${stray.renamed ? ` (→ \`${stray.renamed}\`)` : ''}. Nothing typechecks this.`,
-    )
-  }
   const writes = strayWrites(
     new Set([...problems.map((problem) => problem.identifier), ...strays.map((stray) => stray.identifier)]),
     swept,
   )
-  for (const write of writes) {
-    const what =
-      write.kind === 'relation'
-        ? `names \`${write.name}\`, which is not a table or view in ${SCHEMA}`
-        : `writes \`${write.name}\`, which is not a column of \`${write.relation}\` in ${SCHEMA}`
-    console.error(
-      `::error file=${write.file},line=${write.line}::generated ${write.verb.toUpperCase()} ${what}` +
-        `${write.renamed ? ` (→ \`${write.renamed}\`)` : ''}. Postgres rejects the statement; nothing here typechecks.`,
-    )
-  }
-  if (problems.length + strays.length + writes.length > 0) {
-    if (problems.length > 0)
-      console.error(`\n${problems.length} retired database name(s) inside string literals.`)
-    if (strays.length > 0)
-      console.error(
-        `\n${strays.length} name(s) in a PostgREST query string that ${SCHEMA} does not have.` +
-          ` Fix the query, or regenerate the dump with \`npm run generate:portable-schema\`.`,
+
+  const reported = [
+    ...problems.map(
+      (problem) =>
+        `::error file=${problem.file},line=${problem.line}::retired database name in a string ` +
+        `literal — ${problem.kind} names \`${problem.name}\`, which the schema retired ` +
+        `(${problem.words.join(', ')} → ${problem.replacement}). Nothing typechecks this.`,
+    ),
+    ...strays.map((stray) => {
+      const what =
+        stray.kind === 'relation'
+          ? `names \`${stray.name}\`, which is not a table or view in ${SCHEMA}`
+          : `selects \`${stray.name}\`, which is not a column of \`${stray.relation}\` in ${SCHEMA}`
+      return (
+        `::error file=${stray.file},line=${stray.line}::PostgREST query string ${what}` +
+        `${stray.renamed ? ` (→ \`${stray.renamed}\`)` : ''}. Nothing typechecks this.`
       )
-    if (writes.length > 0)
-      console.error(
-        `\n${writes.length} name(s) in generated SQL that ${SCHEMA} does not have.` +
-          ` Fix the statement, or regenerate the dump with \`npm run generate:portable-schema\`.`,
+    }),
+    ...writes.map((write) => {
+      const what =
+        write.kind === 'relation'
+          ? `names \`${write.name}\`, which is not a table or view in ${SCHEMA}`
+          : `writes \`${write.name}\`, which is not a column of \`${write.relation}\` in ${SCHEMA}`
+      return (
+        `::error file=${write.file},line=${write.line}::generated ${write.verb.toUpperCase()} ${what}` +
+        `${write.renamed ? ` (→ \`${write.renamed}\`)` : ''}. Postgres rejects the statement; nothing here typechecks.`
       )
-    process.exit(1)
-  }
-  console.log(
-    'ok — every database name in a string literal is one the schema still has, every' +
+    }),
+  ]
+
+  // Three closing sentences, one per assertion that found something, and only
+  // the ones that did. They were three `console.error` calls and are one now:
+  // a console line is its argument and a newline, so the join is the same bytes.
+  const closing = [
+    problems.length > 0 && `\n${problems.length} retired database name(s) inside string literals.`,
+    strays.length > 0 &&
+      `\n${strays.length} name(s) in a PostgREST query string that ${SCHEMA} does not have.` +
+        ` Fix the query, or regenerate the dump with \`npm run generate:portable-schema\`.`,
+    writes.length > 0 &&
+      `\n${writes.length} name(s) in generated SQL that ${SCHEMA} does not have.` +
+        ` Fix the statement, or regenerate the dump with \`npm run generate:portable-schema\`.`,
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  return {
+    what: 'a source file that names the database',
+    count: swept.reduce((total, subject) => total + subject.files.length, 0),
+    findings: reported,
+    closing,
+    line:
+      'ok — every database name in a string literal is one the schema still has, every' +
       ' PostgREST query names a relation and columns the dump declares, and every generated' +
       ' INSERT and UPDATE writes columns the dump has',
-  )
-}
-
-if (import.meta.url === `file://${process.argv[1]}`) main()
+  }
+})

@@ -52,8 +52,6 @@
  * answer to what that format means.
  */
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 // Only built-in modules are available where this runs — a deployment installs
 // this package's dependencies and not its development ones. `sweep.mjs` and the
 // three modules it imports are dependency-free, which
@@ -61,6 +59,7 @@ import { fileURLToPath } from 'node:url'
 // import graph and refusing any bare specifier that is not `node:`.
 import { sweep } from './sweep.mjs'
 import { parseEnumUnions, parseGeneratedColumns } from './check-schema-inventory.mjs'
+import { whenRun } from './verdict.mjs'
 
 /** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
 const REPO_ROOT = process.cwd()
@@ -211,13 +210,17 @@ export function notes(groups) {
   ]
 }
 
-function main() {
+whenRun(import.meta.url, () => {
   const [deploymentPath] = process.argv.slice(2)
   if (!deploymentPath) {
+    // Not a verdict: the command was given no file to compare against, and 2
+    // is not one of the codes the verdict has words for, so the judgement
+    // below is skipped and the module is handed nothing to say.
     console.error(
       'usage: check-database-types-superset.mjs <path to a deployment’s types/database.ts>',
     )
-    process.exit(2)
+    process.exitCode = 2
+    return {}
   }
   const app = sweep({ subject: 'app', root: REPO_ROOT, what: 'application source' })
   const template = app.read(TYPES)
@@ -225,26 +228,20 @@ function main() {
     throw new Error(`no ${TYPES} under ${app.base}: this check has no subject`)
   }
   const groups = differences(template, readFileSync(deploymentPath, 'utf8'))
+  // The notes go to stdout whether the comparison passes or fails: a table the
+  // deployment has not built is worth saying and is not a finding, so it is
+  // said here rather than folded into a verdict that would colour it red.
   for (const note of notes(groups)) console.log(`${note}\n`)
-  const sections = report(groups)
-  if (sections.length === 0) {
-    console.log(
-      `${deploymentPath} describes every column this package’s ${TYPES} declares, ` +
-        'on every table it shares with it',
-    )
-    return
-  }
-  console.error(`${deploymentPath} disagrees with this package’s ${TYPES}:\n`)
-  for (const section of sections) console.error(`${section}\n`)
-  console.error(
-    'The application this package ships reads these columns out of that database. ' +
+  return {
+    what: `a table this package’s ${TYPES} declares`,
+    count: parseGeneratedColumns(template).size,
+    findings: report(groups).map((section) => `${section}\n`),
+    opening: `${deploymentPath} disagrees with this package’s ${TYPES}:\n`,
+    closing:
+      'The application this package ships reads these columns out of that database. ' +
       'Regenerate the deployment’s types, or run the migration they are behind.',
-  )
-  process.exit(1)
-}
-
-// Same shape as check-schema-inventory.mjs: compared as paths, not as a
-// hand-built `file://` URL, which no-ops under a directory with a space in it.
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-
-if (isMain) main()
+    line:
+      `${deploymentPath} describes every column this package’s ${TYPES} declares, ` +
+      'on every table it shares with it',
+  }
+})

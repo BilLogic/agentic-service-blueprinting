@@ -27,9 +27,10 @@
  *
  * Run: npm run check:band
  */
-import { basename, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { basename } from 'node:path'
+
 import { sweep } from './sweep.mjs'
+import { whenRun } from './verdict.mjs'
 
 /** The reserved band, inclusive. Both ends are 14-digit migration versions. */
 export const BAND_START = '21000101000000'
@@ -131,26 +132,19 @@ export function check(filenames) {
   return problems
 }
 
-function main() {
+whenRun(import.meta.url, () => {
   // The subject is the `.sql` under supabase/migrations — what the CLI applies.
   // The old listing judged every entry in the folder, a stray note included;
   // a file the CLI would never run is not a migration to stamp.
   const { files } = sweep({ subject: 'migrations', what: 'migration' })
-  const problems = check(files.map((path) => basename(path)))
-  if (problems.length === 0) {
-    console.log(`every upstream migration is inside ${BAND_START}–${BAND_END}`)
-    return
-  }
-  console.error('supabase/migrations breaks the reserved-band rule:\n')
-  for (const problem of problems) console.error(`  ${problem}`)
-  console.error(
-    '\nSee docs/connectors/supabase/database.md § Reserved migration timestamp band. Take the ' +
+  return {
+    what: 'a migration',
+    count: files.length,
+    findings: check(files.map((path) => basename(path))).map((problem) => `  ${problem}`),
+    opening: 'supabase/migrations breaks the reserved-band rule:\n',
+    closing:
+      '\nSee docs/connectors/supabase/database.md § Reserved migration timestamp band. Take the ' +
       'next unused day inside the band; do not stamp with the current date.',
-  )
-  process.exit(1)
-}
-
-const isMain =
-  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-
-if (isMain) main()
+    line: `every upstream migration is inside ${BAND_START}–${BAND_END}`,
+  }
+})

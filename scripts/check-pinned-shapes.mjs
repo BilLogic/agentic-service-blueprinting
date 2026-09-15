@@ -13,7 +13,9 @@
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+
 import { shapeDrift } from './pinned-shapes.mjs'
+import { whenRun } from './verdict.mjs'
 
 /** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
 const ROOT = process.cwd()
@@ -34,22 +36,19 @@ const BINDINGS = [
   },
 ]
 
-const schemaSql = readFileSync(SCHEMA, 'utf8')
-const drift = BINDINGS.flatMap((binding) =>
-  shapeDrift({ ...binding, source: readFileSync(join(ROOT, binding.file), 'utf8') }, schemaSql).map(
-    (problem) => ({ ...problem, file: binding.file }),
-  ),
-)
-
-if (drift.length > 0) {
-  console.error('A pinned row shape disagrees with the schema:\n')
-  for (const { file, problem } of drift) console.error(`  ${file}: ${problem}`)
-  console.error(
-    '\nThe document is read by a model, so a stale key here is a call the app rejects.',
+whenRun(import.meta.url, () => {
+  const schemaSql = readFileSync(SCHEMA, 'utf8')
+  const drift = BINDINGS.flatMap((binding) =>
+    shapeDrift({ ...binding, source: readFileSync(join(ROOT, binding.file), 'utf8') }, schemaSql).map(
+      (problem) => ({ ...problem, file: binding.file }),
+    ),
   )
-  process.exit(1)
-}
-
-console.log(
-  `${BINDINGS.length} pinned row shape(s) agree with the schema dump.`,
-)
+  return {
+    what: 'a pinned row shape',
+    count: BINDINGS.length,
+    findings: drift.map(({ file, problem }) => `  ${file}: ${problem}`),
+    opening: 'A pinned row shape disagrees with the schema:\n',
+    closing: '\nThe document is read by a model, so a stale key here is a call the app rejects.',
+    line: `${BINDINGS.length} pinned row shape(s) agree with the schema dump.`,
+  }
+})
