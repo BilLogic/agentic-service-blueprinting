@@ -53,7 +53,7 @@ import {
 } from '@/components/editor/CanvasAnnotationSwatches'
 import { annotationMarkBox } from '@/components/editor/canvasAnnotationGeometry'
 import {
-  ANNOTATION_MARK_KINDS,
+  annotationBarControls,
   annotationMarkKind,
   type AnnotationBarControl,
 } from '@/components/editor/canvasAnnotationKinds'
@@ -65,17 +65,18 @@ import { cn } from '@/lib/utils'
  * One bar, drawing the controls the selected mark's row of
  * `canvasAnnotationKinds.ts` declares. There were three of these — a shape
  * bar, a sticky bar and a text bar — and the sticky bar was the text bar
- * minus its alignment control, to the character: the same colour popover, the
- * same size popover, the same bold-and-strikethrough pair, the same delete
- * button under a different noun. Fixing an aria label or a divider meant
- * finding two or three files, and 962 lines of bar had no test that could go
- * red on behaviour.
+ * without its alignment control: the same size popover to the character, a
+ * colour popover differing only in which swatches it offers, the same
+ * bold-and-strikethrough pair, the same delete button under a different noun.
+ * Fixing an aria label or a divider meant finding two or three files, and the
+ * 692 lines of bar had no test that could go red on behaviour.
  *
  * Each control below is written once and takes only what it draws. The table
  * says which of them a kind offers, and in what grouping — a rule is drawn
  * between groups and nothing between the members of one — so a fourth kind of
  * mark adds a row rather than a file.
  */
+
 /** What a control does when it is used: patch the mark it was drawn for. */
 type ChangeStyle = (patch: Partial<PlacedAnnotation>) => void
 
@@ -91,7 +92,7 @@ export function AnnotationStyleBar({
   onDelete: () => void
 }) {
   const box = annotationMarkBox(mark)
-  const { controls } = ANNOTATION_MARK_KINDS[annotationMarkKind(mark)]
+  const controls = annotationBarControls(annotationMarkKind(mark))
 
   return (
     <AnnotationStyleBarFrame x={box.x} y={box.y} width={box.width} zoom={zoom}>

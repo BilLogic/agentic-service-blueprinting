@@ -32,22 +32,44 @@ export type AnnotationMarkKind = 'shape' | 'sticky' | 'text'
  * rest is what that control cannot know without being told — which swatch set
  * a colour picker offers, and what a delete button calls the thing it deletes.
  */
-export type AnnotationBarControl =
-  | { id: 'shapeType' }
-  | { id: 'fill' }
-  | { id: 'stroke' }
-  | {
-      id: 'color'
-      /** The swatches this kind's ink is chosen from. */
-      swatches: readonly string[]
-      /** Read to a screen reader before the swatch's own name. */
-      swatchLabel: string
-    }
-  | { id: 'fontSize' }
-  | { id: 'bold' }
-  | { id: 'strike' }
-  | { id: 'align' }
-  | { id: 'delete'; label: string }
+type ShapeTypeControl = { id: 'shapeType' }
+type FillControl = { id: 'fill' }
+type StrokeControl = { id: 'stroke' }
+type ColorControl = {
+  id: 'color'
+  /** The swatches this kind's ink is chosen from. */
+  swatches: readonly string[]
+  /** Read to a screen reader before the swatch's own name. */
+  swatchLabel: string
+}
+type FontSizeControl = { id: 'fontSize' }
+type BoldControl = { id: 'bold' }
+type StrikeControl = { id: 'strike' }
+type AlignControl = { id: 'align' }
+type DeleteControl = { id: 'delete'; label: string }
+
+/**
+ * WHICH CONTROLS A KIND IS ALLOWED TO DECLARE.
+ *
+ * Not decoration. The three bars this table replaced got this guarantee from
+ * their types for free — the sticky bar could not draw a fill picker, because
+ * a `StickyAnnotation` has no `fillColor` to give one. A table keyed by kind
+ * can express that pairing wrongly, so the table says per kind what a row may
+ * hold, and a row that wires `fill` onto a sticky does not compile.
+ */
+type ControlsFor = {
+  shape: ShapeTypeControl | FillControl | StrokeControl | DeleteControl
+  sticky:
+    | ColorControl
+    | FontSizeControl
+    | BoldControl
+    | StrikeControl
+    | DeleteControl
+  text: ControlsFor['sticky'] | AlignControl
+}
+
+/** Any control the bar can be asked to draw, whichever kind asked for it. */
+export type AnnotationBarControl = ControlsFor[AnnotationMarkKind]
 
 /**
  * A kind of mark, as the bar and the node need it.
@@ -56,21 +78,25 @@ export type AnnotationBarControl =
  * between groups and nothing between the members of one, which is what keeps
  * bold and strikethrough sitting together the way they always have.
  */
-export type AnnotationMarkDescriptor = {
-  controls: readonly (readonly AnnotationBarControl[])[]
+export type AnnotationMarkDescriptor<K extends AnnotationMarkKind> = {
+  controls: readonly (readonly ControlsFor[K][])[]
   /**
    * Whether a press on the mark's own label opens the editor instead of
    * starting a drag. True of the shape, whose label sits inside a box big
    * enough to drag by elsewhere; the sticky and the text mark ARE their
    * editors, so the textarea takes the press before this could.
+   *
+   * The label the rule is about is `[data-annotation-text]`, which only the
+   * shape's body draws — so the flag and the attribute have to agree. The
+   * attribute is the mechanism; this is the declaration, and the bar test's
+   * per-kind read is what keeps the pair honest.
    */
   editOnLabelPress: boolean
 }
 
-export const ANNOTATION_MARK_KINDS: Record<
-  AnnotationMarkKind,
-  AnnotationMarkDescriptor
-> = {
+export const ANNOTATION_MARK_KINDS: {
+  [K in AnnotationMarkKind]: AnnotationMarkDescriptor<K>
+} = {
   shape: {
     controls: [
       [{ id: 'shapeType' }],
@@ -118,4 +144,11 @@ export function annotationMarkKind(mark: PlacedAnnotation): AnnotationMarkKind {
   if (mark.type === 'sticky') return 'sticky'
   if (mark.type === 'text') return 'text'
   return 'shape'
+}
+
+/** The groups of controls a kind declares, widened for the bar that draws them. */
+export function annotationBarControls(
+  kind: AnnotationMarkKind,
+): readonly (readonly AnnotationBarControl[])[] {
+  return ANNOTATION_MARK_KINDS[kind].controls
 }

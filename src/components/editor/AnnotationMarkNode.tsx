@@ -141,6 +141,8 @@ function markSurface(
   if (annotation.type === 'sticky') {
     return {
       base: 'absolute box-border rounded-sm p-2 shadow-md',
+      // The sticky is the one kind that wears a border either way — an
+      // unselected note still has to read as a card on the board.
       chrome: showChrome
         ? 'border-2 border-annotation-selected'
         : 'border border-annotation-plate',

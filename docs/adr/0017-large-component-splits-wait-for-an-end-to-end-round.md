@@ -14,7 +14,8 @@ jsdom slice and as a browser case in the render walk — and the annotation
 layer's split is unblocked; see the end. Amended again 2026-09-14 (#770): all
 three flows are covered, so the hold is lifted. Amended again 2026-09-14
 (#774): the agent panel is split, and the record now carries an outcome per
-component; see the end.
+component; see the end. Amended again 2026-09-14: the annotation split's six
+near-copies are one bar, one mark and a table; see the end.
 **Context** `src/components/editor/CanvasAnnotationLayer.tsx`,
 `src/components/blueprint/BlueprintCellDetailPanel.tsx`,
 `src/components/editor/AgentPanel.tsx`
@@ -321,12 +322,6 @@ exemption is for.
 Two components remained at that point, each with its own slice: the cell
 panel, whose split is the amendment below, and the agent panel.
 
-What the split left behind was six near-copies, and the same slice held while
-they became one style bar and one mark over a table of what each kind of mark
-declares — `AnnotationStyleBar.tsx`, `AnnotationMarkNode.tsx` and
-`canvasAnnotationKinds.ts`, with the text mark's two width floors settled at
-the one the screen already used.
-
 ## Amended 2026-09-14: the cell panel is split, and its slice says nothing moved
 
 The second of the three splits this record held is done.
@@ -389,3 +384,33 @@ type ladder — and that is worth stating as the cost of a split rather than a
 defect: a guard that names a file names it again after the file divides, and
 the shell ladder's batch had to learn to read one folder down or it would have
 stopped asserting anything about this surface at all.
+
+## Amended 2026-09-14: the annotation split's six near-copies are three modules
+
+The annotation amendment above records what the layer's split produced, and
+the table in it names six files that no longer exist: the three style bars
+were near-copies of one another — the sticky bar was 145 of its 182 lines
+shared with the text bar — and the three marks shared their pointer handler,
+their double-click and their root box to the line. They are one bar
+(`AnnotationStyleBar.tsx`), one mark (`AnnotationMarkNode.tsx`) and a table of
+what each kind of mark declares (`canvasAnnotationKinds.ts`), and the text
+mark's two width floors — 80 in the layer, 120 in the mark — are one constant
+with one reader, settled at the one the screen already drew.
+
+**The same instrument held, which is why this belongs in this record rather
+than beside it.** `npm run slice:annotation-drag` and the browser drag case
+were run before the first move and after every one, green each time with no
+assertion edited — and the browser case specifically after the pointer handler
+moved, because a real pointer capture is the thing jsdom cannot take. The
+rendered class, `data-` attribute, aria and accessible-name sets are identical
+string for string for every kind of mark in every state, checked by dumping
+the DOM of all six surfaces before the first move and diffing it after each.
+
+One guard went red and was right to: `tokenDiscipline.test.ts` pins its
+var-ramp exemption by path, and the line-style preview swatch moved file. That
+is the second time this record has had to say so, which is the argument for
+path-pinned exemptions rather than against them.
+
+What this does NOT do is finish the job for the mark. The bar is tested
+through the table; `AnnotationMarkNode.tsx` is still reached only through the
+slice and the browser case, and a test through its own interface is owed.

@@ -69,10 +69,15 @@ export function pointsToPath(points: CanvasPoint[]): string {
  * A text mark carries no width or height of its own — it is a font size and a
  * string — so the box has to be derived, and it was derived twice: the mark
  * drew itself at a floor of 120 while the layer handed the drag and resize
- * machine a floor of 80. Both are the same box in front of a person, so the
- * two floors were a disagreement rather than two rules, and a person resizing
- * a small text mark scaled it against a width no pixel on screen had. The
- * floor is stated once here and both readers ask for it.
+ * machine a floor of 80. Both stand for the same box, so the two floors were a
+ * disagreement rather than two rules.
+ *
+ * Nobody ever saw it, and that is worth saying rather than dressing up: a drag
+ * takes only the mark's `x` and `y`, and a text resize scales the font off the
+ * box's HEIGHT alone (`CanvasAnnotationLayer.tsx`, where `originFontSize` is
+ * set) and discards the width it was handed. So the 80 was a number nothing
+ * read. It is gone because a second floor for one box is a bug waiting for its
+ * first reader, not because it was already biting.
  */
 const ANNOTATION_TEXT_MIN_WIDTH = 120
 const ANNOTATION_TEXT_MIN_HEIGHT = 32
@@ -100,7 +105,12 @@ export function annotationMarkBox(mark: PlacedAnnotation): {
   fontSize?: number
 } {
   if (mark.type === 'text') {
-    return { x: mark.x, y: mark.y, ...annotationTextBox(mark.fontSize), fontSize: mark.fontSize }
+    return {
+      x: mark.x,
+      y: mark.y,
+      ...annotationTextBox(mark.fontSize),
+      fontSize: mark.fontSize,
+    }
   }
   return { x: mark.x, y: mark.y, width: mark.width, height: mark.height }
 }

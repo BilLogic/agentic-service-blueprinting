@@ -21,12 +21,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AnnotationStyleBar } from '@/components/editor/AnnotationStyleBar'
 import {
   ANNOTATION_MARK_KINDS,
+  annotationBarControls,
   annotationMarkKind,
   type AnnotationBarControl,
   type AnnotationMarkKind,
 } from '@/components/editor/canvasAnnotationKinds'
 import {
   ANNOTATION_DEFAULT_STROKE,
+  ANNOTATION_FILL_SWATCHES,
   ANNOTATION_STICKY_SWATCHES,
   ANNOTATION_STROKE_SWATCHES,
   annotationSwatchName,
@@ -80,7 +82,7 @@ const MARKS: Record<AnnotationMarkKind, PlacedAnnotation> = {
  * against it. A control id with no entry is a control this file has not been
  * taught, and the exhaustive read below fails rather than skipping it.
  */
-const CONTROL_NAME: Record<AnnotationBarControl['id'], string> = {
+const CONTROL_NAME: Record<Exclude<AnnotationBarControl['id'], 'delete'>, string> = {
   shapeType: 'Shape',
   fill: 'Fill',
   stroke: 'Line style',
@@ -89,7 +91,6 @@ const CONTROL_NAME: Record<AnnotationBarControl['id'], string> = {
   bold: 'Bold',
   strike: 'Strikethrough',
   align: 'Alignment',
-  delete: '',
 }
 
 function nameOf(control: AnnotationBarControl): string {
@@ -97,7 +98,7 @@ function nameOf(control: AnnotationBarControl): string {
 }
 
 function declaredControls(kind: AnnotationMarkKind): AnnotationBarControl[] {
-  return ANNOTATION_MARK_KINDS[kind].controls.flat()
+  return annotationBarControls(kind).flat()
 }
 
 function renderBar(kind: AnnotationMarkKind, over: Partial<PlacedAnnotation> = {}) {
@@ -113,6 +114,20 @@ function renderBar(kind: AnnotationMarkKind, over: Partial<PlacedAnnotation> = {
     />,
   )
   return { ...view, onChange, onDelete }
+}
+
+/**
+ * The popup a trigger opened, so every role query below is asked of it rather
+ * than of the whole document — what this repo's contributing guidelines ask of
+ * every `*ByRole(…, { name })`, because the one asked of `screen` walks the
+ * mounted tree and this one walks a popup.
+ */
+function openMenu(triggerLabel: string): HTMLElement {
+  const trigger = screen.getByLabelText(triggerLabel)
+  const id = trigger.getAttribute('aria-controls')
+  const popup = id ? document.getElementById(id) : null
+  expect(popup, `${triggerLabel} names the surface it opened`).toBeTruthy()
+  return popup as HTMLElement
 }
 
 const KINDS = Object.keys(ANNOTATION_MARK_KINDS) as AnnotationMarkKind[]
@@ -139,7 +154,7 @@ describe.each(KINDS)('the bar a %s declares', (kind) => {
   it('draws a rule between groups and none inside one', () => {
     const { container } = renderBar(kind)
     expect(container.querySelectorAll('div.w-px')).toHaveLength(
-      ANNOTATION_MARK_KINDS[kind].controls.length - 1,
+      annotationBarControls(kind).length - 1,
     )
   })
 
@@ -152,12 +167,15 @@ describe.each(KINDS)('the bar a %s declares', (kind) => {
     expect(plate?.style.left).toBe(`${mark.x + width / 2}px`)
   })
 
-  it('names the thing its delete button deletes', () => {
+  it('names the thing its delete button deletes, and deletes it', () => {
     const { onDelete } = renderBar(kind)
     const label = nameOf(
       declaredControls(kind).find((control) => control.id === 'delete')!,
     )
-    expect(label).toBe(`Delete ${kind}`)
+    // The noun is the row's, not the row's key — a kind may one day be called
+    // something its label is not — so what is asserted is that the row named
+    // one, and that the button wearing it is the one that deletes.
+    expect(label.startsWith('Delete ')).toBe(true)
     fireEvent.click(screen.getByLabelText(label))
     expect(onDelete).toHaveBeenCalledTimes(1)
   })
@@ -169,7 +187,7 @@ describe('the controls a kind declares write what they say', () => {
       ['sticky', ANNOTATION_STICKY_SWATCHES],
       ['text', ANNOTATION_STROKE_SWATCHES],
     ] as const) {
-      const { onChange, container } = renderBar(kind)
+      const { onChange } = renderBar(kind)
       fireEvent.click(screen.getByLabelText('Color'))
       const popup = screen.getByText('Color', { selector: 'span' }).parentElement!
       const declared = ANNOTATION_MARK_KINDS[kind].controls
@@ -184,7 +202,6 @@ describe('the controls a kind declares write what they say', () => {
         ),
       )
       expect(onChange).toHaveBeenCalledWith({ color: swatch })
-      expect(container).toBeTruthy()
       cleanup()
     }
   })
@@ -192,7 +209,8 @@ describe('the controls a kind declares write what they say', () => {
   it('a size rung patches the font size', () => {
     const { onChange } = renderBar('sticky')
     fireEvent.click(screen.getByLabelText('Text size'))
-    fireEvent.click(screen.getByRole('button', { name: 'Huge' }))
+    const popup = openMenu('Text size')
+    fireEvent.click(within(popup).getByRole('button', { name: 'Huge' }))
     expect(onChange).toHaveBeenCalledWith({ fontSize: 48 })
   })
 
@@ -212,22 +230,39 @@ describe('the controls a kind declares write what they say', () => {
   it('alignment patches the edge the type is set against', () => {
     const { onChange } = renderBar('text')
     fireEvent.click(screen.getByLabelText('Alignment'))
-    fireEvent.click(screen.getByRole('button', { name: 'Center' }))
+    const popup = openMenu('Alignment')
+    fireEvent.click(within(popup).getByRole('button', { name: 'Center' }))
     expect(onChange).toHaveBeenCalledWith({ align: 'center' })
   })
 
   it('the shape control changes what the mark is', () => {
     const { onChange } = renderBar('shape')
     fireEvent.click(screen.getByLabelText('Shape'))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Ellipse' }))
+    const menu = openMenu('Shape')
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Ellipse' }))
     expect(onChange).toHaveBeenCalledWith({ type: 'ellipse' })
   })
 
   it('a fill can be taken away, and taking it away is not the same as choosing one', () => {
-    const { onChange } = renderBar('shape', { fillColor: null })
+    const swatch = ANNOTATION_FILL_SWATCHES[1]
+
+    // Choosing one writes the swatch...
+    const chosen = renderBar('shape', { fillColor: null })
     fireEvent.click(screen.getByLabelText('Fill'))
-    fireEvent.click(screen.getByLabelText('No fill'))
-    expect(onChange).toHaveBeenCalledWith({ fillColor: null })
+    fireEvent.click(
+      within(openMenu('Fill')).getByLabelText(
+        `Fill ${annotationSwatchName(swatch)}`,
+      ),
+    )
+    expect(chosen.onChange).toHaveBeenCalledWith({ fillColor: swatch })
+    cleanup()
+
+    // ...and taking it away writes the absence of one, which is a fill a
+    // shape can have and not the same as never having chosen.
+    const cleared = renderBar('shape', { fillColor: swatch })
+    fireEvent.click(screen.getByLabelText('Fill'))
+    fireEvent.click(within(openMenu('Fill')).getByLabelText('No fill'))
+    expect(cleared.onChange).toHaveBeenCalledWith({ fillColor: null })
   })
 
   it('choosing a stroke colour for an unstroked shape gives it a weight to draw with', () => {
