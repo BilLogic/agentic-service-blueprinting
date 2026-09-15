@@ -1,5 +1,135 @@
 # Changelog
 
+## 1.44.14
+
+**Five things the template said six times are said once.** The third
+architecture round lands whole: the selected cell's facts are resolved by one
+lookup and read by three narrow readings; the cell's four surfaces wear the
+panel header the other five panels already wore, with a trail that collapses
+its middle; the three annotation bars and three marks are one bar and one mark
+over a table of what each kind declares; the six spec-level writes declare
+their half of one shared write; and every check script hands its verdict to
+one module that renders the four outcomes and sets the exit code one way.
+Nobody editing a cell, drawing a mark or saving a spec sees a change — each
+slice was green before the first move and after every one, with no assertion
+edited — and every check's green line is byte-identical.
+
+**Upgrading a deployment:**
+
+- Take `scripts/verdict.mjs` and the six shared checks that now import it
+  byte-identical: `check-glossary-only`, `check-harness-claims`,
+  `check-negation-ratchet`, `check-pointers`, `check-router-budget` and
+  `check-target-schema`. Your shared-scripts guard names them; a check of your
+  own may keep its exit as it is, or return a judgement and let the module
+  render it.
+- If a file of yours imported a deleted module — `CellDetailBreadcrumb`, any
+  of the three `Annotation*StyleBar`s or the three `*AnnotationNode`s — import
+  `cellDetailCrumbs`, `AnnotationStyleBar` or `AnnotationMarkNode` instead;
+  the per-level spec mutation modules keep their names and exports.
+- An empty crumb trail now draws no breadcrumb landmark; a browser case of
+  yours that waited for one on a loading panel should wait for the panel.
+
+### Patch Changes
+
+- 78c416d: The three annotation style bars and the three annotation marks are one bar and
+  one mark over a table of what each kind declares. A person styling, drawing and
+  dragging marks sees no change, here or anywhere: the text mark's width floor,
+  which was 80 in the layer and 120 in the mark, is one constant read in one
+  place now — the 120 the screen already drew — and the 80 turns out to have been
+  a number nothing read, since a drag takes only a position and a text resize
+  scales off the height.
+- 2ab53fa: One module answers what a check concludes.
+
+  `scripts/sweep.mjs` was already the first half of every check — name a Subject,
+  receive its files. Nothing was the second half, so each check carried its own
+  is-main guard, its own empty-subject rule, its own summary and its own exit, and
+  the exits had drifted into two incompatible styles. `scripts/verdict.mjs` is
+  that half, once: a check returns its findings and the count of what it examined,
+  and the module renders the four outcomes and sets the exit code one way. Every
+  check's green line and every finding is unchanged to the byte — the module
+  renders and never composes the wording. What does change is the two bespoke
+  empty-subject messages, which are now the one shared message and the one shared
+  register.
+
+  `scripts/verdict.mjs` is published as a shared script. A deployment that holds
+  these checks byte-identical will take the module with them on its next pin; the
+  shared-script list names it, and the closure rule carries it there.
+
+- 9c5a790: The cell panel's facts are resolved once and read three narrow ways
+
+  One hook derived sixteen values about the selected cell and handed the whole
+  object to three readers whose slices barely overlapped: twelve of the sixteen
+  keys were read by exactly one reader, a reader's prop type said nothing about
+  which of them it used, and the path's board was looked up again in seven of the
+  derivations — one fact with seven origins and no single place to be wrong in.
+  No test imported the module at all, which is how a sixteen-key interface grows
+  without anybody noticing the shape.
+
+  `useSelectedCell` is now that single place: it finds the board once, picks the
+  cell out of it, identifies the lane, walks the dependencies, and resolves the
+  three things the readings wanted from the selection — the clicked touchpoint,
+  the column, and where the cell sits. `useCellPanelFacts`, `useCellOverviewFacts`
+  and `useCellTabsFacts` each take that resolution and nothing else, one per
+  reader, and each names only what its reader reads — the drawer takes the cell's
+  position, the board it routes a click through and its dependency endpoints, the
+  overview takes the placement and the featured links, the tab row takes the
+  dependencies and the two lists its Resources tab renders. A reading handed the
+  whole selection could still have reached the clicked placement through
+  `paths[0].touchpoints`, which is the interface widening back by a second door;
+  taking one argument closes it.
+
+  The breadcrumb takes the path entry's own type rather than reaching into the
+  facts type for it, and `BlueprintLaneLike` — exported, imported nowhere — is
+  gone. The types the split introduced are exported only where something imports
+  them, so the same smell does not come back under new names.
+
+  Nobody opening, editing, saving or reverting a cell sees a change. This is a
+  pure refactor, and the instrument says so: `npm run slice:cell-edit` was green
+  before the first move and after every one of them, with no assertion edited,
+  and the tests over `src/components/blueprint` are unchanged. What is new is the
+  unit tests, which read each reading through its own interface and assert its
+  key set as well as its values — a tab row that could reach the clicked
+  placement is the wide interface growing back, and the key-set case says so
+  before the values ever disagree.
+
+- e690021: The cell surfaces wear the header the other five panels already wore
+
+  `panelShell.tsx` has drawn the entity panels' header since the shell was
+  lifted out of the cell panel, and the cell panel never started wearing it. Its
+  details, draft, empty and differences surfaces each wrote the drawer header's
+  class list themselves, each wrote the ✕ — the tooltip, the ghost button, the
+  icon, the label — and the cell's trail was a second crumb loop beside the
+  shared one. Five copies of a close button is how one of them ends up a size
+  larger or stops saying what it closes, and the two crumb loops had already
+  drifted: the cell's ancestors truncated with no way to read the whole name
+  back, which the shared trail has always offered on hover.
+
+  `PanelHeader` draws all of it now, for all six subjects. It learned a crumb
+  that collapses to an ellipsis — the cell's four names do not fit the panel's
+  width, and the step is the one the reader came for — so the cell's trail is
+  the trail every other panel draws, built by `cellDetailCrumbs.ts` where a
+  component used to draw one. It learned three more things, each naming a
+  difference a surface actually has: a title and a description that are shown
+  rather than read out (the draft's "New cell" and the placement line under it),
+  the differences surface's bordered band, and the row the widen toggle shares
+  with ✕.
+
+  Nobody opening, drafting, comparing or closing a cell sees a change. The
+  instrument says so: `npm run slice:cell-edit` was green before the first move
+  and after every one of them, with no assertion edited, and the 301 tests over
+  `src/components/blueprint` are unchanged — five cases read the new header
+  beside them. Each surface's rendered class, `aria-` and `data-` attribute set
+  was hashed before and after and matches, with two differences recorded rather
+  than hidden. The cell's trail now writes `font-normal` on its list and
+  `shrink-0` on its first separator — two utilities the entity panels' trail
+  already wrote, each a no-op where it lands, and the drift that made two
+  nearly-identical headers worth reading twice. And a trail with no crumbs left
+  in it draws nothing rather than an empty breadcrumb landmark, which the
+  service panel always reserved and the other four reserved while loading: a
+  landmark that tells a reader nothing is worse than no landmark.
+
+- 71aded4: One spec write, six declarations. Cell, lane, phase, scenario, service and step each re-derived the same six-step write rule — normalise, update, translate the failure, require rows, invalidate, record the inverse — comments included, and two of the six had a test. The rule now lives in `src/lib/specMutations.ts` and a level declares what is genuinely its own: its table, the column the write is addressed by, the columns a spec may touch and how each is normalised, what the change makes stale, and the shape of the inverse the ledger carries. Nothing a person editing a spec can see changes, and every level's write is now recorded row by row and ledger entry by ledger entry.
+
 ## 1.44.13
 
 **A seam nobody crossed is gone, and the browser walk chooses its own port.**
@@ -7037,8 +7167,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                          ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                          "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                            ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                            "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
