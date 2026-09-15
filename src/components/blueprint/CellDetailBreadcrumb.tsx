@@ -6,8 +6,10 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
-import type { CellDetailFacts } from '@/components/blueprint/cellDetailFacts'
-import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
+import type {
+  BlueprintCellPathEntry,
+  BlueprintCellSelection,
+} from '@/types/blueprintCellDetail'
 
 /**
  * Where the open cell sits, as a trail: phase, scenario, path, step.
@@ -21,7 +23,7 @@ export function CellDetailBreadcrumb({
   pathEntry,
 }: {
   selection: BlueprintCellSelection
-  pathEntry: CellDetailFacts['pathEntry']
+  pathEntry: BlueprintCellPathEntry | undefined
 }) {
   const pathName = pathEntry?.pathName.trim() ?? ''
   const scenarioName = selection.scenarioName.trim()
