@@ -296,6 +296,13 @@ ${sweepSql([word])}
 rollback;`
 }
 
+/** How many relations the sweep's every arm hangs off: the subject's size. */
+export function sweptSql() {
+  return `select count(*) from pg_class cls
+  join pg_namespace nsp on nsp.oid = cls.relnamespace
+ where nsp.nspname = 'public' and cls.relkind in ('r','v','m','p')`
+}
+
 function psql(args, input) {
   return execFileSync('psql', ['-At', '-F', '\t', '-v', 'ON_ERROR_STOP=1', ...args], {
     encoding: 'utf8',
@@ -365,15 +372,26 @@ export function judge(argv = process.argv.slice(2)) {
     }
   }
 
-  // The count is the CATALOGUE ROWS the sweep came back with, not the length of
-  // the fragment list it went looking with. The second is a constant: a query
-  // that returned nothing — the one case the empty-subject rule exists for —
-  // would report it and pass green.
+  // The count is the CATALOGUE OBJECTS the sweep looked at, not the rows it
+  // came back with and not the length of the fragment list it went looking
+  // with. The rows are only the matches, so a clean catalogue returns none and
+  // would read as no subject; the fragment list is a constant, so an empty
+  // catalogue — the one case the empty-subject rule exists for — would pass
+  // green. Relations in `public` are what every arm of the sweep hangs off.
+  let swept
+  try {
+    swept = Number(psql([...target, '-c', sweptSql()]).trim())
+  } catch (error) {
+    return {
+      what: 'a retired word swept across the database catalogue',
+      findings: [`could not count the catalogue: ${String(error.stderr || error.message).trim()}`],
+    }
+  }
   const rows = parseRows(tsv)
   const problems = findings(rows)
   return {
-    what: 'a retired word swept across the database catalogue',
-    count: rows.length,
+    what: 'a relation in the public schema swept for a retired word',
+    count: swept,
     findings: problems.map(
       (problem) =>
         `::error::retired vocabulary in ${problem.subject} — "${problem.word}" was ` +
