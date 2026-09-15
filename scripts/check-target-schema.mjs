@@ -10,16 +10,24 @@
  *
  * So the question gets an answer instead of an inference. `public.schema_version`
  * is one row in the portable core, and this asks the live target for it, over
- * the same Data API the app uses and with the same anon key. It answers three
+ * the same Data API the app uses and with the same anon key. It answers five
  * distinguishable things:
  *
  *   - reachable, migrated, compatible          -> exit 0
  *   - reachable, migrated, WRONG VERSION       -> exit 1, both versions named
  *   - reachable, NOT MIGRATED (no such table)  -> exit 1, says so in those words
+ *   - NAMED and not reachable                  -> exit 1, the connection error quoted
+ *   - never named at all                       -> exit 0, said through the
+ *                                                 unverified register
  *
  * The third is the one worth having. A target that answers 404 for
  * schema_version has never had `supabase db push` run against it, and that is
  * a different problem from a stale one.
+ *
+ * The last two are one rule, and it is the rule every check here that needs a
+ * live database follows: a target NOBODY NAMED is a question this run was not
+ * given the subject for, and a target that was named and could not be answered
+ * is a finding.
  *
  * Usage — by path, because the npm alias is each repository's own and this
  * file is read from more than one. Where an alias exists it is `check:target`.
@@ -129,29 +137,32 @@ function readConfig(argv) {
   }
 }
 
-// THE UNCONFIGURED TARGET IS NEITHER A FINDING NOR A SKIP. It exits 2, which
-// is a third thing: the check was asked a question it was never given the
-// subject for, and the caller wants to tell that apart from a target that
-// answered wrongly. The verdict renders four outcomes and none of them is
-// this, so this one branch keeps its own print and its own code.
+// A TARGET THAT WAS NEVER NAMED IS UNVERIFIED; ONE THAT WAS NAMED AND COULD
+// NOT BE REACHED IS A FINDING. This branch used to be a third exit code — 2,
+// for "asked a question it was never given the subject for" — printed and
+// coded by hand because the verdict had no register for it. It has one: a
+// check that could not look says so through `unverified` and exits clean,
+// which is what the other guards needing a live database already do. Nothing
+// changes for a target that WAS named: an unreachable one is still red with
+// the connection error quoted, a few lines below.
 /**
  * The verdict: the schema version the configured target reports, held to the
  * versions this tree supports.
  *
- * Pure — it asks the target, decides, and hands back what it found. Nothing here
- * prints or exits, bar the unconfigured target, which is not a verdict.
+ * Pure — it asks the target, decides, and hands back what it found. Nothing
+ * here prints or exits.
  */
 export async function judge(argv = process.argv.slice(2)) {
   const { url, key } = readConfig(argv)
   if (!url || !key) {
-    console.error(
-      'no target configured: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env ' +
-        'or the environment, or pass --url and --key.\n\n' +
-        'Without a configured project this app runs the no-DB adapter, which is a ' +
-        'supported mode and not something to check with this script.',
-    )
-    process.exitCode = 2
-    return {}
+    return {
+      what: 'the target database',
+      unverified:
+        'no target configured: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env ' +
+        'or the environment, or pass --url and --key. Without a configured project this app ' +
+        'runs the no-DB adapter, which is a supported mode and not something to check with ' +
+        'this script.',
+    }
   }
 
   const endpoint = `${url.replace(/\/$/, '')}/rest/v1/schema_version?select=version`
