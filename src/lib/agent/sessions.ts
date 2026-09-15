@@ -20,11 +20,12 @@ import { storageKey } from '@/lib/storageNamespace'
  * The panel and its views read this and nothing else about a session.
  *
  * WHY IT IS A MODULE STORE AT ALL — cross-surface state is a module store,
- * and this is the case that decision was written from. The chat has two postures
- * — docked in the sidebar, floating over the canvas — rendered by two mount
- * points, so dragging between them unmounts one `AgentPanel` and mounts
- * another. Anything held in component state dies in that gap, which meant a
- * drag threw you back to the session list and ate a half-typed message.
+ * and this is the case that decision was written from. The chat has two
+ * postures — docked in the sidebar, floating over the canvas — rendered by
+ * two mount points, so dragging between them unmounts one `AgentPanel` and
+ * mounts another. Anything held in component state dies in that gap, which
+ * meant a drag threw you back to the session list and ate a half-typed
+ * message.
  * Placement promises "same conversation either way"; the transcript already
  * lived in a module store (`loop.ts`), so this is the rest of that promise.
  *
@@ -66,7 +67,7 @@ export type AgentAttachment = {
 type AgentDraft = { text: string; skillId: string | null }
 
 const STORAGE_KEY = storageKey('agent-sessions')
-const EMPTY_DRAFT: AgentDraft = { text: '', skillId: null }
+const EMPTY_DRAFT = { text: '', skillId: null } as const
 
 function read(): AgentSession[] {
   try {
@@ -271,11 +272,10 @@ export function closeAgentSession(): void {
 }
 
 /**
- * Which session is open, by id. The panel reads the SESSION below rather than
- * this — resolving the one against the other is this module's business, and a
- * caller handed an id has no way to know whether the list still holds it.
- * This is the id itself, for the one reader that is asking about the id and
- * not about the session: the test that holds the deletion rule.
+ * Which session is open, by id — for a reader asking about the id and not
+ * about the session. There is one, and it is the test that holds the deletion
+ * rule: a rule that CLEARS the id cannot be read through the hook below,
+ * which resolves it against the list and answers null either way.
  */
 export function openAgentSessionId(): string | null {
   return openSessionId
@@ -287,7 +287,11 @@ export function openAgentSessionId(): string | null {
  * whether the list still holds it.
  */
 export function useOpenAgentSession(): AgentSession | null {
-  return useSyncExternalStore(subscribe, openSessionSnapshot, openSessionSnapshot)
+  return useSyncExternalStore(
+    subscribe,
+    openSessionSnapshot,
+    openSessionSnapshot,
+  )
 }
 
 /**

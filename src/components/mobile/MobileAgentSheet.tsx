@@ -12,8 +12,8 @@ import { Button } from '@/components/ui/button'
 /**
  * The agent, as a BOTTOM sheet — a little over half the screen, so the
  * canvas stays visible behind it (92svh read as a full-screen takeover).
- * AgentPanel state lives in the module store (panelState), so open/close
- * never drops a session.
+ * AgentPanel state lives in the session module (`lib/agent/sessions.ts`), so
+ * open/close never drops a session.
  *
  * The header is custom rather than the sheet's default chrome so its
  * gutters MATCH the panel's own (the SESSIONS row sits on an 8 px inset):

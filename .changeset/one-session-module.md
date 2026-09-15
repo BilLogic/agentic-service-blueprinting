@@ -26,8 +26,10 @@ caller performs it, so the store has two writers where it had four.
 
 The four facts stay four variables rather than one state object, which is not
 tidiness: every hook here returns one of them and `useSyncExternalStore`
-re-renders on a changed reference, so a single object would repaint the
-session list on every character typed into the composer.
+re-renders on a changed *reference*. One object rebuilt per write would hand
+the session list a new snapshot on every character typed into the composer,
+and it would repaint; four variables mean the list's snapshot is the same
+array it was, and the notification costs a comparison.
 
 Nothing a person sees is different. Opening, sending, renaming, deleting and
 reopening a session behave as they did; persistence is untouched, and no

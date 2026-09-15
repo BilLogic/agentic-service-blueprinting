@@ -42,7 +42,7 @@ export function AgentPanel() {
   ) : (
     <AgentSessionsView
       sessions={sessions}
-      onOpen={(id) => openAgentSession(id)}
+      onOpen={openAgentSession}
       onCreate={() => {
         // ＋ drops straight into the conversation.
         openAgentSession(createAgentSession().id)

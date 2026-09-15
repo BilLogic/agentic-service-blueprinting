@@ -18,7 +18,7 @@
  * here is written for.
  */
 import { act, renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   agentSessionsSnapshot,
   autoNameSession,
@@ -41,6 +41,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   closeAgentSession()
 })
 
@@ -66,19 +67,24 @@ describe('the session list', () => {
 
 describe('renaming a session', () => {
   it('changes that session title and no other, and restamps it', () => {
+    // A controlled clock, because both stamps are `toISOString()` and two
+    // calls in the same millisecond would satisfy a `>=` whether or not the
+    // rename touched `updatedAt` at all.
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-14T12:00:00.000Z'))
     const target = createAgentSession('Before')
     const bystander = createAgentSession('Bystander')
+    vi.setSystemTime(new Date('2026-09-14T12:00:01.000Z'))
 
     renameAgentSession(target.id, 'After')
+    vi.useRealTimers()
 
     const renamed = agentSessionsSnapshot().find(
       (session) => session.id === target.id,
     )
     expect(renamed?.title).toBe('After')
     expect(renamed?.createdAt).toBe(target.createdAt)
-    expect(Date.parse(renamed!.updatedAt)).toBeGreaterThanOrEqual(
-      Date.parse(target.updatedAt),
-    )
+    expect(renamed?.updatedAt).toBe('2026-09-14T12:00:01.000Z')
     expect(
       agentSessionsSnapshot().find((session) => session.id === bystander.id)
         ?.title,

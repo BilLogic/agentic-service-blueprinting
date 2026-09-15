@@ -7,7 +7,9 @@ summary: State that must outlive a mount point, or be read by code with no hooks
 **Status** Accepted — 2026-09-06. Amended 2026-09-10 (#551): the instance
 list gained `canvasModeContext.ts` and `canvasChromeResize.ts`, which this
 tree already had and the deployment's copy (BilLogic/plus-uno-blueprint
-ADR 0005) listed.
+ADR 0005) listed. Amended 2026-09-14 (#802): the list loses
+`agent/panelState.ts`, folded with `agent/attachments.ts` into
+`agent/sessions.ts` — one store for one thing, not three for the parts of it.
 **Context** [#163](https://github.com/BilLogic/agentic-service-blueprinting/issues/163)
 
 ## Context
@@ -29,10 +31,10 @@ Two conditions send state here, and either one is sufficient:
    agree on has nowhere else to live.
 
 The live instances each carry their reason in their own header comment:
-`agent/placement.ts`, `agent/settings.ts`,
-`agent/sessions.ts`, `contexts/activeService.ts`,
-`contexts/canvasModeContext.ts`, `contexts/shellBootStore.ts`,
-`contexts/sidebarCollapsedContext.ts`, `lib/canvasChromeResize.ts`,
+`agent/placement.ts`, `agent/settings.ts`, `agent/sessions.ts`,
+`contexts/activeService.ts`, `contexts/canvasModeContext.ts`,
+`contexts/shellBootStore.ts`, `contexts/sidebarCollapsedContext.ts`,
+`lib/canvasChromeResize.ts`,
 `lib/compareReviewStore.ts`, `lib/openCellStore.ts`, `lib/authoringSession.ts`,
 and `hooks/useMobileShell.ts` (a media query as an external store).
 
