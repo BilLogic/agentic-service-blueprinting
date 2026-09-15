@@ -49,6 +49,18 @@
  *     reads belong. Only the four write verbs count.
  *   - **Storage.** `client.storage.from(BUCKET)` takes a bucket identifier,
  *     not a quoted table name, so an upload cannot trip this.
+ *
+ * AND ONE SHAPE IS A WRITE WITHOUT LOOKING LIKE ONE. A spec level declares its
+ * table rather than naming it in a chain: the six spec modules hand a
+ * declaration to `src/lib/specWrite.ts`, which builds the one
+ * `.from(…).update(…)` they all take. A scan that only read chains would find
+ * no writer for `lanes`, `phases`, `paths`, `scenarios`, `services`,
+ * `business_models` or `steps` — and a surface with no writers to contradict
+ * it cannot be contradicted, which is the exact failure the header above
+ * describes for a deployment with no `src`. So the declaration is the second
+ * shape this reads, and it is read narrowly: only in a file that imports the
+ * write it declares for, and only as an UPDATE, which is the one verb a spec
+ * level performs.
  */
 import { sweep } from './sweep.mjs'
 
@@ -94,6 +106,19 @@ export const TABLE_WRITE =
   /\.from\(\s*'([a-z_]+)'\s*\)[\s\S]{0,200}?\.(update|insert|upsert|delete)\s*\(/g
 
 /**
+ * The import that makes a file a declarer of spec levels.
+ *
+ * Narrow on purpose: `table: 'x'` is an ordinary enough property name that
+ * reading it anywhere would turn fixtures, options objects and prose into
+ * writers. A file that imports the shared write is asking for the write to be
+ * made on its behalf, which is what a writer is.
+ */
+export const DECLARES_SPEC_LEVELS = "from '@/lib/specWrite'"
+
+/** The table of one spec-level declaration. */
+export const SPEC_LEVEL_TABLE = /\btable:\s*'([a-z_]+)'\s*,/g
+
+/**
  * `{ path, line, table, verb }` for every direct table write in `swept`.
  *
  * `path` is the `src/…` path a finding prints, and `line` is 1-based, so a
@@ -123,6 +148,18 @@ export function directTableWrites(swept = appSources()) {
         line: source.slice(0, match.index).split('\n').length,
         table: match[1],
         verb: match[2],
+      })
+    }
+    if (!source.includes(DECLARES_SPEC_LEVELS)) continue
+    for (const match of source.matchAll(SPEC_LEVEL_TABLE)) {
+      writes.push({
+        path,
+        line: source.slice(0, match.index).split('\n').length,
+        table: match[1],
+        // A spec level updates columns on a row that already exists. It never
+        // inserts — a row a spec hangs off is made by the import or by an
+        // authoring RPC — and never deletes.
+        verb: 'update',
       })
     }
   }

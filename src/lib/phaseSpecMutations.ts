@@ -1,12 +1,6 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
-import { recordChange } from '@/lib/authoringSession'
-import { toAuthoringError } from '@/lib/authoringErrors'
-import { requireRowsWritten } from '@/lib/optimisticConcurrency'
-import type { Database } from '@/types/database'
+import { specWriter, type SpecLevel } from '@/lib/specWrite'
 import { invalidateQueries } from '@/lib/queryClient'
 import { queryKeys } from '@/lib/queryKeys'
-
-type Client = SupabaseClient<Database>
 
 export type PhaseSpecUpdate = {
   summary: string
@@ -15,10 +9,10 @@ export type PhaseSpecUpdate = {
 }
 
 /**
- * Write a phase's spec columns.
+ * A phase's spec columns.
  *
- * All three columns carry a column grant for the signed-in author: UPDATE on
- * `phases` is revoked wholesale and handed back one column at a time.
+ * All three carry a column grant for the signed-in author: UPDATE on `phases`
+ * is revoked wholesale and handed back one column at a time.
  * `business_impact` and `operational_requirements` were granted when that
  * posture was set; `summary` only later — the rename that turned `description`
  * into `summary` moved the column and not a grant that had never existed,
@@ -29,40 +23,24 @@ export type PhaseSpecUpdate = {
  * `name` is not here: renaming a phase is a structural edit with its own RPC
  * and its own ledger entry.
  */
-export async function updatePhaseSpec(
-  client: Client,
-  phaseId: string,
-  update: PhaseSpecUpdate,
-  /** The values being replaced — captured so the change can be reverted. */
-  previous?: PhaseSpecUpdate,
-  /** `record: false` = revert path; see updateCellSpec for the why. */
-  options: { record?: boolean } = {},
-): Promise<void> {
-  const { data, error } = await client
-    .from('phases')
-    .update({
-      summary: update.summary.trim() || null,
-      business_impact: update.businessImpact.trim() || null,
-      operational_requirements: update.operationalRequirements.trim() || null,
-    })
-    .eq('id', phaseId)
-    .select('id')
-  if (error) throw toAuthoringError(error)
-  requireRowsWritten(data, 'phase')
-
-  invalidateQueries(queryKeys.phaseSpec.of(phaseId))
-  // The summary also feeds the overview and the sticky header.
-  invalidateQueries(queryKeys.servicePhases.prefix)
-  if (options.record !== false) {
-    recordChange(
-      'update_phase_spec',
-      { phase_id: phaseId },
-      previous
-        ? {
-            fn: 'update_phase_spec',
-            args: { phase_id: phaseId, update: previous },
-          }
-        : undefined,
-    )
-  }
+const PHASE_SPEC: SpecLevel<string, PhaseSpecUpdate> = {
+  table: 'phases',
+  addressedBy: 'id',
+  subject: 'phase',
+  columns: (update) => ({
+    summary: update.summary.trim() || null,
+    business_impact: update.businessImpact.trim() || null,
+    operational_requirements: update.operationalRequirements.trim() || null,
+  }),
+  invalidate: (phaseId) => {
+    invalidateQueries(queryKeys.phaseSpec.of(phaseId))
+    // The summary also feeds the overview and the sticky header.
+    invalidateQueries(queryKeys.servicePhases.prefix)
+  },
+  fn: 'update_phase_spec',
+  targetArg: 'phase_id',
+  previousAs: 'update',
 }
+
+/** Write a phase's spec columns. */
+export const updatePhaseSpec = specWriter(PHASE_SPEC)

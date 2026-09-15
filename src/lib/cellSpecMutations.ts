@@ -1,13 +1,7 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
-import { recordChange } from '@/lib/authoringSession'
-import { toAuthoringError } from '@/lib/authoringErrors'
-import { requireRowsWritten } from '@/lib/optimisticConcurrency'
+import { specWriter, type SpecLevel } from '@/lib/specWrite'
 import type { ValueProp } from '@/lib/valueProps'
-import type { Database } from '@/types/database'
 import { invalidateCellBoard, invalidateQueries } from '@/lib/queryClient'
 import { queryKeys } from '@/lib/queryKeys'
-
-type Client = SupabaseClient<Database>
 
 export type CellSpecUpdate = {
   function: string
@@ -16,57 +10,37 @@ export type CellSpecUpdate = {
 }
 
 /**
- * Write the cell's spec columns.
+ * The cell's spec columns, as a level of the one spec write.
  *
  * These are the only cell columns the app may write: `function`, `form`, and
  * `value_props` carry a column-level grant precisely so the panel can edit
  * them without opening the blueprint's structural content to the same path.
  * Content, lane, step and path stay the import pipeline's business.
  *
- * Empty strings are stored as `null` rather than `''` so "not specified"
- * has one representation — the read path hides a section when its field is
- * empty, and two kinds of empty would make that check inconsistent.
+ * `value_props` is `NOT NULL` with `[]` as its default, so an emptied list is
+ * written as the empty list. It used to be written as null, which the column
+ * refuses — a bug the generated types now spell out.
  */
-export async function updateCellSpec(
-  client: Client,
-  cellId: string,
-  update: CellSpecUpdate,
-  /** The values being replaced — captured so the change can be reverted. */
-  previous?: CellSpecUpdate,
-  /** `record: false` = revert path; see updateCellContent for the why. */
-  options: { record?: boolean } = {},
-): Promise<void> {
-  const valueProps = update.valueProps
-    .map((entry) => ({ for: entry.for.trim(), value: entry.value.trim() }))
-    .filter((entry) => entry.for || entry.value)
-
-  const { data, error } = await client
-    .from('cells')
-    .update({
-      function: update.function.trim() || null,
-      form: update.form.trim() || null,
-      // The column is NOT NULL with `[]` as its default, so an empty list is
-      // written as the empty list. It used to be written as null, which the
-      // column refuses — a bug the generated types now spell out.
-      value_props: valueProps,
-    })
-    .eq('id', cellId)
-    .select('id')
-  if (error) throw toAuthoringError(error)
-  // See `requireRowsWritten`: a zero-row update is a 200, and reverting one
-  // would drop the entry from the ledger having written nothing.
-  requireRowsWritten(data, 'cell')
+const CELL_SPEC: SpecLevel<string, CellSpecUpdate> = {
+  table: 'cells',
+  addressedBy: 'id',
+  subject: 'cell',
+  columns: (update) => ({
+    function: update.function.trim() || null,
+    form: update.form.trim() || null,
+    value_props: update.valueProps
+      .map((entry) => ({ for: entry.for.trim(), value: entry.value.trim() }))
+      .filter((entry) => entry.for || entry.value),
+  }),
   // The grid draws the spec's presence, and the audiences are read off it.
-  invalidateCellBoard(cellId)
-  invalidateQueries(queryKeys.valueAudiences)
-  // Direct table write — `call()` never sees it, so it logs itself.
-  if (options.record !== false) {
-    recordChange(
-      'update_cell_spec',
-      { cell_id: cellId },
-      previous
-        ? { fn: 'update_cell_spec', args: { cell_id: cellId, update: previous } }
-        : undefined,
-    )
-  }
+  invalidate: (cellId) => {
+    invalidateCellBoard(cellId)
+    invalidateQueries(queryKeys.valueAudiences)
+  },
+  fn: 'update_cell_spec',
+  targetArg: 'cell_id',
+  previousAs: 'update',
 }
+
+/** Write the cell's spec columns. */
+export const updateCellSpec = specWriter(CELL_SPEC)
