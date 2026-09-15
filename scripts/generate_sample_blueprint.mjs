@@ -450,6 +450,12 @@ const SCENARIOS = [
       // OTHER lanes' cells at the same column and lays them out in the
       // storyboard lane. So the four figures are
       // attached below, to the cells whose moment they actually illustrate.
+      // Three of the four hang off the Blueprint owner cell at their column:
+      // each illustrates the moment the owner is acting in — what a spine is,
+      // the outline being nodded on, the ways a reader gets in. They are not
+      // on References & guardrails, which is a touchpoint row; why a
+      // touchpoint row is the wrong home for drawn artwork is in
+      // src/lib/storyboardWalkthrough.ts, where the roster is decided.
 
       // The Stakeholders lane is deliberately quiet on this board and the two
       // that follow it: mapping is not a spectator sport. Silence is not a gap
@@ -463,13 +469,28 @@ const SCENARIOS = [
           DIAGRAM: 'Exports the existing diagram and hands over the file',
         },
       },
-      { lane: 'owner', col: 3, content: 'Answers the scoping question and names whose journey runs along the spine' },
+      {
+        lane: 'owner', col: 3,
+        content: 'Answers the scoping question and names whose journey runs along the spine',
+        // Journey figure for this column.
+        frame: figure('data-model-hierarchy.svg'),
+      },
       { lane: 'owner', col: 4, content: { DOCS: 'Says which documents are in scope, and which are sensitive and excluded' } },
       { lane: 'owner', col: 5, content: { DIAGRAM: 'Confirms the crosswalk: which column of the old diagram means which lane role' } },
-      { lane: 'owner', col: 6, content: 'Nods on the proposed step and lane outline before any cell is written' },
+      {
+        lane: 'owner', col: 6,
+        content: 'Nods on the proposed step and lane outline before any cell is written',
+        // Journey figure for this column.
+        frame: figure('blueprint-anatomy.svg'),
+      },
       { lane: 'owner', col: 7, content: 'Decides which review findings to accept' },
       { lane: 'owner', col: 8, content: 'Signs off each scenario against its content hash' },
-      { lane: 'owner', col: 10, content: 'Shares the deployed URL with the team' },
+      {
+        lane: 'owner', col: 10,
+        content: 'Shares the deployed URL with the team',
+        // Journey figure for this column.
+        frame: figure('four-ways-in.svg'),
+      },
 
       // Slot siblings on a tech lane: one cell per touchpoint at the same
       // moment. They are app-side and seed-side only — slot > 0 carries no
@@ -609,7 +630,6 @@ const SCENARIOS = [
       {
         lane: 'refs', col: 3,
         content: 'lane-roles.md\nlane-vocabulary.md',
-        frame: figure('data-model-hierarchy.svg'),
         summary:
           'Rendering follows the semantic lane_role, never the display name — which is why lane labels are free-form, in any language.',
         resources: [repoLink('references/lane-roles.md', 'references/lane-roles.md')],
@@ -617,7 +637,6 @@ const SCENARIOS = [
       {
         lane: 'refs', col: 6,
         content: 'data-model.md\nir-schema.json',
-        frame: figure('blueprint-anatomy.svg'),
         resources: [
           repoLink('references/data-model.md', 'references/data-model.md'),
           repoLink('references/ir-schema.json', 'references/ir-schema.json'),
@@ -640,7 +659,6 @@ const SCENARIOS = [
       {
         lane: 'refs', col: 10,
         content: 'deploy-notes.md',
-        frame: figure('four-ways-in.svg'),
         resources: [repoLink('deploy-notes.md', 'skills/map/references/deploy-notes.md')],
       },
     ],
