@@ -44,9 +44,12 @@
  * Postgres, so its author may never have watched it work.
  *
  * Exits 0 when the database is clean, 1 on any finding, and 1 — loudly — when
- * it cannot reach a database at all. A guard that passes when blind is not a
- * guard; that sentence is `sync-blueprint-contract.mjs`'s and it was written
- * after a check spent weeks exiting 0 without comparing anything.
+ * a database was NAMED and could not be reached, with the connection error
+ * quoted. A guard that passes when blind is not a guard; that sentence is
+ * `sync-blueprint-contract.mjs`'s and it was written after a check spent weeks
+ * exiting 0 without comparing anything. A run where nobody named a database at
+ * all exits 0 through the unverified register instead — what NAMING one means,
+ * and why that case is not the blind one, is stated once at `judge` below.
  *
  * ── WORDS THAT KEEP A RETIRED SPELLING ─────────────────────────────
  *
@@ -303,6 +306,19 @@ export function sweptSql() {
  where nsp.nspname = 'public' and cls.relkind in ('r','v','m','p')`
 }
 
+/**
+ * The sentence the finding and the register both say, because it is the same
+ * fact either way: this check reads a catalogue, and there was not one.
+ * Written once so the two cannot drift into disagreeing about what the check
+ * is for.
+ */
+const NOTHING_WITHOUT_A_CATALOGUE =
+  'this check compares the CATALOGUE, not the migration files, and has nothing to say without one.'
+
+/** What the sweep names as its subject, and what `--self-test` names as its. */
+const SWEPT = 'a retired word swept across the database catalogue'
+const PLANTED = 'a planted object the sweep must report'
+
 function psql(args, input) {
   return execFileSync('psql', ['-At', '-F', '\t', '-v', 'ON_ERROR_STOP=1', ...args], {
     encoding: 'utf8',
@@ -311,39 +327,82 @@ function psql(args, input) {
   })
 }
 
-// A DATABASE THAT COULD NOT BE SWEPT IS RED HERE, NOT SKIPPED. Everywhere else
-// in this set "could not look" is a warning, because the skip is the correct
-// answer; here it is not. This check exists because the migration files and
-// the catalogue disagree, and a run that never reached a catalogue has not
-// compared anything — in CI it follows the migration replay, so the only way
-// to reach it is a database that should have been there and was not. So the
-// reason is said as a finding, in the words it has always used.
+// A DATABASE THAT WAS NAMED AND COULD NOT BE SWEPT IS RED HERE, NOT SKIPPED.
+// Everywhere else in this set "could not look" is a warning, because the skip
+// is the correct answer; for a named database it is not. This check exists
+// because the migration files and the catalogue disagree, and a run that was
+// pointed at a server and never reached it has not compared anything — in CI
+// it follows the migration replay with `--database migration_replay`, so the
+// only way to reach that branch is a database that should have been there and
+// was not. So the reason is said as a finding, in the words it has always
+// used.
+//
+// A DATABASE NOBODY NAMED IS THE OTHER CASE, and it is not that one. There is
+// no catalogue that should have been there: a person running the suite on a
+// machine with no Postgres asked this check nothing. Red there is a guard
+// whose readers learn to ignore it, which is the failure `sweep.mjs` argues at
+// length under `unverified` — so it goes through that register instead, in the
+// same words, and exits clean.
+//
+// NAMING ONE IS NOT ONLY `--database`. libpq reads a connection out of the
+// environment a piece at a time, and a machine that sets PGHOST — or PGUSER,
+// PGPORT, PGSERVICE — has pointed this check at a server whether or not it
+// spelled the database, which is how the command with no arguments at the top
+// of this file has always worked. So any of them is a name, the sweep is
+// attempted, and a failure is the finding it was before. Only a run with none
+// of them is the one nobody asked anything.
 /**
  * The verdict: a database catalogue swept for the words the schema retired.
  *
  * Pure — it sweeps the catalogue, decides, and hands back what it found and how
  * many rows came back. Nothing here prints or exits.
  */
-export function judge(argv = process.argv.slice(2)) {
-  const args = argv
-  const dbIndex = args.indexOf('--database')
-  const database = dbIndex === -1 ? process.env.PGDATABASE : args[dbIndex + 1]
+export function judge(argv = process.argv.slice(2), env = process.env) {
+  const selfTest = argv.includes('--self-test')
+  // The subject the refusal and the register name. `--self-test` measures
+  // something else, and a skip that named the sweep would be describing a run
+  // that was never asked for.
+  const what = selfTest ? PLANTED : SWEPT
+
+  const dbIndex = argv.indexOf('--database')
+  const database = dbIndex === -1 ? env.PGDATABASE : argv[dbIndex + 1]
+
+  // A FLAG WITH NO VALUE IS A USAGE ERROR, not a run with no database.
+  // `--database` followed by nothing, or by the next flag, is somebody who
+  // meant to name one; answering it with a green skip is the check agreeing
+  // that nothing was asked.
+  if (dbIndex !== -1 && (database === undefined || database.startsWith('--'))) {
+    return { what, findings: ['--database was given no value'] }
+  }
+
+  // Every piece of a connection libpq would read, not only the database name.
+  const named = Boolean(database) || ['PGHOST', 'PGUSER', 'PGPORT', 'PGSERVICE'].some((key) => env[key])
+
+  if (!named) {
+    return {
+      what,
+      unverified:
+        `no database was named — ${NOTHING_WITHOUT_A_CATALOGUE} ` +
+        'Set PGHOST/PGUSER/PGDATABASE, or pass --database <name>. In CI this runs ' +
+        'after the migration replay in ci.yml, which names one.',
+    }
+  }
 
   const target = database ? ['-d', database] : []
 
-  if (args.includes('--self-test')) {
+  if (selfTest) {
     let out
     try {
       out = psql(target, selfTestSql())
     } catch (error) {
       return {
-        what: 'a planted object the sweep must report',
+        what,
         findings: [`self-test could not run: ${String(error.stderr || error.message).trim()}`],
       }
     }
     const planted = parseRows(out).filter((row) => row.identifier.includes('zz_selftest'))
     return {
-      what: 'a planted object the sweep must report',
+      what,
       count: planted.length,
       findings:
         planted.length === 0
@@ -361,13 +420,12 @@ export function judge(argv = process.argv.slice(2)) {
     tsv = psql([...target, '-c', sweepSql()])
   } catch (error) {
     return {
-      what: 'a retired word swept across the database catalogue',
+      what,
       findings: [
-        'could not sweep a database — this check compares the CATALOGUE, not the ' +
-          'migration files, and has nothing to say without one.\n' +
+        `could not sweep a database — ${NOTHING_WITHOUT_A_CATALOGUE}\n` +
           `  ${String(error.stderr || error.message).trim().split('\n').slice(-3).join('\n  ')}\n` +
-          '\nSet PGHOST/PGUSER/PGDATABASE, or pass --database <name>. In CI this runs ' +
-          'after the migration replay in ci.yml.',
+          '\nA database was named and did not answer: check PGHOST/PGUSER/PGDATABASE, or the ' +
+          '--database <name> you passed. In CI this runs after the migration replay in ci.yml.',
       ],
     }
   }
@@ -383,7 +441,7 @@ export function judge(argv = process.argv.slice(2)) {
     swept = Number(psql([...target, '-c', sweptSql()]).trim())
   } catch (error) {
     return {
-      what: 'a retired word swept across the database catalogue',
+      what,
       findings: [`could not count the catalogue: ${String(error.stderr || error.message).trim()}`],
     }
   }
