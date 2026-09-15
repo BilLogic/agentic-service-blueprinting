@@ -19,7 +19,8 @@ import { storageKey } from '@/lib/storageNamespace'
  *
  * The panel and its views read this and nothing else about a session.
  *
- * WHY IT IS A MODULE STORE AT ALL (docs/adr/0005): the chat has two postures
+ * WHY IT IS A MODULE STORE AT ALL — cross-surface state is a module store,
+ * and this is the case that decision was written from. The chat has two postures
  * — docked in the sidebar, floating over the canvas — rendered by two mount
  * points, so dragging between them unmounts one `AgentPanel` and mounts
  * another. Anything held in component state dies in that gap, which meant a
