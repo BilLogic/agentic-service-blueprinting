@@ -12,7 +12,7 @@
  */
 
 export const ANNOTATION_BAR_TRIGGER_CLASS =
-  'flex h-8 items-center gap-0.5 rounded-full px-2 text-(--foreground-annotation-chrome) transition-colors hover:bg-(--wash-annotation-chrome) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--ring-annotation-chrome)'
+  'flex h-8 items-center gap-1 rounded-full px-2 text-(--foreground-annotation-chrome) transition-colors hover:bg-(--wash-annotation-chrome) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--ring-annotation-chrome)'
 
 /**
  * The round icon-only slot in the floating style bars (currently every

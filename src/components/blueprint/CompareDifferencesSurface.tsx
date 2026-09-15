@@ -107,7 +107,7 @@ const CompareDiffRow = memo(function CompareDiffRow({
     <div
       role="button"
       tabIndex={0}
-      className="group/diffrow col-span-full grid grid-cols-subgrid items-start gap-x-2 rounded-md px-1 py-1.5 text-left hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      className="group/diffrow col-span-full grid grid-cols-subgrid items-start gap-x-2 rounded-md px-1 py-2 text-left hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       onClick={() => onFocusSlot(slot)}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -117,7 +117,7 @@ const CompareDiffRow = memo(function CompareDiffRow({
       }}
       aria-label={`Show ${slot.laneLabel} at ${slot.columnLabel} on the board`}
     >
-      <div className="flex min-w-0 items-center gap-1.5">
+      <div className="flex min-w-0 items-center gap-2">
         <span
           aria-hidden
           className="size-2 shrink-0 rounded-[3px]"
@@ -203,7 +203,7 @@ function DiffTable({
       {registration.blueprints.map((blueprint) => (
         <div
           key={blueprint.path.id}
-          className="min-w-0 border-t-[3px] pt-1 pb-0.5 pr-2"
+          className="min-w-0 border-t-[3px] pt-1 pb-1 pr-2"
           style={{ borderTopColor: getPathColor(blueprint.path) }}
         >
           <span
@@ -245,7 +245,7 @@ function FilterTag({
       onClick={onToggle}
       className={cn(
         // geometry: packs the path name into the badge's fixed height.
-        'rounded-full border px-2 py-0.5 text-xs leading-none transition-colors duration-(--motion-micro)',
+        'rounded-full border px-2 py-1 text-xs leading-none transition-colors duration-(--motion-micro)',
         pressed
           ? 'border-foreground/50 bg-foreground/10 text-foreground'
           : 'border-border text-muted-foreground hover:text-foreground',
@@ -382,7 +382,7 @@ export function CompareDifferencesSurface({
     keeps its badges: there, ①②③ is the run topology, not a step.
   */
   const groupHeader = (label: string, count: number, title?: string) => (
-    <span className="flex min-w-0 flex-1 items-center gap-1.5">
+    <span className="flex min-w-0 flex-1 items-center gap-2">
       <span
         className="min-w-0 truncate text-xs font-medium text-foreground"
         title={title}
@@ -413,20 +413,20 @@ export function CompareDifferencesSurface({
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4 blueprint-scroll">
       {/* Header: who is being compared, the filter, the comparison's limits.
           Deliberately countless — see the surface docblock. */}
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             {registration.blueprints.map((blueprint, index) => (
               <span
                 key={blueprint.path.id}
-                className="flex min-w-0 items-center gap-1.5"
+                className="flex min-w-0 items-center gap-2"
               >
                 {index > 0 ? (
                   <span className="text-xs text-muted-foreground">vs</span>
                 ) : null}
                 <span
                   // geometry: packs the path name into the badge's fixed height.
-                  className="max-w-32 truncate rounded-full px-2 py-0.5 text-xs font-medium leading-none"
+                  className="max-w-32 truncate rounded-full px-2 py-1 text-xs font-medium leading-none"
                   data-blueprint-fill
                   style={getPathBadgeStyle(blueprint.path)}
                   title={blueprint.path.name}
@@ -522,8 +522,8 @@ export function CompareDifferencesSurface({
         </p>
       ) : stepGroups.length === 1 && detailOnlySlots.length === 0 ? (
         /* Exactly one step, nothing else: flat table, no accordion chrome. */
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5 border-b border-muted pb-1.5">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 border-b border-muted pb-2">
             {groupHeader(
               stepGroups[0].headerLabel,
               filteredStepSlots(stepGroups[0]).length,
@@ -560,7 +560,7 @@ export function CompareDifferencesSurface({
         >
           {stepGroups.map((group) => (
             <AccordionItem key={group.columnKey} value={`step-${group.columnKey}`}>
-              <AccordionTrigger className="w-full min-w-0 gap-1.5 py-2 hover:no-underline">
+              <AccordionTrigger className="w-full min-w-0 gap-2 py-2 hover:no-underline">
                 {groupHeader(
                   group.headerLabel,
                   filteredStepSlots(group).length,
@@ -580,7 +580,7 @@ export function CompareDifferencesSurface({
           ))}
           {detailOnlySlots.length > 0 ? (
             <AccordionItem value="detail">
-              <AccordionTrigger className="w-full min-w-0 gap-1.5 py-2 hover:no-underline">
+              <AccordionTrigger className="w-full min-w-0 gap-2 py-2 hover:no-underline">
                 {groupHeader(
                   'Detail-only differences',
                   filteredDetailSlots.length,

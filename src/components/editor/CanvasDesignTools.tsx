@@ -143,7 +143,7 @@ export function CanvasDesignTools() {
             // selection instead: ghost at rest, tinted and bordered once
             // cells are picked, which is also when it starts doing anything.
             className={cn(
-              'pointer-events-auto shrink-0 gap-1.5 px-2.5',
+              'pointer-events-auto shrink-0 gap-2 px-2',
               picked.length > 0
                 ? 'border border-primary/30 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'
                 : 'text-muted-foreground hover:text-foreground',
@@ -154,7 +154,7 @@ export function CanvasDesignTools() {
               ? 'Click cells to add them'
               : 'Make slice'}
             {picked.length > 0 ? (
-              <span className="rounded-full bg-primary/15 px-1.5 text-xs font-medium tabular-nums">
+              <span className="rounded-full bg-primary/15 px-2 text-xs font-medium tabular-nums">
                 {picked.length}
               </span>
             ) : null}

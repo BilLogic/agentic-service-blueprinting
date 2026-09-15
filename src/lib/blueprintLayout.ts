@@ -335,6 +335,27 @@ export const BLUEPRINT_CELL_GUTTER = 12
 export const BLUEPRINT_CELL_INNER_X = 16
 export const BLUEPRINT_CELL_INNER_Y = 12
 
+/**
+ * Tailwind spacing class for a pixel measure on the 4px grid.
+ *
+ * @param prefix - Axis of the utility (`px` or `py`)
+ * @param px - Pixel value owned by the layout engine
+ * @returns The matching spacing utility
+ */
+function spacingClass(prefix: 'px' | 'py', px: number): string {
+  return `${prefix}-${px / 4}`
+}
+
+/** Painted inner padding — derived from the layout constants so paint and geometry cannot disagree. */
+export const BLUEPRINT_CELL_INNER_X_CLASS = spacingClass(
+  'px',
+  BLUEPRINT_CELL_INNER_X,
+)
+export const BLUEPRINT_CELL_INNER_Y_CLASS = spacingClass(
+  'py',
+  BLUEPRINT_CELL_INNER_Y,
+)
+
 /** Stable canvas face for narrative cells; complete prose lives in detail. */
 export const NARRATIVE_CELL_HEIGHT = 128
 export const NARRATIVE_CELL_HEIGHT_COMPACT = 96

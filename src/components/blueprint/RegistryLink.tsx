@@ -70,7 +70,7 @@ export function RegistryLink({
         about, or take it off this cell.
       </p>
       <Field label="Registry" hint="The registry entry this placement was really about.">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <OptionSelect
             value={choice}
             onChange={setChoice}

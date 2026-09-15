@@ -15,7 +15,7 @@
  * the second is the one a reader sees. The numbers below were taken from the
  * rendered output BEFORE the variant existed.
  *
- * Only unmodified utilities count. `has-data-[icon=inline-end]:pr-1.5` and
+ * Only unmodified utilities count. `has-data-[icon=inline-end]:pr-2` and
  * `[&>svg]:size-3!` are on every badge and always were; they say when a size
  * applies to something else, not how big this badge is.
  */
@@ -63,7 +63,7 @@ describe('the size a wrapper asks for is the size it used to write', () => {
     [
       'a bare badge is the default size',
       () => <Badge>Draft</Badge>,
-      ['h-5', 'px-2', 'py-0.5', 'text-xs'],
+      ['h-5', 'px-2', 'py-1', 'text-xs'],
     ],
     [
       'a compact path label is the default size',
@@ -76,7 +76,7 @@ describe('the size a wrapper asks for is the size it used to write', () => {
           showTooltip={false}
         />
       ),
-      ['h-5', 'px-2', 'py-0.5', 'text-xs'],
+      ['h-5', 'px-2', 'py-1', 'text-xs'],
     ],
     [
       'a full-size path label is comfortable',
@@ -88,7 +88,7 @@ describe('the size a wrapper asks for is the size it used to write', () => {
           showTooltip={false}
         />
       ),
-      ['h-auto', 'px-2.5', 'py-1', 'text-sm'],
+      ['h-auto', 'px-3', 'py-1', 'text-sm'],
     ],
     [
       // The one the issue did not expect: this wrapper's `compact` kept the
@@ -96,19 +96,19 @@ describe('the size a wrapper asks for is the size it used to write', () => {
       // default size.
       'a compact path kind keeps the roomy padding',
       () => <PathKindBadge pathKind="happy" compact />,
-      ['h-auto', 'px-2.5', 'py-1', 'text-xs'],
+      ['h-auto', 'px-3', 'py-1', 'text-xs'],
     ],
     [
       'a full-size path kind is comfortable',
       () => <PathKindBadge pathKind="happy" />,
-      ['h-auto', 'px-2.5', 'py-1', 'text-sm'],
+      ['h-auto', 'px-3', 'py-1', 'text-sm'],
     ],
     [
       // A container's title hugs its text: the default size's padding at its
       // type scale, but 16px rather than a held 20px.
       'a scenario title is fitted',
       () => <ScenarioTitleBadge name="Warm-Up" />,
-      ['h-auto', 'px-2', 'py-0.5', 'text-xs'],
+      ['h-auto', 'px-2', 'py-1', 'text-xs'],
     ],
   ]
 

@@ -72,7 +72,7 @@ export function CellDetailTabs({
           <TabsTrigger
             key={value}
             value={value}
-            className="h-auto flex-none gap-1.5 rounded-none px-0 pb-2 pt-0 text-xs font-normal text-tertiary-foreground hover:text-muted-foreground data-active:text-foreground after:bottom-[-1px] after:bg-foreground/70"
+            className="h-auto flex-none gap-2 rounded-none px-0 pb-2 pt-0 text-xs font-normal text-tertiary-foreground hover:text-muted-foreground data-active:text-foreground after:bottom-[-1px] after:bg-foreground/70"
           >
             <TabIcon className="size-3" aria-hidden />
             {label}

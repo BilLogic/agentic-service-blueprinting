@@ -38,7 +38,7 @@ export function AgentSettingsFields({ active = true }: { active?: boolean }) {
   const showAgentSettings = canAgent || !configured
 
   return (
-    <div className="flex flex-col gap-2.5">
+    <div className="flex flex-col gap-2">
       {/* Show/hide the chat is the rail's ✦ toggle — settings hold
           settings, not surface toggles. */}
       <p className="text-sm font-medium text-foreground">Admin</p>
@@ -55,7 +55,7 @@ export function AgentSettingsFields({ active = true }: { active?: boolean }) {
 
       {showAgentSettings ? (
         <>
-          <div className="my-0.5 border-t border-muted" />
+          <div className="my-1 border-t border-muted" />
           <p className="text-sm font-medium text-foreground">Agent</p>
           <AgentProviderFields active={active} />
         </>

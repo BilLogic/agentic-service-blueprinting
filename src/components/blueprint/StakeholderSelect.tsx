@@ -84,7 +84,7 @@ export function StakeholderSelect({
       )
     }
     return (
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         <StakeholderBadge
           name={selected.name}
           kind={selected.kind as StakeholderKind}
@@ -120,7 +120,7 @@ export function StakeholderSelect({
             </Button>
           }
         />
-        <PopoverContent align="start" className="w-56 gap-0.5 p-1">
+        <PopoverContent align="start" className="w-56 gap-1 p-1">
           {/* "None", not the sentence that used to sit here — the hint slot is
               `shrink-0` and holds one word ("Staff", "Partner"), so a sentence
               pushed the popover wider than its own `w-56` and bled out of it.
@@ -184,7 +184,7 @@ function StakeholderRow({
       type="button"
       onClick={onSelect}
       className={cn(
-        'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs',
+        'flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs',
         'transition-colors duration-(--motion-micro) hover:bg-accent',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
       )}

@@ -59,7 +59,7 @@ function ToolDetail({ label, body }: { label: string; body: string }) {
       <Eyebrow>
         {label}
       </Eyebrow>
-      <pre className="mt-0.5 max-h-40 overflow-auto rounded-md bg-muted px-2 py-1.5 font-mono text-xs whitespace-pre-wrap text-foreground">
+      <pre className="mt-1 max-h-40 overflow-auto rounded-md bg-muted px-2 py-2 font-mono text-xs whitespace-pre-wrap text-foreground">
         {body}
       </pre>
     </div>
@@ -88,7 +88,7 @@ function ToolRow({ event }: { event: ToolEvent }) {
       <MarkerContent className={cn(!open && 'truncate')}>
         <span className="font-mono">{event.name}</span>
         {event.summary ? (
-          <span className="ml-1.5 text-muted-foreground">{event.summary}</span>
+          <span className="ml-2 text-muted-foreground">{event.summary}</span>
         ) : null}
       </MarkerContent>
     </>
@@ -126,7 +126,7 @@ function ToolRow({ event }: { event: ToolEvent }) {
         }
       />
       <CollapsibleContent>
-        <div className="mt-1 ml-6 flex flex-col gap-1.5">
+        <div className="mt-1 ml-6 flex flex-col gap-2">
           {event.args ? <ToolDetail label="Arguments" body={event.args} /> : null}
           {event.result ? (
             <ToolDetail label="Result" body={event.result} />
@@ -148,7 +148,7 @@ export function TranscriptRow({
         <Message align="end">
           <MessageContent>
             {event.skill || event.attachmentLabel ? (
-              <div className="mb-0.5 flex justify-end gap-1">
+              <div className="mb-1 flex justify-end gap-1">
                 {event.skill ? (
                   <Badge variant="secondary" className="font-mono">
                     /{event.skill}

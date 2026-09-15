@@ -120,12 +120,23 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: /mobile-cover\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         // Wider than the device default: a merged board with several paths
         // has more columns than a 1280px viewport shows, and a screenshot
         // nobody can read the right-hand edge of is half a screenshot.
         viewport: { width: 1600, height: 1000 },
+      },
+    },
+    {
+      name: 'mobile',
+      testMatch: /mobile-cover\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 375, height: 812 },
+        isMobile: true,
+        hasTouch: true,
       },
     },
   ],

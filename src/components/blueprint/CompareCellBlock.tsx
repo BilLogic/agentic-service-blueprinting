@@ -164,7 +164,7 @@ export function CompareCellBlock({
         data-step-index={stepIndex}
         className={cn(
           'flex w-full flex-1 flex-col items-stretch',
-          compact ? 'gap-2' : 'gap-2.5',
+          compact ? 'gap-2' : 'gap-2',
         )}
       >
         {(slotCells && slotCells.length > 0
@@ -302,7 +302,7 @@ export function CompareCellBlock({
       <TooltipContent
         side="top"
         sideOffset={6}
-        className="flex max-w-72 flex-col items-start gap-1.5 text-left"
+        className="flex max-w-72 flex-col items-start gap-2 text-left"
       >
         {/* Caption ink: the tooltip is page-coloured now, so contrast ink
             would be the page colour on the page. */}

@@ -191,7 +191,7 @@ export function CreateBlueprintDialog({
           className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto px-6"
           data-create-blueprint-fields=""
         >
-          <label className="flex flex-col gap-1.5">
+          <label className="flex flex-col gap-2">
             <span className="text-sm font-medium text-foreground">Name</span>
             <Input
               value={draft.name}
@@ -201,7 +201,7 @@ export function CreateBlueprintDialog({
             />
           </label>
 
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <span className="text-sm font-medium text-foreground">Phase</span>
             {fixedPhaseId ? (
               <p className="text-sm text-foreground">
@@ -216,7 +216,7 @@ export function CreateBlueprintDialog({
                   : 'No phases found — a scenario has to belong to one.'}
               </p>
             ) : (
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {phaseRows.map((phase: { id: string; name: string }) => (
                   <Button
                     key={phase.id}
@@ -232,7 +232,7 @@ export function CreateBlueprintDialog({
             )}
           </div>
 
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <span className="text-sm font-medium text-foreground">Layout</span>
             {/*
               Buttons rather than a ToggleGroup, matching the phase row above.
@@ -241,7 +241,7 @@ export function CreateBlueprintDialog({
               could not be seen. Two selection controls side by side also have
               no business looking different from each other.
             */}
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               {LAYOUTS.map((type) => (
                 <Button
                   key={type}
@@ -259,7 +259,7 @@ export function CreateBlueprintDialog({
             </p>
           </div>
 
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <span className="text-sm font-medium text-foreground">Lanes</span>
             <p className="text-xs text-muted-foreground">
               Copying from an existing blueprint keeps the lane names the same,
@@ -284,7 +284,7 @@ export function CreateBlueprintDialog({
             </select>
           </div>
 
-          <label className="flex flex-col gap-1.5">
+          <label className="flex flex-col gap-2">
             <span className="text-sm font-medium text-foreground">
               First version
             </span>
@@ -295,7 +295,7 @@ export function CreateBlueprintDialog({
             />
           </label>
 
-          <label className="flex flex-col gap-1.5">
+          <label className="flex flex-col gap-2">
             <span className="text-sm font-medium text-foreground">Steps</span>
             <Input
               type="number"

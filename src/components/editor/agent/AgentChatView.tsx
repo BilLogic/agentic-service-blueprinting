@@ -410,7 +410,7 @@ export function AgentChatView({
           scroll fade already says "the transcript continues up there". */}
       <div className="shrink-0 p-3 pt-2">
         {attachment ? (
-          <div className="mb-1.5 flex flex-col gap-1.5">
+          <div className="mb-2 flex flex-col gap-2">
             {attachment ? (
               <Attachment size="sm" className="w-full">
                 <AttachmentContent>
@@ -498,7 +498,7 @@ export function AgentChatView({
             </Command>
           </PopoverContent>
         </Popover>
-        <div ref={composerRowRef} className="flex items-end gap-1.5">
+        <div ref={composerRowRef} className="flex items-end gap-2">
           {running ? (
             <IconTooltip label="Stop — whatever landed stays, revertible">
               <Button
@@ -521,10 +521,10 @@ export function AgentChatView({
               on a borderless textarea: the box-around-a-box. */}
           <InputGroup className="min-h-8 flex-1">
             {pendingSkill ? (
-              <InputGroupAddon align="inline-start" className="self-start py-1.5">
+              <InputGroupAddon align="inline-start" className="self-start py-2">
                 <Badge
                   variant="secondary"
-                  className="gap-0.5 border-primary/25 bg-primary/10 font-mono text-primary"
+                  className="gap-1 border-primary/25 bg-primary/10 font-mono text-primary"
                 >
                   {pendingSkill.label}
                   <IconTooltip label="Drop the skill from this message">
@@ -532,7 +532,7 @@ export function AgentChatView({
                       type="button"
                       aria-label="Remove skill"
                       onClick={() => setPendingSkill(null)}
-                      className="rounded-sm p-0.5 transition-colors hover:bg-primary/15"
+                      className="rounded-sm p-1 transition-colors hover:bg-primary/15"
                     >
                       <X className="size-2.5" aria-hidden />
                     </button>
@@ -546,7 +546,7 @@ export function AgentChatView({
               // `field-sizing-content`, so the browser grows it. max-h caps
               // it at ~6 lines and then it scrolls, as before.
               // geometry: min-h-7 is a 28px composer box; a 20px line sits in the padding.
-              className="max-h-30 min-h-7 py-1.5 leading-5"
+              className="max-h-30 min-h-7 py-2 leading-5"
               value={draft}
               onChange={(event) => {
                 const value = event.target.value

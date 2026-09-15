@@ -15,9 +15,9 @@ import { cn } from "@/lib/utils"
  *  - the thumb's hairline is `ring-border` rather than `black/5`, for the same
  *    reason.
  *
- * On stays `bg-primary`: a switch that is on is a filled control, and filled
- * controls in this system are primary, not brand — a token names a job,
- * and the filled-control job is primary.
+ * On stays `bg-brand`: a switch that is on is one of the four jobs the
+ * brand token drives (CTA, prose links, the on track, the path-selector
+ * status dot). Selection and focus rings stay on `--primary` / `--ring`.
  */
 /**
  * The on/off track. Sized for the compact settings rows (`h-4`), which is
@@ -32,11 +32,11 @@ function Switch({ className, ...props }: SwitchPrimitive.Root.Props) {
         // wash, which against a 0.995 page is very nearly the page itself — so
         // the named wash alone left an off switch with no visible track,
         // measured on a render rather than assumed. `border-border` gives it
-        // one hairline; on it, the primary fill carries the shape and the edge
+        // one hairline; on it, the brand fill carries the shape and the edge
         // steps aside.
         "peer inline-flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full border border-border bg-control-raised p-px transition-colors outline-none data-checked:border-transparent",
         "focus-visible:ring-[3px] focus-visible:ring-ring/50",
-        "data-checked:bg-primary",
+        "data-checked:bg-brand",
         "data-disabled:cursor-not-allowed data-disabled:opacity-50",
         className
       )}

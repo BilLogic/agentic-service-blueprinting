@@ -15,7 +15,7 @@ export function AgentMarkdown({
   className?: string
 }) {
   return (
-    <div className={cn('space-y-1.5 text-sm', className)}>
+    <div className={cn('space-y-2 text-sm', className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -34,10 +34,10 @@ export function AgentMarkdown({
             </a>
           ),
           ul: ({ children }) => (
-            <ul className="list-disc space-y-0.5 pl-4">{children}</ul>
+            <ul className="list-disc space-y-1 pl-4">{children}</ul>
           ),
           ol: ({ children }) => (
-            <ol className="list-decimal space-y-0.5 pl-4">{children}</ol>
+            <ol className="list-decimal space-y-1 pl-4">{children}</ol>
           ),
           li: ({ children }) => <li>{children}</li>,
           h1: ({ children }) => (
@@ -56,7 +56,7 @@ export function AgentMarkdown({
             return (
               <code
                 className={cn(
-                  'rounded-sm bg-muted px-1 py-0.5 font-mono text-[0.8em]',
+                  'rounded-sm bg-muted px-1 py-1 font-mono text-[0.8em]',
                   isBlock && 'block overflow-x-auto p-2',
                 )}
               >
@@ -82,12 +82,12 @@ export function AgentMarkdown({
             </div>
           ),
           th: ({ children }) => (
-            <th className="border-b border-border px-1.5 py-1 text-left font-medium">
+            <th className="border-b border-border px-2 py-1 text-left font-medium">
               {children}
             </th>
           ),
           td: ({ children }) => (
-            <td className="border-b border-muted px-1.5 py-1 align-top">
+            <td className="border-b border-muted px-2 py-1 align-top">
               {children}
             </td>
           ),

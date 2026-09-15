@@ -267,14 +267,14 @@ function FillControl({
         align="center"
         side="top"
         sideOffset={8}
-        className={cn('w-auto min-w-0 p-2.5', ANNOTATION_BAR_MENU_CLASS)}
+        className={cn('w-auto min-w-0 p-2', ANNOTATION_BAR_MENU_CLASS)}
         data-annotation-chrome=""
         onMouseDown={(e) => e.preventDefault()}
       >
-        <Eyebrow className="mb-1.5 block text-(--foreground-annotation-chrome-tertiary)">
+        <Eyebrow className="mb-2 block text-(--foreground-annotation-chrome-tertiary)">
           Fill
         </Eyebrow>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
           <ColorSwatch
             empty
             label="No fill"
@@ -347,16 +347,16 @@ function StrokeControl({
         align="center"
         side="top"
         sideOffset={8}
-        className={cn('w-auto min-w-0 p-2.5', ANNOTATION_BAR_MENU_CLASS)}
+        className={cn('w-auto min-w-0 p-2', ANNOTATION_BAR_MENU_CLASS)}
         data-annotation-chrome=""
         onMouseDown={(e) => e.preventDefault()}
       >
-        <div className="mb-1.5 flex items-center justify-between gap-3">
+        <div className="mb-2 flex items-center justify-between gap-3">
           <Eyebrow className="text-(--foreground-annotation-chrome-tertiary)">
             Stroke
           </Eyebrow>
           {shape.color ? (
-            <div className="flex items-center gap-0.5">
+            <div className="flex items-center gap-1">
               {ANNOTATION_STROKE_WIDTHS.map((width) => (
                 <StrokeWidthSwatch
                   key={width}
@@ -372,7 +372,7 @@ function StrokeControl({
             </span>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
           <ColorSwatch
             empty
             label="No stroke"
@@ -438,14 +438,14 @@ function ColorControl({
         align="center"
         side="top"
         sideOffset={8}
-        className={cn('w-auto min-w-0 p-2.5', ANNOTATION_BAR_MENU_CLASS)}
+        className={cn('w-auto min-w-0 p-2', ANNOTATION_BAR_MENU_CLASS)}
         data-annotation-chrome=""
         onMouseDown={(e) => e.preventDefault()}
       >
-        <Eyebrow className="mb-1.5 block text-(--foreground-annotation-chrome-tertiary)">
+        <Eyebrow className="mb-2 block text-(--foreground-annotation-chrome-tertiary)">
           Color
         </Eyebrow>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
           {swatches.map((swatch) => (
             <ColorSwatch
               key={swatch}
@@ -503,7 +503,7 @@ function FontSizeControl({
               setOpen(false)
             }}
             className={cn(
-              'flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-left text-sm text-(--foreground-annotation-chrome) transition-colors hover:bg-(--wash-annotation-chrome)',
+              'flex w-full items-center justify-between gap-3 rounded-md px-2 py-2 text-left text-sm text-(--foreground-annotation-chrome) transition-colors hover:bg-(--wash-annotation-chrome)',
               fontSize === size && 'bg-(--wash-annotation-chrome)',
             )}
           >
@@ -593,7 +593,7 @@ function AlignControl({
               setOpen(false)
             }}
             className={cn(
-              'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-(--foreground-annotation-chrome) transition-colors hover:bg-(--wash-annotation-chrome)',
+              'flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-(--foreground-annotation-chrome) transition-colors hover:bg-(--wash-annotation-chrome)',
               align === id && 'bg-(--wash-annotation-chrome)',
             )}
           >

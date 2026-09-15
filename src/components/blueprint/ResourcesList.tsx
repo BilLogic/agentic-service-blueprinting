@@ -134,7 +134,7 @@ function ResourceListRow({
       dragListener={false}
       dragControls={controls}
       className={cn(
-        'group flex min-w-0 items-center gap-1 rounded-md px-1 py-0.5 text-xs',
+        'group flex min-w-0 items-center gap-1 rounded-md px-1 py-1 text-xs',
         row.kind === 'link' && row.featured && 'bg-muted/40',
       )}
       data-resource-row=""
@@ -450,7 +450,7 @@ export function ResourcesList({
   return (
     <div className="flex flex-col gap-2" data-resources-list="">
       {hint ? (
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col gap-1">
           <span className="text-xs font-medium text-muted-foreground">Resources</span>
           <p className="text-xs text-muted-foreground">{hint}</p>
         </div>
@@ -470,7 +470,7 @@ export function ResourcesList({
           {featuredRows.map((row) => (
             <li
               key={row.key}
-              className="flex min-w-0 items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-xs"
+              className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-background px-2 py-1 text-xs"
               data-featured-row=""
             >
               <Link2 className="size-3 shrink-0 text-muted-foreground" aria-hidden />
@@ -531,12 +531,12 @@ export function ResourcesList({
       {pending ? (
         <div
           className={cn(
-            'flex flex-col gap-1 rounded-md px-1 py-0.5 text-xs',
+            'flex flex-col gap-1 rounded-md px-1 py-1 text-xs',
             !pending.failed && 'opacity-60',
           )}
           data-upload-row=""
         >
-          <div className="flex min-w-0 items-center gap-1.5">
+          <div className="flex min-w-0 items-center gap-2">
             <FileText className="size-3 shrink-0 text-muted-foreground" aria-hidden />
             <span className="min-w-0 flex-1 truncate">{nameOfFile(pending.file)}</span>
             {pending.failed ? (
@@ -548,7 +548,7 @@ export function ResourcesList({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-6 px-1.5 text-xs"
+                  className="h-6 px-2 text-xs"
                   onClick={() => void upload(pending.file)}
                 >
                   Retry
@@ -570,7 +570,7 @@ export function ResourcesList({
         </div>
       ) : null}
 
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
         <Input
           value={pasted}
           placeholder="Paste a link…"

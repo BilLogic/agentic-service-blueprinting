@@ -371,7 +371,7 @@ export function ResizableComparePanel({
             // The focused scenario's label steps up a size. On a board of
             // twenty-two panels the one you are IN should say so at a glance,
             // and the badge is the only chrome each panel carries.
-            focusActive && 'px-2.5 py-1 text-sm',
+            focusActive && 'px-2 py-1 text-sm',
           )}
           style={{
             top: 0,

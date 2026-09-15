@@ -79,7 +79,7 @@ export function StatusBadge({
       // with no pointer at all. No hover colour — see `ui/badge.tsx`.
       tabIndex={definition ? 0 : undefined}
       className={cn(
-        'shrink-0 gap-0 font-normal',
+        'shrink-0 gap-0 rounded-full font-normal',
         status === 'live' && 'text-foreground',
         isUnbuilt(status) && 'border-dashed text-muted-foreground',
         className,

@@ -31,10 +31,10 @@
  * sentence rather than on a decision.
  */
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) * 1.5);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-canvas: var(--canvas);
@@ -481,8 +481,8 @@
    * global.css is their Figma token export and is unconsumed there too; it is
    * the designers' source of truth, not the app's.
    */
-  --radius-panel: 6px;
-  --spacing-content: 21px;
+  --spacing-gutter: 2.5rem;
+  --spacing-content: 1.25rem;
   --spacing-card: var(--card-padding-x);
   --width-listbox: 320px;
   /* Cell detail panel's two postures (desktop right-pinned card). These
@@ -492,24 +492,12 @@
   --width-cell-panel-expanded: 40rem;
   --breakpoint-xs: 480px;
 
-  /* Shadows stay on Tailwind's default scale (Supabase defines no --shadow-*
-     tokens either), with one addition: --shadow-floating, the shared shadow
-     for toolbars/menus floating over the canvas. */
-  --shadow-floating: 0 8px 28px rgb(0 0 0 / 0.3);
-
   /*
-   * Additive, like the sm / md / xl rungs above (`--radius - 4px`, `- 2px`,
-   * `+ 4px`) — these were multipliers, which made the ladder uniform only at
-   * the current `--radius: 0.625rem`. Same values today (18 / 22 / 26px), one
-   * arithmetic sequence at any base: 6, 8, 10, 14, 18, 22, 26.
-   *
-   * Deliberately beyond Tailwind's fixed 16 / 24 / 32: a scale that tracks
-   * `--radius` is the same derivation philosophy as every other token here,
-   * and a 10px base wants tighter large rungs than a 16px one.
+   * Multiplicative, so a deployment that turns `--radius` keeps the same
+   * five-rung proportions. sm ×0.5, md ×0.75, lg ×1, xl ×1.5, 2xl ×2.
+   * 3xl / 4xl and the standalone panel radius are retired.
    */
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
+  --radius-2xl: calc(var(--radius) * 2);
 }
 
 /*
@@ -568,6 +556,17 @@
    * mechanism is taken so the knob exists; the 450 is not.
    */
   --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  /*
+   * Two-layer tinted shadows. Colour is taken from the page (`--background`)
+   * so a warm surface casts a warm shadow, not a slab of black. Tight layer
+   * first, wide layer second. Declared here — a plain `@theme` block, not
+   * `inline` — so `.dark` can restate them. `--shadow-floating` keeps its
+   * name and takes the md pair; the floating toolbar reads that name.
+   */
+  --shadow-md: 0 1px 2px oklch(from var(--background) calc(l * 0.4) c h / 0.12), 0 8px 24px oklch(from var(--background) calc(l * 0.4) c h / 0.08);
+  --shadow-lg: 0 2px 4px oklch(from var(--background) calc(l * 0.4) c h / 0.14), 0 16px 40px oklch(from var(--background) calc(l * 0.4) c h / 0.1);
+  --shadow-floating: var(--shadow-md);
 }
 
 /*
@@ -591,4 +590,5 @@ samp {
   --text-4xl: 2.25rem;
   --text-5xl: 3rem;
   --font-weight-normal: 400;
+  --font-weight-medium: 500;
 }

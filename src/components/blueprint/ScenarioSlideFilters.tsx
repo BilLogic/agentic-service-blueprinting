@@ -74,7 +74,7 @@ export function ScenarioSlideFilters({
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="rounded-md bg-muted/40 px-2 py-0.5">
+        <div className="rounded-md bg-muted/40 px-2 py-1">
           <PathMultiSelect
             paths={paths}
             selectedPathIds={selectedPathIds}

@@ -14,9 +14,15 @@ export const RAIL_WIDTH = 48
 // reads as layout instability, not per-surface tailoring. Still
 // drag-resizable; the chosen width applies everywhere and persists as a
 // single value.
-export const SIDEBAR_DEFAULT_WIDTH = 320
+export const SIDEBAR_DEFAULT_WIDTH = 288
 export const SIDEBAR_MIN_WIDTH = 240
 export const SIDEBAR_MAX_WIDTH = 640
+
+/**
+ * Vertical pitch of one sidebar nav row (`NavRow`). Half-steps such as
+ * `py-1.5` are not this grid.
+ */
+export const SIDEBAR_ROW_PITCH = 30
 
 /** The agent's floating window: birth position/size, and how small the
  * corner drag may make it before the chat inside stops being usable.

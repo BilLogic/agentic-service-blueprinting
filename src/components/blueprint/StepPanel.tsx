@@ -208,7 +208,7 @@ function StepPanelBody({
       {distinct.size > 1 ? (
         <div className="flex flex-col gap-1">
           <PanelSectionLabel>Position</PanelSectionLabel>
-          <ul className="flex flex-col gap-0.5">
+          <ul className="flex flex-col gap-1">
             {step.positions.map((entry) => (
               <li
                 key={`${entry.pathName}-${entry.position}`}

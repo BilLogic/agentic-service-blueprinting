@@ -27,7 +27,7 @@ export function FeaturedButtons({
   const safe = buttons.filter((button) => safeExternalHref(button.url))
   if (safe.length === 0) return null
   return (
-    <div className={cn('flex flex-wrap gap-1.5', className)} data-featured-buttons="">
+    <div className={cn('flex flex-wrap gap-2', className)} data-featured-buttons="">
       {safe.map((button) => {
         const Glyph = GLYPH[button.glyph]
         return (
@@ -38,7 +38,7 @@ export function FeaturedButtons({
             rel="noopener noreferrer"
             title={button.host}
             className={cn(
-              'inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-foreground',
+              'inline-flex h-7 items-center gap-2 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground',
               'transition-colors hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none',
             )}
           >

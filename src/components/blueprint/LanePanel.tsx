@@ -338,9 +338,9 @@ function StringListField({
 }) {
   return (
     <Field label={label} hint={hint}>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         {values.map((value, index) => (
-          <div key={index} className="flex items-center gap-1.5">
+          <div key={index} className="flex items-center gap-2">
             <Input
               value={value}
               placeholder={placeholder}

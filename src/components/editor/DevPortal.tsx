@@ -55,7 +55,7 @@ function InfoHint({ label, className }: { label: string; className?: string }) {
         type="button"
         aria-label={label}
         className={cn(
-          'shrink-0 rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+          'shrink-0 rounded-sm p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
           className,
         )}
       >
@@ -94,8 +94,8 @@ export function DevPortalSection() {
   if (!devPortalEnabled()) return null
 
   return (
-    <div className="flex flex-col gap-2.5" data-dev-portal>
-      <div className="my-0.5 border-t border-muted" />
+    <div className="flex flex-col gap-2" data-dev-portal>
+      <div className="my-1 border-t border-muted" />
 
       <div className="flex items-center gap-1">
         <p className="text-sm font-medium text-foreground">For developers</p>

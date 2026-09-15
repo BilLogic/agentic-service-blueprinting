@@ -277,16 +277,13 @@ const CONFIG_READERS: Record<string, string> = {
 }
 
 /**
- * And the exception is inert, which is the other half of the claim.
- *
- * `types/nav.ts` builds the workspace breadcrumb's label from the template's
- * own name, so a deployment mounting this package would see that name in a
- * breadcrumb — except that the trail is assembled by a component nothing
- * renders. Nothing on screen is wrong today, and this is what will say so on
- * the day someone wires the component up: the label has to be carried in from
- * the resolved config before that component has a consumer.
+ * The workspace crumb still takes the template's own name from
+ * `types/nav.ts`. The trail is now on the scenario header, so that read is
+ * no longer inert: a second consumer of `ScenarioMenubarBreadcrumb` would
+ * print the same label on another surface, and that is what this names.
  */
-const UNRENDERED_BREADCRUMB = 'ScenarioMenubarBreadcrumb'
+const SCENARIO_HEADER_BREADCRUMB = 'ScenarioMenubarBreadcrumb'
+const SCENARIO_HEADER_BREADCRUMB_HOST = 'components/editor/PhaseMenubarHeader.tsx'
 
 describe('the modules that still read the template’s own name', () => {
   it('are exactly the ones accounted for', () => {
@@ -301,17 +298,17 @@ describe('the modules that still read the template’s own name', () => {
     expect([...readers].sort()).toEqual(Object.keys(CONFIG_READERS).sort())
   })
 
-  it('include one whose surface is not rendered, and it stays that way', () => {
+  it('mounts the workspace crumb from exactly the scenario header', () => {
     // Tests name it to assert on it; the question is what RENDERS it.
     const importers = sourcesOn()
       .filter(
         ({ file, text }) =>
           file.slice(file.lastIndexOf('/') + 1).replace(/\.tsx?$/, '') !==
-            UNRENDERED_BREADCRUMB && text.includes(UNRENDERED_BREADCRUMB),
+            SCENARIO_HEADER_BREADCRUMB && text.includes(SCENARIO_HEADER_BREADCRUMB),
       )
       .map(({ file }) => file)
 
-    expect(importers).toEqual([])
+    expect(importers).toEqual([SCENARIO_HEADER_BREADCRUMB_HOST])
   })
 })
 

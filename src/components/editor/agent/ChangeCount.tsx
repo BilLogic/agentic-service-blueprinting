@@ -16,7 +16,7 @@ export function ChangeCount({
   return (
     <span
       className={cn(
-        'flex shrink-0 items-center gap-0.5 text-xs tabular-nums',
+        'flex shrink-0 items-center gap-1 text-xs tabular-nums',
         className,
       )}
       title={`${count} change${count === 1 ? '' : 's'} from this session`}

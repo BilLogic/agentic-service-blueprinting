@@ -44,7 +44,7 @@ export function WorkspaceServiceSwitcher({
   const containerClass = cn(
     'flex shrink-0 items-center rounded-md border text-sm',
     active
-      ? 'border-border bg-background shadow-sm'
+      ? 'border-border bg-background'
       : 'border-transparent hover:bg-accent',
   )
   const textClass = active ? 'text-foreground' : 'text-muted-foreground'
@@ -61,7 +61,7 @@ export function WorkspaceServiceSwitcher({
           aria-selected={active}
           tabIndex={tabIndex}
           onClick={onActivate}
-          className={cn('max-w-56 truncate px-2.5 py-1 font-medium', textClass)}
+          className={cn('max-w-56 truncate px-2 py-1 font-medium', textClass)}
         >
           {workspaceName}
         </button>
@@ -83,7 +83,7 @@ export function WorkspaceServiceSwitcher({
               tabIndex={tabIndex}
               data-workspace-switcher=""
               className={cn(
-                'flex max-w-56 items-center gap-1 px-2.5 py-1 font-medium',
+                'flex max-w-56 items-center gap-1 px-2 py-1 font-medium',
                 textClass,
               )}
             >
@@ -93,11 +93,11 @@ export function WorkspaceServiceSwitcher({
           }
         />
       </div>
-      <PopoverContent align="start" className="w-64 p-1.5">
-        <Eyebrow className="flex w-fit px-2 pb-1 pt-0.5">
+      <PopoverContent align="start" className="w-64 p-2">
+        <Eyebrow className="flex w-fit px-2 pb-1 pt-1">
           Services
         </Eyebrow>
-        <ul className="flex flex-col gap-0.5">
+        <ul className="flex flex-col gap-1">
           {services.map((svc) => {
             const isActive = svc.slug === activeSlug
             return (
@@ -113,7 +113,7 @@ export function WorkspaceServiceSwitcher({
                     onActivate()
                   }}
                   className={cn(
-                    'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent',
+                    'flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent',
                     isActive
                       ? 'font-medium text-foreground'
                       : 'text-muted-foreground',

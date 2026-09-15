@@ -35,7 +35,8 @@ Reading order in the header is title → lede → the way in. The button used to
 on the title's baseline, opposite the heading, which put the page's only action
 level with the words before the reader had been told what they were opening.
 Reading order and visual order now agree: what this is, what it does, how to
-enter.
+enter. When no database is connected, one muted line under the CTA reads
+"No database connected · read-only. Sample data shown." and names no vendor.
 
 ## The content split
 

@@ -162,7 +162,7 @@ export function CellDetailOverview({
      touchpoint cell the only cell whose identity block started somewhere
      other than its lane. */
   const identityBadges = (
-    <div className="flex min-w-0 flex-wrap items-center gap-1.5">{laneBadge}</div>
+    <div className="flex min-w-0 flex-wrap items-center gap-2">{laneBadge}</div>
   )
 
   /*
@@ -177,7 +177,7 @@ export function CellDetailOverview({
   */
   const touchpointField = showTouchpoint ? (
     <Field label="Touchpoint" hint={PANEL_TERMS.touchpoint}>
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         <PanelKindBadge
           label={techDetailLabel!}
           tone={resolveTouchpointTone(techDetailLabel!)}
@@ -224,7 +224,7 @@ export function CellDetailOverview({
         side by side at one size, and the sentence about the cell belongs
         directly under the name of it.
       */}
-      <div className="flex min-w-0 flex-col gap-1.5">
+      <div className="flex min-w-0 flex-col gap-2">
         {/* In edit mode the form's CONTENT field *is* the title; repeating it
             above the field would be the same word twice on one screen. */}
         {editingCell ? (

@@ -96,7 +96,7 @@ function InheritedLogos({
           return (
             <li
               key={logo.url}
-              className="flex min-w-0 items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground"
+              className="flex min-w-0 items-center gap-2 px-2 py-1 text-xs text-muted-foreground"
             >
               <img src={logo.url} alt="" className="size-3 shrink-0 object-contain" />
               <span className="min-w-0 truncate">{logo.name}</span>
@@ -199,7 +199,7 @@ export function CellResourcesTab({
               href={safeExternalHref(row.url) ?? undefined}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex w-full min-w-0 items-center gap-1.5 px-2 py-1.5 text-xs font-normal text-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+              className="flex w-full min-w-0 items-center gap-2 px-2 py-2 text-xs font-normal text-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
             >
               {row.kind === 'attachment' ? (
                 <FileText
@@ -285,7 +285,7 @@ function CellResourcesEditor({
               {fromPlacements.map((resource) => (
                 <li
                   key={resource.id ?? resource.url}
-                  className="flex min-w-0 items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground"
+                  className="flex min-w-0 items-center gap-2 px-2 py-1 text-xs text-muted-foreground"
                 >
                   <ExternalLink className="size-3 shrink-0 opacity-70" aria-hidden />
                   <span className="min-w-0 truncate">{resource.name}</span>

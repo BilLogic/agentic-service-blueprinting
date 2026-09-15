@@ -1,4 +1,5 @@
 import { getPathColorKey } from '@/lib/pathColorTheme'
+import { readLastViewedPath, resolveDefaultPathId } from '@/lib/mobilePathMemory'
 import {
   defaultSelectedPathIds,
   pickPreferredPath,
@@ -44,6 +45,22 @@ export function defaultPathKeyForScenario(
 ): string | undefined {
   const preferred = pickPreferredPath(paths)
   return preferred ? getPathKey(preferred) : undefined
+}
+
+/**
+ * The path a scenario should open on: last-viewed if it still exists in the
+ * catalog, otherwise the preferred (happy) path. Shared by `openScenario` so
+ * mobile and desktop land the same way.
+ *
+ * @param scenarioId - Scenario whose stored last-viewed path is consulted.
+ * @param paths - That scenario's registered paths.
+ * @returns The path id to select, or `null` when the scenario has none.
+ */
+export function resolveScenarioOpenPathId(
+  scenarioId: string,
+  paths: readonly PathListItem[],
+): string | null {
+  return resolveDefaultPathId(readLastViewedPath(scenarioId), paths)
 }
 
 /**

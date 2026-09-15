@@ -222,7 +222,7 @@ export function CreateSliceSheet({
               <Button
                 type="button"
                 size="sm"
-                className="shrink-0 px-2.5"
+                className="shrink-0 px-2"
                 disabled={cellCount === 0}
                 onClick={() => setStep('name')}
               >
@@ -232,10 +232,10 @@ export function CreateSliceSheet({
           </>
         ) : (
           <>
-            <div className="flex flex-col gap-2.5 px-3 py-3">
-              <label className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2 px-3 py-3">
+              <label className="flex flex-col gap-2">
                 <span className="text-sm font-medium text-foreground">
-                  Title<span className="ml-0.5 text-destructive">*</span>
+                  Title<span className="ml-1 text-destructive">*</span>
                 </span>
                 <Input
                   value={title}
@@ -249,7 +249,7 @@ export function CreateSliceSheet({
                   thing, so hiding half the name behind a click saved four
                   pixels and cost a discovery. Required-ness is carried by the
                   labels, not by which field is on screen. */}
-              <label className="flex flex-col gap-1.5">
+              <label className="flex flex-col gap-2">
                 <span className="text-sm font-medium text-muted-foreground">
                   Subtitle{' '}
                   <span className="font-normal text-muted-foreground">
@@ -292,7 +292,7 @@ export function CreateSliceSheet({
               <Button
                 type="button"
                 size="sm"
-                className="px-2.5"
+                className="px-2"
                 disabled={busy || !serviceId || problems.length > 0 || cellIds.length === 0}
                 onClick={handleCreate}
               >

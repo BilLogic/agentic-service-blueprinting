@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { COVER_MEASURE } from '@/components/cover/coverMeasure'
-import { CoverPageView } from '@/components/cover/CoverPage'
+import { CoverPageView, COVER_DISCONNECTED_STATUS } from '@/components/cover/CoverPage'
 import type { CoverContent } from '@/components/cover/coverModel'
 
 // Pins the cover page's surface contract: the tab
@@ -373,5 +373,43 @@ describe('CoverPageView', () => {
     expect(definition.className).toMatch(/\btext-foreground\b/)
     expect(definition.className).not.toMatch(/text-muted-foreground/)
     expect(definition.className).not.toMatch(/\bleading-/)
+  })
+
+  it('shows the read-only sample line under the CTA when no database is connected', () => {
+    render(
+      <CoverPageView
+        content={content()}
+        onOpenCanvas={vi.fn()}
+        configured={false}
+      />,
+    )
+    const cta = screen.getByRole('button', { name: 'Open the blueprint' })
+    const status = screen.getByText(COVER_DISCONNECTED_STATUS)
+    expect(status.tagName).toBe('P')
+    expect(
+      cta.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('hides the read-only sample line when a database is connected', () => {
+    render(
+      <CoverPageView
+        content={content()}
+        onOpenCanvas={vi.fn()}
+        configured
+      />,
+    )
+    expect(screen.queryByText(COVER_DISCONNECTED_STATUS)).toBeNull()
+  })
+
+  it('keeps cover copy vendor-neutral — no database product name', () => {
+    render(
+      <CoverPageView
+        content={content()}
+        onOpenCanvas={vi.fn()}
+        configured={false}
+      />,
+    )
+    expect(document.body.textContent).not.toMatch(/Supabase/i)
   })
 })

@@ -135,7 +135,12 @@ function ZoomPanViewportInner({
     onFitReady: handleFitReady,
   })
 
-  usePublishCanvasZoomChrome(onResetView)
+  usePublishCanvasZoomChrome({
+    onResetView,
+    zoomIn,
+    zoomOut,
+    fitToView,
+  })
 
   /*
     A pending focus that asks for the panel opens it the way "View cell

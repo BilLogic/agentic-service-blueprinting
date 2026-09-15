@@ -137,14 +137,14 @@ export function StoryboardWalkthroughModal() {
           className="flex h-[min(85vh,36rem)] flex-col gap-0 overflow-hidden rounded-2xl border-border p-0 shadow-sm sm:max-w-5xl"
           aria-label="Storyboard walkthrough"
         >
-          <DialogHeader className="shrink-0 flex-row items-center gap-2 border-b border-muted px-5 py-3.5 pr-14 text-left">
+          <DialogHeader className="shrink-0 flex-row items-center gap-2 border-b border-muted px-5 py-4 pr-14 text-left">
             <div className="min-w-0 flex-1">
               <DialogTitle className="sr-only">Storyboard walkthrough</DialogTitle>
               <DialogDescription className="sr-only">
                 Presentation for {pathName || 'this path'}
               </DialogDescription>
               <Breadcrumb className="min-w-0">
-                <BreadcrumbList className="flex-nowrap gap-0.5 text-xs text-muted-foreground">
+                <BreadcrumbList className="flex-nowrap gap-1 text-xs text-muted-foreground">
                   {phaseName ? (
                     <>
                       <BreadcrumbItem className="min-w-0">
@@ -219,7 +219,7 @@ export function StoryboardWalkthroughModal() {
 
           <DialogFooter className="shrink-0 justify-center gap-3 border-t border-muted px-5 py-3 sm:justify-center">
             <div
-              className="flex items-center gap-1.5"
+              className="flex items-center gap-2"
               role="tablist"
               aria-label="Steps"
             >

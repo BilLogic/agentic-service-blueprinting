@@ -109,7 +109,7 @@ function ToolButton({
 }
 
 function ToolbarDivider() {
-  return <div className="mx-0.5 h-5 w-px shrink-0 bg-border/80" aria-hidden />
+  return <div className="mx-1 h-5 w-px shrink-0 bg-border/80" aria-hidden />
 }
 
 function StrokeWeightButton({
@@ -179,7 +179,7 @@ function DrawSubpanel() {
       data-annotation-toolbar=""
       role="toolbar"
       aria-label="Pen and eraser options"
-      className="pointer-events-none flex items-center gap-0.5 rounded-full border border-muted bg-card px-1.5 py-1 shadow-md"
+      className="pointer-events-none flex items-center gap-1 rounded-full border border-muted bg-card px-2 py-1 shadow-md"
     >
       {DRAW_SUBPANEL_TOOLS.map((item) => (
         <ToolButton
@@ -200,7 +200,7 @@ function DrawSubpanel() {
         aria-label="Stroke weight"
         aria-disabled={penOptionsDisabled}
         className={cn(
-          'pointer-events-auto flex items-center gap-0.5',
+          'pointer-events-auto flex items-center gap-1',
           penOptionsDisabled && 'pointer-events-none opacity-35',
         )}
       >
@@ -295,7 +295,7 @@ export function CanvasAnnotationToolbar() {
 
       <div
         data-annotation-toolbar=""
-        className="flex items-center gap-0.5 rounded-full border border-muted bg-card/95 px-1.5 py-1 shadow-md backdrop-blur-sm"
+        className="flex items-center gap-1 rounded-full border border-muted bg-card/95 px-2 py-1 shadow-md backdrop-blur-sm"
       >
         {/* Select holds the first slot in both modes — the one tool that means
             "do nothing special" should never move under the cursor. */}

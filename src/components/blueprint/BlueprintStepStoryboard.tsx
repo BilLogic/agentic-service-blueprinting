@@ -50,7 +50,7 @@ function StoryboardPictureStrip({
   return (
     <div
       className={cn(
-        'flex h-full min-h-0 max-h-full w-full items-stretch justify-center gap-0.5 overflow-hidden',
+        'flex h-full min-h-0 max-h-full w-full items-stretch justify-center gap-1 overflow-hidden',
         className,
       )}
     >

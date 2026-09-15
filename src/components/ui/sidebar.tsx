@@ -23,13 +23,18 @@ import {
 } from "@/components/ui/tooltip"
 import { PanelLeftIcon } from "lucide-react"
 import { ground } from "@/lib/ground"
+import { RAIL_WIDTH, SIDEBAR_DEFAULT_WIDTH } from "@/lib/layoutTokens"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "16rem"
-const SIDEBAR_WIDTH_MOBILE = "18rem"
-const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
+
+/**
+ * CSS rem length from a pixel layout token, at the 16px root this sheet assumes.
+ */
+function layoutPxAsRem(px: number): string {
+  return `${px / 16}rem`
+}
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed"
@@ -131,8 +136,8 @@ function SidebarProvider({
         data-slot="sidebar-wrapper"
         style={
           {
-            "--sidebar-width": SIDEBAR_WIDTH,
-            "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
+            "--sidebar-width": layoutPxAsRem(SIDEBAR_DEFAULT_WIDTH),
+            "--sidebar-width-icon": layoutPxAsRem(RAIL_WIDTH),
             ...style,
           } as React.CSSProperties
         }
@@ -191,7 +196,7 @@ function Sidebar({
           className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
           style={
             {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+              "--sidebar-width": layoutPxAsRem(SIDEBAR_DEFAULT_WIDTH),
             } as React.CSSProperties
           }
           side={side}
@@ -656,7 +661,7 @@ function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
       data-slot="sidebar-menu-sub"
       data-sidebar="menu-sub"
       className={cn(
-        "mx-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l border-sidebar-border px-2.5 py-0.5 group-data-[collapsible=icon]:hidden",
+        "mx-4 flex min-w-0 translate-x-px flex-col gap-1 border-l border-sidebar-border px-2 py-1 group-data-[collapsible=icon]:hidden",
         className
       )}
       {...props}

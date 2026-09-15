@@ -434,7 +434,7 @@ function MergedSectionFrame({
         }}
       />
       <div
-        className="pointer-events-auto absolute z-50 flex max-w-[calc(100%-12px)] items-center gap-1.5"
+        className="pointer-events-auto absolute z-50 flex max-w-[calc(100%-12px)] items-center gap-2"
         style={{
           top: -COMPARE_PATH_SECTION_TOP_INSET,
           left:

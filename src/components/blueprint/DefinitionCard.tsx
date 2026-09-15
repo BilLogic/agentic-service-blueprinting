@@ -48,7 +48,7 @@ export function DefinitionCard({ sections }: { sections: DefinitionSection[] }) 
           data-definition-section=""
           /* The hairline separates sections; it never heads one. */
           className={cn(
-            'flex flex-col gap-1 px-3 py-2.5',
+            'flex flex-col gap-1 px-3 py-2',
             index > 0 && 'border-t border-border',
           )}
         >

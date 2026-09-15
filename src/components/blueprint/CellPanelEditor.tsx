@@ -458,7 +458,7 @@ function CellPanelEditorForm({
   */
   const placementGroup = placement ? (
     <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/20 p-3">
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-1">
         <span className="text-xs font-medium text-muted-foreground">
           “{placement.name}” at this step
         </span>
@@ -701,9 +701,9 @@ function ValuePropsEditor({
   const update = (index: number, patch: Partial<ValueProp>) =>
     onChange(value.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)))
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2">
       {value.map((entry, index) => (
-        <div key={index} className="flex items-center gap-1.5">
+        <div key={index} className="flex items-center gap-2">
           <Input
             value={entry.for}
             placeholder="For…"

@@ -172,7 +172,7 @@ function markSurface(
 
   const hasFill = Boolean(annotation.fillColor)
   return {
-    base: 'absolute box-border flex flex-col items-center justify-center p-2.5 transition-[box-shadow,outline-color] duration-(--motion-micro)',
+    base: 'absolute box-border flex flex-col items-center justify-center p-2 transition-[box-shadow,outline-color] duration-(--motion-micro)',
     chrome:
       showChrome && 'outline outline-2 outline-offset-0 outline-annotation-selected',
     extra: cn(hasFill && 'shadow-sm', !selected && 'overflow-hidden'),
@@ -225,7 +225,7 @@ function ShapeBody({
   const isEllipse = annotation.type === 'ellipse'
   const textColor = annotationTextOnFill(annotation.fillColor)
   return (
-    <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-2.5">
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-2">
       {editing ? (
         <textarea
           ref={textareaRef}
@@ -332,7 +332,7 @@ function TextBody({
         rows={2}
         // geometry: type is fitted to the drawn annotation box.
         className={cn(
-          'w-full resize-none px-1.5 py-1 font-sans leading-snug outline-none',
+          'w-full resize-none px-2 py-1 font-sans leading-snug outline-none',
           'pointer-events-auto cursor-text',
           textAlignClass,
           annotation.bold && 'font-medium',
@@ -357,7 +357,7 @@ function TextBody({
     <div
       // geometry: type is fitted to the drawn annotation box.
       className={cn(
-        'max-w-full px-1.5 py-1 whitespace-pre-wrap font-sans leading-snug',
+        'max-w-full px-2 py-1 whitespace-pre-wrap font-sans leading-snug',
         textAlignClass,
         annotation.bold && 'font-medium',
         annotation.strike && 'line-through',

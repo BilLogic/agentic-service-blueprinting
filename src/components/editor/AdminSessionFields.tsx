@@ -7,7 +7,7 @@ import { useSupabase } from '@/contexts/SupabaseProvider'
  * Sign in, or sign out — the front-door half of the settings surface, and
  * the only half a signed-out visitor can use at all.
  *
- * Renders as a fragment into the settings column's `flex flex-col gap-2.5`:
+ * Renders as a fragment into the settings column's `flex flex-col gap-2`:
  * these are fields, not a panel, and the column that spaces them belongs to
  * whoever composes them (AgentSettingsFields).
  *

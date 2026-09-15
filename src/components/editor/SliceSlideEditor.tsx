@@ -248,7 +248,7 @@ export function SliceSlideEditor({
         type="button"
         aria-expanded={!collapsed}
         onClick={() => setCollapsed((value) => !value)}
-        className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left text-xs font-medium text-muted-foreground hover:text-foreground"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-muted-foreground hover:text-foreground"
       >
         <ChevronDown
           className={cn(
@@ -305,7 +305,7 @@ export function SliceSlideEditor({
               // min-h-0 + overflow-y-auto: a card taller than the sheet
               // scrolls inside itself. Clipping it hid the images and the
               // caption with no way to reach them.
-              'group/slide flex min-h-0 w-56 shrink-0 flex-col gap-1.5 overflow-y-auto overscroll-y-contain rounded-lg border bg-card p-2 transition-colors',
+              'group/slide flex min-h-0 w-56 shrink-0 flex-col gap-2 overflow-y-auto overscroll-y-contain rounded-lg border bg-card p-2 transition-colors',
               isActive ? 'border-primary' : 'border-border',
               dropTarget === index && 'ring-2 ring-primary/40',
             )}
@@ -333,7 +333,7 @@ export function SliceSlideEditor({
               draggable
               onDragStart={() => setDragging({ kind: 'slide', slide: index })}
               onDragEnd={() => setDragging(null)}
-              className="flex cursor-grab items-center gap-1.5 active:cursor-grabbing"
+              className="flex cursor-grab items-center gap-2 active:cursor-grabbing"
             >
               {/* The grip names the gesture — a row that merely *is*
                   draggable looks exactly like one that is not. */}
@@ -400,7 +400,7 @@ export function SliceSlideEditor({
                     })
                   }}
                   className={cn(
-                    'group/cell flex cursor-grab items-center gap-1.5 rounded-md bg-muted/60 px-1.5 py-1 text-xs active:cursor-grabbing',
+                    'group/cell flex cursor-grab items-center gap-2 rounded-md bg-muted/60 px-2 py-1 text-xs active:cursor-grabbing',
                     cellDrop?.slide === index &&
                       cellDrop.index === cellIndex &&
                       'shadow-[0_-2px_0_0_var(--primary)]',
@@ -448,7 +448,7 @@ export function SliceSlideEditor({
               card whose name is not implied by anything around it. It gets a
               visible one, in the schema's word.
             */}
-            <label className="flex shrink-0 grow flex-col gap-0.5">
+            <label className="flex shrink-0 grow flex-col gap-1">
               <Eyebrow>
                 Caption
               </Eyebrow>
@@ -469,7 +469,7 @@ export function SliceSlideEditor({
                   ),
                 )
               }
-              className="min-h-14 w-full grow resize-none rounded-md border border-input bg-transparent px-1.5 py-1 text-xs outline-none focus-visible:border-ring"
+              className="min-h-14 w-full grow resize-none rounded-md border border-input bg-transparent px-2 py-1 text-xs outline-none focus-visible:border-ring"
             />
             </label>
 

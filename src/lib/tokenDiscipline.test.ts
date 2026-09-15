@@ -617,7 +617,89 @@ test('every radius utility names a rung, so the dial reaches all of them', () =>
   assert.deepEqual(
     offenders,
     [],
-    `Bare radius utility — 4px hardcoded by Tailwind, deaf to --radius. Name the rung (rounded-sm / -md / -lg / -xl), or rounded-full / rounded-none:\n${offenders.join('\n')}`,
+    `Bare radius utility — 4px hardcoded by Tailwind, deaf to --radius. Name the rung (rounded-sm / -md / -lg / -xl / -2xl), or rounded-full / rounded-none:\n${offenders.join('\n')}`,
+  )
+})
+
+test('retired radius rungs are gone from source', () => {
+  const offenders = classUsesMatching(
+    new RegExp(`^${VARIANTS}rounded(?:-(?:${SIDES})-)?(?:3xl|4xl|panel)$`),
+  )
+  assert.deepEqual(
+    offenders,
+    [],
+    `Retired radius rung — 3xl, 4xl and panel are gone. Use md / lg / xl / 2xl or rounded-full:\n${offenders.join('\n')}`,
+  )
+})
+
+/**
+ * Half-step spacing (1.5, 2.5, 3.5, and 0.5 on gap/padding/margin) sits off
+ * the 4px grid. 0.5 remains legal for positional offsets (`top-0.5`).
+ * Shared primitives are the first subject; the rest of the source tree is
+ * the second, so a half-step cannot return anywhere a class is authored.
+ */
+const HALF_STEP = new RegExp(
+  `^${VARIANTS}(?:p|px|py|pt|pr|pb|pl|ps|pe|m|mx|my|mt|mr|mb|ml|ms|me|gap|gap-x|gap-y|space-x|space-y)-(?:0\\.5|1\\.5|2\\.5|3\\.5)$`,
+)
+
+test('shared primitives stay on the 4px spacing grid', () => {
+  const offenders = classUsesMatching(HALF_STEP).filter((use) =>
+    use.startsWith('components/ui/'),
+  )
+  assert.deepEqual(
+    offenders,
+    [],
+    `Half-step spacing in a primitive — gap, padding and margin take 1, 2, 3, 4, 5, 6, 8 or 10. 0.5 is for offsets only:\n${offenders.join('\n')}`,
+  )
+})
+
+test('the source tree stays on the 4px spacing grid', () => {
+  const offenders = classUsesMatching(HALF_STEP)
+  assert.deepEqual(
+    offenders,
+    [],
+    `Half-step spacing — gap, padding and margin take 1, 2, 3, 4, 5, 6, 8 or 10. 0.5 is for offsets only:\n${offenders.join('\n')}`,
+  )
+})
+
+/**
+ * Radius by kind. Controls sit on md; containment (cells, cards, popovers)
+ * on lg; dialogs and plates on xl; the floating toolbar capsule on 2xl;
+ * rounded-full stays. A file listed here may not pick up another rung.
+ */
+const RADIUS_KIND_ALLOWLIST: Record<string, readonly string[]> = {
+  'components/ui/button.tsx': ['md', 'none', 'full'],
+  'components/ui/input.tsx': ['md'],
+  'components/ui/textarea.tsx': ['md'],
+  'components/ui/badge.tsx': ['md', 'full'],
+  'components/ui/tooltip.tsx': ['md', 'sm'],
+  'components/ui/card.tsx': ['lg'],
+  'components/ui/dialog.tsx': ['xl'],
+  'components/ui/sheet.tsx': ['xl'],
+  'components/ui/popover.tsx': ['lg'],
+  'components/ui/dropdown-menu.tsx': ['lg', 'md'],
+  'components/ui/tabs.tsx': ['lg', 'md', 'none'],
+}
+
+test('a component kind stays on its assigned radius rung', () => {
+  const uses = classUsesMatching(
+    new RegExp(`^${VARIANTS}rounded-(?:(?:${SIDES})-)?(sm|md|lg|xl|2xl|full|none)$`),
+  )
+  const offenders: string[] = []
+  for (const use of uses) {
+    const match = use.match(/^(components\/ui\/[^:]+\.tsx):(\d+): .*rounded-(?:(?:l|r|t|b|tl|tr|bl|br|s|e|ss|se|es|ee)-)?(sm|md|lg|xl|2xl|full|none)$/)
+    if (!match) continue
+    const [, file, , rung] = match
+    const allowed = RADIUS_KIND_ALLOWLIST[file]
+    if (!allowed) continue
+    if (!allowed.includes(rung)) {
+      offenders.push(`${use} (kind allows ${allowed.join(', ')})`)
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    `Radius off the kind allowlist:\n${offenders.join('\n')}`,
   )
 })
 

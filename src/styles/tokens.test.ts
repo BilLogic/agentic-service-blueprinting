@@ -607,7 +607,59 @@ describe('theme dials and semantic layer', () => {
       rule.context.some((at) => /^@media\b/.test(at) && /\bprint\b/.test(at)),
     )
     expect(overridden.map((rule) => `${rule.file}:${rule.line}`)).toEqual([])
-    expect(resolveValue('--radius', 'light')).toMatch(/^[\d.]+rem$/)
+    expect(resolveValue('--radius', 'light')).toBe('0.5rem')
+  })
+
+  it('derives the five radius rungs as multiples of the base, and retires the rest', () => {
+    const rungs = Object.fromEntries(
+      declarationsIn('theme.css')
+        .filter((entry) => entry.name.startsWith('--radius-'))
+        .map((entry) => [entry.name, entry.value]),
+    )
+    expect(rungs['--radius-sm']).toBe('calc(var(--radius) * 0.5)')
+    expect(rungs['--radius-md']).toBe('calc(var(--radius) * 0.75)')
+    expect(rungs['--radius-lg']).toBe('var(--radius)')
+    expect(rungs['--radius-xl']).toBe('calc(var(--radius) * 1.5)')
+    expect(rungs['--radius-2xl']).toBe('calc(var(--radius) * 2)')
+    expect(rungs['--radius-3xl']).toBeUndefined()
+    expect(rungs['--radius-4xl']).toBeUndefined()
+    expect(rungs['--radius-panel']).toBeUndefined()
+  })
+
+  it('declares md and lg shadows in the plain theme block so dark can override them', () => {
+    const md = declarationsIn('theme.css').find(
+      (entry) => entry.name === '--shadow-md',
+    )
+    const lg = declarationsIn('theme.css').find(
+      (entry) => entry.name === '--shadow-lg',
+    )
+    expect(md?.selector).toBe('@theme')
+    expect(lg?.selector).toBe('@theme')
+    expect(md?.selector).not.toMatch(/inline/)
+    const darkMd = winningDeclaration('--shadow-md', 'dark')
+    const darkLg = winningDeclaration('--shadow-lg', 'dark')
+    expect(darkMd?.file).toBe('themes/dark.css')
+    expect(darkLg?.file).toBe('themes/dark.css')
+    expect(darkMd?.value).toMatch(/inset/)
+    expect(darkLg?.value).toMatch(/inset/)
+    const floating = declarationsIn('theme.css').find(
+      (entry) => entry.name === '--shadow-floating',
+    )
+    expect(floating?.value).toBe('var(--shadow-md)')
+  })
+
+  it('names the page gutter and the content gap as spacing keys', () => {
+    const keys = Object.fromEntries(
+      declarationsIn('theme.css')
+        .filter(
+          (entry) =>
+            entry.name === '--spacing-gutter' ||
+            entry.name === '--spacing-content',
+        )
+        .map((entry) => [entry.name, entry.value]),
+    )
+    expect(keys['--spacing-gutter']).toBe('2.5rem')
+    expect(keys['--spacing-content']).toBe('1.25rem')
   })
 
   it('derives every semantic token in semantic.css', () => {
@@ -674,7 +726,9 @@ function themeDials(): string[] {
       ...namesIn('themes/light.css'),
       ...namesIn('themes/dark.css'),
     ]),
-  ].sort()
+  ]
+    .filter((name) => !name.startsWith('--shadow-'))
+    .sort()
 }
 
 /**

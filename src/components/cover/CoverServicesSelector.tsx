@@ -39,9 +39,9 @@ export function CoverServicesSelector({
             aria-selected={isActive}
             onClick={() => onSelect(service.slug)}
             className={cn(
-              'rounded-full px-3.5 py-1.5 text-sm transition-colors duration-(--motion-structural) ease-structural',
+              'rounded-full px-4 py-2 text-sm transition-colors duration-(--motion-structural) ease-structural',
               isActive
-                ? 'bg-background text-foreground shadow-sm'
+                ? 'bg-background text-foreground'
                 : 'text-muted-foreground hover:text-foreground',
             )}
           >

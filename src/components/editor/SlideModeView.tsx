@@ -29,7 +29,7 @@ export function SlideModeSidebarNav({
   const {
     slides,
     selectPhase,
-    selectScenario,
+    openScenario,
     selectedPhaseId,
     selectedScenarioId,
     focusNonce,
@@ -60,20 +60,14 @@ export function SlideModeSidebarNav({
 
   // The phase/scenario nav always drives the app-level (base blueprint
   // view) editor state. When a tab is active that would be invisible, so
-  // selecting a phase/scenario also returns to the base view.
+  // selecting a phase also returns to the base view. Scenario rows go
+  // through `openScenario`, which already leaves the tab.
   const handleSelectPhase = useCallback(
     (phaseId: string) => {
       if (activeKey !== null) activateTab(null)
       selectPhase(phaseId)
     },
     [activateTab, activeKey, selectPhase],
-  )
-  const handleSelectScenario = useCallback(
-    (scenarioId: string) => {
-      if (activeKey !== null) activateTab(null)
-      selectScenario(scenarioId)
-    },
-    [activateTab, activeKey, selectScenario],
   )
   return (
     <SidebarContent className="px-2 pt-1 pb-1">
@@ -128,7 +122,7 @@ export function SlideModeSidebarNav({
                 selectedScenarioId={selectedScenarioId}
                 focusNonce={focusNonce}
                 onSelectPhase={handleSelectPhase}
-                onSelectScenario={handleSelectScenario}
+                onSelectScenario={openScenario}
                 isHome={view !== 'detail'}
                 expandedPhaseIds={expandedPhaseIds}
                 onSetExpanded={setPhaseExpanded}

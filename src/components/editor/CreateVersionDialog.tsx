@@ -123,7 +123,7 @@ export function CreateVersionDialog({
           className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto px-6"
           data-create-version-fields=""
         >
-          <label className="flex flex-col gap-1.5">
+          <label className="flex flex-col gap-2">
             <span className="text-sm font-medium text-foreground">Name</span>
             <Input
               value={draft.name}
@@ -133,9 +133,9 @@ export function CreateVersionDialog({
             />
           </label>
 
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <span className="text-sm font-medium text-foreground">Kind</span>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               {PATH_KINDS.map((type) => (
                 <Button
                   key={type}
@@ -150,11 +150,11 @@ export function CreateVersionDialog({
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <span className="text-sm font-medium text-foreground">
               Start from
             </span>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 size="sm"
@@ -176,7 +176,7 @@ export function CreateVersionDialog({
           </div>
 
           {versions.length > 0 ? (
-            <label className="flex flex-col gap-1.5">
+            <label className="flex flex-col gap-2">
               <span className="text-sm font-medium text-foreground">
                 {draft.mode === 'duplicate' ? 'Version to copy' : 'Lanes from'}
               </span>
@@ -205,7 +205,7 @@ export function CreateVersionDialog({
           ) : null}
 
           {draft.mode === 'duplicate' ? (
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
                   type="checkbox"

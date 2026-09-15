@@ -53,6 +53,16 @@ vi.mock('@/contexts/SupabaseProvider', () => ({
   }),
 }))
 
+vi.mock('@/contexts/EditorContext', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/contexts/EditorContext')>()),
+  useEditor: () => ({
+    getScenarioDisplayViewType: () => 'stacked',
+    setScenarioDisplayViewType: () => {},
+    openDetail: () => {},
+    goHome: () => {},
+  }),
+}))
+
 // A fixture service, deliberately not any installation's own: the file is
 // shared, and a real name in it reads as data rather than as a stand-in.
 const SERVICE_NAME = 'Rooftop Retrofit'

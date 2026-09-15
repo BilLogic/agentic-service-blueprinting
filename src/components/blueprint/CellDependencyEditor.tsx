@@ -69,8 +69,8 @@ const KIND_OPTIONS = DEPENDENCY_KINDS.map((kind) => ({
   do not fit on one line, and the row has to stay one line or it is not the
   row the reader was already looking at.
 */
-const KIND_SELECT_CLASS = 'h-7 w-[5.75rem] shrink-0 gap-0.5 px-1.5 text-xs'
-const TARGET_SELECT_CLASS = 'h-7 min-w-0 flex-1 gap-0.5 px-1.5 text-xs'
+const KIND_SELECT_CLASS = 'h-7 w-[5.75rem] shrink-0 gap-1 px-2 text-xs'
+const TARGET_SELECT_CLASS = 'h-7 min-w-0 flex-1 gap-1 px-2 text-xs'
 
 /** Indents the note field and the kind hint under the row they belong to. */
 const ROW_DETAIL_INDENT = 'pl-1'
@@ -263,7 +263,7 @@ export function DependencyEditRow({
 
   return (
     <li
-      className="border-b border-muted px-2 py-1.5 last:border-0"
+      className="border-b border-muted px-2 py-2 last:border-0"
       data-dependency-row={dependencyId}
       onFocusCapture={() => editing.onActivate(dependencyId)}
       onPointerDownCapture={() => editing.onActivate(dependencyId)}
@@ -272,11 +272,11 @@ export function DependencyEditRow({
           live — nothing about this row's save makes the next one untrue. */}
       <div
         className={cn(
-          'flex flex-col gap-1.5 transition-opacity',
+          'flex flex-col gap-2 transition-opacity',
           busy ? 'opacity-60' : undefined,
         )}
       >
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <OptionSelect
             value={kind}
             options={KIND_OPTIONS}

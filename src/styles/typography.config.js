@@ -38,7 +38,7 @@ module.exports = {
             '--tw-prose-body': 'var(--muted-foreground)',
             '--tw-prose-headings': 'var(--foreground)',
             '--tw-prose-lead': 'var(--muted-foreground)',
-            '--tw-prose-links': 'var(--muted-foreground)',
+            '--tw-prose-links': 'var(--brand)',
             '--tw-prose-bold': 'var(--muted-foreground)',
             '--tw-prose-counters': 'var(--muted-foreground)',
             '--tw-prose-bullets': 'var(--tertiary-foreground)',
@@ -65,7 +65,8 @@ module.exports = {
             h4: { fontSize: '1.15em' },
             // h5 isn't included in --tw-prose-headings.
             h5: { color: 'var(--color-scale-1200)' },
-            'h1, h2, h3, h4, h5, h6': { fontWeight: '400' },
+            h1: { fontWeight: '400' },
+            'h2, h3, h4, h5, h6': { fontWeight: 'var(--font-weight-medium)' },
             'article h2, article h3, article h4, article h5, article h6': {
               marginTop: '2em',
               marginBottom: '1em',
@@ -145,16 +146,15 @@ module.exports = {
               paddingBottom: '2px',
               fontWeight: '400',
               opacity: 1,
-              // Match Studio InlineLink: inherit body color, foreground on hover
-              color: 'inherit',
+              color: 'var(--brand)',
               textDecorationLine: 'underline',
-              textDecorationColor: 'inherit',
+              textDecorationColor: 'var(--brand)',
               textDecorationThickness: '1px',
               textUnderlineOffset: '2px',
             },
             'a:hover': {
               color: 'var(--foreground)',
-              textDecorationColor: 'var(--foreground)',
+              textDecorationColor: 'var(--brand)',
             },
             figcaption: {
               color: 'var(--tertiary-foreground)',
@@ -240,7 +240,7 @@ module.exports = {
             '--tw-prose-invert-quotes': 'var(--canvas)',
             '--tw-prose-invert-quote-borders': 'var(--border)',
             '--tw-prose-invert-captions': 'var(--muted)',
-            'h1, h2, h3, h4, h5': { fontWeight: '400' },
+            'h1, h2, h3, h4, h5': { fontWeight: 'var(--font-weight-medium)' },
           },
         },
       },

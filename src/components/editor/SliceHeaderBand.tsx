@@ -89,7 +89,7 @@ export function SliceHeaderBand({
             {detail.slice.kind}
           </Badge>
         </div>
-        <div className="mt-0.5 flex min-w-0 items-baseline gap-2">
+        <div className="mt-1 flex min-w-0 items-baseline gap-2">
           <p className="min-w-0 truncate text-sm text-foreground">
             {description || '—'}
           </p>
@@ -100,7 +100,7 @@ export function SliceHeaderBand({
               that tint in light and 14:1 in dark, with the edge a quiet
               1.24–1.27:1 off it. */}
           {missingCellCount > 0 && (
-            <span className="shrink-0 rounded-sm border border-border-warning bg-surface-warning px-1.5 py-0.5 text-sm text-foreground">
+            <span className="shrink-0 rounded-sm border border-border-warning bg-surface-warning px-2 py-1 text-sm text-foreground">
               {missingCellCount} {missingCellCount === 1 ? 'cell' : 'cells'} no
               longer in the blueprint
             </span>
@@ -113,7 +113,7 @@ export function SliceHeaderBand({
           type="button"
           size="sm"
           variant="ghost"
-          className="shrink-0 gap-1.5"
+          className="shrink-0 gap-2"
           onClick={secondaryAction.onClick}
         >
           <SecondaryIcon className="size-3" aria-hidden />
@@ -124,7 +124,7 @@ export function SliceHeaderBand({
       <Button
         type="button"
         size="sm"
-        className="shrink-0 gap-1.5"
+        className="shrink-0 gap-2"
         onClick={primaryAction.onClick}
       >
         <PrimaryIcon className="size-3" aria-hidden />

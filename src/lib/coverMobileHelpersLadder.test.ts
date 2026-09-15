@@ -77,6 +77,19 @@ function isIconOnly(classes: readonly string[]): boolean {
 }
 
 /**
+ * The one muted line under the cover CTA: connection status, not lede.
+ *
+ * @param site - one class list from the cover tree
+ */
+function isCoverConnectionStatus(site: ClassListSite): boolean {
+  return (
+    site.file === 'components/cover/CoverPage.tsx' &&
+    site.classes.includes('text-muted-foreground') &&
+    !site.classes.some((token) => FOREGROUND.test(token))
+  )
+}
+
+/**
  * Every `leading-*` in `file` whose line (or the comment immediately
  * above it) does not name the geometry that needs the override.
  *
@@ -132,6 +145,8 @@ describe('authored classes on these surfaces', () => {
 
     const mutedOnly = cover.filter((site) => {
       if (isIconOnly(site.classes)) return false
+      // The cover CTA's connection status is chrome, not stage copy.
+      if (isCoverConnectionStatus(site)) return false
       const muted = site.classes.some((token) => MUTED.test(token))
       const ink = site.classes.some((token) => FOREGROUND.test(token))
       return muted && !ink
