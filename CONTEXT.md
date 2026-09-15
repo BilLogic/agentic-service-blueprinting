@@ -116,12 +116,17 @@ storyboard holds at most one. A frame is never a row of a slice; that is a
 **Featured image** — the one picture a cell leads with. It **is** `cells.frame`:
 one slot per cell. It may be a storyboard illustration, a screenshot, one of the
 cell's attachments, or its touchpoint's logo — whatever a person chose. What is
-stored is what shows; nothing is substituted at display time.
+stored is what shows; nothing is substituted at display time. A cell panel
+draws every one of them; the *strip* is the one reader that leaves some out.
 
 **Strip** — a step's frames, read across the lanes: the script for that moment.
 **Not a column.** It is derived at render time from the frames of the step's
-cells, which is why a strip and the frames it is made of cannot disagree. A
-*slide* shows one too, and it is the same word for the same thing.
+cells, which is why a strip and the frames it is made of cannot disagree. It is
+the step's frames **less the storyboard rows and the touchpoint rows**: the
+storyboard row is the artwork the walkthrough already shows, and a touchpoint
+cell's frame is that touchpoint's logo rather than a drawn moment. A *slide*
+shows a strip too, and its rule is its own: every cell the slice cites, plus
+that step's storyboard cell.
 
 **Touchpoint** — a thing a moment happens through: an app, a document, a
 physical object, a channel. One `touchpoints` row per name across the whole

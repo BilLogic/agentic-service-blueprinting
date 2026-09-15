@@ -51,6 +51,27 @@ const _everyRoleIsListed: Exclude<LaneRole, CanonicalLaneRole> extends never ? t
 void _everyRoleIsListed
 
 /**
+ * The roles whose lanes hold TOUCHPOINTS rather than actions — what a moment
+ * happens through: an app, a document, a channel, a place.
+ *
+ * A fact about what a row MEANS, so it sits here beside the vocabulary rather
+ * than in whichever module asked first. Two different questions read it: how a
+ * cell's content is parsed (one touchpoint per line — `blueprintLayout`), and
+ * whether a cell's frame is a logo rather than a drawn moment (the storyboard
+ * walkthrough's roster).
+ */
+export const TOUCHPOINT_LANE_ROLES = [
+  FRONTSTAGE_TOUCHPOINTS_ROLE,
+  BACKSTAGE_TOUCHPOINTS_ROLE,
+] as const satisfies readonly CanonicalLaneRole[]
+
+/** Whether a resolved role is one of the touchpoint roles. */
+export function isTouchpointLaneRole(role: string | null | undefined): boolean {
+  if (!role) return false
+  return (TOUCHPOINT_LANE_ROLES as readonly string[]).includes(role)
+}
+
+/**
  * Legacy magic-name → role mapping for content that predates `lane_role`
  * (DB rows without the backfill and all hand-written TS fallbacks, which
  * carry no role).

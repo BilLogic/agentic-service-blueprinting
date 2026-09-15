@@ -62,6 +62,14 @@ elicitation), or to none.
   the old label-matched entry silently stopped being found. A "tech" lane was
   never only tech — it held the things a moment happens *through*, which is a
   touchpoint: an app, a document, a channel, a place.
+- A touchpoint cell's `frame` is its **logo**: placing a touchpoint fills an
+  empty frame with that touchpoint's icon. So the storyboard walkthrough — the
+  step's stack, the canvas strip and the walkthrough deck, which share one
+  roster — steps through every lane except the storyboard rows and these two,
+  `frontstage_touchpoints` and `backstage_touchpoints`.
+  A frame drawn for a moment comes from an actor lane; a logo is not a moment.
+  Nothing is cleared to arrange that: the cell panel still draws the
+  touchpoint's frame at logo size.
 - Role `storyboard` renders `frame` and ignores text content. An empty
   storyboard row (null `frame`) is a valid default — see
   `skills/map/references/ingest-playbook.md` §6 for sourcing stage images.

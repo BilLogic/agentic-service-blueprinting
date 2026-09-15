@@ -1,4 +1,8 @@
-import { getLaneRole, STORYBOARD_ROLE } from '@/lib/laneRoles'
+import {
+  getLaneRole,
+  isTouchpointLaneRole,
+  STORYBOARD_ROLE,
+} from '@/lib/laneRoles'
 import { buildCellLookup, getCellAt } from '@/lib/normalizeBlueprint'
 import { isBlueprintStepStoryboardPlaceholder } from '@/lib/blueprintStoryboardPlaceholder'
 import { pickPreferredPath } from '@/lib/pathSelection'
@@ -118,11 +122,22 @@ type StoryboardBlueprint = Pick<BlueprintData, 'lanes' | 'cells'>
 /**
  * The lanes a walkthrough steps through, in board order: every lane that is
  * NOT one of the storyboard rows — those hold the artwork the walkthrough shows,
- * so stepping through them would show each frame next to itself.
+ * so stepping through them would show each frame next to itself — and not one
+ * of the touchpoint rows either, because a touchpoint cell's frame is its
+ * logo, not a moment. Placing a touchpoint fills the cell's empty frame with
+ * the touchpoint's icon, so every placed touchpoint carries one; a walkthrough
+ * that took them would step a reader through a product's mark as though a
+ * person had drawn it. Nothing is written or cleared to arrange that: the
+ * cell panel still shows the touchpoint's frame at logo size.
+ *
+ * The one place the roster is decided, so the stack, the strip, the deck and
+ * `stepHasStoryboardWalkthroughLaneCells` agree by construction.
  *
  * `STORYBOARD_WALKTHROUGH_LANE_NAMES` overrides this when a fork pins its own
- * roster; empty (the template default) means "whatever the board has", which
- * is the only rule that survives an adopter naming their lanes themselves.
+ * roster — a deployment that named its lanes gets exactly those, touchpoint
+ * rows included, because naming a lane is the decision. Empty (the template
+ * default) means "whatever the board has", which is the only rule that
+ * survives an adopter naming their lanes themselves.
  */
 function getWalkthroughLaneNames(
   blueprint: StoryboardBlueprint,
@@ -134,7 +149,8 @@ function getWalkthroughLaneNames(
   return blueprint.lanes
     .filter((lane) => {
       const role = getLaneRole(lane)
-      return role !== STORYBOARD_ROLE
+      if (role === STORYBOARD_ROLE) return false
+      return !isTouchpointLaneRole(role)
     })
     .map((lane) => lane.name)
 }
