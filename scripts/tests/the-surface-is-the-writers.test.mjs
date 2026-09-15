@@ -58,6 +58,8 @@ import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
 import {
+  DECLARES_SPEC_LEVELS,
+  SPEC_LEVEL_TABLE,
   TABLE_WRITE,
   appSources,
   directTableWrites,
@@ -332,6 +334,42 @@ test('the scan reads writes, and not reads or uploads', () => {
   assert.deepEqual([...multiline.matchAll(TABLE_WRITE)].map((m) => [m[1], m[2]]), [
     ['slides', 'update'],
   ])
+})
+
+test('a declared spec level is a writer, and only where the write is imported', () => {
+  // The shape the chain scan cannot see. Six spec modules stopped writing the
+  // six stations out and now declare a level for `src/lib/specMutations.ts` to
+  // write — so the table is a property, not an argument to `.from`. A scan
+  // blind to it reports no writer for seven tables at once, and the surface
+  // those seven sit on becomes a set of questions asked of nobody.
+  const declaration = [
+    "import { specWriter, type SpecLevel } from '@/lib/specMutations'",
+    'const LANE_SPEC: SpecLevel<readonly string[], LaneSpecUpdate> = {',
+    "  table: 'lanes',",
+    "  addressedBy: 'id',",
+    '}',
+  ].join('\n')
+  assert.deepEqual(
+    directTableWrites({ files: ['src/lib/laneSpecMutations.ts'], read: () => declaration }).map(
+      (one) => [one.table, one.verb],
+    ),
+    [['lanes', 'update']],
+  )
+
+  // And a `table:` in a file that declares no level is prose, an option or a
+  // fixture — reading it would turn half the tree into writers.
+  assert.deepEqual(
+    directTableWrites({
+      files: ['src/lib/somethingElse.ts'],
+      read: () => "const options = { table: 'lanes', caption: 'Lanes' }",
+    }),
+    [],
+  )
+  assert.equal(DECLARES_SPEC_LEVELS, "from '@/lib/specMutations'")
+  assert.deepEqual(
+    [..."  table: 'paths',".matchAll(SPEC_LEVEL_TABLE)].map((one) => one[1]),
+    ['paths'],
+  )
 })
 
 // ---------------------------------------------------------------------------
