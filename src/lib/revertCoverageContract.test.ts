@@ -15,6 +15,12 @@
  * needs a live Supabase client to run, and the question here is not what it
  * does but which names it knows — which is a fact about the source, and
  * readable without standing up a database.
+ *
+ * WHICH NAMES, not which spellings. The mutation modules now declare a spec
+ * level rather than writing the six stations out per level, and `fn` is a
+ * field of that declaration — so the scan below reads the same names off the
+ * same files. The one claim here that was about a payload's spelling has moved
+ * onto a run, where it is about the payload instead.
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -33,6 +39,8 @@ import {
 } from '@/lib/authoringRpc'
 import { clearSession, sessionSnapshot } from '@/lib/authoringSession'
 import { executeRevert } from '@/lib/revertChange'
+import { updateBusinessModel, updateServiceSummary } from '@/lib/serviceSpecMutations'
+import { inMemoryDatabase } from '@/test/inMemoryDatabase'
 import type { Database } from '@/types/database'
 
 const LIB = join(process.cwd(), 'src', 'lib')
@@ -186,15 +194,44 @@ describe('revert coverage', () => {
     ).toEqual([])
   })
 
-  it('records the service writes with the argument shape their revert reads', () => {
+  it('records the service writes with the argument shape their revert reads', async () => {
     // Both service reverts are self-inverse: executeRevert hands the captured
     // args straight back to the same function. The payload therefore has to be
     // the shape that function's parameter takes. update_business_model
     // originally spread a camelCase BusinessModelUpdate flat into args, which
     // no consumer on either side could read.
-    const source = readLib('serviceSpecMutations.ts')
-    expect(source).toContain("args: { service_id: serviceId, update: previous }")
-    expect(source).toContain("args: { service_id: serviceId, summary: previous }")
+    //
+    // Asked of the WRITE rather than of its source. The shape used to be a
+    // literal in `serviceSpecMutations.ts` and is now the `previousAs` of a
+    // level's declaration, so a check reading either file for a string would
+    // be pinned to how the payload is spelled rather than to what it is. The
+    // run answers the same question and cannot be satisfied by a comment.
+    clearSession()
+    const db = inMemoryDatabase({
+      services: [{ id: 'svc-1' }],
+      business_models: [{ service_id: 'svc-1' }],
+    })
+    await updateServiceSummary(db.client, 'svc-1', 'The new sentence', 'The old sentence')
+    await updateBusinessModel(
+      db.client,
+      'svc-1',
+      { funding: 'Grant', pricing: '', deliveryCost: '', revenueModel: '', partners: '' },
+      { funding: 'Fees', pricing: '', deliveryCost: '', revenueModel: '', partners: '' },
+    )
+
+    expect(sessionSnapshot().map((entry) => entry.revert)).toEqual([
+      {
+        fn: 'update_service_summary',
+        args: { service_id: 'svc-1', summary: 'The old sentence' },
+      },
+      {
+        fn: 'update_business_model',
+        args: {
+          service_id: 'svc-1',
+          update: { funding: 'Fees', pricing: '', deliveryCost: '', revenueModel: '', partners: '' },
+        },
+      },
+    ])
   })
 })
 

@@ -176,7 +176,7 @@ than as the whole suite.
 ## 7. Adding one
 
 A new guard belongs here when a claim in this repository is currently true and
-nothing would notice if it stopped being. Four rules the existing set follows:
+nothing would notice if it stopped being. Five rules the existing set follows:
 
 - **Fail by naming the file and the line.** A guard that says only "drift" is
   a guard someone has to reproduce before they can fix it.
@@ -195,3 +195,23 @@ nothing would notice if it stopped being. Four rules the existing set follows:
   resolves it. Each subject states what "cannot see the subject" means there: a
   skip said out loud, or a failure. Its tests hand files in and test the
   judgement; the walk is tested once, in the sweep's own suite.
+- **Return findings; the verdict says the rest.** A check does not decide
+  whether it is the command being run, print its own epilogue, or choose an
+  exit style. It returns its findings and the COUNT of what it examined, and
+  `scripts/verdict.mjs` renders the four outcomes: a clean run says the check's
+  own summary line and exits 0; findings are framed, listed and go red; a count
+  of zero is red AND goes through the `unverified` register, because a green
+  line over a subject nobody measured is the defect this whole set exists for;
+  and a check that could not look at all says so through that same register and
+  stays green, since a correct skip that fails is a guard whose readers learn to
+  ignore it. The wording stays the check's — the module renders and never
+  composes — so a reader of one green line still learns what THAT check
+  counted. The whole command line is then `whenRun(import.meta.url, judge)`,
+  and the judgement is a pure function a test drives without a process.
+
+  This replaced thirty epilogues that had drifted apart: seventeen checks called
+  `process.exit(1)` and seven set `process.exitCode`, which are not the same
+  promise — the first abandons whatever the runtime has buffered, and the long
+  reports are exactly the ones that could lose their last lines. Thirteen
+  headers carried a comment whose only content was that the code below it was a
+  copy of a sibling's.

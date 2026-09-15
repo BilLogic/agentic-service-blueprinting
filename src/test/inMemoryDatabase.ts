@@ -6,7 +6,7 @@ import type { Database } from '@/types/database'
  *
  * One fake for the tests that drive a write end to end — a revert, a slice —
  * rather than one per file: the chain it answers is the same everywhere
- * (`update … eq … select`, `upsert`, `delete … eq`, `select … eq … maybeSingle`,
+ * (`update … eq|in … select`, `upsert`, `delete … eq`, `select … eq … maybeSingle`,
  * `select … order`, an `rpc`), and two copies of it had already grown the same
  * comment in two places. It records what it was asked so a test can assert the
  * write, and it holds rows so a test can read them back.
@@ -27,8 +27,13 @@ export type InMemoryDatabase = {
   client: SupabaseClient<Database>
   /** The tables, live: a write lands here and a read-back reads from here. */
   tables: Record<string, Row[]>
-  /** Every update issued, in order. */
-  updates: Array<{ table: string; patch: Row; filters: Row }>
+  /**
+   * Every update issued, in order. `select` is the columns the chain asked
+   * for: PostgREST 400s on a column the table does not have, and the count
+   * `requireRowsWritten` reads exists only because the chain selected at all,
+   * so a test that asserts the write asserts what it selected too.
+   */
+  updates: Array<{ table: string; patch: Row; filters: Row; select?: string }>
   /** Every RPC issued, in order. */
   rpcs: Array<{ fn: string; args: Row }>
 }
@@ -72,14 +77,21 @@ export function inMemoryDatabase(
     // loudly rather than inventing a table.
     const rows = tables[table] ?? []
     const filters: Row = {}
+    /** `.in(column, values)` — one column, a set of values, as PostgREST reads it. */
+    const memberships: Array<{ column: string; values: readonly unknown[] }> = []
     let patch: Row | null = null
     let upserted: Row | null = null
     let onConflict: readonly string[] = ['id']
     let deleting = false
     let ordering: { column: string; ascending: boolean } | null = null
     let selected = false
+    let selectedColumns: string | undefined
     const matching = () =>
-      rows.filter((row) => Object.entries(filters).every(([column, value]) => row[column] === value))
+      rows.filter(
+        (row) =>
+          Object.entries(filters).every(([column, value]) => row[column] === value) &&
+          memberships.every((one) => one.values.includes(row[one.column])),
+      )
     const settle = () => {
       const hit = matching()
       if (deleting) {
@@ -101,7 +113,15 @@ export function inMemoryDatabase(
       if (patch) {
         const landed = landing(patch)
         for (const row of hit) Object.assign(row, landed)
-        updates.push({ table, patch, filters })
+        updates.push({
+          table,
+          patch,
+          ...(selectedColumns === undefined ? {} : { select: selectedColumns }),
+          filters: memberships.reduce<Row>(
+            (all, one) => ({ ...all, [one.column]: [...one.values] }),
+            { ...filters },
+          ),
+        })
         return { data: selected ? hit.map((row) => ({ id: row.id })) : null, error: null }
       }
       if (!ordering) return { data: hit, error: null }
@@ -125,12 +145,19 @@ export function inMemoryDatabase(
         deleting = true
         return api
       },
-      select() {
+      select(columns?: string) {
         selected = true
+        selectedColumns = columns
         return api
       },
       eq(column: string, value: unknown) {
         filters[column] = value
+        return api
+      },
+      // The fan-out's filter: a lane's spec lands on every row carrying the
+      // label, so the write names the ids rather than one id.
+      in(column: string, values: readonly unknown[]) {
+        memberships.push({ column, values })
         return api
       },
       // Read-side modifiers the hooks add; the fake answers the whole table

@@ -60,11 +60,9 @@
  *
  * Run: node scripts/check-glossary-only.mjs   (also: npm run check:glossary)
  */
-import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-
 import { repoConfig } from './repo-config.mjs'
 import { sweep as sweepSubject } from './sweep.mjs'
+import { whenRun } from './verdict.mjs'
 
 
 /** Where a table of column names belongs instead of the glossary. */
@@ -185,20 +183,31 @@ export function sweep(root = process.cwd(), subject = SUBJECT) {
   return { failures: findings(text, subject), terms, chars: text.length }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const { failures, terms, chars } = sweep()
-  if (failures.length > 0) {
-    console.error(
-      `[glossary] ${failures.length} thing(s) in ${SUBJECT} that are not a definition:\n` +
-        failures.map((one) => `  ${one}`).join('\n') +
-        '\n  -> the glossary defines the words and stops. Everything else is a document ' +
-        'of its own with a pointer in AGENTS.md.',
-    )
-    process.exit(1)
-  }
-  console.log(
-    `[glossary] ${SUBJECT} is ${terms} term rows of headings, prose and definitions ` +
+/**
+ * The verdict: the glossary read for everything in it that is not a definition.
+ *
+ * Pure — it reads, decides, and hands back what it found and how many term rows it
+ * counted. Nothing here prints or exits.
+ */
+export function judge(root = process.cwd()) {
+  const { failures, terms, chars } = sweep(root)
+  return {
+    what: `a term row in ${SUBJECT}`,
+    count: terms,
+    findings:
+      failures.length > 0
+        ? [
+            `[glossary] ${failures.length} thing(s) in ${SUBJECT} that are not a definition:\n` +
+              failures.map((one) => `  ${one}`).join('\n') +
+              '\n  -> the glossary defines the words and stops. Everything else is a document ' +
+              'of its own with a pointer in AGENTS.md.',
+          ]
+        : [],
+    line:
+      `[glossary] ${SUBJECT} is ${terms} term rows of headings, prose and definitions ` +
       `(${chars.toLocaleString('en-US')} chars) — no code fence, no table naming a column, ` +
       'no section without a term.',
-  )
+  }
 }
+
+whenRun(import.meta.url, judge)

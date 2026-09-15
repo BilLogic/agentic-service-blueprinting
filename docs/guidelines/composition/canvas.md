@@ -32,18 +32,15 @@ claims:
   - src/components/editor/AnnotationCaptureMenu.tsx
   - src/components/editor/BoardAddressSync.tsx
   - src/components/editor/CanvasAnnotationLayer.tsx
-  - src/components/editor/AnnotationShapeStyleBar.tsx
-  - src/components/editor/AnnotationStickyStyleBar.tsx
-  - src/components/editor/AnnotationTextStyleBar.tsx
+  - src/components/editor/AnnotationStyleBar.tsx
   - src/components/editor/CanvasAnnotationBarChrome.tsx
   - src/components/editor/CanvasAnnotationResizeHandles.tsx
   - src/components/editor/CanvasAnnotationSwatches.tsx
   - src/components/editor/canvasAnnotationChromeStyles.ts
   - src/components/editor/canvasAnnotationGeometry.ts
+  - src/components/editor/canvasAnnotationKinds.ts
   - src/components/editor/canvasAnnotationNodeProps.ts
-  - src/components/editor/ShapeAnnotationNode.tsx
-  - src/components/editor/StickyAnnotationNode.tsx
-  - src/components/editor/TextAnnotationNode.tsx
+  - src/components/editor/AnnotationMarkNode.tsx
   - src/components/editor/CanvasAnnotationToolbar.tsx
   - src/components/editor/CanvasCellContextMenu.tsx
   - src/components/editor/CanvasDesignTools.tsx
@@ -128,17 +125,24 @@ would need in order to edit, which a greyed control never does.
 and the composition — and since v1.44.11 it is only those. Beside it sit the
 geometry every piece divides by (`canvasAnnotationGeometry.ts`), the pickers
 and grips (`CanvasAnnotationSwatches.tsx`,
-`CanvasAnnotationResizeHandles.tsx`), one floating bar per mark kind over a
-shared plate (`AnnotationShapeStyleBar.tsx`,
-`AnnotationStickyStyleBar.tsx`, `AnnotationTextStyleBar.tsx` on
-`CanvasAnnotationBarChrome.tsx`, whose class vocabulary — slot, icon slot,
-menu surface, menu item — is `canvasAnnotationChromeStyles.ts`), and the
-three nodes
-(`ShapeAnnotationNode.tsx`, `StickyAnnotationNode.tsx`,
-`TextAnnotationNode.tsx`) over the props contract they share
+`CanvasAnnotationResizeHandles.tsx`), one floating style bar
+(`AnnotationStyleBar.tsx`) on a shared plate
+(`CanvasAnnotationBarChrome.tsx`, whose class vocabulary — slot, icon slot,
+menu surface, menu item — is `canvasAnnotationChromeStyles.ts`), and one mark
+(`AnnotationMarkNode.tsx`) over the props contract it takes from the layer
 (`canvasAnnotationNodeProps.ts`). Nothing a person does changed: the split is
 held upstream by the annotation-drag slice, and `npm run check:render-walk`
 drags a box onto a third cell here on every run.
+
+**What differs between a shape, a sticky and a text mark is a row, not a
+file.** `canvasAnnotationKinds.ts` says which controls a kind's bar offers, in
+what grouping, from which swatch set and under which delete noun, and whether
+a press on the mark's own label opens its editor rather than starting a drag.
+The bar draws each control once and the mark writes the pointer rule once; a
+fourth kind of mark is a row in that table. A kind's own drawing — the label
+fitted to a drawn box, the note that is a textarea all the way through, the
+type that shows its editor until it holds something — stays a real difference
+and is written out, because it is one.
 
 ## Panel as selection
 

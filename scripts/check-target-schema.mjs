@@ -32,8 +32,8 @@
  */
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { sweep } from './sweep.mjs'
+import { whenRun } from './verdict.mjs'
 
 /** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
 const ROOT = process.cwd()
@@ -129,8 +129,20 @@ function readConfig(argv) {
   }
 }
 
-async function main() {
-  const { url, key } = readConfig(process.argv.slice(2))
+// THE UNCONFIGURED TARGET IS NEITHER A FINDING NOR A SKIP. It exits 2, which
+// is a third thing: the check was asked a question it was never given the
+// subject for, and the caller wants to tell that apart from a target that
+// answered wrongly. The verdict renders four outcomes and none of them is
+// this, so this one branch keeps its own print and its own code.
+/**
+ * The verdict: the schema version the configured target reports, held to the
+ * versions this tree supports.
+ *
+ * Pure — it asks the target, decides, and hands back what it found. Nothing here
+ * prints or exits, bar the unconfigured target, which is not a verdict.
+ */
+export async function judge(argv = process.argv.slice(2)) {
+  const { url, key } = readConfig(argv)
   if (!url || !key) {
     console.error(
       'no target configured: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env ' +
@@ -138,7 +150,8 @@ async function main() {
         'Without a configured project this app runs the no-DB adapter, which is a ' +
         'supported mode and not something to check with this script.',
     )
-    process.exit(2)
+    process.exitCode = 2
+    return {}
   }
 
   const endpoint = `${url.replace(/\/$/, '')}/rest/v1/schema_version?select=version`
@@ -146,8 +159,7 @@ async function main() {
   try {
     response = await fetch(endpoint, { headers: { apikey: key, Authorization: `Bearer ${key}` } })
   } catch (error) {
-    console.error(`could not reach ${url}: ${error.message}`)
-    process.exit(1)
+    return { what: 'the target database', count: 1, findings: [`could not reach ${url}: ${error.message}`] }
   }
 
   let body = null
@@ -158,15 +170,12 @@ async function main() {
   }
 
   const result = interpret({ status: response.status, body }, supportedVersions())
-  if (result.ok) {
-    console.log(result.message)
-    return
+  return {
+    what: 'the target database',
+    count: 1,
+    findings: result.ok ? [] : [result.message],
+    line: result.message,
   }
-  console.error(result.message)
-  process.exit(1)
 }
 
-const isMain =
-  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-
-if (isMain) main()
+whenRun(import.meta.url, judge)

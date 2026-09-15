@@ -76,6 +76,10 @@ export const SHARED_SCRIPTS = new Map([
   ],
   ['scripts/generate-agent-account.mjs', 'one generator, each repository’s own document and baseline'],
   ['scripts/sweep.mjs', 'one module answers where every subject is, for every check in either tree'],
+  [
+    'scripts/verdict.mjs',
+    'one module answers what a check concludes — the summary, the empty-subject rule and the one exit, for every check in either tree',
+  ],
   ['scripts/seed-list.mjs', 'where a deployment’s seed is and which files it is, asked by the sweep and the seed check alike'],
   [
     'scripts/tests/harness-claims.test.mjs',

@@ -55,10 +55,10 @@
  * Run: node scripts/check-rpc-arguments.mjs   (also: npm run check:rpc-arguments)
  */
 import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 
 import { sweep } from './sweep.mjs'
+import { whenRun } from './verdict.mjs'
 
 /** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
 const REPO_ROOT = process.cwd()
@@ -344,27 +344,37 @@ export function compareTree(root = REPO_ROOT) {
   })
 }
 
-function main() {
-  const failures = compareTree()
-  if (failures.length === 0) {
-    console.log(`${CALLER} calls every RPC with the arguments ${SCHEMA} declares`)
-    return
+/**
+ * The problems, and how many calls they were found among.
+ *
+ * `compareTree` hands back only the problems, and its own suite pins that
+ * shape. The breadth is read off the same source text rather than out of a
+ * second sweep: sweeping twice for one number is two derivations free to
+ * disagree, and the second sweep would announce a missing subject the first had
+ * already answered for.
+ */
+export function judge(root = REPO_ROOT) {
+  const app = sweep({ subject: 'app', root, what: 'application source' })
+  const caller = app.read(CALLER)
+  if (caller === null) {
+    throw new Error(`no ${CALLER} under ${app.base}: this check has no subject`)
   }
-  for (const { line, problem } of failures) {
-    console.error(`${CALLER}:${line}: ${problem}`)
-  }
-  console.error(
-    `\nPostgREST resolves an RPC by its argument NAMES, so a stray or missing` +
+  const failures = compare({
+    caller,
+    schema: readFileSync(join(root, SCHEMA), 'utf8'),
+    reverter: app.read(REVERTER),
+  })
+  return {
+    what: `an RPC call in ${CALLER}`,
+    count: rpcCallSites(caller).length,
+    findings: failures.map(({ line, problem }) => `${CALLER}:${line}: ${problem}`),
+    closing:
+      `\nPostgREST resolves an RPC by its argument NAMES, so a stray or missing` +
       ` key is a 404 rather than a null column. Fix the call in ${CALLER}, or the` +
       ` function in the migration series and regenerate with` +
       ` \`npm run generate:portable-schema\`.`,
-  )
-  process.exit(1)
+    line: `${CALLER} calls every RPC with the arguments ${SCHEMA} declares`,
+  }
 }
 
-// Same shape as scripts/check-version-agreement.mjs: comparing against a
-// hand-built `file://` URL silently no-ops whenever the path needs escaping.
-const isMain =
-  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-
-if (isMain) main()
+whenRun(import.meta.url, judge)

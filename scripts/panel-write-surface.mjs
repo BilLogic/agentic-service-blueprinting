@@ -94,10 +94,12 @@ import { directTableWrites, writtenVerbsByTable } from './direct-table-writes.mj
 const { CELL_FIELDS } = await loadAppModule('lib/cellFields.ts')
 
 /**
- * `table: [columns]`. The columns are the ones named in an `.update({…})`
- * payload in the mutation modules — each one is written for real by the probe,
- * so an insert-only column would be asking the database the wrong question.
- * Spelled as the database spells them, not as the TypeScript spells them.
+ * `table: [columns]`. The columns are the ones a mutation module writes — named
+ * in an `.update({…})` payload, or in the `columns` of a spec level handed to
+ * `src/lib/specMutations.ts`, which builds the payload the six spec levels share.
+ * Each one is written for real by the probe, so an insert-only column would be
+ * asking the database the wrong question. Spelled as the database spells them,
+ * not as the TypeScript spells them.
  *
  * The VERBS are not here: they come from the writers. An entry that lists
  * columns and is never UPDATEd by anything fails the surface test, which is the

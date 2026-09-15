@@ -141,10 +141,9 @@
  * than by pattern, and the class stays a reviewer's job — what these four
  * catch is everything that CAN be bounded.
  */
-import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { sweep } from './sweep.mjs'
+import { whenRun } from './verdict.mjs'
 
 
 /** The namespace `fid()` in scripts/generate_sample_blueprint.mjs mints. */
@@ -347,30 +346,34 @@ export function staleAllowances(walk = scannedSweep(), allowed = ALLOWED) {
   return allowed.filter((entry) => !live.has(`${entry.file}\0${entry.match}`))
 }
 
-function main() {
+/**
+ * The verdict: every shared file a commit would carry, read for a deployment's
+ * content, and the allowlist read back for entries nothing reaches.
+ *
+ * Pure — it sweeps, decides, and hands back what it found. Nothing here prints
+ * or exits.
+ */
+export function judge() {
   const walk = scannedSweep()
   const problems = findings(ALLOWED, walk)
   const stale = staleAllowances(walk)
 
-  if (problems.length === 0 && stale.length === 0) {
-    console.log(
-      `no deployment content in ${walk.files.length} shared files a commit would carry` +
-        ` — ${PATTERNS.length} patterns, ${ALLOWED.length} allowed`,
-    )
-    return
-  }
-
+  // Both halves report, so both are findings in one list rather than a frame
+  // around one of them: a run can carry a coupling and a stale allowance at
+  // once, and the reader is owed the two reports in the order they were
+  // written.
+  const said = []
   if (problems.length > 0) {
-    console.error(
+    said.push(
       'This package claims to stand alone. `check:standalone` reads names; ' +
         'these lines carry a deployment’s CONTENT, which names nothing:\n',
     )
     for (const { path, line, label, match, why, text } of problems) {
-      console.error(`  ${path}:${line} — ${match} · ${label}`)
-      console.error(`    ${text.slice(0, 120)}`)
-      console.error(`    ${why}`)
+      said.push(`  ${path}:${line} — ${match} · ${label}`)
+      said.push(`    ${text.slice(0, 120)}`)
+      said.push(`    ${why}`)
     }
-    console.error(
+    said.push(
       `\n${problems.length} coupling${problems.length === 1 ? '' : 's'}. ` +
         'Replace each with the template sample’s own content, or look the ' +
         'value up rather than writing it down. If a site is load-bearing and ' +
@@ -380,22 +383,22 @@ function main() {
   }
 
   if (stale.length > 0) {
-    console.error(
+    said.push(
       `\n${stale.length} entr${stale.length === 1 ? 'y' : 'ies'} in ALLOWED match ` +
         'nothing any more. An exemption nobody can reach is a hole nobody is ' +
         'watching — delete each one:\n',
     )
-    for (const entry of stale) console.error(`  ${entry.file} — ${entry.match}`)
+    for (const entry of stale) said.push(`  ${entry.file} — ${entry.match}`)
   }
 
-  process.exit(1)
+  return {
+    what: 'a shared file a commit would carry',
+    count: walk.files.length,
+    findings: said,
+    line:
+      `no deployment content in ${walk.files.length} shared files a commit would carry` +
+      ` — ${PATTERNS.length} patterns, ${ALLOWED.length} allowed`,
+  }
 }
 
-// Same shape as scripts/check-standalone.mjs: comparing against a hand-built
-// `file://` URL silently no-ops whenever the path needs escaping, so a
-// checkout under a directory with a space in its name would run this script
-// and have it do nothing, successfully.
-const isMain =
-  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-
-if (isMain) main()
+whenRun(import.meta.url, judge)

@@ -60,11 +60,11 @@
  * Run: node scripts/check-pointers.mjs   (also: npm run check:pointers)
  */
 import { existsSync } from 'node:fs'
-import { join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 
 import { ALWAYS_LOADED, TIER_NOUN } from './always-loaded.mjs'
 import { sweep as sweepSubject } from './sweep.mjs'
+import { whenRun } from './verdict.mjs'
 
 
 /** The always-loaded routers. */
@@ -294,32 +294,34 @@ export function sweep(root = process.cwd(), subjects = SUBJECTS, io) {
   return { failures, pointers, triggers }
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-
-if (isMain) {
-  const { failures, pointers, triggers } = sweep()
-  // A ROUTER WITH NO POINTERS IN IT IS A FAILURE HERE. Nothing else in this
-  // check can tell "every pointer resolved" from "there was nothing to
-  // resolve", and the second reads as the first every run after. It is the
-  // command that says so rather than `sweep`, because a document carrying no
-  // pointer is a case `sweep` is asked about directly — that is the failure it
-  // reports next door.
-  if (pointers === 0) {
-    console.error(
-      `[pointers] no pointer in ${SUBJECTS.join(', ')} — this sweep has no subject, ` +
-        'which is a failure and not a clean router.',
-    )
-    process.exit(1)
+// A ROUTER WITH NO POINTERS IN IT IS A FAILURE. Nothing else in this check can
+// tell "every pointer resolved" from "there was nothing to resolve", and the
+// second reads as the first every run after. It is the count handed to the
+// verdict that says so rather than `sweep`, because a document carrying no
+// pointer is a case `sweep` is asked about directly — that is the failure it
+// reports next door.
+/**
+ * The verdict: every pointer in the routers, resolved, and every routing item
+ * read for the trigger word it leads with.
+ *
+ * Pure — it sweeps, decides, and hands back what it found. Nothing here prints or
+ * exits.
+ */
+export function judge(root = process.cwd()) {
+  const { failures, pointers, triggers } = sweep(root)
+  return {
+    what: `a pointer in ${SUBJECTS.join(', ')}`,
+    count: pointers,
+    findings:
+      failures.length > 0
+        ? [
+            `[pointers] ${failures.length} pointer problem(s):\n` +
+              failures.map((one) => `  ${one}`).join('\n') +
+              '\n  -> a pointer that does not resolve, or buries its trigger, is a document the agent will not reach.',
+          ]
+        : [],
+    line: `[pointers] ${pointers} pointers resolve and ${triggers} routing items lead with their trigger word (${SUBJECTS.join(', ')})`,
   }
-  if (failures.length > 0) {
-    console.error(
-      `[pointers] ${failures.length} pointer problem(s):\n` +
-        failures.map((one) => `  ${one}`).join('\n') +
-        '\n  -> a pointer that does not resolve, or buries its trigger, is a document the agent will not reach.',
-    )
-    process.exit(1)
-  }
-  console.log(
-    `[pointers] ${pointers} pointers resolve and ${triggers} routing items lead with their trigger word (${SUBJECTS.join(', ')})`,
-  )
 }
+
+whenRun(import.meta.url, judge)

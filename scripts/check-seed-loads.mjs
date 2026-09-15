@@ -56,7 +56,6 @@
  */
 import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import {
   ANY_SIGNED_IN_USER_MAY_WRITE,
   buildWriteSurfaceSql,
@@ -64,6 +63,7 @@ import {
   writeSurfaceAssertions,
   writeSurfaceEntries,
 } from './panel-write-surface.mjs'
+import { whenRun } from './verdict.mjs'
 
 /** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
 const ROOT = process.cwd()
@@ -251,7 +251,19 @@ function psql(args, extraEnv = {}, input = undefined) {
   }, input)
 }
 
-function main() {
+// THE GAPS RIDE ON THE GREEN LINE. A table this check does not yet ask about is
+// said out loud on a passing run, because a gap the check knows about and does
+// not name is the shape of hole this whole file exists to close — so it is part
+// of the summary rather than a finding, and it is printed where the summary is.
+/**
+ * The verdict: the generated seed loaded on a fresh database, then read as anon
+ * and written as the roles the editors use.
+ *
+ * Pure — it stands a database up, exercises it, decides, and hands back what it
+ * found. Nothing here prints or exits.
+ */
+export function judge() {
+  const what = 'a read the deployed key makes against the seeded database'
   run('dropdb', ['--if-exists', DB])
   run('createdb', [DB])
   try {
@@ -272,71 +284,70 @@ function main() {
       psql(['-At', '-F', '|', '-f', '-'], {}, buildWriteSurfaceSql()),
     )
     if (writeProblems.length > 0) {
-      console.error('The recipe applied, but a signed-in author cannot write what the panels show:\n')
-      for (const problem of writeProblems) console.error(`  ${problem}`)
-      console.error(
-        '\nThe editors make these writes directly, under the caller\'s own ' +
+      return {
+        what,
+        opening: 'The recipe applied, but a signed-in author cannot write what the panels show:\n',
+        findings: writeProblems.map((problem) => `  ${problem}`),
+        closing:
+          '\nThe editors make these writes directly, under the caller\'s own ' +
           'privileges. A missing grant is a refusal the author sees; a missing ' +
           'UPDATE or DELETE policy is worse — the statement matches no row and ' +
           'returns 200, so a save is reported as a deleted row and a delete as no ' +
           'change at all. Neither is visible locally, where the dev service key ' +
           'bypasses RLS. Each line above is a write that was actually attempted, ' +
           'as the role, against the database this run built.',
-      )
-      process.exitCode = 1
-      return
+      }
     }
     const stdout = psql(['-At', '-F', '|', '-c', buildInventorySql()])
-    const problems = evaluate(parseCounts(stdout))
+    const counts = parseCounts(stdout)
+    const problems = evaluate(counts)
     if (problems.length > 0) {
-      console.error('The seed loaded, but a keyless read does not see the content:\n')
-      for (const problem of problems) console.error(`  ${problem}`)
-      console.error(
-        '\nThis is the deployed app reading with the anon key. A table it cannot ' +
+      return {
+        what,
+        count: counts.size,
+        opening: 'The seed loaded, but a keyless read does not see the content:\n',
+        findings: problems.map((problem) => `  ${problem}`),
+        closing:
+          '\nThis is the deployed app reading with the anon key. A table it cannot ' +
           'see renders blank in the browser. Expose it to anon in the recipe ' +
           '(a migration `grant select … to anon`), or fix the seed that left it empty.',
-      )
-      process.exitCode = 1
-      return
+      }
     }
     const assertions = writeSurfaceAssertions()
     const entries = writeSurfaceEntries()
     const verbs = [...new Set(entries.flatMap((entry) => entry.verbs))].sort()
-    console.log(
-      `the generated seed loads on a fresh core + recipe and renders as anon ` +
+    return {
+      what,
+      count: counts.size,
+      line:
+        `the generated seed loads on a fresh core + recipe and renders as anon ` +
         `(${POPULATED.length} tables populated, ${Object.keys(RENDER_READS).length} render reads return rows), ` +
         `and every write the editors make was attempted as the role and rolled back ` +
         `(${assertions.filter((one) => one.who === 'author').length} an author made, ` +
         `${assertions.filter((one) => one.who === 'viewer').length} a signed-in reader was refused, ` +
-        `over ${entries.length} tables and ${verbs.join('/').toLowerCase()})`,
-    )
-    // Printed on a GREEN run, because a gap the check knows about and does not
-    // say out loud is the shape of hole this whole file exists to close.
-    for (const [table, because] of Object.entries(ANY_SIGNED_IN_USER_MAY_WRITE)) {
-      console.log(`  not yet asked of public.${table}: ${because}`)
+        `over ${entries.length} tables and ${verbs.join('/').toLowerCase()})` +
+        Object.entries(ANY_SIGNED_IN_USER_MAY_WRITE)
+          .map(([table, because]) => `\n  not yet asked of public.${table}: ${because}`)
+          .join(''),
     }
   } catch (error) {
     // A non-zero psql exit — an apply that would not run, or a read the anon
     // role is refused. Its stderr names the file and the statement, so it is
     // the most useful thing to print.
     const stderr = error.stderr?.toString() ?? ''
-    console.error('The fresh-database seed load failed:\n')
-    console.error(stderr.trim() || String(error.message))
-    console.error(
-      '\nThe stack that is applied, in order:\n' +
+    return {
+      what,
+      opening: 'The fresh-database seed load failed:\n',
+      findings: [stderr.trim() || String(error.message)],
+      closing:
+        '\nThe stack that is applied, in order:\n' +
         STACK.map((f) => `  ${f}`).join('\n') +
         '\n\nReproduce it by hand against a scratch database with those files, ' +
         'in that order, under `psql -v ON_ERROR_STOP=1`.',
-    )
-    process.exitCode = 1
+    }
   } finally {
     run('dropdb', ['--if-exists', DB])
   }
 }
 
-// Same shape as scripts/generate-portable-core.mjs: comparing against a
-// hand-built `file://` URL silently no-ops whenever the path needs escaping.
-const isMain =
-  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-
-if (isMain) main()
+whenRun(import.meta.url, judge)

@@ -50,8 +50,8 @@
  */
 import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { STACK } from './check-seed-loads.mjs'
+import { whenRun } from './verdict.mjs'
 
 /** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
 const ROOT = process.cwd()
@@ -181,8 +181,19 @@ export function probe(label, sql) {
   }
 }
 
-function main() {
-  const selfTest = process.argv.includes('--self-test')
+// THE TOLERATED LINES RIDE ON THE GREEN LINE. A function that raised its own
+// exception answered the question this asks, so it is not a finding; it is a
+// footnote to the summary, printed only where the summary is, and the summary
+// is the one string the verdict prints to stdout.
+/**
+ * The verdict: every `language sql` body in public, called to see if it resolves.
+ *
+ * Pure — it stands a database up, calls, decides, and hands back what it found.
+ * Nothing here prints or exits.
+ */
+export function judge(argv = process.argv.slice(2)) {
+  const selfTest = argv.includes('--self-test')
+  const what = 'a `language sql` function in public'
   run('dropdb', ['--if-exists', DB])
   run('createdb', [DB])
   try {
@@ -191,17 +202,19 @@ function main() {
     if (selfTest) {
       psql(['-c', PLANTED.create])
       const planted = probe(PLANTED.name, PLANTED.probe)
-      if (planted.outcome !== 'unresolved') {
-        console.error(
-          `SELF-TEST FAILED: a \`language sql\` body naming a table that does not exist ` +
-            `was planted and calling it was reported as "${planted.outcome}". A clean ` +
-            'result from this check means nothing until this passes.',
-        )
-        process.exitCode = 1
-        return
+      return {
+        what: 'the planted body',
+        count: 1,
+        findings:
+          planted.outcome !== 'unresolved'
+            ? [
+                `SELF-TEST FAILED: a \`language sql\` body naming a table that does not exist ` +
+                  `was planted and calling it was reported as "${planted.outcome}". A clean ` +
+                  'result from this check means nothing until this passes.',
+              ]
+            : [],
+        line: `ok — self-test: calling ${PLANTED.name} reported ${planted.state} (${planted.message})`,
       }
-      console.log(`ok — self-test: calling ${PLANTED.name} reported ${planted.state} (${planted.message})`)
-      return
     }
 
     const probes = psql(['-At', '-F', '\t', '-c', PROBE_LIST_SQL])
@@ -211,52 +224,46 @@ function main() {
       .map(([name, sql]) => [`${name}(typed nulls)`, sql])
 
     if (probes.length === 0) {
-      console.error(
-        'no `language sql` function was found in public — this check swept nothing, ' +
-          'which is not the same as finding nothing. The stack did not apply as expected.',
-      )
-      process.exitCode = 1
-      return
+      return {
+        what,
+        findings: [
+          'no `language sql` function was found in public — this check swept nothing, ' +
+            'which is not the same as finding nothing. The stack did not apply as expected.',
+        ],
+      }
     }
 
     const results = [...probes, ...SEEDED_PROBES].map(([label, sql]) => probe(label, sql))
     const broken = results.filter((r) => r.outcome === 'unresolved')
     const tolerated = results.filter((r) => r.outcome === 'tolerated')
 
-    for (const finding of broken) {
-      console.error(
-        `::error::${finding.label} — ${finding.message}\n` +
+    return {
+      what,
+      count: results.length,
+      findings: broken.map(
+        (finding) =>
+          `::error::${finding.label} — ${finding.message}\n` +
           '    The body names something this database does not have. A body is TEXT: a ' +
           'rename moves the relation and never the body, so the function exists, dumps ' +
           'cleanly and fails on call. Rewrite it in a migration (`create or replace`).',
-      )
-    }
-    if (broken.length > 0) {
-      console.error(`\n${broken.length} function body/bodies do not resolve when called.`)
-      process.exitCode = 1
-      return
-    }
-    console.log(
-      `ok — every \`language sql\` function in public resolves when called ` +
+      ),
+      closing: broken.length > 0 ? `\n${broken.length} function body/bodies do not resolve when called.` : undefined,
+      line:
+        `ok — every \`language sql\` function in public resolves when called ` +
         `(${probes.length} called with typed nulls, ${SEEDED_PROBES.length} with seeded rows` +
-        `${tolerated.length > 0 ? `, ${tolerated.length} raised their own exception and were tolerated` : ''})`,
-    )
-    for (const t of tolerated) console.log(`  tolerated — ${t.label}: ${t.message}`)
+        `${tolerated.length > 0 ? `, ${tolerated.length} raised their own exception and were tolerated` : ''})` +
+        tolerated.map((t) => `\n  tolerated — ${t.label}: ${t.message}`).join(''),
+    }
   } catch (error) {
-    console.error('could not stand up a database to call the functions in:\n')
-    console.error(String(error.stderr ?? error.message).trim())
-    console.error(
-      '\nThe stack that is applied, in order:\n' + STACK.map((f) => `  ${f}`).join('\n'),
-    )
-    process.exitCode = 1
+    return {
+      what,
+      opening: 'could not stand up a database to call the functions in:\n',
+      findings: [String(error.stderr ?? error.message).trim()],
+      closing: '\nThe stack that is applied, in order:\n' + STACK.map((f) => `  ${f}`).join('\n'),
+    }
   } finally {
     run('dropdb', ['--if-exists', DB])
   }
 }
 
-// Same shape as scripts/check-seed-loads.mjs: comparing against a hand-built
-// `file://` URL silently no-ops whenever the path needs escaping.
-const isMain =
-  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-
-if (isMain) main()
+whenRun(import.meta.url, judge)

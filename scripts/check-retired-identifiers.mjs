@@ -114,6 +114,7 @@
  */
 import { execFileSync } from 'node:child_process'
 import { RETIRED_IDENTIFIER_FRAGMENTS, replacementFor } from './retired-vocabulary.mjs'
+import { whenRun } from './verdict.mjs'
 
 /**
  * Identifiers allowed to keep a retired word, each with a reason and usually an
@@ -295,6 +296,13 @@ ${sweepSql([word])}
 rollback;`
 }
 
+/** How many relations the sweep's every arm hangs off: the subject's size. */
+export function sweptSql() {
+  return `select count(*) from pg_class cls
+  join pg_namespace nsp on nsp.oid = cls.relnamespace
+ where nsp.nspname = 'public' and cls.relkind in ('r','v','m','p')`
+}
+
 function psql(args, input) {
   return execFileSync('psql', ['-At', '-F', '\t', '-v', 'ON_ERROR_STOP=1', ...args], {
     encoding: 'utf8',
@@ -303,8 +311,21 @@ function psql(args, input) {
   })
 }
 
-function main() {
-  const args = process.argv.slice(2)
+// A DATABASE THAT COULD NOT BE SWEPT IS RED HERE, NOT SKIPPED. Everywhere else
+// in this set "could not look" is a warning, because the skip is the correct
+// answer; here it is not. This check exists because the migration files and
+// the catalogue disagree, and a run that never reached a catalogue has not
+// compared anything — in CI it follows the migration replay, so the only way
+// to reach it is a database that should have been there and was not. So the
+// reason is said as a finding, in the words it has always used.
+/**
+ * The verdict: a database catalogue swept for the words the schema retired.
+ *
+ * Pure — it sweeps the catalogue, decides, and hands back what it found and how
+ * many rows came back. Nothing here prints or exits.
+ */
+export function judge(argv = process.argv.slice(2)) {
+  const args = argv
   const dbIndex = args.indexOf('--database')
   const database = dbIndex === -1 ? process.env.PGDATABASE : args[dbIndex + 1]
 
@@ -315,54 +336,76 @@ function main() {
     try {
       out = psql(target, selfTestSql())
     } catch (error) {
-      console.error(`self-test could not run: ${String(error.stderr || error.message).trim()}`)
-      process.exit(1)
+      return {
+        what: 'a planted object the sweep must report',
+        findings: [`self-test could not run: ${String(error.stderr || error.message).trim()}`],
+      }
     }
     const planted = parseRows(out).filter((row) => row.identifier.includes('zz_selftest'))
-    if (planted.length === 0) {
-      console.error(
-        'SELF-TEST FAILED: a table named for a retired word was planted and the sweep ' +
-          'did not report it. The query is broken, and a clean result from it means nothing.',
-      )
-      process.exit(1)
+    return {
+      what: 'a planted object the sweep must report',
+      count: planted.length,
+      findings:
+        planted.length === 0
+          ? [
+              'SELF-TEST FAILED: a table named for a retired word was planted and the sweep ' +
+                'did not report it. The query is broken, and a clean result from it means nothing.',
+            ]
+          : [],
+      line: `ok — self-test: the sweep reported ${planted.length} planted object(s), then rolled back`,
     }
-    console.log(`ok — self-test: the sweep reported ${planted.length} planted object(s), then rolled back`)
-    return
   }
 
   let tsv
   try {
     tsv = psql([...target, '-c', sweepSql()])
   } catch (error) {
-    console.error(
-      'could not sweep a database — this check compares the CATALOGUE, not the ' +
-        'migration files, and has nothing to say without one.\n' +
-        `  ${String(error.stderr || error.message).trim().split('\n').slice(-3).join('\n  ')}\n` +
-        '\nSet PGHOST/PGUSER/PGDATABASE, or pass --database <name>. In CI this runs ' +
-        'after the migration replay in ci.yml.',
-    )
-    process.exit(1)
+    return {
+      what: 'a retired word swept across the database catalogue',
+      findings: [
+        'could not sweep a database — this check compares the CATALOGUE, not the ' +
+          'migration files, and has nothing to say without one.\n' +
+          `  ${String(error.stderr || error.message).trim().split('\n').slice(-3).join('\n  ')}\n` +
+          '\nSet PGHOST/PGUSER/PGDATABASE, or pass --database <name>. In CI this runs ' +
+          'after the migration replay in ci.yml.',
+      ],
+    }
   }
 
-  const problems = findings(parseRows(tsv))
-  for (const problem of problems) {
-    console.error(
-      `::error::retired vocabulary in ${problem.subject} — "${problem.word}" was ` +
+  // The count is the CATALOGUE OBJECTS the sweep looked at, not the rows it
+  // came back with and not the length of the fragment list it went looking
+  // with. The rows are only the matches, so a clean catalogue returns none and
+  // would read as no subject; the fragment list is a constant, so an empty
+  // catalogue — the one case the empty-subject rule exists for — would pass
+  // green. Relations in `public` are what every arm of the sweep hangs off.
+  let swept
+  try {
+    swept = Number(psql([...target, '-c', sweptSql()]).trim())
+  } catch (error) {
+    return {
+      what: 'a retired word swept across the database catalogue',
+      findings: [`could not count the catalogue: ${String(error.stderr || error.message).trim()}`],
+    }
+  }
+  const rows = parseRows(tsv)
+  const problems = findings(rows)
+  return {
+    what: 'a relation in the public schema swept for a retired word',
+    count: swept,
+    findings: problems.map(
+      (problem) =>
+        `::error::retired vocabulary in ${problem.subject} — "${problem.word}" was ` +
         `renamed to ${replacementFor(problem.word)}. A rename moves the table and ` +
         'the column; it never moves this.' +
         // Without this a reader is told a function body contains a word and left
         // to find it: `duplicate_path` is 100 lines and prose inside it counts.
         (problem.context ? `\n    … ${problem.context.trim()} …` : ''),
-    )
-  }
-  if (problems.length > 0) {
-    console.error(`\n${problems.length} database identifier(s) still carry a retired word.`)
-    process.exit(1)
-  }
-  console.log(
-    `ok — no retired vocabulary in any database identifier ` +
+    ),
+    closing: problems.length > 0 ? `\n${problems.length} database identifier(s) still carry a retired word.` : undefined,
+    line:
+      `ok — no retired vocabulary in any database identifier ` +
       `(${RETIRED_IDENTIFIER_FRAGMENTS.length} fragments swept across the catalogue)`,
-  )
+  }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main()
+whenRun(import.meta.url, judge)
