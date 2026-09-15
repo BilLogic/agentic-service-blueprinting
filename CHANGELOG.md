@@ -1,5 +1,251 @@
 # Changelog
 
+## 1.44.15
+
+**Three seams the third round left for later are closed.** The agent
+session is one module the views ask — open session, draft and attachment
+behind one interface, with deleting the open session a rule inside it rather
+than a fallback in a component, and rename and delete covered before the
+stores merged. The offline board is a value the deployment config provider
+settles once and hands down a tree, so two providers each draw their own
+board and no test resets a module. And the source tree is read once,
+addressed by surface: the token model and the class reader take their files
+from that reading, every guard that read the application as text asks it,
+and the one guard that was really about what draws now renders its view.
+Nobody opening a session, loading a board or running the suite sees a change;
+the slices were green throughout with no assertion edited, and the built
+chunk is byte-identical.
+
+**Upgrading a deployment:**
+
+- Nothing to take: no shared script changed.
+- If a file of yours imported `src/lib/agent/panelState` or
+  `src/lib/agent/attachments`, import the same names from
+  `src/lib/agent/sessions`; `setOpenAgentSession(null)` is `closeAgentSession()`.
+- If a file of yours called a fallback lookup (`getBlueprintFallback` and its
+  siblings) or `configureSampleBlueprints`, the lookups take the board as
+  their first argument — `useOfflineBoard()` in a component, or the value the
+  provider settled — and the configure call is gone; `sample.blueprints` was
+  always the way to hand a registry in and still is.
+- A guard of your own that reads the application's source with a relative
+  path may ask `src/lib/sourceTree.ts` instead; nothing requires it.
+
+### Patch Changes
+
+- 30262fe: One module reads the source tree, and the guards ask it questions
+
+  Fifty-two test modules opened this tree with `readFileSync` and a path they
+  built themselves — `resolve(__dirname, '..', 'components/editor/Foo.tsx')`,
+  `join(process.cwd(), 'src/App.tsx')`, `new URL('../styles/blueprint.css',
+import.meta.url)`. Each spelling is a second opinion about where the
+  application is, written down where the tree cannot see it, so a file that moved
+  edited the guards instead of being caught by them: the agent panel split had to
+  change three of them, and the move was right every time — the guards were
+  naming an address that no longer existed.
+
+  `src/lib/sourceTree.ts` is the one answer to where the application is and what
+  is in it. It asks `scripts/sweep.mjs` for the `app` subject once — the
+  deployment's `src` laid over the package's, per path, the overlay the build
+  applies — and answers by SURFACE: the paths and files of a named region
+  (`editor`, `ui`, `styles`, `lib`, `app` for all of it), the text or bytes of
+  one file addressed relative to `src`, and which surface a path is on. A guard
+  names a file or a surface; it never names a root again.
+
+  The refusal is the point. A guard that opens a path itself gets `ENOENT` and a
+  path, which says the guard is broken and nothing about the tree. The reading
+  has the whole listing in hand, so it says the useful thing instead: this path is
+  not there, a file of that name is at THIS path now, and the surface it swept
+  held this many files. `src/lib/sourceTree.test.ts` proves it over a scratch
+  tree — a file is moved between two surfaces, and the reading reports it at its
+  new path while the old one raises a refusal naming where it went.
+
+  `tokenModel`'s two walks and `classList`'s sampling fold into it. The decision
+  that one token model is the single style seam stands unchanged: the model keeps
+  the parsing — what a declaration is, what the cascade says, who consumes a name
+  — and takes its files from the reading, which also owns the comment blanking
+  and holds the stripped sample, so a rule and its counterpart cannot be handed
+  two samples of one file. `classLists()` takes a surface, resolving named
+  class-list constants across the whole application whichever surface the sites
+  come from. Both enumerations in `tokenDiscipline` still agree in both
+  directions, and the second one is still independent: it decides for itself what
+  a source file is, so the model cannot mark its own homework.
+
+  Twenty-seven guards under `src/lib` now ask the reading instead of the
+  filesystem. Two of them changed what they report, and both widened:
+  `entityStatusContract` swept `src/data` flat and now sweeps the surface, naming
+  an offender `data/foo.ts` rather than `foo.ts`; `writeFailures` states its three
+  paths relative to `src`, as every other guard now does. No assertion was
+  weakened, no sample narrowed. Nothing runs at runtime that did not run before:
+  the reading, the model and the class reader are test-time modules with no
+  importer the bundle can reach.
+
+  Two things are deliberately left where they are. `overviewFlowArrowAnchor` reads
+  `ServiceOverviewView.tsx` to assert about behaviour rather than about text, and
+  belongs with the contract half of this pair rather than with a file-reading
+  seam. And eight guards under `src/lib` read something that is not the
+  application — the migrations, the published references, the generated schema,
+  an installed package — so they go on opening it directly; the reading answers
+  for the application and says so.
+
+  **Eighteen direct readers remain outside `src/lib`**, in `src/`,
+  `src/components/` and `src/styles/`. That is the contract half's starting line.
+
+- afc417f: The agent session is one module the views ask, not three stores they reach around the panel for
+
+  The agent panel's interface said five props, and behind those five props three
+  module stores were written from below: `panelState.ts` held which session is
+  open and the per-session composer draft, `sessions.ts` held the list, and
+  `attachments.ts` held the one pending attachment. The chat view set and took
+  the attachment itself. The two session dialogs renamed and deleted against the
+  sessions store. And deleting the open session reached the panel not at all —
+  it fell through a `?? null` in a component that had no way to know a session
+  had gone.
+
+  They are one module now. `src/lib/agent/sessions.ts` holds the four facts
+  about one thing — the list, which one is open, what you were typing in it, and
+  what is waiting to go with the next message — behind one interface, and the
+  panel, the two views and the two dialogs read it and no other store about a
+  session. Deleting the open session closes it, inside the module, and takes
+  that session's draft with it: an id `crypto.randomUUID` minted never comes
+  back, so a draft kept under one is unreachable by construction. The panel
+  reads the open **session** rather than an id it would have to resolve against
+  a list. The dialogs read no store at all — each reports its verb and its
+  caller performs it, so the store has two writers where it had four.
+
+  The four facts stay four variables rather than one state object, which is not
+  tidiness: every hook here returns one of them and `useSyncExternalStore`
+  re-renders on a changed _reference_. One object rebuilt per write would hand
+  the session list a new snapshot on every character typed into the composer,
+  and it would repaint; four variables mean the list's snapshot is the same
+  array it was, and the notification costs a comparison.
+
+  Nothing a person sees is different. Opening, sending, renaming, deleting and
+  reopening a session behave as they did; persistence is untouched, and no
+  persisted row shape moved. The rendered class, `aria-` and `data-` attribute
+  sets of all four touched views were hashed across seven states before and
+  after, and match string for string.
+
+  What was missing is now there: rename and delete had no test, and the
+  end-to-end slice that covers this flow never performs either. They have one
+  at the module's own interface, landed before the stores merged and watched go
+  red on a delete that writes the list back unchanged — and the rule about the
+  open session has its own case, which asserts the open **id** rather than the
+  hook, because a hook that resolves an id against a list reads empty whether
+  the rule is there or not.
+
+- 50f17ba: Every guard of the application asks the reading, and the anchor guard renders
+
+  The expand half put `src/lib/sourceTree.ts` in place and moved the guards under
+  `src/lib` onto it. This is the contract: the eighteen test modules that still
+  opened the application with `readFileSync` and a path they built themselves —
+  `resolve(dirname(fileURLToPath(import.meta.url)), '../..')`,
+  `join(process.cwd(), 'src/components/editor/SliceSlideComposer.tsx')`,
+  `new URL('./bootstrap.ts', import.meta.url)` — now name a file or a surface and
+  let the reading say where it is. **Direct readers under `src/`: 27 before, 9
+  after.**
+
+  No guard of the application pins its own root any more. The per-guard path
+  helpers are deleted with the paths: `rawSource` in the slice/presentation and
+  canvas panel ladders, the local `sourceOf` in the editor shell ladder, `src` in
+  the panel loading contract, and the four hand-written tree walks — `citations`,
+  `deploymentOwnedContent` (three of them), `definitionCard`, `labelVocabulary` —
+  which are now the reading's own listing. The stakeholder reader keeps a `read`,
+  but it is a surface prefix over `sourceOf` rather than a root of its own.
+  `definitionCard`'s walk had its own comment stripper; it takes the reading's
+  stripped sample, so it and every other text rule are handed one text of a file
+  rather than two.
+
+  Deleting the two `rawSource`es left `uncommentedLeading` written twice, byte
+  for byte — the copies had been kept apart only by each closing over its own
+  reader. It moves to `lib/classList.ts`, beside the other reading of a class
+  list, and both ladders ask it. `aliasVocabulary` came in with them: it asked
+  `readdirSync` of a `../styles` it resolved itself whether `compat.css` was
+  gone, and asks `hasSource('styles/compat.css')` instead — a question that
+  survives the stylesheet surface moving, and one the `readFileSync` count could
+  never have caught.
+
+  The nine that remain read something that is **not** the application, which is
+  the line the reading draws: `lib/agent/tools/references` and
+  `lib/agent/tools/serviceScope` (the generated rulebook and adapter),
+  `lib/authoringErrors` (the generated schema SQL), `lib/backend/schemaVersion`
+  (the published IR schema and a migration), `lib/cellResources` and
+  `lib/storageKeyPolicies` (migrations), `lib/panelSheetSnapContract` and
+  `lib/tailwindColorReset` (installed packages), and `deploymentRoot`, whose
+  subjects are the scratch trees it stages, the `dist` it builds and the authored
+  figures under `docs/`. `deploymentRoot`'s two reads that WERE of this
+  application — the class names the markup writes, and the residents the package
+  must hold at the same paths — moved onto the reading; the rest stay.
+
+  `overviewFlowArrowAnchor` no longer reads `ServiceOverviewView.tsx` and counts
+  its call arguments. It renders the board inside the application's own provider
+  tree with a loaded nav whose first phase is not the sample's, and asserts the
+  anchor attribute lands on the phase the reader is looking at. That is the
+  defect it was written for, observed instead of inferred: point the call at the
+  sample and the assertion fails on the phase id, where the text version could
+  only fail on a spelling.
+
+  Three guards changed what they REPORT, and all three toward the one spelling:
+  an offender is stated relative to `src`. `vendoredDivergence` names
+  `components/ui/foo.tsx` where it named `ui/foo.tsx`, `labelVocabulary` names
+  `components/blueprint/Foo.tsx` where it named `blueprint/Foo.tsx`, and
+  `definitionCard` names `components/…` where it named `src/components/…`.
+  `citations` already spelled its findings that way and is unchanged.
+
+  Two guards changed what they SWEEP, and neither narrows.
+  `deploymentOwnedContent`'s content roster reads the `content` and `data`
+  surfaces rather than each directory's top level, so a module added in a
+  subfolder is in scope on the day it appears; neither directory has one today.
+  `labelVocabulary` already recursed — what changed is the reach of its
+  exemption: it skipped ANY directory named `ui` at any depth and now skips the
+  `ui` surface, which is `components/ui`. No difference today, because there is
+  no nested `ui`, and the surface is the thing the component CLI actually owns.
+
+  And `definitionCard`'s walk used to skip a file that vanished between the
+  listing and the read; the reading refuses instead, which is the rule the expand
+  half stated — a sample that quietly lost a file passes every rule over it.
+
+  No sample was narrowed: every converted guard measures the same tree as the
+  walk it replaced. One assertion is replaced rather than kept — the anchor
+  guard's count of `ServiceOverviewView.tsx`'s call arguments, which stood in for
+  the behaviour the render now observes directly. There is one call site, and the
+  render fails on it. Nothing runs at runtime that did
+  not run before: the reading is a test-time module with no importer the bundle
+  can reach, and the built chunk is byte-identical to the build at the base
+  commit.
+
+- 2643987: The offline board is a value the provider hands down, not a slot it writes while rendering
+
+  `data/blueprintFallbacks.ts` kept the settled registry in a module-level
+  variable. One writer — `DeploymentConfigProvider`, inside a memo, during its
+  own render — and every lookup reached for that variable while it drew. The
+  comment defended the render-time write as idempotent, and for one provider in
+  one tree it was. What it never covered is the second occupant: two providers
+  share one slot and the last render wins, a render React abandons still writes,
+  and ten of the twelve test modules that mount the provider never put the slot
+  back, so a board could outlive the file that built it.
+
+  The registry now becomes an `OfflineBoard` — the same lookup tables, built once
+  over a registry and handed back as a value. The provider builds one and puts it
+  on a context beside the config; `useOfflineBoard()` is what a surface reads, and
+  every lookup takes the board as its first argument. Readers with no hooks above
+  them — the nav model, the slice scan, the blueprint resolver, the agent's
+  no-database reads — take it from whoever called them, which for a tool call is
+  `ctx.offlineBoard`, handed down from the panel the way the scope and the roster
+  already are. Outside a provider the context answers the package's own board,
+  which is exactly what the module variable held before anyone wrote to it.
+
+  Nothing a person sees changes: the bundled sample and a deployment's board draw
+  the same cells they drew, `sample.blueprints` takes the same registry or loader
+  and still resolves once before the board draws, and the generator's
+  `--registry-out` / `--nav-out` output is untouched. What changes is that a board
+  belongs to a tree — proven by two providers with two registries drawing their
+  own boards side by side — and the `afterEach` resets are gone.
+
+  No deployment-facing export changed: `SampleBlueprintRegistry` and
+  `SampleBlueprintRegistryLoader` are still the package's only exports here, and
+  they are unchanged. `configureSampleBlueprints` is gone, but it was never
+  exported from the package entry.
+
 ## 1.44.14
 
 **Five things the template said six times are said once.** The third
@@ -7167,8 +7413,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                            ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                            "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                              ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                              "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
