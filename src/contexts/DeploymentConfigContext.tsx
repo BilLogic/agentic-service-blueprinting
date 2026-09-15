@@ -15,7 +15,9 @@ import {
 import { ORG_NAME } from '@/config'
 import type { CoverContent } from '@/components/cover/coverModel'
 import {
-  configureSampleBlueprints,
+  offlineBoardFrom,
+  PACKAGE_OFFLINE_BOARD,
+  type OfflineBoard,
   type SampleBlueprintRegistry,
   type SampleBlueprintRegistryLoader,
 } from '@/data/blueprintFallbacks'
@@ -48,6 +50,39 @@ const DeploymentConfigContext = createContext<ResolvedDeploymentConfig | null>(
 )
 
 /**
+ * The offline board this part of the tree draws — a SIBLING of the config
+ * context rather than a field on it.
+ *
+ * Sibling because the two settle at different moments and on different terms.
+ * The resolved config is a pure function of the config object, settled in one
+ * memo; the board behind `sample.blueprints` may arrive from a loader a tick
+ * later, and folding it into the resolved value would make every reader of the
+ * wordmark re-render when a chunk landed. It is also the one config field whose
+ * resolved form is not the field: readers take the INDEXED board, not the
+ * registry or the loader the deployment wrote.
+ *
+ * DEFAULTED, unlike the config context, which is `null` outside a provider so
+ * that a reader mounted outside one is caught as the wiring mistake it is. A
+ * board has a true default and always did: the package's own is what a clone
+ * with no deployment config draws, so a surface with no provider above it reads
+ * exactly what it read while this was a module-level slot — nothing is being
+ * papered over, because there is no missing value to hide.
+ */
+const OfflineBoardContext = createContext<OfflineBoard>(PACKAGE_OFFLINE_BOARD)
+
+/**
+ * The offline board to read: the deployment's when it supplied one, the
+ * package's otherwise. Every lookup in `data/blueprintFallbacks` takes one.
+ *
+ * A surface that is not a hook — a pure function, a tool's handler — takes the
+ * board as an argument from whoever called it. The board is a value; passing
+ * it is the seam.
+ */
+export function useOfflineBoard(): OfflineBoard {
+  return useContext(OfflineBoardContext)
+}
+
+/**
  * The offline board, in hand: the registry `sample.blueprints` carries, or the
  * one its loader fetches, with the two states a fetch adds.
  *
@@ -55,12 +90,12 @@ const DeploymentConfigContext = createContext<ResolvedDeploymentConfig | null>(
  * flat list of "write this settled field onto the module that serves it", and
  * this one field needs a fetch, two pieces of state and a gate. Not in
  * `src/hooks/` either: nothing but this provider may call it, since calling it
- * twice would fetch twice and the write it feeds is a module write.
+ * twice would fetch twice.
  */
 function useSampleBlueprintRegistry(
   supplied: SampleBlueprintRegistry | SampleBlueprintRegistryLoader,
 ): {
-  /** The registry to write, or `null` while a loader is still answering. */
+  /** The registry to index, or `null` while a loader is still answering. */
   blueprints: SampleBlueprintRegistry | null
   /** A loader is outstanding: nothing below may render yet. */
   awaiting: boolean
@@ -144,30 +179,36 @@ export function DeploymentConfigProvider({
   const resolved = useMemo(() => resolveDeploymentConfig(config), [config])
 
   /**
-   * The offline board's CONTENT onto the fallback module, WHILE THIS RENDERS
-   * — the one config field that cannot wait for an effect, not even a layout
-   * one.
+   * The offline board, HELD AND HANDED DOWN — the one config field whose
+   * resolved form is a value in this component rather than a write to the
+   * module that serves it.
    *
-   * Every other field below is written after the tree below has rendered,
-   * which is soon enough because each of them is read later still: a colour
-   * before the browser paints, a budget under a field somebody types in, a
-   * tool roster assembled when a message is sent. This one is read DURING
-   * that render — the board asks `getBlueprintFallback` for its lanes and
-   * cells as it draws them — and a module write re-renders nobody. Written in
-   * an effect it would land after a keyless board had already drawn the
-   * package's content, or nothing, with no second render to correct it.
+   * Every other field below is written onto its module after the tree has
+   * rendered, which is soon enough because each of them is read later still: a
+   * colour before the browser paints, a budget under a field somebody types
+   * in, a tool roster assembled when a message is sent. This one is read
+   * DURING that render — the board asks for its lanes and cells as it draws
+   * them — so it cannot be an effect at all. It used to be a write during
+   * render instead, defended as idempotent; what that defence never covered is
+   * a SECOND provider, which settled the same slot over the first, and a test
+   * file, which left its board standing for the next one. Both are the same
+   * fact: a module slot has one occupant and a tree may have many.
    *
-   * A write during render is legitimate here for the same reason it is
-   * unusual: it is idempotent, it touches no React state, and it is a parent
-   * settling a module the children below it read. Inside the memo, so it
-   * happens once per distinct config object rather than on every render.
+   * So the registry becomes an `OfflineBoard` here and rides the context
+   * below. A reader re-renders when its provider hands it a different board,
+   * which is what a write could never do, and nothing outside this tree can
+   * see it.
    */
   const { blueprints, awaiting, failure } = useSampleBlueprintRegistry(
     resolved.sample.blueprints,
   )
-  useMemo(() => {
-    configureSampleBlueprints(blueprints ?? undefined)
-  }, [blueprints])
+  // Indexed once per distinct registry: the tables are built over a board of
+  // every cell of every path, and the identity is what every reader below
+  // memoizes on.
+  const offlineBoard = useMemo(
+    () => offlineBoardFrom(blueprints ?? undefined),
+    [blueprints],
+  )
 
   /**
    * `brand.accent` onto the root, as a LAYOUT effect: React runs these after
@@ -262,30 +303,16 @@ export function DeploymentConfigProvider({
   /**
    * Nothing renders until a loader has answered.
    *
-   * The render-time write at the top of this component is why: the board
-   * reads the fallback module DURING its own render, and a write to that
-   * module notifies nobody. Letting the tree draw first and writing the
-   * registry when it arrived would put a board on screen with nothing behind
-   * it — a deployment's nav rows over an empty canvas, which is the exact
+   * Not because a late board could not reach the tree — it would, the context
+   * below re-renders its readers — but because of what draws in the meantime.
+   * Letting the tree draw first and handing the registry down when it arrived
+   * would put a board on screen with nothing behind it — a deployment's nav rows over an empty canvas, which is the exact
    * failure `sample.blueprints` was added to fix — and the hook that built
-   * those empty maps memoizes them on its scenario ids, so no later render
-   * corrects it. A gate here is the smallest thing that is true: the
-   * eager form passes it in the same tick and renders as it always did, and
-   * the loader form holds one chunk fetch before the first paint. Through that
-   * one frame the fallback module holds the package's own registry, because
-   * there is nothing yet to write — nothing renders to read it, which is what
-   * the gate is for.
-   *
-   * The alternative considered and rejected was to make the fallback module a
-   * subscribable store, read through `useSyncExternalStore`, so a write
-   * NOTIFIED its readers and the shell could stay up while the board filled
-   * in. That is the shape this repository reaches for when state must outlive
-   * a mount point or be read where no hook is available — but the
-   * registry is not state, it is a content document settled once per
-   * installation, and turning every offline lookup into a subscription to buy
-   * one chunk fetch of shell would be a store built for the loading screen it
-   * saves. The gate costs a blank frame in one build; the store costs the read
-   * path forever.
+   * those empty maps memoizes them on its scenario ids, so the correction
+   * arrives as a flash of a deployment's chrome around an empty canvas. A gate
+   * here is the smallest thing that is true: the eager form passes it in the
+   * same tick and renders as it always did, and the loader form holds one
+   * chunk fetch before the first paint.
    *
    * A loader that REJECTS throws rather than falling back to the package's
    * own. The package's board is keyed by this template's identifiers and
@@ -303,7 +330,9 @@ export function DeploymentConfigProvider({
 
   return (
     <DeploymentConfigContext.Provider value={resolved}>
-      {children}
+      <OfflineBoardContext.Provider value={offlineBoard}>
+        {children}
+      </OfflineBoardContext.Provider>
     </DeploymentConfigContext.Provider>
   )
 }

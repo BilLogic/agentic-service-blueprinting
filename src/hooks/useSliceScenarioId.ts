@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useOfflineBoard } from '@/contexts/DeploymentConfigContext'
 import { useSupabaseQuery, type QueryResult } from '@/hooks/useSupabaseQuery'
 import { findFallbackScenarioForCells } from '@/lib/sliceCells'
 import { queryKeys } from '@/lib/queryKeys'
@@ -11,9 +12,10 @@ import { queryKeys } from '@/lib/queryKeys'
 export function useSliceScenarioId(
   cellIds: readonly string[] | null,
 ): QueryResult<string> {
+  const board = useOfflineBoard()
   const fallback = useCallback(
-    () => (cellIds ? findFallbackScenarioForCells(cellIds) : null),
-    [cellIds],
+    () => (cellIds ? findFallbackScenarioForCells(board, cellIds) : null),
+    [board, cellIds],
   )
 
   return useSupabaseQuery<string>(
@@ -35,7 +37,7 @@ export function useSliceScenarioId(
       if (scenarioId) return scenarioId
 
       // Cells may live only in the local fallback content.
-      const fallbackScenarioId = findFallbackScenarioForCells(cellIds)
+      const fallbackScenarioId = findFallbackScenarioForCells(board, cellIds)
       if (fallbackScenarioId) return fallbackScenarioId
 
       throw new Error('The slice cells are no longer in the blueprint')

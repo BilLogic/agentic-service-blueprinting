@@ -23,11 +23,12 @@
  * omitted, the package's own stands, which is what a clone of this repository
  * runs on.
  *
- * `DeploymentConfigProvider` writes it with {@link configureSampleBlueprints}
- * while it renders, before anything below it does — the board reads these
- * lookups during its own render, and a module write notifies no one, so a
- * later write would leave the first paint on the package's content with
- * nothing to correct it.
+ * NOTHING HERE IS SETTLED BY WRITING TO THIS MODULE. A registry becomes an
+ * {@link OfflineBoard} — the indexed value every lookup below takes as its
+ * first argument — and `DeploymentConfigProvider` builds one and hands it down
+ * the tree. The board a surface draws is therefore the board the provider
+ * above it holds, which is what lets two providers with two registries stand
+ * in one tree, and what stops a test's board from outliving its own file.
  */
 import type { BlueprintData } from '@/types/blueprint'
 
@@ -121,8 +122,16 @@ export const PACKAGE_SAMPLE_BLUEPRINTS: SampleBlueprintRegistry = {
 }
 // GENERATED-BLUEPRINT-REGISTRY:END
 
-/** The three lookup tables every read below goes through, built once. */
-type RegistryIndex = {
+/**
+ * One offline board, indexed: the registry this part of the tree reads, with
+ * the lookup tables every read below goes through built once over it.
+ *
+ * The VALUE a provider holds and hands down. Opaque on purpose — a caller
+ * takes one and passes it on, and everything it knows how to answer is a
+ * function in this module — so the shape of the tables stays this module's
+ * business and the thing threaded through the app is one noun.
+ */
+export type OfflineBoard = {
   byPath: Record<string, BlueprintData>
   pathsByScenario: Record<string, FallbackPathListItem[]>
   byScenario: Record<string, BlueprintData>
@@ -131,7 +140,7 @@ type RegistryIndex = {
   cellsById: Map<string, BlueprintData['cells'][number]> | null
 }
 
-function indexRegistry(registry: SampleBlueprintRegistry): RegistryIndex {
+function indexRegistry(registry: SampleBlueprintRegistry): OfflineBoard {
   const byPath: Record<string, BlueprintData> = {}
   const pathsByScenario: Record<string, FallbackPathListItem[]> = {}
   const byScenario: Record<string, BlueprintData> = {}
@@ -162,53 +171,63 @@ function indexRegistry(registry: SampleBlueprintRegistry): RegistryIndex {
   }
 }
 
-const PACKAGE_INDEX = indexRegistry(PACKAGE_SAMPLE_BLUEPRINTS)
-
-let index: RegistryIndex = PACKAGE_INDEX
+/**
+ * The package's own board, indexed once — what a clone with no database draws,
+ * and what a tree with no provider over it reads.
+ */
+export const PACKAGE_OFFLINE_BOARD: OfflineBoard = indexRegistry(
+  PACKAGE_SAMPLE_BLUEPRINTS,
+)
 
 /**
- * The offline board this installation reads: the deployment's when it supplied
- * one on `sample.blueprints`, the package's when it did not.
+ * The board an installation reads: the deployment's when it supplied a registry
+ * on `sample.blueprints`, the package's when it did not.
  *
- * Idempotent, so a host that calls it from its own bootstrap as well as
- * through the provider is doing no harm. `undefined` is "I have nothing to
- * say" rather than "show nothing" — the same reading `sample.nav` gives an
- * absent field — so it restores the package's own registry.
+ * `undefined` is "I have nothing to say" rather than "show nothing" — the same
+ * reading `sample.nav` gives an absent field — and so is an empty registry, so
+ * both land on the package's own. A pure function of its argument: call it
+ * twice with the same registry and the two boards answer alike, which is why
+ * the provider may build one inside a memo and hand it down.
  */
-export function configureSampleBlueprints(
+export function offlineBoardFrom(
   registry: SampleBlueprintRegistry | undefined,
-): void {
-  index =
-    registry && Object.keys(registry.blueprintsByScenario).length > 0
-      ? indexRegistry(registry)
-      : PACKAGE_INDEX
+): OfflineBoard {
+  return registry && Object.keys(registry.blueprintsByScenario).length > 0
+    ? indexRegistry(registry)
+    : PACKAGE_OFFLINE_BOARD
 }
 
 const EMPTY_FALLBACK_PATHS: FallbackPathListItem[] = []
 
-export function hasBlueprintFallback(scenarioId: string | undefined): boolean {
+export function hasBlueprintFallback(
+  board: OfflineBoard,
+  scenarioId: string | undefined,
+): boolean {
   if (!scenarioId) return false
-  return scenarioId in index.byScenario || scenarioId in index.pathsByScenario
+  return scenarioId in board.byScenario || scenarioId in board.pathsByScenario
 }
 
 export function filterPathsForScenarioUi<T extends { id: string }>(
+  board: OfflineBoard,
   scenarioId: string | undefined,
   paths: readonly T[],
 ): T[] {
   if (!scenarioId) return [...paths]
-  const hidden = index.hiddenByScenario[scenarioId]
+  const hidden = board.hiddenByScenario[scenarioId]
   if (!hidden?.length) return [...paths]
   const hiddenIds = new Set(hidden)
   return paths.filter((path) => !hiddenIds.has(path.id))
 }
 
 export function getFallbackPathsForScenario(
+  board: OfflineBoard,
   scenarioId: string | undefined,
 ): FallbackPathListItem[] {
   if (!scenarioId) return EMPTY_FALLBACK_PATHS
   return filterPathsForScenarioUi(
+    board,
     scenarioId,
-    index.pathsByScenario[scenarioId] ?? EMPTY_FALLBACK_PATHS,
+    board.pathsByScenario[scenarioId] ?? EMPTY_FALLBACK_PATHS,
   )
 }
 
@@ -236,30 +255,32 @@ function withPathIdentity(
 }
 
 export function hasRegisteredPathFallback(
+  board: OfflineBoard,
   pathId: string | undefined | null,
 ): boolean {
-  return Boolean(pathId && pathId in index.byPath)
+  return Boolean(pathId && pathId in board.byPath)
 }
 
 export function getRawBlueprintFallback(
+  board: OfflineBoard,
   scenarioId: string | undefined,
   pathId?: string | null,
   pathKind?: BlueprintData['path']['kind'],
 ): BlueprintData | null {
   let data: BlueprintData | null = null
-  if (pathId && index.byPath[pathId]) {
-    data = index.byPath[pathId]
+  if (pathId && board.byPath[pathId]) {
+    data = board.byPath[pathId]
   } else if (scenarioId && pathKind) {
-    const match = (index.pathsByScenario[scenarioId] ?? []).find(
+    const match = (board.pathsByScenario[scenarioId] ?? []).find(
       (path) => path.kind === pathKind,
     )
     if (match) {
-      data = index.byPath[match.id] ?? null
+      data = board.byPath[match.id] ?? null
     }
   }
 
   if (!data && scenarioId) {
-    data = index.byScenario[scenarioId] ?? null
+    data = board.byScenario[scenarioId] ?? null
   }
 
   if (!data) return null
@@ -273,19 +294,21 @@ export function getRawBlueprintFallback(
 }
 
 export function getBlueprintFallback(
+  board: OfflineBoard,
   scenarioId: string | undefined,
   pathId?: string | null,
   pathKind?: BlueprintData['path']['kind'],
 ): BlueprintData | null {
-  return getRawBlueprintFallback(scenarioId, pathId, pathKind)
+  return getRawBlueprintFallback(board, scenarioId, pathId, pathKind)
 }
 
 export function getFallbackBlueprintsForScenarios(
+  board: OfflineBoard,
   scenarioIds: string[],
 ): Map<string, BlueprintData> {
   const map = new Map<string, BlueprintData>()
   for (const id of scenarioIds) {
-    const data = getBlueprintFallback(id)
+    const data = getBlueprintFallback(board, id)
     if (data) map.set(id, data)
   }
   return map
@@ -298,15 +321,16 @@ export function getFallbackBlueprintsForScenarios(
  * form, value props — which is exactly the part the sample content is teaching.
  */
 export function getFallbackCell(
+  board: OfflineBoard,
   cellId: string | null | undefined,
 ): BlueprintData['cells'][number] | null {
   if (!cellId) return null
-  if (!index.cellsById) {
-    index.cellsById = new Map(
-      Object.values(index.byPath).flatMap((data) =>
+  if (!board.cellsById) {
+    board.cellsById = new Map(
+      Object.values(board.byPath).flatMap((data) =>
         data.cells.map((cell) => [cell.id, cell] as const),
       ),
     )
   }
-  return index.cellsById.get(cellId) ?? null
+  return board.cellsById.get(cellId) ?? null
 }

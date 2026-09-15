@@ -418,10 +418,10 @@ export type ResolvedDeploymentConfig = {
      * and runs in every build, database or not, and what decides whether those
      * bytes are wanted is `isBundledSampleActive()` plus the ability to wait —
      * neither of which this function has. `DeploymentConfigProvider` has both,
-     * so it is the single reader that narrows this, and it writes what it
-     * settles onto the fallback module with `configureSampleBlueprints` while
-     * it renders — not in an effect, because the board reads that module
-     * during its own render.
+     * so it is the single reader that narrows this, and it holds what it
+     * settles as an `OfflineBoard` and hands it down the tree — not through a
+     * write to the module that serves the lookups, because a module has one
+     * slot and a tree may hold two providers.
      *
      * A UNION AND NOT TWO SETTLED FIELDS (`blueprints` beside a
      * `blueprintsLoader`, resolution guaranteeing exactly one). Two fields
@@ -636,8 +636,8 @@ function mergeAgentSearch(
  *
  * A LOADER PASSES THROUGH UNTOUCHED, because the only way to ask whether IT is
  * empty is to call it, which is exactly the fetch the form exists to defer.
- * `configureSampleBlueprints` applies the same emptiness reading to whatever
- * it resolves to, so the two forms end in one rule rather than two — and
+ * `offlineBoardFrom` applies the same emptiness reading to whatever the loader
+ * resolves to, so the two forms end in one rule rather than two — and
  * therefore in the same asymmetry, stated here rather than left to be
  * discovered: a loader that REJECTS is loud (the provider throws), and a
  * loader that RESOLVES EMPTY is silent (the package's own board stands, as an

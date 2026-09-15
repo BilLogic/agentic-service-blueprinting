@@ -48,6 +48,7 @@ import { TranscriptRow } from '@/components/editor/agent/TranscriptRow'
 import { TranscriptStepsBlock } from '@/components/editor/agent/TranscriptStepsBlock'
 import { useAgentChangeCount } from '@/components/editor/agent/useAgentChangeCount'
 import { useSupabase } from '@/contexts/SupabaseProvider'
+import { useOfflineBoard } from '@/contexts/DeploymentConfigContext'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { usePathSelectionContext } from '@/hooks/usePathSelection'
 import {
@@ -102,6 +103,9 @@ export function AgentChatView({
 }) {
   const settings = useAgentSettings()
   const { client, canAgentWrite, canAgent, isSampleTrial } = useSupabase()
+  // The board the canvas beside this panel is drawing: a trial with no
+  // database answers its reads from the same one.
+  const offlineBoard = useOfflineBoard()
   const mode = useCanvasModeValue()
   const { activePathKeys } = usePathSelectionContext()
   const changes = useSyncExternalStore(subscribeToSession, sessionSnapshot)
@@ -234,6 +238,7 @@ export function AgentChatView({
     void sendToAgent({
       client,
       sessionId: session.id,
+      offlineBoard,
       settings,
       contextNote,
       text,

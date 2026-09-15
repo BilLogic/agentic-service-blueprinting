@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useOfflineBoard } from '@/contexts/DeploymentConfigContext'
 import { useEditor } from '@/contexts/EditorContext'
 import { useViewState } from '@/contexts/viewStateStore'
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery'
@@ -48,9 +49,10 @@ export function useCellDeepLink(): void {
     pendingUrlState?.kind === 'blueprint' ? (pendingUrlState.cellId ?? null) : null,
   )
 
+  const board = useOfflineBoard()
   const fallback = useCallback(
-    () => (cellId ? findFallbackScenarioForCells([cellId]) : null),
-    [cellId],
+    () => (cellId ? findFallbackScenarioForCells(board, [cellId]) : null),
+    [board, cellId],
   )
 
   const scenario = useSupabaseQuery<string>(
@@ -69,7 +71,7 @@ export function useCellDeepLink(): void {
 
       // Cells may exist only in the local fallback content (no-DB mode, or a
       // demo deployment).
-      const local = findFallbackScenarioForCells([cellId as string])
+      const local = findFallbackScenarioForCells(board, [cellId as string])
       if (local) return local
       throw new Error('That cell is not in the blueprint')
     },

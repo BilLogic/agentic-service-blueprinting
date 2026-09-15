@@ -69,7 +69,7 @@ export const listBlueprintTool = defineTool({
   availability: { sample: true, mobile: true },
   run: async ({ granularity, phase, scenario, kind, lane_role, service, limit }, ctx) => {
     const options = { granularity, phase, scenario, pathKind: kind, laneRole: lane_role, limit }
-    if (!ctx.client) return sampleListBlueprint(options)
+    if (!ctx.client) return sampleListBlueprint(ctx.offlineBoard, options)
     return listBlueprint(ctx.client, {
       ...options,
       scope: await readScope(ctx, service),
@@ -128,7 +128,9 @@ export const getBlueprintTool = defineTool({
   }),
   availability: { sample: true, mobile: true },
   run: async ({ scenario_id }, ctx) =>
-    ctx.client ? getBlueprint(ctx.client, scenario_id) : sampleGetBlueprint(scenario_id),
+    ctx.client
+      ? getBlueprint(ctx.client, scenario_id)
+      : sampleGetBlueprint(ctx.offlineBoard, scenario_id),
 })
 
 export const compareBlueprintTool = defineTool({
@@ -148,7 +150,7 @@ export const compareBlueprintTool = defineTool({
   run: async ({ scenario_id, path_ids }, ctx) =>
     ctx.client
       ? getCompareDiff(ctx.client, scenario_id, path_ids)
-      : sampleGetCompareDiff(scenario_id, path_ids),
+      : sampleGetCompareDiff(ctx.offlineBoard, scenario_id, path_ids),
 })
 
 export const listLanesTool = defineTool({
@@ -158,7 +160,7 @@ export const listLanesTool = defineTool({
   surface: 'read',
   args: z.object({}),
   availability: { sample: true, mobile: true },
-  run: async (_args, ctx) => (ctx.client ? listLanes(ctx.client) : sampleListLanes()),
+  run: async (_args, ctx) => (ctx.client ? listLanes(ctx.client) : sampleListLanes(ctx.offlineBoard)),
 })
 
 export const listOwnerTagsTool = defineTool({
@@ -168,7 +170,7 @@ export const listOwnerTagsTool = defineTool({
   surface: 'read',
   args: z.object({}),
   availability: { sample: true, mobile: true },
-  run: async (_args, ctx) => (ctx.client ? listOwnerTags(ctx.client) : sampleListOwnerTags()),
+  run: async (_args, ctx) => (ctx.client ? listOwnerTags(ctx.client) : sampleListOwnerTags(ctx.offlineBoard)),
 })
 
 /**

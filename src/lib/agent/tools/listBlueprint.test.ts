@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { listBlueprint } from '@/lib/agent/tools/read'
 import { sampleListBlueprint } from '@/lib/agent/tools/sampleRead'
+import { PACKAGE_OFFLINE_BOARD } from '@/data/blueprintFallbacks'
 import { GRANULARITY_LEVELS } from '@/lib/agent/tools/format'
 import { runTool } from '@/lib/agent/tools/definition'
 import {
@@ -538,7 +539,7 @@ describe('the no-database twin', () => {
     .flatMap((blueprint) => blueprint.cells)
 
   it('lists every sample phase and scenario with ids', () => {
-    const out = sampleListBlueprint({ granularity: ['phase', 'scenario'] })
+    const out = sampleListBlueprint(PACKAGE_OFFLINE_BOARD, { granularity: ['phase', 'scenario'] })
     expect(out.split('\n')[0]).toBe(
       `${SAMPLE_PHASES.length + SAMPLE_SCENARIOS.length} of ${SAMPLE_PHASES.length + SAMPLE_SCENARIOS.length}:`,
     )
@@ -546,7 +547,7 @@ describe('the no-database twin', () => {
   })
 
   it('counts every sample cell, and clips at the default limit like the live read', () => {
-    const header = sampleListBlueprint({ granularity: ['cell'] }).split('\n')[0]
+    const header = sampleListBlueprint(PACKAGE_OFFLINE_BOARD, { granularity: ['cell'] }).split('\n')[0]
     const shown = Math.min(sampleCells.length, 200)
     expect(header).toMatch(new RegExp(`^${shown} of ${sampleCells.length}`))
   })
@@ -561,13 +562,13 @@ describe('the no-database twin', () => {
     { granularity: ['cell'], scenario: SAMPLE_SCENARIOS[1]!.name, limit: 5 },
   ])('answers $granularity the way the database read does', async (options) => {
     const { client } = fakeDb(sampleBoard())
-    expect(sampleListBlueprint(options)).toBe(await listBlueprint(client, options))
+    expect(sampleListBlueprint(PACKAGE_OFFLINE_BOARD, options)).toBe(await listBlueprint(client, options))
   })
 
   it('serves the trial through the same run, with the same refusals', async () => {
     expect(
       await runTool(listBlueprintTool, { granularity: ['path'] }, fakeToolContext()),
-    ).toBe(sampleListBlueprint({ granularity: ['path'] }))
+    ).toBe(sampleListBlueprint(PACKAGE_OFFLINE_BOARD, { granularity: ['path'] }))
     await expect(
       runTool(listBlueprintTool, { granularity: ['nope'] }, fakeToolContext()),
     ).rejects.toThrow(/Unknown granularity: nope/)

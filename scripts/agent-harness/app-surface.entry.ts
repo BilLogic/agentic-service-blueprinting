@@ -32,16 +32,33 @@ export const MOBILE_READ_TOOL_NAMES = new Set(
  * one implementation, over the same `src/data/sampleBlueprint` content, and
  * the harness's keyless run exercises it.
  */
-export {
-  sampleGetBlueprint,
-  sampleGetCell,
-  sampleGetSlice,
-  sampleListCellDependencies,
-  sampleListBlueprint,
-  sampleListLanes,
-  sampleListOwnerTags,
-  sampleListSlices,
+import {
+  sampleGetBlueprint as readBlueprint,
+  sampleGetCell as readCell,
+  sampleListCellDependencies as readCellDependencies,
+  sampleListBlueprint as readBlueprintList,
+  sampleListLanes as readLanes,
+  sampleListOwnerTags as readOwnerTags,
 } from '@/lib/agent/tools/sampleRead'
+import { PACKAGE_OFFLINE_BOARD } from '@/data/blueprintFallbacks'
+export { sampleGetSlice, sampleListSlices } from '@/lib/agent/tools/sampleRead'
+/**
+ * Bound to the PACKAGE's own board, which is the board the harness runs
+ * against: it drives this repository's fixture with no deployment config
+ * anywhere. In the browser the same functions take the board the provider
+ * hands the canvas, so a deployment's trial reads a deployment's content.
+ */
+export const sampleGetBlueprint = (scenarioId: string) =>
+  readBlueprint(PACKAGE_OFFLINE_BOARD, scenarioId)
+export const sampleGetCell = (cellId: string) =>
+  readCell(PACKAGE_OFFLINE_BOARD, cellId)
+export const sampleListCellDependencies = (cellId?: string) =>
+  readCellDependencies(PACKAGE_OFFLINE_BOARD, cellId)
+export const sampleListBlueprint = (
+  options: Parameters<typeof readBlueprintList>[1],
+) => readBlueprintList(PACKAGE_OFFLINE_BOARD, options)
+export const sampleListLanes = () => readLanes(PACKAGE_OFFLINE_BOARD)
+export const sampleListOwnerTags = () => readOwnerTags(PACKAGE_OFFLINE_BOARD)
 /**
  * The journey list's check, walk and text, so the harness's database read of
  * `list_blueprint` answers in the app's words: the harness fetches the rows

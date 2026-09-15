@@ -20,6 +20,7 @@ import { buildCompareModel, type CompareBlueprints } from '@/lib/compareSlots'
 import {
   getFallbackPathsForScenario,
   getRawBlueprintFallback,
+  PACKAGE_OFFLINE_BOARD,
 } from '@/data/blueprintFallbacks'
 import { isSubslide } from '@/types/nav'
 
@@ -36,12 +37,12 @@ function collectPairs(): PairResult[] {
   const results: PairResult[] = []
   const scenarios = SAMPLE_NAV.filter((item) => isSubslide(item))
   for (const scenario of scenarios) {
-    const paths = getFallbackPathsForScenario(scenario.id)
+    const paths = getFallbackPathsForScenario(PACKAGE_OFFLINE_BOARD, scenario.id)
     if (!paths || paths.length < 2) continue
     for (let i = 0; i < paths.length; i += 1) {
       for (let j = i + 1; j < paths.length; j += 1) {
-        const a = getRawBlueprintFallback(scenario.id, paths[i].id)
-        const b = getRawBlueprintFallback(scenario.id, paths[j].id)
+        const a = getRawBlueprintFallback(PACKAGE_OFFLINE_BOARD, scenario.id, paths[i].id)
+        const b = getRawBlueprintFallback(PACKAGE_OFFLINE_BOARD, scenario.id, paths[j].id)
         if (!a || !b) continue
         const model = buildCompareModel([a, b] as CompareBlueprints)
         const spineRuns = model.runs.filter((run) => run.kind === 'shared')
@@ -67,7 +68,8 @@ function collectPairs(): PairResult[] {
 function registeredScenarioCount(): number {
   return SAMPLE_NAV.filter(
     (item) =>
-      isSubslide(item) && (getFallbackPathsForScenario(item.id)?.length ?? 0) > 0,
+      isSubslide(item) && (getFallbackPathsForScenario(PACKAGE_OFFLINE_BOARD, item.id)?.length ?? 0) >
+        0,
   ).length
 }
 

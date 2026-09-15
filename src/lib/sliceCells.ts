@@ -2,6 +2,7 @@ import { SAMPLE_NAV } from '@/data/sampleNav'
 import {
   getBlueprintFallback,
   getFallbackPathsForScenario,
+  type OfflineBoard,
 } from '@/data/blueprintFallbacks'
 import { shouldUseStoryboardContent } from '@/lib/blueprintLayout'
 import { isBlueprintStepStoryboardPlaceholder } from '@/lib/blueprintStoryboardPlaceholder'
@@ -10,18 +11,19 @@ import { getBlueprintScenarioId } from '@/types/nav'
 import type { BlueprintData } from '@/types/blueprint'
 import type { Slide } from '@/types/database'
 
-/** Scan the local fallback registry for the scenario owning these cells. */
+/** Scan this installation's offline board for the scenario owning these cells. */
 export function findFallbackScenarioForCells(
+  board: OfflineBoard,
   cellIds: readonly string[],
 ): string | null {
   if (cellIds.length === 0) return null
   const wanted = new Set(cellIds.map(resolveBlueprintCellId))
 
   for (const slide of SAMPLE_NAV) {
-    const scenarioId = getBlueprintScenarioId(slide)
+    const scenarioId = getBlueprintScenarioId(board, slide)
     if (!scenarioId) continue
-    for (const path of getFallbackPathsForScenario(scenarioId)) {
-      const blueprint = getBlueprintFallback(scenarioId, path.id, path.kind)
+    for (const path of getFallbackPathsForScenario(board, scenarioId)) {
+      const blueprint = getBlueprintFallback(board, scenarioId, path.id, path.kind)
       if (blueprint?.cells.some((cell) => wanted.has(cell.id))) {
         return scenarioId
       }

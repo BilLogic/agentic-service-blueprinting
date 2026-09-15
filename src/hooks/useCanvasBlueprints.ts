@@ -4,7 +4,9 @@ import {
   filterPathsForScenarioUi,
   getBlueprintFallback,
   getFallbackPathsForScenario,
+  type OfflineBoard,
 } from '@/data/blueprintFallbacks'
+import { useOfflineBoard } from '@/contexts/DeploymentConfigContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { queryKeys } from '@/lib/queryKeys'
 import { withSupabaseTimeout } from '@/lib/supabaseFetchTimeout'
@@ -39,15 +41,18 @@ function pickPathForScenario(paths: CanvasRawPath[]): CanvasRawPath | null {
   return pickPreferredPath(paths) ?? null
 }
 
-function buildFallbackMaps(scenarioIds: string[]): CanvasBlueprintMaps {
+function buildFallbackMaps(
+  board: OfflineBoard,
+  scenarioIds: string[],
+): CanvasBlueprintMaps {
   const blueprintsByScenario = new Map<string, BlueprintData>()
   const pathsByScenario = new Map<string, PathListItem[]>()
   const blueprintsByPathId = new Map<string, BlueprintData>()
 
   for (const scenarioId of scenarioIds) {
     const paths: PathListItem[] = []
-    for (const path of getFallbackPathsForScenario(scenarioId)) {
-      const blueprint = getBlueprintFallback(scenarioId, path.id)
+    for (const path of getFallbackPathsForScenario(board, scenarioId)) {
+      const blueprint = getBlueprintFallback(board, scenarioId, path.id)
       if (blueprint) {
         blueprintsByPathId.set(path.id, blueprint)
       }
@@ -62,7 +67,7 @@ function buildFallbackMaps(scenarioIds: string[]): CanvasBlueprintMaps {
       pathsByScenario.set(scenarioId, paths)
     }
 
-    const defaultBlueprint = getBlueprintFallback(scenarioId)
+    const defaultBlueprint = getBlueprintFallback(board, scenarioId)
     if (defaultBlueprint) {
       blueprintsByScenario.set(scenarioId, defaultBlueprint)
     }
@@ -86,6 +91,7 @@ function buildFallbackMaps(scenarioIds: string[]): CanvasBlueprintMaps {
  * `filterPathsForScenarioUi`, which hides ids rather than supplying content.
  */
 function deriveFromRows(
+  board: OfflineBoard,
   rows: CanvasRawPath[],
   orderedScenarioIds: string[],
 ): CanvasBlueprintMaps {
@@ -97,7 +103,7 @@ function deriveFromRows(
     list.push(row)
     grouped.set(row.scenario_id, list)
 
-    const resolved = resolveBlueprintForScenario(row.scenario_id, row)
+    const resolved = resolveBlueprintForScenario(board, row.scenario_id, row)
     if (resolved.blueprint) {
       byPathId.set(row.id, resolved.blueprint)
     }
@@ -112,6 +118,7 @@ function deriveFromRows(
       pathsMap.set(
         scenarioId,
         filterPathsForScenarioUi(
+          board,
           scenarioId,
           scenarioPaths.map((path) => ({
             id: path.id,
@@ -128,7 +135,7 @@ function deriveFromRows(
     }
 
     const chosen = pickPathForScenario(scenarioPaths)
-    const resolved = resolveBlueprintForScenario(scenarioId, chosen)
+    const resolved = resolveBlueprintForScenario(board, scenarioId, chosen)
     if (resolved.blueprint) {
       byScenario.set(scenarioId, resolved.blueprint)
     }
@@ -157,9 +164,10 @@ export function useCanvasBlueprints(scenarioIds: string[]) {
     () => (idsKey ? idsKey.split(',') : []),
     [idsKey],
   )
+  const board = useOfflineBoard()
   const staticFallbacks = useMemo(
-    () => buildFallbackMaps(orderedScenarioIds),
-    [orderedScenarioIds],
+    () => buildFallbackMaps(board, orderedScenarioIds),
+    [board, orderedScenarioIds],
   )
 
   const { client, configured } = useSupabase()
@@ -213,10 +221,10 @@ export function useCanvasBlueprints(scenarioIds: string[]) {
     // real database is an outage, and the sample is not what an outage looks
     // like.
     const rows = results.flatMap((result) => result.data ?? [])
-    return deriveFromRows(rows, orderedScenarioIds)
+    return deriveFromRows(board, rows, orderedScenarioIds)
     // rowsKey stands in for the results array's per-render identity churn.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderedScenarioIds, noDb, allSettled, rowsKey, staticFallbacks])
+  }, [board, orderedScenarioIds, noDb, allSettled, rowsKey, staticFallbacks])
 
   const firstError = results.find((result) => result.error)?.error
   const error = anyError

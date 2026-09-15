@@ -3,6 +3,7 @@ import type { Database } from '@/types/database'
 import { scopeOf } from '@/lib/agent/tools/serviceScope'
 import { getActiveService } from '@/contexts/activeService'
 import type { AgentSearchIndex } from '@/deploymentConfig'
+import { PACKAGE_OFFLINE_BOARD, type OfflineBoard } from '@/data/blueprintFallbacks'
 import { runTool, type ToolContext, type ToolDefinition } from '@/lib/agent/tools/definition'
 import { TOOL_DEFINITIONS, findToolDefinition } from '@/lib/agent/tools/definitions'
 import { liveSession, liveUi } from '@/lib/agent/tools/liveContext'
@@ -34,6 +35,13 @@ export type DispatchContext = {
    */
   signal?: AbortSignal
   /**
+   * The offline board the surface that started this run is drawing — the
+   * deployment's when it supplied one, the package's otherwise. A session with
+   * no surface (a test, a script) reads the package's own, which is the board
+   * a clone with no config draws.
+   */
+  offlineBoard?: OfflineBoard
+  /**
    * The roster this session was offered, so a served document lists exactly
    * it. The loop hands its own down; a caller with no session — a test, a
    * script — gets the whole roster for the mode the client implies.
@@ -61,6 +69,7 @@ function toolContext(
     scope: scopeOf(getActiveService()),
     session: liveSession(agentSessionId),
     ui: liveUi,
+    offlineBoard: context.offlineBoard ?? PACKAGE_OFFLINE_BOARD,
     roster:
       context.roster ??
       sessionRoster({
