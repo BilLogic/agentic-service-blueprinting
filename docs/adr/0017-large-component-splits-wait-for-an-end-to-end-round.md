@@ -321,6 +321,12 @@ exemption is for.
 Two components remained at that point, each with its own slice: the cell
 panel, whose split is the amendment below, and the agent panel.
 
+What the split left behind was six near-copies, and the same slice held while
+they became one style bar and one mark over a table of what each kind of mark
+declares — `AnnotationStyleBar.tsx`, `AnnotationMarkNode.tsx` and
+`canvasAnnotationKinds.ts`, with the text mark's two width floors settled at
+the one the screen already used.
+
 ## Amended 2026-09-14: the cell panel is split, and its slice says nothing moved
 
 The second of the three splits this record held is done.
