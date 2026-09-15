@@ -16,9 +16,11 @@ import {
   RenameSessionDialog,
 } from '@/components/editor/agent/SessionDialogs'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { usePendingAgentAttachment } from '@/lib/agent/attachments'
 import {
+  deleteAgentSession,
+  renameAgentSession,
   useAgentSessionsHydrating,
+  usePendingAgentAttachment,
   type AgentSession,
 } from '@/lib/agent/sessions'
 
@@ -227,12 +229,14 @@ export function AgentSessionsView({
 
       <RenameSessionDialog
         session={renameTarget}
+        onRename={renameAgentSession}
         onOpenChange={(open) => {
           if (!open) setRenameTarget(null)
         }}
       />
       <DeleteSessionDialog
         session={deleteTarget}
+        onDelete={deleteAgentSession}
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null)
         }}

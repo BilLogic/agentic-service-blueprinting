@@ -17,19 +17,31 @@
  * attaches, which is the anonymous visitor's case and the one every assertion
  * here is written for.
  */
-import { beforeEach, describe, expect, it } from 'vitest'
+import { act, renderHook } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   agentSessionsSnapshot,
   autoNameSession,
+  closeAgentSession,
   createAgentSession,
   deleteAgentSession,
+  openAgentSession,
+  openAgentSessionId,
   renameAgentSession,
+  setAgentDraft,
+  useAgentDraft,
+  useOpenAgentSession,
 } from '@/lib/agent/sessions'
 import { storageKey } from '@/lib/storageNamespace'
 
 /** The module store outlives a file's cases, so each one starts from empty. */
 beforeEach(() => {
+  closeAgentSession()
   agentSessionsSnapshot().forEach((session) => deleteAgentSession(session.id))
+})
+
+afterEach(() => {
+  closeAgentSession()
 })
 
 /** The list as the next boot would read it, out of localStorage. */
@@ -142,5 +154,81 @@ describe('deleting a session', () => {
     deleteAgentSession(doomed.id)
 
     expect(storedSessions().map((session) => session.title)).toEqual(['Kept'])
+  })
+})
+
+/**
+ * THE RULE THIS MODULE EXISTS TO HOLD.
+ *
+ * The open session is read as a session, not as an id, so the question "is
+ * the session I am looking at still there" is answered here rather than by a
+ * fallback in whatever component happens to render it. Which means the
+ * deletion has to say so.
+ */
+describe('the open session', () => {
+  it('is the session the list holds under the open id', () => {
+    const session = createAgentSession('Open me')
+    const { result } = renderHook(() => useOpenAgentSession())
+
+    expect(result.current).toBeNull()
+    act(() => openAgentSession(session.id))
+    expect(result.current?.id).toBe(session.id)
+
+    // A rename of the open session is a new object in the list, and the open
+    // session is whatever the list holds now.
+    act(() => renameAgentSession(session.id, 'Renamed while open'))
+    expect(result.current?.title).toBe('Renamed while open')
+  })
+
+  it('clears when the open session is deleted', () => {
+    const open = createAgentSession('Open me')
+    const { result } = renderHook(() => useOpenAgentSession())
+    act(() => openAgentSession(open.id))
+    expect(result.current?.id).toBe(open.id)
+
+    act(() => deleteAgentSession(open.id))
+
+    // The id is CLEARED, not merely unresolvable against a list that no
+    // longer holds it — which is the difference between a rule and a
+    // fallback, and the only one of the two a reader of this module can rely
+    // on. (`useOpenAgentSession` reads null either way, so asserting only
+    // through the hook would hold nothing.)
+    expect(openAgentSessionId()).toBeNull()
+    expect(result.current).toBeNull()
+  })
+
+  it('stays open when some other session is deleted', () => {
+    const open = createAgentSession('Open me')
+    const bystander = createAgentSession('Not me')
+    const { result } = renderHook(() => useOpenAgentSession())
+    act(() => openAgentSession(open.id))
+
+    act(() => deleteAgentSession(bystander.id))
+
+    expect(result.current?.id).toBe(open.id)
+  })
+
+  it('closes on request, leaving the session in the list', () => {
+    const session = createAgentSession('Open me')
+    const { result } = renderHook(() => useOpenAgentSession())
+    act(() => openAgentSession(session.id))
+
+    act(() => closeAgentSession())
+
+    expect(result.current).toBeNull()
+    expect(agentSessionsSnapshot()).toHaveLength(1)
+  })
+})
+
+describe('a deleted session takes its draft with it', () => {
+  it('leaves nothing under an id that can never come back', () => {
+    const session = createAgentSession('Drafting')
+    const { result } = renderHook(() => useAgentDraft(session.id))
+    act(() => setAgentDraft(session.id, { text: 'half a sentence', skillId: null }))
+    expect(result.current.text).toBe('half a sentence')
+
+    act(() => deleteAgentSession(session.id))
+
+    expect(result.current).toEqual({ text: '', skillId: null })
   })
 })

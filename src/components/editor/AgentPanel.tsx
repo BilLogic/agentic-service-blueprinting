@@ -4,13 +4,12 @@ import { AgentSessionsView } from '@/components/editor/agent/AgentSessionsView'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { attachAgentPersistence } from '@/lib/agent/persistence'
 import {
-  setOpenAgentSession,
-  useOpenAgentSessionId,
-} from '@/lib/agent/panelState'
-import {
+  closeAgentSession,
   createAgentSession,
   hydrateAgentSessions,
+  openAgentSession,
   useAgentSessions,
+  useOpenAgentSession,
 } from '@/lib/agent/sessions'
 
 /**
@@ -20,10 +19,13 @@ import {
  */
 export function AgentPanel() {
   const sessions = useAgentSessions()
-  // Panel view state lives outside the component: both postures mount
-  // their own AgentPanel, and toggling ✦ unmounts it entirely — local
-  // state would drop you back to the session list every time.
-  const openSessionId = useOpenAgentSessionId()
+  // Which session is open lives outside the component, in the session module
+  // with the list it names: both postures mount their own AgentPanel, and
+  // toggling ✦ unmounts it entirely — local state would drop you back to the
+  // session list every time. Resolving the open id against the list is that
+  // module's business too, so a session that has been deleted is closed
+  // there rather than falling back to null here.
+  const openSession = useOpenAgentSession()
   const { client, canAgent } = useSupabase()
 
   // Persistence rides the authenticated client: locally everything lands in
@@ -35,26 +37,16 @@ export function AgentPanel() {
     return () => attachAgentPersistence(null)
   }, [canAgent, client])
 
-  const openSession =
-    openSessionId !== null
-      ? (sessions.find((session) => session.id === openSessionId) ?? null)
-      : null
-
   return openSession ? (
-    <AgentChatView
-      session={openSession}
-      onBack={() => setOpenAgentSession(null)}
-    />
+    <AgentChatView session={openSession} onBack={closeAgentSession} />
   ) : (
     <AgentSessionsView
       sessions={sessions}
-      onOpen={(id) => setOpenAgentSession(id)}
+      onOpen={(id) => openAgentSession(id)}
       onCreate={() => {
-        const session = createAgentSession()
         // ＋ drops straight into the conversation.
-        setOpenAgentSession(session.id)
+        openAgentSession(createAgentSession().id)
       }}
     />
   )
 }
-
