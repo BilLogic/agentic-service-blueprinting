@@ -28,7 +28,6 @@ import {
 import { isMobileViewport } from '@/hooks/useMobileShell'
 import { collectAgentUiContext } from '@/lib/agent/uiBridge'
 import { agentUiCommandMutates } from '@/lib/agent/uiCommands'
-import type { AgentAttachment } from '@/lib/agent/attachments'
 import type { AgentSkillCommand } from '@/lib/agent/skills'
 import { readReference } from '@/lib/agent/tools/references'
 import { agentDoctrine } from '@/lib/agent/doctrine'
@@ -39,7 +38,10 @@ import {
   modelFor,
   type AgentSettings,
 } from '@/lib/agent/settings'
-import { autoNameSession } from '@/lib/agent/sessions'
+import {
+  autoNameSession,
+  type AgentAttachment,
+} from '@/lib/agent/sessions'
 import {
   isAgentPersistenceAttached,
   loadPersistedEvents,

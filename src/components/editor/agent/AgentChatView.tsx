@@ -63,22 +63,21 @@ import {
   useAgentTranscriptHydrating,
 } from '@/lib/agent/loop'
 import {
-  setPendingAgentAttachment,
-  takePendingAgentAttachment,
-  usePendingAgentAttachment,
-} from '@/lib/agent/attachments'
-import {
-  clearAgentDraft,
-  setAgentDraft,
-  useAgentDraft,
-} from '@/lib/agent/panelState'
-import {
   AGENT_SKILL_COMMANDS,
   parseSkillDraft,
   skillMatchesQuery,
   type AgentSkillCommand,
 } from '@/lib/agent/skills'
-import { type AgentSession } from '@/lib/agent/sessions'
+import {
+  clearAgentDraft,
+  renameAgentSession,
+  setAgentDraft,
+  setPendingAgentAttachment,
+  takePendingAgentAttachment,
+  useAgentDraft,
+  usePendingAgentAttachment,
+  type AgentSession,
+} from '@/lib/agent/sessions'
 import {
   hasKey,
   modelFor,
@@ -395,6 +394,7 @@ export function AgentChatView({
 
       <RenameSessionDialog
         session={renaming ? session : null}
+        onRename={renameAgentSession}
         onOpenChange={(open) => {
           if (!open) setRenaming(false)
         }}

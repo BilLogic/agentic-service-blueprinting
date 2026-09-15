@@ -104,7 +104,7 @@ import {
   CanvasAnnotationContext,
   useCanvasAnnotations,
 } from '@/contexts/canvasAnnotationContext'
-import { takePendingAgentAttachment } from '@/lib/agent/attachments'
+import { takePendingAgentAttachment } from '@/lib/agent/sessions'
 import type { CanvasAnnotation } from '@/lib/canvasAnnotations'
 
 /** A box in board coordinates — what the stubbed layout hands back. */
