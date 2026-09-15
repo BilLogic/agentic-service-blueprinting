@@ -1,5 +1,110 @@
 # Changelog
 
+## 1.44.17
+
+**The storyboard shows moments, not logos.** Since a cell's featured image
+became its frame, a placed touchpoint cell carries its logo as a frame, and
+the storyboard walkthrough — which read every non-storyboard lane's frame —
+drew those logos in the side panel's stack, the canvas strip and the deck as
+though they were moments. Touchpoint lanes leave the walkthrough roster in
+the one place it is decided; the cell panel still draws a touchpoint's frame
+at logo size, and no cell data is written or cleared. The bundled sample's
+three reference diagrams, which sat on a touchpoint row, move to the owner
+row at the same steps so the sample's walkthrough keeps them.
+
+**Upgrading a deployment:**
+
+- Nothing to take: no shared script changed. On the next deploy, logos stop
+  appearing in the storyboard stack and strip wherever a touchpoint cell's
+  frame is a logo; a diagram a person put on a touchpoint row as a moment
+  should move to the actor row for that step.
+- A deployment that pins `STORYBOARD_WALKTHROUGH_LANE_NAMES` is unaffected.
+
+### Patch Changes
+
+- f1908b5: The storyboard walkthrough shows moments, not logos: touchpoint lanes leave its roster
+
+  Open a storyboard cell and the side panel stacks one frame per walkthrough lane
+  for that step; the canvas draws the same frames as the step's strip. The roster
+  was every lane that is not a storyboard row, and it took any cell in the step
+  carrying a non-empty frame. Since a cell's featured image became its frame, and
+  placing a touchpoint fills an empty frame with that touchpoint's icon, every
+  placed touchpoint cell carries its logo as a frame — so a product's own mark
+  appeared in the stack and in the strip as though somebody had drawn it for that
+  moment. The slice slide never did this: it collects frames from the slice's own
+  cells and the storyboard cell, and nothing else.
+
+  What a person sees change: the logos leave the storyboard stack and the canvas
+  strip, and the walkthrough deck steps through the actors' frames alone. A step
+  whose only framed cells are touchpoints now reports no walkthrough cells, so it
+  offers no walkthrough rather than a deck of icons.
+
+  Measured. On a step whose framed cells are one action cell and two touchpoint
+  cells: three strip entries before, one after — the action cell's. **And the
+  bundled sample does change**: across its two "Build a blueprint" paths the
+  strip falls from 8 entries to 2. The six that go are the three documentation
+  diagrams — `/cover/data-model-hierarchy.svg`, `/cover/blueprint-anatomy.svg`,
+  `/cover/four-ways-in.svg` — authored onto **References & guardrails**, a
+  `backstage_touchpoints` lane, in each path. They are drawn artwork sitting on a
+  touchpoint row, so three steps per path lose their strip, their stack and their
+  deck frames. Nothing else in the sample moves, and the walk over every phase,
+  scenario, path and layout stays free of console errors. Whether that artwork
+  belongs on an actor or storyboard row is an authoring question about the
+  sample's content, and this release does not answer it: no cell data is written
+  or cleared here.
+
+  The touchpoint roles are left out where the roster is decided — one function,
+  which the stack, the strip, the deck and the "has this step walkthrough cells"
+  test all read — so the four agree by construction rather than by four matching
+  edits. Which roles those are is now one `TOUCHPOINT_LANE_ROLES` in `laneRoles`
+  behind an `isTouchpointLaneRole` predicate, because it is a fact about what a
+  row means; the layout module's own touchpoint question reads the same
+  predicate.
+
+  A deployment that pins its own roster by lane name is untouched: naming a lane
+  is the decision, and a pinned list still gets exactly what it names. The cell
+  panel still draws a touchpoint cell's frame at logo size, which is where a logo
+  belongs.
+
+- 476239b: The bundled sample's three diagrams are back in its walkthrough
+
+  Open "Map your service" on the sample board and step through the storyboard:
+  the data-model hierarchy, the blueprint anatomy and the four ways in are drawn
+  again, at the steps where they always sat. They had gone quiet. The last
+  release took the touchpoint rows out of the walkthrough's roster — a touchpoint
+  cell's frame is its logo, not a moment — and those three drawings were hanging
+  off **References & guardrails**, which is a `backstage_touchpoints` row. Real
+  artwork parked on a row nobody reads is drawn nowhere.
+
+  So the artwork moved, and nothing else did. Each diagram now hangs off the
+  **Blueprint owner** cell at the same step — the actor row, which the
+  walkthrough does read — beside "Answers the scoping question", "Nods on the
+  proposed step and lane outline" and "Shares the deployed URL". Not the
+  storyboard row, which reads as the natural home and is not one: the storyboard
+  row is where the strip is _drawn_, from frames hanging off the other rows at
+  that column, so a figure placed on it would be just as invisible as a figure
+  placed on a touchpoint. The three reference cells keep their content, their
+  summaries and their resources; only their frame is now null.
+
+  One thing does read differently, and it is worth saying: the caption beside a
+  figure is its host cell's summary or content, so each diagram now carries the
+  owner's words rather than the reference cell's. "Answers the scoping question
+  and names whose journey runs along the spine" sits under the data-model
+  hierarchy where "Rendering follows the semantic lane_role" used to. That is the
+  walkthrough describing the moment rather than the document, which is what a
+  walkthrough is for.
+
+  Measured at the resolver, over both "Map your service" paths and every step:
+  **2 strip entries before, 8 after** — four figures a path, three of them these
+  diagrams and the fourth the `sb:map` figure that never moved. The walk over
+  every phase, scenario, path and layout of the offline board stays free of
+  console errors.
+
+  Only the sample's own data moved. The generator that emits the sample is the
+  one edit; the offline module and the database seed are regenerated from it, so
+  the two still cannot disagree. No rendering rule changed, so a deployment's own
+  board is untouched.
+
 ## 1.44.16
 
 **Three things the reviews of the last round named are done.** A check that
@@ -7580,8 +7685,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                  ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                  "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
