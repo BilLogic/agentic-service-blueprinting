@@ -342,6 +342,12 @@ was not run here: no machine in this estate carries a PostgREST binary and
 this work downloaded none, so `npm run slice:cell-edit:postgrest` is CI's
 proof, exactly as the amendment above anticipated.
 
+*Amended again 2026-09-14: the facts that split fell out as one module handing
+every reader the same sixteen keys are now one resolution of the selected cell
+— the path's board found once rather than in seven derivations — with three
+narrow readings hung off it, one per reader, each naming only what its reader
+reads and each read by a unit test through that interface.*
+
 **What the split is NOT is a redesign.** No class, no `data-` attribute, no
 aria label and no test id changed; the one save still writes the same columns
 in the same shape; every section that derived its fields from
