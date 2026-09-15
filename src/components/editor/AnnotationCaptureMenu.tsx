@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/tooltip'
 import { useCanvasAnnotations } from '@/contexts/canvasAnnotationContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { setPendingAgentAttachment } from '@/lib/agent/attachments'
+import { setPendingAgentAttachment } from '@/lib/agent/sessions'
 import { openAgentSurface } from '@/lib/agent/uiBridge'
 import { currentCanvasElement } from '@/lib/canvasCellQuery'
 import {

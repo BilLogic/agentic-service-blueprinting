@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { z } from 'zod'
 import type { Database } from '@/types/database'
+import { PACKAGE_OFFLINE_BOARD } from '@/data/blueprintFallbacks'
 import type { ToolContext, ToolDefinition } from '@/lib/agent/tools/definition'
 import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
 import { recordingUi } from '@/lib/agent/tools/definitions/testContext'
@@ -321,6 +322,7 @@ export function rehearsalContext(
       scope: scopeOf(REHEARSAL_SERVICE),
       session: { id: 'rehearsal-session', attributed: (work) => work() },
       ui: recordingUi().ui,
+      offlineBoard: PACKAGE_OFFLINE_BOARD,
       roster: TOOL_DEFINITIONS,
       meaning: null,
       ...context,

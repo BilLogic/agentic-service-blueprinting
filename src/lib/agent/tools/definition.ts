@@ -4,6 +4,7 @@ import type { Database } from '@/types/database'
 import type { ToolSpec } from '@/lib/agent/providers/provider'
 import type { AgentSearchIndex } from '@/deploymentConfig'
 import type { ServiceScope } from '@/lib/agent/tools/serviceScope'
+import type { OfflineBoard } from '@/data/blueprintFallbacks'
 
 /**
  * A Tool is one module: what it is called, which surface it belongs to, the
@@ -96,6 +97,15 @@ export type ToolContext = {
   scope: ServiceScope | null
   session: ToolSession
   ui: ToolUi
+  /**
+   * The offline board this session reads when there is no database: the
+   * deployment's when it supplied one on `sample.blueprints`, the package's
+   * otherwise. Handed down from the surface that started the run, the way the
+   * scope and the roster are, because a tool is a plain function with no
+   * context above it — and because the board a session answers from has to be
+   * the one the canvas beside it is drawing.
+   */
+  offlineBoard: OfflineBoard
   /**
    * The roster this call was offered from: what the canvas adapter lists
    * when it is served, so the agent reads exactly the tools it can call.

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useOfflineBoard } from '@/contexts/DeploymentConfigContext'
 import { useEditor } from '@/contexts/EditorContext'
 import { useViewState } from '@/contexts/viewStateStore'
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery'
@@ -21,6 +22,10 @@ import { queryKeys } from '@/lib/queryKeys'
  * `seedBaseSelection` (not `selectScenario`) is deliberate: it no-ops once the
  * user has navigated, so a slow resolve cannot yank someone away from a place
  * they chose while the query was in flight.
+ *
+ * The key is the cell id and NOT the offline board it may resolve against, on
+ * the same assumption `useSliceScenarioId` states: one board per query client,
+ * which is what `App` mounts.
  */
 
 /** The cell can mount several frames after the scenario does (canvas fit,
@@ -48,9 +53,10 @@ export function useCellDeepLink(): void {
     pendingUrlState?.kind === 'blueprint' ? (pendingUrlState.cellId ?? null) : null,
   )
 
+  const board = useOfflineBoard()
   const fallback = useCallback(
-    () => (cellId ? findFallbackScenarioForCells([cellId]) : null),
-    [cellId],
+    () => (cellId ? findFallbackScenarioForCells(board, [cellId]) : null),
+    [board, cellId],
   )
 
   const scenario = useSupabaseQuery<string>(
@@ -69,7 +75,7 @@ export function useCellDeepLink(): void {
 
       // Cells may exist only in the local fallback content (no-DB mode, or a
       // demo deployment).
-      const local = findFallbackScenarioForCells([cellId as string])
+      const local = findFallbackScenarioForCells(board, [cellId as string])
       if (local) return local
       throw new Error('That cell is not in the blueprint')
     },

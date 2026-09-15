@@ -19,6 +19,8 @@ are one resolution and three narrow readings; see the cell-panel amendment.
 Amended again 2026-09-14: the annotation split's six near-copies are one bar,
 one mark and a table; see the end. Amended again 2026-09-14 (#792): the cell's
 four surfaces wear the shared panel header; see the cell-panel amendment.
+Amended again 2026-09-14 (#802): the agent panel's split left three stores the
+views wrote from below, and they are one session module now; see the end.
 **Context** `src/components/editor/CanvasAnnotationLayer.tsx`,
 `src/components/blueprint/BlueprintCellDetailPanel.tsx`,
 `src/components/editor/AgentPanel.tsx`
@@ -441,3 +443,62 @@ path-pinned exemptions rather than against them.
 What this does NOT do is finish the job for the mark. The bar is tested
 through the table; `AnnotationMarkNode.tsx` is still reached only through the
 slice and the browser case, and a test through its own interface is owed.
+
+## Amended 2026-09-14: the agent split's three stores are one session module
+
+The agent amendment above records a panel that came out at 60 lines holding
+"the session state machine and the composition". The first half of that was
+not true. What the panel held was the composition; the state machine was three
+module stores the views wrote from below — `panelState.ts` (which session is
+open, and the per-session draft), `sessions.ts` (the list), and
+`attachments.ts` (the one pending attachment) — so the panel's five props
+described a seam that three files crossed behind it. The chat view set and
+took the attachment itself, the two dialogs renamed and deleted against the
+sessions store, and deleting the open session reached the panel not at all: it
+fell through a `?? null` in a component that had no way to know a session had
+gone.
+
+They are one module. `src/lib/agent/sessions.ts` holds the four facts about
+one thing — the list, which one is open, what you were typing in it, and what
+is waiting to go with the next message — behind one interface, and the panel,
+the two views and the two dialogs read it and no other store about a session.
+Deleting the open session closes it, inside the module, and takes that
+session's draft with it; the panel reads the open **session** rather than an
+id it would have to resolve against a list. The dialogs read no store at all:
+each reports its verb — `onRename(id, title)`, `onDelete(id)` — and the caller
+performs it, so the store has two writers where it had four.
+
+**What the instrument could and could not say, stated plainly.** `npm run
+slice:agent-session` was green before the first move and after every one of
+them, with no assertion edited — what changed in that file is the import line
+for the module that moved and the two teardown calls that closed the session
+through it. But the slice never renames and never deletes, so the two verbs
+the dialogs call had no cover at all, and moving the code holding them under
+that instrument alone would have been the thing this record exists to refuse.
+So the net landed first, in its own commit:
+`src/lib/agent/sessions.test.ts` reads the module through its own interface —
+what the list holds after a rename and after a delete, what localStorage
+holds, the order a rename must not disturb, the id that is not there, the
+auto-name that never overwrites a deliberate one — and it was watched go red
+five ways on a delete that writes the list back unchanged. The open-session
+rule has its own case, and that one had to be written twice: asserted only
+through `useOpenAgentSession` it held nothing, because a hook that resolves an
+id against the list reads `null` whether the rule is there or not. It asserts
+the id, through `openAgentSessionId()`, and goes red with the rule removed.
+
+**Nothing visible moved, and it was measured rather than asserted.** The
+rendered class, `aria-` and `data-` attribute sets of all four touched views
+were dumped across seven states — the sessions list, the empty list, the list
+filtering, the chat, the chat with its slash menu open, and each dialog — and
+hashed on `origin/main` and on the branch, with React's per-render ids
+normalized out. All seven match, string for string. No class, `data-`
+attribute, aria label or test id is in the diff.
+
+**Two things were deliberately left alone.** Persistence stays where it is:
+`attachAgentPersistence`, `hydrateAgentSessions` and the write-through are
+untouched, no persisted row shape moved, and folding them in would have cost
+something rather than nothing. And `useAgentChangeCount` with `ChangeCount`
+stay: the deletion test says the complexity does not vanish but doubles —
+removing them copies the ledger count's icon, its title and its pluralized
+screen-reader text into both call sites, and unpins the path
+`src/lib/monoRegisters.ts` names as the one place that writes that face.

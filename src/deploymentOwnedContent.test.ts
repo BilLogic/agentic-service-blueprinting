@@ -4,10 +4,11 @@ import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { resolveDeploymentConfig } from './deploymentConfig'
 import {
-  configureSampleBlueprints,
   getBlueprintFallback,
   getFallbackPathsForScenario,
   hasBlueprintFallback,
+  offlineBoardFrom,
+  PACKAGE_OFFLINE_BOARD,
   SAMPLE_SCENARIO_ID,
   type SampleBlueprintRegistry,
 } from './data/blueprintFallbacks'
@@ -131,11 +132,12 @@ describe('what arrives through the deployment config', () => {
 
   // Two of the readers below hold module-level state the config provider sets
   // at boot; each test leaves it the way it found it, whatever the assertions
-  // did — the same reset the agent reference tests make.
+  // did. The offline board is not among them any more: it is a value built
+  // from a registry and read by whoever holds it, so a test that builds one
+  // has nothing to put back.
   afterEach(() => {
     configureAgentDoctrine(undefined)
     configureAgentReferences(undefined)
-    configureSampleBlueprints(undefined)
   })
 
   /**
@@ -180,18 +182,18 @@ describe('what arrives through the deployment config', () => {
 
     expect(resolved.sample.blueprints).toBe(blueprints)
 
-    // And the module every reader goes through answers the deployment's ids
-    // rather than this template's, once the provider has written it. The
-    // fixture rather than the field, because the field may also hold a LOADER
-    // for a registry and this module takes the registry itself; the line above
-    // is what says the two are the same object.
-    configureSampleBlueprints(blueprints)
-    expect(hasBlueprintFallback('acme-intake')).toBe(true)
-    expect(getFallbackPathsForScenario('acme-intake')).toHaveLength(1)
-    expect(getBlueprintFallback('acme-intake')?.cells[0]?.content).toBe(
+    // And the board every reader is handed answers the deployment's ids rather
+    // than this template's. The fixture rather than the field, because the
+    // field may also hold a LOADER for a registry and a board is built from
+    // the registry itself; the line above is what says the two are the same
+    // object.
+    const board = offlineBoardFrom(blueprints)
+    expect(hasBlueprintFallback(board, 'acme-intake')).toBe(true)
+    expect(getFallbackPathsForScenario(board, 'acme-intake')).toHaveLength(1)
+    expect(getBlueprintFallback(board, 'acme-intake')?.cells[0]?.content).toBe(
       'The ask arrives',
     )
-    expect(hasBlueprintFallback(SAMPLE_SCENARIO_ID)).toBe(false)
+    expect(hasBlueprintFallback(board, SAMPLE_SCENARIO_ID)).toBe(false)
   })
 
   /**
@@ -363,9 +365,15 @@ describe('the bundled sample', () => {
   it('answers nothing to identifiers that are not its own', () => {
     const notThisTemplates = 'bbbbbbbb-0000-4000-8000-00000000d1d1'
 
-    expect(hasBlueprintFallback(notThisTemplates)).toBe(false)
-    expect(getFallbackPathsForScenario(notThisTemplates)).toEqual([])
-    expect(getBlueprintFallback(notThisTemplates)).toBeNull()
+    expect(hasBlueprintFallback(PACKAGE_OFFLINE_BOARD, notThisTemplates)).toBe(
+      false,
+    )
+    expect(
+      getFallbackPathsForScenario(PACKAGE_OFFLINE_BOARD, notThisTemplates),
+    ).toEqual([])
+    expect(
+      getBlueprintFallback(PACKAGE_OFFLINE_BOARD, notThisTemplates),
+    ).toBeNull()
   })
 
   /**
@@ -373,8 +381,13 @@ describe('the bundled sample', () => {
    * about the keys rather than about an empty registry.
    */
   it('answers its own', () => {
-    expect(hasBlueprintFallback(SAMPLE_SCENARIO_ID)).toBe(true)
-    expect(getFallbackPathsForScenario(SAMPLE_SCENARIO_ID).length).toBeGreaterThan(0)
+    expect(
+      hasBlueprintFallback(PACKAGE_OFFLINE_BOARD, SAMPLE_SCENARIO_ID),
+    ).toBe(true)
+    expect(
+      getFallbackPathsForScenario(PACKAGE_OFFLINE_BOARD, SAMPLE_SCENARIO_ID)
+        .length,
+    ).toBeGreaterThan(0)
   })
 })
 

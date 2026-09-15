@@ -35,7 +35,9 @@ export const getCellTool = defineTool({
   }),
   availability: { sample: true, mobile: true },
   run: async ({ cell_id }, ctx) =>
-    ctx.client ? getCell(ctx.client, cell_id) : sampleGetCell(cell_id),
+    ctx.client
+      ? getCell(ctx.client, cell_id)
+      : sampleGetCell(ctx.offlineBoard, cell_id),
 })
 
 export const listCellDependenciesTool = defineTool({
@@ -52,7 +54,7 @@ export const listCellDependenciesTool = defineTool({
   run: async ({ cell_id }, ctx) =>
     ctx.client
       ? listCellDependencies(ctx.client, cell_id)
-      : sampleListCellDependencies(cell_id),
+      : sampleListCellDependencies(ctx.offlineBoard, cell_id),
 })
 
 /**

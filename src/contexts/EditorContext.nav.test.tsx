@@ -33,7 +33,10 @@ import { setActiveService } from '@/contexts/activeService'
 import { ActiveServiceProvider } from '@/contexts/ActiveServiceContext'
 import { DeploymentConfigProvider } from '@/contexts/DeploymentConfigContext'
 import { EditorProvider, useEditor } from '@/contexts/EditorContext'
-import { hasBlueprintFallback } from '@/data/blueprintFallbacks'
+import {
+  hasBlueprintFallback,
+  PACKAGE_OFFLINE_BOARD,
+} from '@/data/blueprintFallbacks'
 import { SAMPLE_NAV } from '@/data/sampleNav'
 import type { NavItem } from '@/types/nav'
 
@@ -246,7 +249,9 @@ describe('the editor navigation', () => {
     expect(SAMPLE_DELETED!.summary?.trim()).toBeTruthy()
     // And the sample must actually register a blueprint for the kept
     // scenario, which is what the old merge keyed its `layout` steal on.
-    expect(hasBlueprintFallback(SAMPLE_KEPT!.id)).toBe(true)
+    expect(hasBlueprintFallback(PACKAGE_OFFLINE_BOARD, SAMPLE_KEPT!.id)).toBe(
+      true,
+    )
 
     supabase.configured = true
     supabase.client = connectedClient

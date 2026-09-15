@@ -5,6 +5,12 @@
  * header, so they sit beside the views rather than inside either one. Each
  * takes the session it acts on — `null` is closed — and reports the close
  * back, so nothing about which list opened it reaches in here.
+ *
+ * And each REPORTS its verb rather than performing it. A dialog that reached
+ * into the session store was a third writer of it, beside the panel and the
+ * chat view, which is how the open session came to be deleted by code that
+ * had no idea a session was open. What a dialog knows is the session and the
+ * title somebody typed; what happens to them is the session module's.
  */
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -16,17 +22,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import {
-  deleteAgentSession,
-  renameAgentSession,
-  type AgentSession,
-} from '@/lib/agent/sessions'
+import { type AgentSession } from '@/lib/agent/sessions'
 
 export function RenameSessionDialog({
   session,
+  onRename,
   onOpenChange,
 }: {
   session: AgentSession | null
+  /** Called only for a title that is both non-empty and actually new. */
+  onRename: (id: string, title: string) => void
   onOpenChange: (open: boolean) => void
 }) {
   const [title, setTitle] = useState('')
@@ -41,8 +46,7 @@ export function RenameSessionDialog({
   const submit = () => {
     if (!session) return
     const trimmed = title.trim()
-    if (trimmed && trimmed !== session.title)
-      renameAgentSession(session.id, trimmed)
+    if (trimmed && trimmed !== session.title) onRename(session.id, trimmed)
     onOpenChange(false)
   }
 
@@ -81,9 +85,11 @@ export function RenameSessionDialog({
 
 export function DeleteSessionDialog({
   session,
+  onDelete,
   onOpenChange,
 }: {
   session: AgentSession | null
+  onDelete: (id: string) => void
   onOpenChange: (open: boolean) => void
 }) {
   return (
@@ -106,7 +112,7 @@ export function DeleteSessionDialog({
             variant="destructive"
             size="sm"
             onClick={() => {
-              if (session) deleteAgentSession(session.id)
+              if (session) onDelete(session.id)
               onOpenChange(false)
             }}
           >

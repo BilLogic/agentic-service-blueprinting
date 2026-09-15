@@ -1,4 +1,7 @@
-import { getBlueprintFallback } from '@/data/blueprintFallbacks'
+import {
+  getBlueprintFallback,
+  type OfflineBoard,
+} from '@/data/blueprintFallbacks'
 import { applyBlueprintDisplayFilters } from '@/lib/applyBlueprintDisplayFilters'
 import { isBundledSampleActive } from '@/lib/bundledSample'
 import {
@@ -42,6 +45,7 @@ function sortBlueprintSteps(data: BlueprintData): BlueprintData {
  * merge deleted that information and put a stranger's words in its place.
  */
 export function resolveBlueprintForScenario(
+  board: OfflineBoard,
   scenarioId: string | undefined,
   rawPath: RawPath | null | undefined,
 ): { blueprint: BlueprintData | null; source: BlueprintSource } {
@@ -68,7 +72,7 @@ export function resolveBlueprintForScenario(
     return { blueprint: null, source: null }
   }
 
-  const fallback = getBlueprintFallback(scenarioId, pathId)
+  const fallback = getBlueprintFallback(board, scenarioId, pathId)
   if (fallback) {
     return {
       blueprint: applyBlueprintDisplayFilters(

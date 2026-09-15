@@ -47,6 +47,7 @@ import { blockTranscript } from '@/components/editor/agent/transcriptBlocks'
 import { TranscriptRow } from '@/components/editor/agent/TranscriptRow'
 import { TranscriptStepsBlock } from '@/components/editor/agent/TranscriptStepsBlock'
 import { useAgentChangeCount } from '@/components/editor/agent/useAgentChangeCount'
+import { useOfflineBoard } from '@/contexts/DeploymentConfigContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { usePathSelectionContext } from '@/hooks/usePathSelection'
@@ -63,22 +64,21 @@ import {
   useAgentTranscriptHydrating,
 } from '@/lib/agent/loop'
 import {
-  setPendingAgentAttachment,
-  takePendingAgentAttachment,
-  usePendingAgentAttachment,
-} from '@/lib/agent/attachments'
-import {
-  clearAgentDraft,
-  setAgentDraft,
-  useAgentDraft,
-} from '@/lib/agent/panelState'
-import {
   AGENT_SKILL_COMMANDS,
   parseSkillDraft,
   skillMatchesQuery,
   type AgentSkillCommand,
 } from '@/lib/agent/skills'
-import { type AgentSession } from '@/lib/agent/sessions'
+import {
+  clearAgentDraft,
+  renameAgentSession,
+  setAgentDraft,
+  setPendingAgentAttachment,
+  takePendingAgentAttachment,
+  useAgentDraft,
+  usePendingAgentAttachment,
+  type AgentSession,
+} from '@/lib/agent/sessions'
 import {
   hasKey,
   modelFor,
@@ -102,6 +102,9 @@ export function AgentChatView({
 }) {
   const settings = useAgentSettings()
   const { client, canAgentWrite, canAgent, isSampleTrial } = useSupabase()
+  // The board the canvas beside this panel is drawing: a trial with no
+  // database answers its reads from the same one.
+  const offlineBoard = useOfflineBoard()
   const mode = useCanvasModeValue()
   const { activePathKeys } = usePathSelectionContext()
   const changes = useSyncExternalStore(subscribeToSession, sessionSnapshot)
@@ -234,6 +237,7 @@ export function AgentChatView({
     void sendToAgent({
       client,
       sessionId: session.id,
+      offlineBoard,
       settings,
       contextNote,
       text,
@@ -395,6 +399,7 @@ export function AgentChatView({
 
       <RenameSessionDialog
         session={renaming ? session : null}
+        onRename={renameAgentSession}
         onOpenChange={(open) => {
           if (!open) setRenaming(false)
         }}

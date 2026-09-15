@@ -45,10 +45,15 @@ else the package's.
 package's file at the same path. Every resident is listed with a reason —
 owned, or diverged with a ticket.
 
-**Sample registry** — the offline board's content: every path of every
+**Sample registry** — an offline board's content: every path of every
 scenario, keyed by scenario id, read whenever no database is configured. A
 deployment supplies its own on `sample.blueprints`, beside the `sample.nav`
 that lists those scenarios; omitted, the package's own stands.
+
+**Offline board** — one installation's sample registry, settled and indexed:
+the value the deployment config provider holds and hands down its tree, and
+what every no-database lookup takes as its argument. One per tree rather than
+one per process, so two providers hold two boards.
 
 **Subject** — a named tree a check measures, with its rule: where its root is,
 which files are its, and what "cannot see the subject" means there — a skip

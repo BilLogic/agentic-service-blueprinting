@@ -34,7 +34,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DeploymentConfigProvider } from '@/contexts/DeploymentConfigContext'
 import { SupabaseProvider } from '@/contexts/SupabaseProvider'
 import {
-  configureSampleBlueprints,
+  PACKAGE_OFFLINE_BOARD,
   hasBlueprintFallback,
   type SampleBlueprintRegistry,
   type SampleBlueprintRegistryLoader,
@@ -143,9 +143,10 @@ describe('an offline board supplied as a loader', () => {
   afterEach(() => {
     // Explicit: this repository does not run vitest with globals, so nothing
     // unmounts the last render for us and two trees would answer one query.
+    // Nothing else to put back — a board lives on the tree that was just
+    // unmounted, not in a module slot the next file would inherit.
     cleanup()
     queryClient.clear()
-    configureSampleBlueprints(undefined)
   })
 
   const wrapper = ({ children }: { children: ReactNode }) => (
@@ -221,8 +222,9 @@ describe('an offline board supplied as a loader', () => {
 
     // And no board: falling back to the package's own would be a deployment's
     // chrome around a canvas its own identifiers cannot fill, with nothing
-    // anywhere saying so.
-    expect(hasBlueprintFallback(SCENARIO_ID)).toBe(false)
+    // anywhere saying so. The package's board is the only one anything below a
+    // failed provider could reach, and it does not carry this id.
+    expect(hasBlueprintFallback(PACKAGE_OFFLINE_BOARD, SCENARIO_ID)).toBe(false)
   })
 
   it('keeps the eager form synchronous', () => {

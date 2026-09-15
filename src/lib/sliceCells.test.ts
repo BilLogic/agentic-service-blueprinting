@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { getBlueprintFallback, SAMPLE_SCENARIO_ID } from '@/data/blueprintFallbacks'
+import {
+  getBlueprintFallback,
+  PACKAGE_OFFLINE_BOARD,
+  SAMPLE_SCENARIO_ID,
+} from '@/data/blueprintFallbacks'
 import { FALLBACK_SLICES, FALLBACK_SLICE_ITEMS } from '@/data/sliceFallbacks'
 import {
   findFallbackScenarioForCells,
@@ -109,7 +113,7 @@ describe('bundled demo slices', () => {
       const items = FALLBACK_SLICE_ITEMS[slice.id] ?? []
       const cellIds = items.flatMap((entry) => entry.cell_ids)
       expect(cellIds.length).toBeGreaterThan(0)
-      expect(findFallbackScenarioForCells(cellIds)).not.toBeNull()
+      expect(findFallbackScenarioForCells(PACKAGE_OFFLINE_BOARD, cellIds)).not.toBeNull()
     }
   })
 
@@ -119,18 +123,18 @@ describe('bundled demo slices', () => {
     const cellIds = (FALLBACK_SLICE_ITEMS[journey!.id] ?? []).flatMap(
       (entry) => entry.cell_ids,
     )
-    expect(findFallbackScenarioForCells(cellIds)).toBe(SAMPLE_SCENARIO_ID)
+    expect(findFallbackScenarioForCells(PACKAGE_OFFLINE_BOARD, cellIds)).toBe(SAMPLE_SCENARIO_ID)
   })
 
   it('no demo slice carries a dangling cell id', () => {
     for (const slice of FALLBACK_SLICES) {
       const items = FALLBACK_SLICE_ITEMS[slice.id] ?? []
       const cellIds = items.flatMap((entry) => entry.cell_ids)
-      const scenarioId = findFallbackScenarioForCells(cellIds)
+      const scenarioId = findFallbackScenarioForCells(PACKAGE_OFFLINE_BOARD, cellIds)
       expect(scenarioId).not.toBeNull()
       // The scenario's default path: every demo slice is authored on it, so
       // opening one in the focus view needs no path change first.
-      const fallback = getBlueprintFallback(scenarioId!)
+      const fallback = getBlueprintFallback(PACKAGE_OFFLINE_BOARD, scenarioId!)
       expect(fallback).not.toBeNull()
       const resolution = resolveSliceCells(fallback, items)
       expect(resolution.missingCellIds).toEqual([])

@@ -144,8 +144,11 @@ import { AgentPanel } from '@/components/editor/AgentPanel'
 import { SessionChangesSheet } from '@/components/editor/SessionChangesSheet'
 import { PathSelectionProvider } from '@/contexts/PathSelectionContext'
 import { forgetAgentRun } from '@/lib/agent/loop'
-import { agentSessionsSnapshot, deleteAgentSession } from '@/lib/agent/sessions'
-import { setOpenAgentSession } from '@/lib/agent/panelState'
+import {
+  agentSessionsSnapshot,
+  closeAgentSession,
+  deleteAgentSession,
+} from '@/lib/agent/sessions'
 import { saveAgentSettings } from '@/lib/agent/settings'
 import { clearSession, sessionSnapshot } from '@/lib/authoringSession'
 
@@ -273,7 +276,7 @@ async function openSessionAndSend(text: string, surface: Surface = liveSurface):
 beforeEach(() => {
   provider.turns = []
   clearSession()
-  setOpenAgentSession(null)
+  closeAgentSession()
   // The sessions store is a module store with a localStorage layer, so a
   // case starts from no sessions rather than from the previous case's.
   agentSessionsSnapshot().forEach((session) => deleteAgentSession(session.id))
@@ -286,7 +289,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   clearSession()
-  setOpenAgentSession(null)
+  closeAgentSession()
   agentSessionsSnapshot().forEach((session) => deleteAgentSession(session.id))
 })
 

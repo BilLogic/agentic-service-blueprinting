@@ -29,6 +29,7 @@ import type {
   CellTouchpoint,
 } from '@/types/blueprint'
 import type { RawCell, RawPath } from '@/lib/normalizeBlueprint'
+import type { OfflineBoard } from '@/data/blueprintFallbacks'
 
 type Registry = {
   fallback: BlueprintData | null
@@ -43,6 +44,13 @@ const registry = vi.hoisted(
 vi.mock('@/data/blueprintFallbacks', () => ({
   getBlueprintFallback: () => registry.fallback,
 }))
+
+/**
+ * The board every call here is handed. Opaque and empty: the lookup over it is
+ * mocked above, so what this file is about is which SOURCE the resolver picks,
+ * not what a board answers.
+ */
+const BOARD = {} as OfflineBoard
 
 vi.mock('@/lib/bundledSample', () => ({
   isBundledSampleActive: () => registry.sampleActive,
@@ -235,6 +243,7 @@ test('a sparse board stays sparse: nothing from the sample reaches it', () => {
   registry.fallback = markedSample()
 
   const resolved = resolveBlueprintForScenario(
+    BOARD,
     SCENARIO,
     databasePath({
       // One lane, one column, one cell, and every prose field left empty —
@@ -276,6 +285,7 @@ test('an empty lane is an empty lane', () => {
   })
 
   const resolved = resolveBlueprintForScenario(
+    BOARD,
     SCENARIO,
     databasePath({ cells: [] }),
   )
@@ -288,6 +298,7 @@ test('an empty lane is an empty lane', () => {
 
 test('a database board comes back with its lanes and steps in position order', () => {
   const resolved = resolveBlueprintForScenario(
+    BOARD,
     SCENARIO,
     databasePath({
       lanes: [
@@ -321,6 +332,7 @@ test('two lanes the database gave the same name are two lanes', () => {
   // artefact left to clean up, and collapsing two rows a deployment wrote on
   // purpose would be this function overruling the database again.
   const resolved = resolveBlueprintForScenario(
+    BOARD,
     SCENARIO,
     databasePath({
       lanes: [
@@ -345,6 +357,7 @@ test('a path the database has no lanes for draws nothing, not the sample', () =>
   registry.fallback = markedSample()
 
   const resolved = resolveBlueprintForScenario(
+    BOARD,
     SCENARIO,
     databasePath({ lanes: [] }),
   )
@@ -357,7 +370,7 @@ test('a path the database has no lanes for draws nothing, not the sample', () =>
 test('a scenario the database has no path for draws nothing, not the sample', () => {
   registry.fallback = markedSample()
 
-  assert.deepEqual(resolveBlueprintForScenario(SCENARIO, null), {
+  assert.deepEqual(resolveBlueprintForScenario(BOARD, SCENARIO, null), {
     blueprint: null,
     source: null,
   })
@@ -366,7 +379,7 @@ test('a scenario the database has no path for draws nothing, not the sample', ()
 test('no path and no sample resolves to nothing rather than to an empty board', () => {
   registry.sampleActive = true
 
-  assert.deepEqual(resolveBlueprintForScenario(SCENARIO, null), {
+  assert.deepEqual(resolveBlueprintForScenario(BOARD, SCENARIO, null), {
     blueprint: null,
     source: null,
   })
@@ -386,7 +399,7 @@ test('with no database configured the sample is the board, in position order', (
     cells: [fallbackCell({ id: 'cell-1', content: 'Greet' })],
   })
 
-  const resolved = resolveBlueprintForScenario(SCENARIO, null)
+  const resolved = resolveBlueprintForScenario(BOARD, SCENARIO, null)
 
   assert.equal(resolved.source, 'fallback')
   assert.deepEqual(resolved.blueprint?.lanes.map((lane) => lane.id), [
@@ -419,7 +432,7 @@ test('with no database configured the sample keeps its lane deduplication', () =
     ],
   })
 
-  const resolved = resolveBlueprintForScenario(SCENARIO, null)
+  const resolved = resolveBlueprintForScenario(BOARD, SCENARIO, null)
 
   // One lane under that heading, and the cells sit on it — whichever of the
   // two ids the collapse kept (the one carrying the content).

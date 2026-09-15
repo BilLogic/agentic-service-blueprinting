@@ -99,7 +99,7 @@ already and are listed so the table is the whole answer.
 | `agent.doctrine` | `src/lib/agent/role.md` — the deployment's own copy of the agent's role document | Laid after the template's role and the canvas adapter on every send. The template's role stays the template's; the doctrine is what one deployment adds: its house rules, its posture, its account of itself. |
 | `agent.references` | Reference documents under `src/lib/agent/` — the deployment's own account, house style, whatever it authored for `get_reference` | A map of bare name to document text; the host holds the `?raw` imports. A name the template already serves is replaced, a new name is listed to the agent right after the canvas adapter. |
 | `sample.nav` | `src/data/sampleNav.ts` — the board shown before a database answers | Read by the editor context as the slides shown before the first fetch answers (`fallbackSlides`); the template's generated sample stands in only when the field is absent. |
-| `sample.blueprints` | `src/data/blueprintFallbacks.ts` — the CONTENT those nav rows resolve to | The registry every offline lookup goes through, or a loader that fetches one: `DeploymentConfigProvider` writes it onto that module with `configureSampleBlueprints` while it renders, because the board reads the module as it draws. Supply it WITH `sample.nav` — see § The offline board is two fields, and § Eagerly or behind a loader for which form. |
+| `sample.blueprints` | `src/data/blueprintFallbacks.ts` — the CONTENT those nav rows resolve to | The registry every offline lookup goes through, or a loader that fetches one: `DeploymentConfigProvider` settles it and hands it down the tree, so the board a surface draws is the one the provider above it holds. Supply it WITH `sample.nav` — see § The offline board is two fields, and § Eagerly or behind a loader for which form. |
 
 The generated database types are the one file a deployment keeps in its tree
 on purpose, and since the overlay they are not part of the application there:
@@ -240,12 +240,12 @@ own error boundary above `App`. A loader that RESOLVES EMPTY is the other
 reading and stays silent — an empty registry is a value a deployment may mean,
 and it falls back to the template's own the way an empty `sample.nav` does.
 
-**In a build WITH a database the fallback module keeps the template's own
-registry** rather than the deployment's, because the loader was never called
-and there is nothing to write. Nothing reads it there: every surface that
-consults the module is behind `isBundledSampleActive()`, and the two that are
-not are keyed by identifiers a deployment's board does not carry, so they
-answer the same nothing either way. It is the difference between the forms that
+**In a build WITH a database the board handed down is the template's own**
+rather than the deployment's, because the loader was never called and there is
+nothing to settle. Nothing reads it there: every surface that consults it is
+behind `isBundledSampleActive()`, and the two that are not are keyed by
+identifiers a deployment's board does not carry, so they answer the same
+nothing either way. It is the difference between the forms that
 is worth knowing about, and it is a difference in what is in memory rather than
 in what anyone sees.
 

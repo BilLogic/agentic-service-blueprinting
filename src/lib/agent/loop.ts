@@ -11,6 +11,7 @@ import type {
   AgentToolCallPart,
 } from '@/lib/agent/providers/provider'
 import { dispatchTool, type DispatchContext } from '@/lib/agent/tools/registry'
+import type { OfflineBoard } from '@/data/blueprintFallbacks'
 import { agentSearchPlan } from '@/lib/agent/searchPlan'
 import { toolSpec } from '@/lib/agent/tools/definition'
 import { findToolDefinition } from '@/lib/agent/tools/definitions'
@@ -28,7 +29,6 @@ import {
 import { isMobileViewport } from '@/hooks/useMobileShell'
 import { collectAgentUiContext } from '@/lib/agent/uiBridge'
 import { agentUiCommandMutates } from '@/lib/agent/uiCommands'
-import type { AgentAttachment } from '@/lib/agent/attachments'
 import type { AgentSkillCommand } from '@/lib/agent/skills'
 import { readReference } from '@/lib/agent/tools/references'
 import { agentDoctrine } from '@/lib/agent/doctrine'
@@ -39,7 +39,10 @@ import {
   modelFor,
   type AgentSettings,
 } from '@/lib/agent/settings'
-import { autoNameSession } from '@/lib/agent/sessions'
+import {
+  autoNameSession,
+  type AgentAttachment,
+} from '@/lib/agent/sessions'
 import {
   isAgentPersistenceAttached,
   loadPersistedEvents,
@@ -369,6 +372,13 @@ export async function sendToAgent(input: {
    */
   client: Client | null
   sessionId: string
+  /**
+   * The offline board the surface is drawing, for a trial with no database:
+   * the deployment's when it supplied one, the package's otherwise. Handed in
+   * rather than reached for, because the board lives on a context above the
+   * panel and this loop is a plain function.
+   */
+  offlineBoard: OfflineBoard
   settings: AgentSettings
   contextNote: string
   text: string
@@ -445,6 +455,7 @@ export async function sendToAgent(input: {
    */
   const searchPlan = agentSearchPlan(settings.provider)
   const dispatchContext: DispatchContext = {
+    offlineBoard: input.offlineBoard,
     meaning:
       searchPlan.offered && searchPlan.index
         ? { index: searchPlan.index, apiKey }

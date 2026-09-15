@@ -84,12 +84,27 @@ So two things live **outside** the component:
 
 - **Transcripts** are a module store in `loop.ts`, so the panel can unmount
   freely. Every push write-throughs to the database.
-- **Panel view state** — which session is open, and the per-session composer
-  draft — is `panelState.ts`. The transcript already lived outside; this is the
+- **Everything else about a session** — the list, which one is open, the
+  per-session composer draft, and the attachment waiting to go with the next
+  message — is `sessions.ts`. The transcript already lived outside; this is the
   rest of that promise. Switching sessions keeps each draft.
 
 The same store is why toggling ✦ (which unmounts the panel entirely) does not
 drop you back to the session list.
+
+**Those four facts are one module because every rule worth having spans
+them.** They were three — a panel-state store, a sessions store, an
+attachments store — and the cost showed up as a defect nobody could site:
+deleting the open session left the panel pointing at an id the list no longer
+held, and the only thing that noticed was a `?? null` in a component. A rule
+about the open session cannot live in the component that renders it; it lives
+where the session is deleted. So the module closes the open session when it
+goes, drops that session's draft with it, and hands callers the open
+**session** rather than an id they would have to resolve themselves. The
+panel, the two views and the two dialogs read this module and no other store
+about a session — and the dialogs read none at all: they report the verb and
+somebody else performs it, because a dialog that writes the store is a third
+writer of it beside the panel and the chat view.
 
 ## Sessions and persistence
 
@@ -156,7 +171,8 @@ The modules behind all of this live in `src/components/editor/agent/`:
 React-free `transcriptBlocks.ts` that decides which rows fold, `ChangeCount`
 with `useAgentChangeCount`, `SessionDialogs`, and
 `AgentSettingsRailButton` for the ⚙ below. `AgentPanel.tsx` itself is the
-session state machine and nothing else.
+composition and nothing else — which view is showing, and the persistence it
+attaches; the session state machine is `lib/agent/sessions.ts`.
 
 ## Settings
 

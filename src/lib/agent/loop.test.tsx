@@ -54,6 +54,7 @@ vi.mock('@/lib/authoringRpc', async (importOriginal) => ({
 
 import { setActiveService } from '@/contexts/activeService'
 import { sendToAgent, useAgentRun } from '@/lib/agent/loop'
+import { PACKAGE_OFFLINE_BOARD } from '@/data/blueprintFallbacks'
 import type { AgentSettings } from '@/lib/agent/settings'
 import { SAMPLE_TRIAL_REFUSAL, noSuchToolRefusal } from '@/lib/agent/tools/refusals'
 import { configureAgentTools } from '@/lib/agent/tools/roster'
@@ -73,7 +74,13 @@ const client = {} as unknown as SupabaseClient<Database>
 let sessions = 0
 const send = (input: { client: SupabaseClient<Database> | null; text: string }) => {
   const sessionId = `loop-test-${(sessions += 1)}`
-  return sendToAgent({ ...input, sessionId, settings: SETTINGS, contextNote: '' }).then(
+  return sendToAgent({
+    ...input,
+    sessionId,
+    offlineBoard: PACKAGE_OFFLINE_BOARD,
+    settings: SETTINGS,
+    contextNote: '',
+  }).then(
     () => renderHook(() => useAgentRun(sessionId)).result.current.events,
   )
 }
