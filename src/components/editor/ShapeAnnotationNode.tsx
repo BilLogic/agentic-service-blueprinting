@@ -1,11 +1,12 @@
 import { cn } from '@/lib/utils'
 import {
   annotationTextOnFill,
+  type PlacedAnnotation,
   type ShapeAnnotation,
 } from '@/lib/canvasAnnotations'
 import { useFocusTextarea } from '@/hooks/useFocusTextarea'
 import { ResizeHandles } from '@/components/editor/CanvasAnnotationResizeHandles'
-import { AnnotationShapeStyleBar } from '@/components/editor/AnnotationShapeStyleBar'
+import { AnnotationStyleBar } from '@/components/editor/AnnotationStyleBar'
 import type { MovableProps } from '@/components/editor/canvasAnnotationNodeProps'
 
 /** A drawn rectangle or ellipse, with its optional label fitted inside it. */
@@ -17,7 +18,7 @@ export function ShapeAnnotationNode({
 }: MovableProps & {
   annotation: ShapeAnnotation
   zoom: number
-  onUpdate: (patch: Partial<ShapeAnnotation>) => void
+  onUpdate: (patch: Partial<PlacedAnnotation>) => void
 }) {
   const {
     selected,
@@ -39,8 +40,8 @@ export function ShapeAnnotationNode({
   return (
     <>
       {selected && !isEraser ? (
-        <AnnotationShapeStyleBar
-          shape={annotation}
+        <AnnotationStyleBar
+          mark={annotation}
           zoom={zoom}
           onChange={onUpdate}
           onDelete={onErase}

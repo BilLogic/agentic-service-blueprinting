@@ -1,8 +1,11 @@
 import { cn } from '@/lib/utils'
-import type { StickyAnnotation } from '@/lib/canvasAnnotations'
+import type {
+  PlacedAnnotation,
+  StickyAnnotation,
+} from '@/lib/canvasAnnotations'
 import { useFocusTextarea } from '@/hooks/useFocusTextarea'
 import { ResizeHandles } from '@/components/editor/CanvasAnnotationResizeHandles'
-import { AnnotationStickyStyleBar } from '@/components/editor/AnnotationStickyStyleBar'
+import { AnnotationStyleBar } from '@/components/editor/AnnotationStyleBar'
 import type { MovableProps } from '@/components/editor/canvasAnnotationNodeProps'
 
 /** A sticky note: a coloured square that is a textarea all the way through. */
@@ -14,7 +17,7 @@ export function StickyAnnotationNode({
 }: MovableProps & {
   annotation: StickyAnnotation
   zoom: number
-  onUpdate: (patch: Partial<StickyAnnotation>) => void
+  onUpdate: (patch: Partial<PlacedAnnotation>) => void
 }) {
   const {
     selected,
@@ -35,8 +38,8 @@ export function StickyAnnotationNode({
   return (
     <>
       {showChrome ? (
-        <AnnotationStickyStyleBar
-          sticky={annotation}
+        <AnnotationStyleBar
+          mark={annotation}
           zoom={zoom}
           onChange={onUpdate}
           onDelete={onErase}

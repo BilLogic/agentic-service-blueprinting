@@ -1,9 +1,12 @@
 import { cn } from '@/lib/utils'
-import type { TextAnnotation } from '@/lib/canvasAnnotations'
+import type {
+  PlacedAnnotation,
+  TextAnnotation,
+} from '@/lib/canvasAnnotations'
 import { useFocusTextarea } from '@/hooks/useFocusTextarea'
 import { annotationTextBox } from '@/components/editor/canvasAnnotationGeometry'
 import { ResizeHandles } from '@/components/editor/CanvasAnnotationResizeHandles'
-import { AnnotationTextStyleBar } from '@/components/editor/AnnotationTextStyleBar'
+import { AnnotationStyleBar } from '@/components/editor/AnnotationStyleBar'
 import type { MovableProps } from '@/components/editor/canvasAnnotationNodeProps'
 
 /** Bare type on the board, which shows its editor until it holds something. */
@@ -15,7 +18,7 @@ export function TextAnnotationNode({
 }: MovableProps & {
   annotation: TextAnnotation
   zoom: number
-  onUpdate: (patch: Partial<TextAnnotation>) => void
+  onUpdate: (patch: Partial<PlacedAnnotation>) => void
 }) {
   const {
     selected,
@@ -47,10 +50,9 @@ export function TextAnnotationNode({
   return (
     <>
       {showChrome ? (
-        <AnnotationTextStyleBar
-          text={annotation}
+        <AnnotationStyleBar
+          mark={annotation}
           zoom={zoom}
-          width={approxWidth}
           onChange={onUpdate}
           onDelete={onErase}
         />
