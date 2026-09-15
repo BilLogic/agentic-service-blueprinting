@@ -1,13 +1,14 @@
 /**
- * The class strings the three floating style bars are cut from. They live in a
- * module of their own so each bar can read the one vocabulary rather than
- * reach into a sibling for it: a slot, a round icon slot, a menu surface and a
- * menu item, all on the frozen `annotation-chrome` plane.
+ * The class strings the floating style bar's controls are cut from. They live
+ * in a module of their own so a control can read the one vocabulary rather
+ * than reach into a sibling for it: a slot, a round icon slot, a menu surface
+ * and a menu item, all on the frozen `annotation-chrome` plane.
  *
  * They were `SHAPE_TOOLBAR_*` while they sat inside one file, which was already
- * only true of the first bar to want them — the sticky and text bars are cut
- * from the same four. A name that reaches three modules has to say what it
- * covers, so they are the annotation bar's.
+ * only true of the first bar to want them — the sticky and text bars were cut
+ * from the same four, which is a large part of why there is one bar now. A
+ * name that reaches past one control has to say what it covers, so they are
+ * the annotation bar's.
  */
 
 export const ANNOTATION_BAR_TRIGGER_CLASS =

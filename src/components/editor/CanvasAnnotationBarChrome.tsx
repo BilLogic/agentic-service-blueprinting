@@ -3,14 +3,14 @@ import { IconTooltip } from '@/components/editor/IconTooltip'
 import { chromeAnchorStyle } from '@/components/editor/canvasAnnotationGeometry'
 
 /**
- * The chrome all three style bars share: the plate they float on, the rule
- * between their groups, and the tooltip repainted for their own dark plane.
+ * The chrome the floating style bar is built on: the plate it floats on, the
+ * rule between its groups, and the tooltip repainted for its own dark plane.
  *
  * The plate was written out three times, once per bar, and the three copies
  * had to agree on the attributes the layer's own click-outside rule looks for
  * (`data-annotation-editable`, `data-annotation-chrome`) as well as on the
  * anchor arithmetic. It is said once here, and a bar is now the controls it
- * holds.
+ * holds — which is what let the three bars become one.
  */
 export function AnnotationStyleBarFrame({
   x,
