@@ -114,6 +114,7 @@
  */
 import { execFileSync } from 'node:child_process'
 import { RETIRED_IDENTIFIER_FRAGMENTS, replacementFor } from './retired-vocabulary.mjs'
+import { whenRun } from './verdict.mjs'
 
 /**
  * Identifiers allowed to keep a retired word, each with a reason and usually an
@@ -303,7 +304,14 @@ function psql(args, input) {
   })
 }
 
-function main() {
+// A DATABASE THAT COULD NOT BE SWEPT IS RED HERE, NOT SKIPPED. Everywhere else
+// in this set "could not look" is a warning, because the skip is the correct
+// answer; here it is not. This check exists because the migration files and
+// the catalogue disagree, and a run that never reached a catalogue has not
+// compared anything — in CI it follows the migration replay, so the only way
+// to reach it is a database that should have been there and was not. So the
+// reason is said as a finding, in the words it has always used.
+whenRun(import.meta.url, () => {
   const args = process.argv.slice(2)
   const dbIndex = args.indexOf('--database')
   const database = dbIndex === -1 ? process.env.PGDATABASE : args[dbIndex + 1]
@@ -315,54 +323,58 @@ function main() {
     try {
       out = psql(target, selfTestSql())
     } catch (error) {
-      console.error(`self-test could not run: ${String(error.stderr || error.message).trim()}`)
-      process.exit(1)
+      return {
+        what: 'a planted object the sweep must report',
+        findings: [`self-test could not run: ${String(error.stderr || error.message).trim()}`],
+      }
     }
     const planted = parseRows(out).filter((row) => row.identifier.includes('zz_selftest'))
-    if (planted.length === 0) {
-      console.error(
-        'SELF-TEST FAILED: a table named for a retired word was planted and the sweep ' +
-          'did not report it. The query is broken, and a clean result from it means nothing.',
-      )
-      process.exit(1)
+    return {
+      what: 'a planted object the sweep must report',
+      count: planted.length,
+      findings:
+        planted.length === 0
+          ? [
+              'SELF-TEST FAILED: a table named for a retired word was planted and the sweep ' +
+                'did not report it. The query is broken, and a clean result from it means nothing.',
+            ]
+          : [],
+      line: `ok — self-test: the sweep reported ${planted.length} planted object(s), then rolled back`,
     }
-    console.log(`ok — self-test: the sweep reported ${planted.length} planted object(s), then rolled back`)
-    return
   }
 
   let tsv
   try {
     tsv = psql([...target, '-c', sweepSql()])
   } catch (error) {
-    console.error(
-      'could not sweep a database — this check compares the CATALOGUE, not the ' +
-        'migration files, and has nothing to say without one.\n' +
-        `  ${String(error.stderr || error.message).trim().split('\n').slice(-3).join('\n  ')}\n` +
-        '\nSet PGHOST/PGUSER/PGDATABASE, or pass --database <name>. In CI this runs ' +
-        'after the migration replay in ci.yml.',
-    )
-    process.exit(1)
+    return {
+      what: 'a retired word swept across the database catalogue',
+      findings: [
+        'could not sweep a database — this check compares the CATALOGUE, not the ' +
+          'migration files, and has nothing to say without one.\n' +
+          `  ${String(error.stderr || error.message).trim().split('\n').slice(-3).join('\n  ')}\n` +
+          '\nSet PGHOST/PGUSER/PGDATABASE, or pass --database <name>. In CI this runs ' +
+          'after the migration replay in ci.yml.',
+      ],
+    }
   }
 
   const problems = findings(parseRows(tsv))
-  for (const problem of problems) {
-    console.error(
-      `::error::retired vocabulary in ${problem.subject} — "${problem.word}" was ` +
+  return {
+    what: 'a retired word swept across the database catalogue',
+    count: RETIRED_IDENTIFIER_FRAGMENTS.length,
+    findings: problems.map(
+      (problem) =>
+        `::error::retired vocabulary in ${problem.subject} — "${problem.word}" was ` +
         `renamed to ${replacementFor(problem.word)}. A rename moves the table and ` +
         'the column; it never moves this.' +
         // Without this a reader is told a function body contains a word and left
         // to find it: `duplicate_path` is 100 lines and prose inside it counts.
         (problem.context ? `\n    … ${problem.context.trim()} …` : ''),
-    )
-  }
-  if (problems.length > 0) {
-    console.error(`\n${problems.length} database identifier(s) still carry a retired word.`)
-    process.exit(1)
-  }
-  console.log(
-    `ok — no retired vocabulary in any database identifier ` +
+    ),
+    closing: problems.length > 0 ? `\n${problems.length} database identifier(s) still carry a retired word.` : undefined,
+    line:
+      `ok — no retired vocabulary in any database identifier ` +
       `(${RETIRED_IDENTIFIER_FRAGMENTS.length} fragments swept across the catalogue)`,
-  )
-}
-
-if (import.meta.url === `file://${process.argv[1]}`) main()
+  }
+})

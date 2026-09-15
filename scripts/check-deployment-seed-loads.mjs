@@ -85,10 +85,10 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { basename, dirname, relative, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { RENDER_READS, RENDER_READ_NAMES, STACK, parseCounts } from './check-seed-loads.mjs'
 import { sweep } from './sweep.mjs'
 import { RESOLVES_TO_NOTHING, resolveSeedFiles } from './seed-list.mjs'
+import { whenRun } from './verdict.mjs'
 
 /** This template's own stack files, under the tree the check was run in. */
 // The stack is this template's own — the shim, the defaults, the core, the
@@ -357,7 +357,10 @@ function skip() {
   )
 }
 
-function main(argv = process.argv.slice(2)) {
+/** The subject, said the way the sweep's register says it. */
+const WHAT = "a deployment's seed against this template's portable core"
+
+function judge(argv = process.argv.slice(2)) {
   const fromEnv = process.env.DEPLOYMENT_SEED
     ? process.env.DEPLOYMENT_SEED.split(',').map((part) => part.trim()).filter(Boolean)
     : []
@@ -370,11 +373,8 @@ function main(argv = process.argv.slice(2)) {
   // Every way of resolving the seed refuses by throwing, and each of those
   // refusals is written for the person who ran the command. A stack trace
   // buries the sentence that tells them what to pass — so the message is the
-  // output, and the exit code carries the failure.
-  const refuse = (error) => {
-    console.error(error.message)
-    process.exitCode = 1
-  }
+  // finding, and the verdict carries the failure.
+  const refuse = (error) => ({ what: WHAT, findings: [error.message] })
   if (named.length > 1) {
     // Several files named outright: the operator has answered what the config
     // could not, so nothing else is consulted. This is the ONLY way to run the
@@ -387,11 +387,7 @@ function main(argv = process.argv.slice(2)) {
     seedPath = files[0]
   } else if (named.length === 1) {
     seedPath = resolve(named[0])
-    if (!existsSync(seedPath)) {
-      console.error(`no seed at ${seedPath}`)
-      process.exitCode = 1
-      return
-    }
+    if (!existsSync(seedPath)) return { what: WHAT, findings: [`no seed at ${seedPath}`] }
     try {
       files = resolveSeedFiles(seedPath)
     } catch (error) {
@@ -404,7 +400,7 @@ function main(argv = process.argv.slice(2)) {
     const swept = sweep({ subject: 'deployment-seed' })
     if (!swept.seen) {
       skip()
-      return
+      return {}
     }
     base = swept.base
     // The subject's paths are relative to the deployment's root; psql is given
@@ -413,9 +409,7 @@ function main(argv = process.argv.slice(2)) {
     seedPath = files[0]
   }
   if (files.length === 0) {
-    console.error(`the seed at ${seedPath} resolves to no files`)
-    process.exitCode = 1
-    return
+    return { what: WHAT, findings: [`the seed at ${seedPath} resolves to no files`] }
   }
   // `supabase/seed.sql` → the checkout that holds it, so every path in the
   // report reads the way the deployment's own tree does. When the subject named
@@ -428,19 +422,21 @@ function main(argv = process.argv.slice(2)) {
   run('dropdb', ['--if-exists', DB])
   const created = run('createdb', [DB])
   if (created.status !== 0) {
-    console.error(`could not create the scratch database ${DB}:\n${created.stderr?.trim() ?? ''}`)
-    process.exitCode = 1
-    return
+    return {
+      what: WHAT,
+      findings: [`could not create the scratch database ${DB}:\n${created.stderr?.trim() ?? ''}`],
+    }
   }
   try {
     for (const file of CORE_STACK) {
       const applied = psql(['-f', P(file)])
       if (applied.status !== 0) {
-        console.error(`this template's own stack did not apply — ${file}:\n`)
-        console.error(applied.stderr?.trim() ?? '')
-        console.error('\nThat is `npm run check:seed-load`\'s failure, not this one. Run it first.')
-        process.exitCode = 1
-        return
+        return {
+          what: WHAT,
+          opening: `this template's own stack did not apply — ${file}:\n`,
+          findings: [applied.stderr?.trim() ?? ''],
+          closing: '\nThat is `npm run check:seed-load`\'s failure, not this one. Run it first.',
+        }
       }
     }
 
@@ -449,14 +445,14 @@ function main(argv = process.argv.slice(2)) {
       const loaded = psql(['-f', file], { stopOnError: false })
       const reported = parsePsqlErrors(loaded.stderr ?? '')
       if (fileNeverRan(loaded.status, reported)) {
-        console.error(`psql could not run ${show(file)}:\n`)
-        console.error(loaded.stderr?.trim() ?? '')
-        console.error(
-          '\nNothing in that file reached the database, so everything after it would be ' +
+        return {
+          what: WHAT,
+          opening: `psql could not run ${show(file)}:\n`,
+          findings: [loaded.stderr?.trim() ?? ''],
+          closing:
+            '\nNothing in that file reached the database, so everything after it would be ' +
             'grading a seed the deployment does not load.',
-        )
-        process.exitCode = 1
-        return
+        }
       }
       failures.push(...reported)
     }
@@ -466,26 +462,24 @@ function main(argv = process.argv.slice(2)) {
       const causes = groups.filter((g) => !g.downstream)
       const knockOn = groups.filter((g) => g.downstream)
       const touched = new Set(failures.map((f) => f.file))
-      console.error(
-        `The deployment's seed does not load onto this template's portable core: ` +
+      const group = (g) => [`  ${g.count}x  ${g.message}`, `        ${g.examples.map((e) => show(e)).join(', ')}`]
+      return {
+        what: WHAT,
+        opening:
+          `The deployment's seed does not load onto this template's portable core: ` +
           `${failures.length} statements failed across ${touched.size} of ${files.length} seed files.\n`,
-      )
-      console.error(`Root causes (${causes.length} distinct):\n`)
-      for (const g of causes) {
-        console.error(`  ${g.count}x  ${g.message}`)
-        console.error(`        ${g.examples.map((e) => show(e)).join(', ')}`)
-      }
-      if (knockOn.length > 0) {
-        console.error(
-          `\nKnock-on (${knockOn.length} distinct) — rows an earlier failure never inserted:\n`,
-        )
-        for (const g of knockOn) {
-          console.error(`  ${g.count}x  ${g.message}`)
-          console.error(`        ${g.examples.map((e) => show(e)).join(', ')}`)
-        }
-      }
-      console.error(
-        `\nEach root cause is one of two things, and the message says which:\n` +
+        findings: [
+          `Root causes (${causes.length} distinct):\n`,
+          ...causes.flatMap(group),
+          ...(knockOn.length > 0
+            ? [
+                `\nKnock-on (${knockOn.length} distinct) — rows an earlier failure never inserted:\n`,
+                ...knockOn.flatMap(group),
+              ]
+            : []),
+        ],
+        closing:
+          `\nEach root cause is one of two things, and the message says which:\n` +
           `  - a name or column the core does NOT carry, that the deployment needs —\n` +
           `    a gap in the portable core, and the reconciliation ticket's content;\n` +
           `  - a name the core carries under its CURRENT spelling, which the seed still\n` +
@@ -495,45 +489,46 @@ function main(argv = process.argv.slice(2)) {
           `  createdb scratch\n` +
           CORE_STACK.map((f) => `  psql -v ON_ERROR_STOP=1 -d scratch -f ${f}`).join('\n') +
           `\n  psql -d scratch -f ${show(files[0])}   # then the rest, in order`,
-      )
-      process.exitCode = 1
-      return
+      }
     }
 
     const tables = seededTables(seedSql)
     const inventory = psql(['-At', '-F', '|', '-c', buildInventorySql(tables)])
     if (inventory.status !== 0) {
-      console.error("The deployment's seed applied, but the anon read was refused:\n")
-      console.error(inventory.stderr?.trim() ?? '')
-      process.exitCode = 1
-      return
+      return {
+        what: WHAT,
+        opening: "The deployment's seed applied, but the anon read was refused:\n",
+        findings: [inventory.stderr?.trim() ?? ''],
+      }
     }
     const problems = evaluate(parseCounts(inventory.stdout ?? ''), tables)
-    if (problems.length > 0) {
-      console.error("The deployment's seed loaded, but a keyless read does not see the content:\n")
-      for (const problem of problems) console.error(`  ${problem}`)
-      console.error(
-        '\nThis is the deployed app reading with the anon key. A table it cannot see ' +
-          'renders blank in the browser. Expose it to anon in the recipe (a migration ' +
-          '`grant select … to anon`).',
-      )
-      process.exitCode = 1
-      return
-    }
-    console.log(
-      `the deployment's seed (${files.length} file(s) under ${basename(deploymentRoot)}/) ` +
+    return {
+      what: WHAT,
+      count: tables.length,
+      opening:
+        problems.length > 0
+          ? "The deployment's seed loaded, but a keyless read does not see the content:\n"
+          : undefined,
+      findings: problems.map((problem) => `  ${problem}`),
+      closing:
+        problems.length > 0
+          ? '\nThis is the deployed app reading with the anon key. A table it cannot see ' +
+            'renders blank in the browser. Expose it to anon in the recipe (a migration ' +
+            '`grant select … to anon`).'
+          : undefined,
+      line:
+        `the deployment's seed (${files.length} file(s) under ${basename(deploymentRoot)}/) ` +
         `loads on a fresh core + recipe and renders as anon ` +
         `(${tables.length} tables populated, ` +
         `${Object.keys(DEPLOYMENT_RENDER_READS).length} render reads return rows)`,
-    )
+    }
   } finally {
     run('dropdb', ['--if-exists', DB])
   }
 }
 
-// Same shape as scripts/check-seed-loads.mjs: comparing against a hand-built
-// `file://` URL silently no-ops whenever the path needs escaping.
-const isMain =
-  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-
-if (isMain) main()
+// THE SKIP IS NOT THE VERDICT'S UNVERIFIED. The sweep has already put this
+// subject in the register, and saying it a second time here would print one
+// fact twice — so `skip()` says only the part the sweep does not, and hands
+// back a judgement with nothing to report and nothing to fail.
+whenRun(import.meta.url, judge)
