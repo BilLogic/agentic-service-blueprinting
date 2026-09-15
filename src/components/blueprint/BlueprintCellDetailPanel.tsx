@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, PanelRightClose, PanelRightOpen, X } from 'lucide-react'
+import { ArrowLeft, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { CellInSlicesFooter } from '@/components/blueprint/CellInSlicesFooter'
 import { CellDetailDifferencesSurface } from '@/components/blueprint/CellDetailDifferencesSurface'
 import { CellDetailDraftSurface } from '@/components/blueprint/CellDetailDraftSurface'
 import { CellDetailEmptySurface } from '@/components/blueprint/CellDetailEmptySurface'
 import { CellDetailOverview } from '@/components/blueprint/CellDetailOverview'
-import { CellDetailBreadcrumb } from '@/components/blueprint/CellDetailBreadcrumb'
+import { cellDetailCrumbs } from '@/components/blueprint/cellDetailCrumbs'
 import {
   CellDetailTabs,
   type PanelTab,
@@ -23,17 +23,13 @@ import {
   DetailPanelErrorBoundary,
   PanelDrawerShell,
   PanelFooterHost,
+  PanelHeader,
   PanelIdentity,
   PanelKindBadge,
 } from '@/components/blueprint/panelShell'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import { StoryboardStepDetailStack } from '@/components/blueprint/StoryboardStepDetailStack'
 import { Button } from '@/components/ui/button'
-import {
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from '@/components/ui/drawer'
 import {
   useBlueprintCellDetail,
   type BlueprintPanelSurface,
@@ -445,11 +441,6 @@ function BlueprintCellDetailPanelBody() {
     })
   }
 
-  const cellBreadcrumb = (
-    <CellDetailBreadcrumb selection={selection} pathEntry={pathEntry} />
-  )
-
-
   return (
     <PanelDrawerShell
       open={drawerOpen}
@@ -473,30 +464,14 @@ function BlueprintCellDetailPanelBody() {
             </button>
           </div>
         ) : null}
-        <DrawerHeader className="flex-row items-center justify-between gap-2 pb-3 text-left">
-          <div className="min-w-0 flex-1">
-            <DrawerTitle className="sr-only">Cell details</DrawerTitle>
-            <DrawerDescription className="sr-only">
-              Details for the selected blueprint cell
-            </DrawerDescription>
-            {cellBreadcrumb}
-          </div>
-          <div className="flex shrink-0 items-center gap-0.5">
-            {expandToggle}
-            <IconTooltip label="Close cell details" side="left">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="shrink-0 text-muted-foreground hover:text-foreground"
-                aria-label="Close cell details"
-                onClick={clearSelection}
-              >
-                <X />
-              </Button>
-            </IconTooltip>
-          </div>
-        </DrawerHeader>
+        <PanelHeader
+          crumbs={cellDetailCrumbs({ selection, pathEntry })}
+          title="Cell details"
+          description="Details for the selected blueprint cell"
+          actions={expandToggle}
+          closeLabel="Close cell details"
+          onClose={clearSelection}
+        />
 
         {isStoryboardLane ? (
           <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-4 blueprint-scroll">

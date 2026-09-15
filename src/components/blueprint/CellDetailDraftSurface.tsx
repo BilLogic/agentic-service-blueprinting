@@ -1,12 +1,5 @@
-import { X } from 'lucide-react'
 import { CellPanelEditor } from '@/components/blueprint/CellPanelEditor'
-import { IconTooltip } from '@/components/editor/IconTooltip'
-import { Button } from '@/components/ui/button'
-import {
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from '@/components/ui/drawer'
+import { PanelHeader } from '@/components/blueprint/panelShell'
 import type { DraftCellTarget } from '@/components/blueprint/CellPanelEditor'
 import type { ReactNode } from 'react'
 
@@ -33,34 +26,21 @@ export function CellDetailDraftSurface({
   return (
     <>
       {surfaceSwitcher}
-      <DrawerHeader className="flex-row items-center justify-between gap-2 pb-3 text-left">
-        <div className="min-w-0 flex-1">
-          <DrawerTitle className="min-w-0 text-sm font-semibold text-foreground">
-            New cell
-          </DrawerTitle>
-          <DrawerDescription className="text-xs text-muted-foreground">
-            {[
-              draft.phaseName,
-              draft.scenarioName,
-              `${draft.stepIndex + 1}. ${draft.stepName}`,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </DrawerDescription>
-        </div>
-        <IconTooltip label="Discard this new cell" side="left">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="shrink-0 text-muted-foreground hover:text-foreground"
-            aria-label="Discard new cell"
-            onClick={onClose}
-          >
-            <X />
-          </Button>
-        </IconTooltip>
-      </DrawerHeader>
+      <PanelHeader
+        title="New cell"
+        titleShown
+        description={[
+          draft.phaseName,
+          draft.scenarioName,
+          `${draft.stepIndex + 1}. ${draft.stepName}`,
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+        descriptionShown
+        closeLabel="Discard this new cell"
+        closeAriaLabel="Discard new cell"
+        onClose={onClose}
+      />
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4 blueprint-scroll">
         {laneBadge}
         <CellPanelEditor cellId={null} draft={draft} onDone={onClose} />
