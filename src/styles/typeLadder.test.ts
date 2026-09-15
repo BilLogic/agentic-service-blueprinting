@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
   classListHas,
@@ -9,6 +6,7 @@ import {
   classListsIn,
   type ClassListInput,
 } from '@/lib/classList'
+import { sourceOf } from '@/lib/sourceTree'
 import { declarationsIn } from '@/lib/tokenModel'
 
 /**
@@ -20,9 +18,8 @@ import { declarationsIn } from '@/lib/tokenModel'
  * scopes, or a legitimate mono `sm` (14px) reads as off-ladder.
  */
 
-const HERE = dirname(fileURLToPath(import.meta.url))
-const THEME = readFileSync(resolve(HERE, 'theme.css'), 'utf8')
-const INPUT = readFileSync(resolve(HERE, '../components/ui/input.tsx'), 'utf8')
+const THEME = sourceOf('styles/theme.css')
+const INPUT = sourceOf('components/ui/input.tsx')
 
 const RUNGS = ['xs', 'sm', 'base', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl'] as const
 

@@ -1,13 +1,11 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import type { ReactElement } from 'react'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { MobileNavSheet } from '@/components/mobile/MobileNavSheet'
 import { MobilePathSelector } from '@/components/mobile/MobilePathSelector'
 import { MobileTopBar } from '@/components/mobile/MobileTopBar'
+import { sourceOf } from '@/lib/sourceTree'
 
 /**
  * The mobile shell is the only surface in its batch that renders
@@ -19,11 +17,7 @@ import { MobileTopBar } from '@/components/mobile/MobileTopBar'
  */
 
 const PHONE_WIDTH_PX = 375
-const HERE = dirname(fileURLToPath(import.meta.url))
-const INPUT = readFileSync(
-  resolve(HERE, '../ui/input.tsx'),
-  'utf8',
-)
+const INPUT = sourceOf('components/ui/input.tsx')
 
 afterEach(cleanup)
 

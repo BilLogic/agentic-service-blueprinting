@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
   classListHas,
@@ -8,6 +5,7 @@ import {
   classLists,
   classListsIn,
   type ClassListSite,
+  uncommentedLeading,
 } from '@/lib/classList'
 import {
   NARRATIVE_CELL_HEIGHT,
@@ -28,9 +26,6 @@ import { sourceFiles } from '@/lib/tokenModel'
  * shell, cover/mobile helpers, and the sub-12px contract are other
  * batches.
  */
-
-const HERE = dirname(fileURLToPath(import.meta.url))
-const SRC = resolve(HERE, '../..')
 
 const SUB_XS = /^(?:[a-z-]+:)*!?text-(?:2xs|3xs|4xs|5xs)$/
 const ARBITRARY_TRACKING = /^(?:[a-z-]+:)*tracking-\[/
@@ -81,16 +76,6 @@ function describeSite(site: ClassListSite): string {
 }
 
 /**
- * Raw source of a file under `src`, comments kept — surviving `leading-*`
- * has to be judged against the comment that names its geometry.
- *
- * @param file - path relative to `src`
- */
-function rawSource(file: string): string {
-  return readFileSync(resolve(SRC, file), 'utf8')
-}
-
-/**
  * The weight and colour utilities a panel role writes.
  *
  * Missing weight is 400 — the working weight need not be spelled. The
@@ -106,34 +91,6 @@ function weightAndColour(classes: string): { weight: string; colour: string } {
   expect(weight, `a weight utility on ${classes}`).toBeDefined()
   expect(colour, `a colour utility on ${classes}`).toBeDefined()
   return { weight: weight!, colour: colour! }
-}
-
-/**
- * Every `leading-*` in `file` whose line (or the comment immediately
- * above it) does not name the geometry that needs the override.
- *
- * @param file - path relative to `src`
- */
-function uncommentedLeading(file: string): string[] {
-  const lines = rawSource(file).split('\n')
-  const offenders: string[] = []
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index] ?? ''
-    if (/^\s*(?:\/\/|\*|\/\*)/.test(line)) continue
-    if (
-      !/['"`][^'"`]*\bleading-(?:none|tight|snug|normal|relaxed|loose|\d|\[)/.test(
-        line,
-      )
-    ) {
-      continue
-    }
-    const window = [lines[index - 2] ?? '', lines[index - 1] ?? '', line].join(
-      '\n',
-    )
-    if (/\/[/*][\s\S]*geometry/i.test(window)) continue
-    offenders.push(`${file}:${index + 1}: ${line.trim()}`)
-  }
-  return offenders
 }
 
 describe('the census detector names a leftover sub-xs rung', () => {

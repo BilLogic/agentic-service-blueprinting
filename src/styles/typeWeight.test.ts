@@ -1,7 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { sourceOf } from '@/lib/sourceTree'
 import { declarationsIn } from '@/lib/tokenModel'
 
 /**
@@ -11,8 +9,7 @@ import { declarationsIn } from '@/lib/tokenModel'
  * 400.
  */
 
-const HERE = dirname(fileURLToPath(import.meta.url))
-const THEME = readFileSync(resolve(HERE, 'theme.css'), 'utf8')
+const THEME = sourceOf('styles/theme.css')
 const MONO_SELECTOR = '.font-mono, code, kbd, pre, samp'
 
 describe('the working-weight knob', () => {

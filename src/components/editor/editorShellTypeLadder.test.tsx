@@ -6,9 +6,6 @@
  * Slice/presentation, the blueprint canvas, the cover/mobile remainder and
  * `PANEL_TEXT` are other batches. This file only names the shell.
  */
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AgentSettingsFields } from '@/components/editor/AgentSettingsFields'
@@ -19,8 +16,7 @@ import {
   classLists,
   classListsIn,
 } from '@/lib/classList'
-
-const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+import { sourceOf } from '@/lib/sourceTree'
 
 /**
  * Slice and presentation files live under `components/editor/` but belong
@@ -69,15 +65,6 @@ function isEditorShell(file: string): boolean {
   // of. Any other subfolder is still somebody else's batch.
   if (base.includes('/')) return base.startsWith('agent/')
   return !SLICE_PRESENTATION.has(base)
-}
-
-/**
- * Read a source file under `src/` with comments intact.
- *
- * @param file - path relative to `src`
- */
-function sourceOf(file: string): string {
-  return readFileSync(resolve(SRC, file), 'utf8')
 }
 
 const shellSites = () => classLists().filter((site) => isEditorShell(site.file))

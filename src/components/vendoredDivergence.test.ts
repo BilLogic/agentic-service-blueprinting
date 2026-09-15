@@ -1,7 +1,6 @@
-import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
+import { filesOn } from '@/lib/sourceTree'
 import { ISSUE_NUMBER, RECORD_NUMBER } from '../citations'
 
 /*
@@ -33,20 +32,18 @@ import { ISSUE_NUMBER, RECORD_NUMBER } from '../citations'
  * One definition of what a citation is, two guards that read it.
  */
 
-const UI = join(process.cwd(), 'src/components/ui')
-
-function uiFiles(): string[] {
-  return readdirSync(UI).filter((name) => name.endsWith('.tsx'))
-}
+/** The vendored components, as the reading holds them: path and text. */
+const uiFiles = () => filesOn('ui', (path) => path.endsWith('.tsx'))
 
 describe('a vendored file names the decision, never the number', () => {
   it('cites no record number', () => {
-    const offenders = uiFiles().flatMap((name) => {
-      const lines = readFileSync(join(UI, name), 'utf8').split('\n')
-      return lines.flatMap((line, index) =>
-        RECORD_NUMBER.test(line) ? [`ui/${name}:${index + 1}: ${line.trim()}`] : [],
-      )
-    })
+    const offenders = uiFiles().flatMap(({ file, text }) =>
+      text
+        .split('\n')
+        .flatMap((line, index) =>
+          RECORD_NUMBER.test(line) ? [`${file}:${index + 1}: ${line.trim()}`] : [],
+        ),
+    )
     expect(
       offenders,
       `A record number resolves against the READER's repository, not this one:\n${offenders.join('\n')}`,
@@ -54,12 +51,13 @@ describe('a vendored file names the decision, never the number', () => {
   })
 
   it('cites no issue number', () => {
-    const offenders = uiFiles().flatMap((name) => {
-      const lines = readFileSync(join(UI, name), 'utf8').split('\n')
-      return lines.flatMap((line, index) =>
-        ISSUE_NUMBER.test(line) ? [`ui/${name}:${index + 1}: ${line.trim()}`] : [],
-      )
-    })
+    const offenders = uiFiles().flatMap(({ file, text }) =>
+      text
+        .split('\n')
+        .flatMap((line, index) =>
+          ISSUE_NUMBER.test(line) ? [`${file}:${index + 1}: ${line.trim()}`] : [],
+        ),
+    )
     expect(
       offenders,
       `An issue number is this repository's queue, and a deployment reading it lands in its own:\n${offenders.join('\n')}`,

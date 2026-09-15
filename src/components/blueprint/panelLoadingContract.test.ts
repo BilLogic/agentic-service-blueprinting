@@ -1,9 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-
-const src = (relative: string) =>
-  readFileSync(resolve(__dirname, '..', '..', relative), 'utf8')
+import { sourceOf } from '@/lib/sourceTree'
 
 /**
  * A placeholder that stops matching its panel is invisible in review and
@@ -51,7 +47,7 @@ const FIELD_SHAPE: Record<Panel, 'all' | 'first' | 'none'> = {
 }
 
 describe('a panel and its placeholder agree on shape', () => {
-  const loading = src('components/blueprint/panelLoading.tsx')
+  const loading = sourceOf('components/blueprint/panelLoading.tsx')
 
   /** PanelTextareaField's own default, so an omitted `rows` still compares. */
   const DEFAULT_ROWS = 3
@@ -86,7 +82,7 @@ describe('a panel and its placeholder agree on shape', () => {
   it('covers every kind the entity drawer can open', () => {
     // The list above is what the other assertions loop; this is what keeps it
     // honest against the union the drawer actually switches on.
-    const context = src('contexts/EntityDetailContext.tsx')
+    const context = sourceOf('contexts/EntityDetailContext.tsx')
     const union = context
       .slice(
         context.indexOf('export type EntityDetailKind'),
@@ -114,7 +110,7 @@ describe('a panel and its placeholder agree on shape', () => {
 
   it('gives every panel its fields at the same row counts', () => {
     for (const panel of PANELS) {
-      const source = src(`components/blueprint/${panel}Panel.tsx`)
+      const source = sourceOf(`components/blueprint/${panel}Panel.tsx`)
       const placeholder = fieldRowsIn(
         componentBody(loading, `${panel}PanelLoading`),
       )
@@ -134,7 +130,7 @@ describe('a panel and its placeholder agree on shape', () => {
 
   it('never leaves a panel on the generic placeholder', () => {
     for (const panel of PANELS) {
-      const source = src(`components/blueprint/${panel}Panel.tsx`)
+      const source = sourceOf(`components/blueprint/${panel}Panel.tsx`)
       expect(source, `${panel}Panel is back on the generic placeholder`).not.toMatch(
         /<PanelLoading\s*\/>/,
       )
@@ -147,7 +143,7 @@ describe('a panel and its placeholder agree on shape', () => {
   it('gives every entity panel the fourth state', () => {
     // Loading and error were there; empty was not, so a lane with nothing
     // recorded rendered a form of blank fields.
-    const lane = src('components/blueprint/LanePanel.tsx')
+    const lane = sourceOf('components/blueprint/LanePanel.tsx')
     expect(lane).toMatch(/<PanelEmpty/)
     // View mode only — in Edit a blank form is how a value gets recorded.
     expect(lane).toMatch(/!canEdit/)

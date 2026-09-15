@@ -1,5 +1,6 @@
 import {
   type Surface,
+  sourceOf,
   stripComments,
   strippedSourcesOn,
 } from '@/lib/sourceTree'
@@ -135,6 +136,40 @@ export function classLists(surface: Surface = 'app'): ClassListSite[] {
   return strippedSourcesOn(surface).flatMap((file) =>
     extractSites(file.code, file.file, namedClassLists()),
   )
+}
+
+/**
+ * Every `leading-*` in `file` whose line — or the comment immediately above it
+ * — does not name the geometry that needs the override.
+ *
+ * Here rather than in the two ladders that ask it because it was written twice,
+ * byte for byte, and the only thing keeping the copies apart was that each
+ * closed over its own reader of the tree. There is one reader now, so there is
+ * one rule. The RAW text is read, comments and all: the comment IS the
+ * justification this looks for, and a stripped sample has blanked it.
+ *
+ * @param file - path relative to `src`
+ */
+export function uncommentedLeading(file: string): string[] {
+  const lines = sourceOf(file).split('\n')
+  const offenders: string[] = []
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? ''
+    if (/^\s*(?:\/\/|\*|\/\*)/.test(line)) continue
+    if (
+      !/['"`][^'"`]*\bleading-(?:none|tight|snug|normal|relaxed|loose|\d|\[)/.test(
+        line,
+      )
+    ) {
+      continue
+    }
+    const window = [lines[index - 2] ?? '', lines[index - 1] ?? '', line].join(
+      '\n',
+    )
+    if (/\/[/*][\s\S]*geometry/i.test(window)) continue
+    offenders.push(`${file}:${index + 1}: ${line.trim()}`)
+  }
+  return offenders
 }
 
 let cachedNames: ReadonlyMap<string, readonly string[]> | null = null

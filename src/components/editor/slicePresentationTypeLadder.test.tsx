@@ -7,18 +7,18 @@
  * The class-list reader is the seam — a quoted-string search misses a
  * token split across `cn()` arguments.
  */
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { classListHas, classLists, classListsIn } from '@/lib/classList'
+import {
+  classListHas,
+  classLists,
+  classListsIn,
+  uncommentedLeading,
+} from '@/lib/classList'
 import { sourceFiles } from '@/lib/tokenModel'
 import type { SliceBlueprint } from '@/hooks/useSliceBlueprint'
 import type { BlueprintData } from '@/types/blueprint'
 import type { Slice, Slide } from '@/types/database'
-
-const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
 /**
  * Files this batch owns. The editor-shell guard names the same set so
@@ -83,44 +83,6 @@ function isStage(file: string): boolean {
  */
 function describeSite(site: { file: string; line: number; classes: string[] }): string {
   return `${site.file}:${site.line}: ${site.classes.join(' ')}`
-}
-
-/**
- * Raw source of a file under `src`, comments kept — surviving `leading-*`
- * has to be judged against the comment that names its geometry.
- *
- * @param file - path relative to `src`
- */
-function rawSource(file: string): string {
-  return readFileSync(resolve(SRC, file), 'utf8')
-}
-
-/**
- * Every `leading-*` in `file` whose line (or the comment immediately
- * above it) does not name the geometry that needs the override.
- *
- * @param file - path relative to `src`
- */
-function uncommentedLeading(file: string): string[] {
-  const lines = rawSource(file).split('\n')
-  const offenders: string[] = []
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index] ?? ''
-    if (/^\s*(?:\/\/|\*|\/\*)/.test(line)) continue
-    if (
-      !/['"`][^'"`]*\bleading-(?:none|tight|snug|normal|relaxed|loose|\d|\[)/.test(
-        line,
-      )
-    ) {
-      continue
-    }
-    const window = [lines[index - 2] ?? '', lines[index - 1] ?? '', line].join(
-      '\n',
-    )
-    if (/\/[/*][\s\S]*geometry/i.test(window)) continue
-    offenders.push(`${file}:${index + 1}: ${line.trim()}`)
-  }
-  return offenders
 }
 
 const scopedSites = () => classLists().filter((site) => inScope(site.file))

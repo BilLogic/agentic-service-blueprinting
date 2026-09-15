@@ -1,7 +1,6 @@
-import { readFileSync, readdirSync } from 'node:fs'
-import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
+import { filesOn } from '@/lib/sourceTree'
 import { DOCUMENT_PATH, ISSUE_NUMBER, RECORD_NUMBER, proseLines } from './citations'
 
 /*
@@ -33,8 +32,6 @@ import { DOCUMENT_PATH, ISSUE_NUMBER, RECORD_NUMBER, proseLines } from './citati
  * sit side by side, so the subject has to be named rather than walked.
  */
 
-const SRC = join(process.cwd(), 'src')
-
 /**
  * The vendored rulebook under `src/lib/agent/skill/` is copied byte for byte
  * from `references/` and `skills/` by `scripts/sync-canvas-skills.mjs`, so a
@@ -60,7 +57,7 @@ const GENERATED = 'lib/agent/skill/'
 const GUARDS = new Set([
   'citations.ts',
   'citations.test.ts',
-  join('components', 'vendoredDivergence.test.ts'),
+  'components/vendoredDivergence.test.ts',
 ])
 
 /**
@@ -82,7 +79,7 @@ const EXEMPT = new Map([
     'read out of this package, where docs/ ships beside it — check:doc-paths holds these true',
   ],
   [
-    join('components', 'cover', 'packageCoverFigures.ts'),
+    'components/cover/packageCoverFigures.ts',
     // The module whose subject IS that directory: it `import`s each figure
     // from `../../../docs/assets/`, so the prose naming the folder is naming
     // the specifier one line below it. That path is relative to this file and
@@ -94,7 +91,7 @@ const EXEMPT = new Map([
     'the module that imports from docs/assets/ — the path resolves wherever the package is read',
   ],
   [
-    join('content', 'coverContent.ts'),
+    'content/coverContent.ts',
     // This package's own sample cover, about this package's own documentation.
     // A deployment supplies `DeploymentConfig.cover` and the resolved cover IS
     // that object — replaced whole, never merged, so none of these paths
@@ -105,11 +102,11 @@ const EXEMPT = new Map([
     'the sample cover, about this package’s own docs — replaced whole by DeploymentConfig.cover',
   ],
   [
-    join('content', 'coverContent.test.ts'),
+    'content/coverContent.test.ts',
     'the sample cover’s own suite, which reads docs/assets/ to prove the figures exist',
   ],
   [
-    join('types', 'database.ts'),
+    'types/database.ts',
     // The header describes THIS package's schema and points at the documents
     // that ship with it. A deployment writes its own declaration — the one
     // that exists keeps `deployment/types/database.ts`, with its own `@see`
@@ -129,14 +126,6 @@ function exemption(name: string): string | undefined {
 
 const READABLE = /\.(?:ts|tsx|js|jsx|mjs|cjs|css|md|json|snap|html|svg)$/
 
-function filesUnder(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(dir, entry.name)
-    if (entry.isDirectory()) return filesUnder(path)
-    return READABLE.test(entry.name) ? [path] : []
-  })
-}
-
 /**
  * Every prose line under `src/` that matches `citation`, addressed.
  *
@@ -145,16 +134,17 @@ function filesUnder(dir: string): string[] {
  * @returns {string[]} `path:line: text`, empty when the rule holds
  */
 function offenders(citation: RegExp, spare: (name: string) => unknown = () => false): string[] {
-  return filesUnder(SRC).flatMap((path) => {
-    const name = relative(SRC, path)
-    if (GUARDS.has(name) || spare(name)) return []
-    const where = name.startsWith(GENERATED)
-      ? `src/${name} (generated — fix the source under references/ or skills/, then \`npm run sync:canvas-skills\`)`
-      : `src/${name}`
-    return proseLines(readFileSync(path, 'utf8'), name).flatMap(({ line, text }) =>
-      citation.test(text) ? [`${where}:${line}: ${text.trim()}`] : [],
-    )
-  })
+  return filesOn('app', (path) => READABLE.test(path)).flatMap(
+    ({ file: name, text }) => {
+      if (GUARDS.has(name) || spare(name)) return []
+      const where = name.startsWith(GENERATED)
+        ? `src/${name} (generated — fix the source under references/ or skills/, then \`npm run sync:canvas-skills\`)`
+        : `src/${name}`
+      return proseLines(text, name).flatMap(({ line, text: prose }) =>
+        citation.test(prose) ? [`${where}:${line}: ${prose.trim()}`] : [],
+      )
+    },
+  )
 }
 
 describe('a shared file names the decision, never the number', () => {
@@ -186,16 +176,16 @@ describe('a shared file names the decision, never the number', () => {
     // The exemptions are the interesting half of this rule, so they are
     // asserted rather than left to a walk that would pass just as quietly
     // with the list empty and the files gone.
-    expect(exemption(join('content', 'coverContent.ts'))).toMatch(/sample cover/)
-    expect(exemption(join('content', 'coverContent.test.ts'))).toMatch(/sample cover/)
-    expect(exemption(join('types', 'database.ts'))).toMatch(/own schema declaration/)
-    expect(exemption(join(GENERATED, 'references', 'data-model.md'))).toMatch(/check:doc-paths/)
-    expect(exemption(join('components', 'cover', 'packageCoverFigures.ts'))).toMatch(
+    expect(exemption('content/coverContent.ts')).toMatch(/sample cover/)
+    expect(exemption('content/coverContent.test.ts')).toMatch(/sample cover/)
+    expect(exemption('types/database.ts')).toMatch(/own schema declaration/)
+    expect(exemption(`${GENERATED}references/data-model.md`)).toMatch(/check:doc-paths/)
+    expect(exemption('components/cover/packageCoverFigures.ts')).toMatch(
       /resolves wherever the package is read/,
     )
     // And nothing else. An ordinary module is not spared by sitting near one.
-    expect(exemption(join('lib', 'tokenModel.ts'))).toBeUndefined()
-    expect(exemption(join('content', 'other.ts'))).toBeUndefined()
+    expect(exemption('lib/tokenModel.ts')).toBeUndefined()
+    expect(exemption('content/other.ts')).toBeUndefined()
   })
 
   it('reads a document path as an address, and a fixture or a tree as neither', () => {

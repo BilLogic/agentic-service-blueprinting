@@ -29,13 +29,10 @@
  * the same clean line — the argument `scripts/tests/rls-posture.test.mjs`
  * makes, applied to a reader instead of a policy.
  */
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { sourceOf } from '@/lib/sourceTree'
 
-const BLUEPRINT = join(process.cwd(), 'src', 'components', 'blueprint')
-
-const read = (file: string) => readFileSync(join(BLUEPRINT, file), 'utf8')
+const read = (file: string) => sourceOf(`components/blueprint/${file}`)
 
 type Sources = {
   badge: string
