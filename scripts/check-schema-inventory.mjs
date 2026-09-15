@@ -27,9 +27,9 @@
  * the union lists and the constraint refuses is a `23514` no build catches.
  */
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+
 import { sweep } from './sweep.mjs'
+import { whenRun } from './verdict.mjs'
 // The list, not the generator: this module is also what the deployment
 // superset check imports, out of the installed package, where the generator's
 // own dependencies are not installed.
@@ -265,38 +265,39 @@ export function compare(types, actual) {
   return problems
 }
 
-function main() {
-  const [inventoryPath] = process.argv.slice(2)
+/**
+ * The verdict: src/types/database.ts held against an inventory of the schema that
+ * was just built.
+ *
+ * Pure — it reads both, decides, and hands back what it found. Nothing here prints
+ * or exits, bar the usage error, which is not a verdict.
+ */
+export function judge(argv = process.argv.slice(2)) {
+  const [inventoryPath] = argv
   if (!inventoryPath) {
+    // Not a verdict: the command was given nothing to judge. The 2 says that,
+    // and it is not one of the codes the verdict has words for, so the
+    // judgement below is skipped and the module is handed nothing to say.
     console.error('usage: check-schema-inventory.mjs <inventory.tsv>')
-    process.exit(2)
+    process.exitCode = 2
+    return {}
   }
   const source = generatedTypes()
+  const tables = parseGeneratedTypes(source)
   const problems = compare(
-    {
-      tables: parseGeneratedTypes(source),
-      enums: declaredVocabularies(parseEnumUnions(source)),
-    },
+    { tables, enums: declaredVocabularies(parseEnumUnions(source)) },
     parseInventory(readFileSync(inventoryPath, 'utf8')),
   )
-  if (problems.length === 0) {
-    console.log('src/types/database.ts matches the schema that was just built')
-    return
-  }
-  console.error('src/types/database.ts has drifted from the schema:\n')
-  for (const problem of problems) console.error(`  ${problem}`)
-  console.error(
-    '\nThe app compiles against these types. Regenerate them with ' +
+  return {
+    what: 'a table src/types/database.ts describes',
+    count: tables.size,
+    findings: problems.map((problem) => `  ${problem}`),
+    opening: 'src/types/database.ts has drifted from the schema:\n',
+    closing:
+      '\nThe app compiles against these types. Regenerate them with ' +
       '`npm run generate:database-types`, or fix the migration that made them wrong.',
-  )
-  process.exit(1)
+    line: 'src/types/database.ts matches the schema that was just built',
+  }
 }
 
-// Same shape as scripts/sync-cover-assets.mjs: comparing against a
-// hand-built `file://` URL silently no-ops whenever the path needs escaping,
-// so a checkout under a directory with a space in its name would run this
-// script and have it do nothing, successfully.
-const isMain =
-  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-
-if (isMain) main()
+whenRun(import.meta.url, judge)

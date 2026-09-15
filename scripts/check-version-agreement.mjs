@@ -20,8 +20,9 @@
  * entry still fails the check.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
+
+import { whenRun } from './verdict.mjs'
 
 /** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
 const REPO_ROOT = process.cwd()
@@ -92,34 +93,34 @@ export function writeLockfileVersion(root = REPO_ROOT) {
   return true
 }
 
-function main() {
-  if (process.argv.includes('--write')) {
+/**
+ * The verdict: every file stating a version, held to package.json’s.
+ *
+ * Pure — it reads them, decides, and hands back what it found. Nothing here exits,
+ * and `--write` is the release step saying what it did rather than a verdict.
+ */
+export function judge(argv = process.argv.slice(2)) {
+  // `--write` is the release step propagating package.json's number, not a
+  // judgement about the tree, so it says what it did and hands the verdict
+  // nothing to say.
+  if (argv.includes('--write')) {
     const plugin = writePluginVersion()
     const lock = writeLockfileVersion()
     console.log(plugin ? 'plugin.json version updated' : 'plugin.json already current')
     console.log(lock ? 'package-lock.json version updated' : 'package-lock.json already current')
-    return
+    return {}
   }
   const stated = versions()
-  const wrong = disagreements(stated)
-  if (wrong.length === 0) {
-    console.log(`version ${stated['package.json']} agrees everywhere`)
-    return
+  return {
+    what: 'a file stating the version',
+    count: Object.keys(stated).length,
+    findings: disagreements(stated).map(
+      ({ file, version, expected }) =>
+        `${file} says ${version ?? '(none)'}, package.json says ${expected}`,
+    ),
+    closing: '\nRun `npx changeset version` to cut a release, or fix the file by hand.',
+    line: `version ${stated['package.json']} agrees everywhere`,
   }
-  for (const { file, version, expected } of wrong) {
-    console.error(`${file} says ${version ?? '(none)'}, package.json says ${expected}`)
-  }
-  console.error(
-    '\nRun `npx changeset version` to cut a release, or fix the file by hand.',
-  )
-  process.exit(1)
 }
 
-// Same shape as scripts/sync-cover-assets.mjs: comparing against a
-// hand-built `file://` URL silently no-ops whenever the path needs escaping,
-// so a checkout under a directory with a space in its name would run this
-// script and have it do nothing, successfully.
-const isMain =
-  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-
-if (isMain) main()
+whenRun(import.meta.url, judge)

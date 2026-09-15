@@ -42,9 +42,9 @@
  * check went red, without that consumer change, converts a break in this
  * repo now into a break in the consumer at its next upgrade.
  */
-import { fileURLToPath } from 'node:url'
 
 import { sweep } from './sweep.mjs'
+import { whenRun } from './verdict.mjs'
 
 
 /**
@@ -201,7 +201,13 @@ export function absences(paths, tracked, onDisk) {
   return out
 }
 
-function main() {
+/**
+ * The verdict: every path the deployment imports by fixed name, resolved.
+ *
+ * Pure — it sweeps, decides, and hands back what it found. Nothing here prints
+ * or exits.
+ */
+export function judge() {
   const walk = interfaceSweep()
   const missing = absences(
     CONSUMER_IMPORTS,
@@ -209,29 +215,24 @@ function main() {
     (path) => walk.read(path) !== null,
   )
 
-  if (missing.length > 0) {
-    console.error(
-      `${missing.length} path${missing.length === 1 ? '' : 's'} the deployment imports by fixed name that this tree no longer has:\n`,
-    )
-    for (const { path, reason } of missing) {
-      console.error(`  ${path} — ${reason}`)
-    }
-    console.error(
+  return {
+    what: 'a path the deployment imports by fixed name',
+    count: CONSUMER_IMPORTS.length,
+    opening:
+      missing.length > 0
+        ? `${missing.length} path${missing.length === 1 ? '' : 's'} the deployment imports by fixed name that this tree no longer has:\n`
+        : undefined,
+    findings: missing.map(({ path, reason }) => `  ${path} — ${reason}`),
+    closing:
       '\nThese paths are a published interface:' +
-        '\ndocs/adr/0004-reference-paths-are-a-published-interface.md.' +
-        '\nEither put the file back at the path the consumer imports, or make the move a' +
-        '\nrelease — update CONSUMER_IMPORTS in scripts/check-reference-paths.mjs, bump the' +
-        '\nversion, and land the matching import change in the consumer before the tag it' +
-        '\npins moves.' +
-        '\n\n  npm run check:reference-paths\n',
-    )
-    process.exitCode = 1
-    return
+      '\ndocs/adr/0004-reference-paths-are-a-published-interface.md.' +
+      '\nEither put the file back at the path the consumer imports, or make the move a' +
+      '\nrelease — update CONSUMER_IMPORTS in scripts/check-reference-paths.mjs, bump the' +
+      '\nversion, and land the matching import change in the consumer before the tag it' +
+      '\npins moves.' +
+      '\n\n  npm run check:reference-paths\n',
+    line: `check-reference-paths: all ${CONSUMER_IMPORTS.length} paths the deployment imports still exist.`,
   }
-
-  console.log(
-    `check-reference-paths: all ${CONSUMER_IMPORTS.length} paths the deployment imports still exist.`,
-  )
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) main()
+whenRun(import.meta.url, judge)

@@ -72,10 +72,9 @@
  * `BilLogic` is the repository owner and copyright holder — authorship and
  * the canonical repo URL, required rather than coupling.
  */
-import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { sweep } from './sweep.mjs'
+import { whenRun } from './verdict.mjs'
 
 
 /** Each `test` is applied per line; `label` is what the failure report says. */
@@ -231,39 +230,34 @@ export function violationsUnder(root = process.cwd(), walk = scannedSweep(root))
   return problems
 }
 
-function main() {
+/**
+ * The verdict: every file a commit would carry, read for the deployment's name.
+ *
+ * Pure — it sweeps, decides, and hands back what it found. Nothing here prints
+ * or exits.
+ */
+export function judge() {
   const walk = scannedSweep()
   const problems = violationsUnder(process.cwd(), walk)
-
-  if (problems.length === 0) {
-    console.log(
-      `no uno / PLUS / Ecoeled references in ${walk.files.length} files a commit would carry`,
-    )
-    return
-  }
-
-  console.error(
-    'This package claims to stand alone. These lines name the deployment it ' +
-      'was generalised from:\n',
-  )
+  const findings = []
   for (const { path, line, label, text } of problems) {
-    console.error(`  ${path}:${line} — ${label}`)
-    console.error(`    ${text.slice(0, 120)}`)
+    findings.push(`  ${path}:${line} — ${label}`)
+    findings.push(`    ${text.slice(0, 120)}`)
   }
-  console.error(
-    `\n${problems.length} reference${problems.length === 1 ? '' : 's'}. ` +
+  return {
+    what: 'a file a commit would carry',
+    count: walk.files.length,
+    opening:
+      'This package claims to stand alone. These lines name the deployment it ' +
+      'was generalised from:\n',
+    findings,
+    closing:
+      `\n${problems.length} reference${problems.length === 1 ? '' : 's'}. ` +
       'Remove each one, or generalise it into an example an adopter can read. ' +
       'If a file legitimately has to name these words, add it to EXCLUDED in ' +
       'scripts/check-standalone.mjs with the reason.',
-  )
-  process.exit(1)
+    line: `no uno / PLUS / Ecoeled references in ${walk.files.length} files a commit would carry`,
+  }
 }
 
-// Same shape as scripts/sync-cover-assets.mjs: comparing against a
-// hand-built `file://` URL silently no-ops whenever the path needs escaping,
-// so a checkout under a directory with a space in its name would run this
-// script and have it do nothing, successfully.
-const isMain =
-  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-
-if (isMain) main()
+whenRun(import.meta.url, judge)

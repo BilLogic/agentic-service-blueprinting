@@ -63,10 +63,10 @@
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { repoConfig } from './repo-config.mjs'
 import { APP_PACKAGE, sweep } from './sweep.mjs'
+import { whenRun } from './verdict.mjs'
 
 /**
  * The application directories whose files a composition document has to claim.
@@ -337,7 +337,13 @@ export function sweepClaims({ root = process.cwd(), composition = repoConfig.com
   return { problems, sources, docs: docs.map((doc) => doc.label) }
 }
 
-function main() {
+/**
+ * The verdict: every assembled file claimed by a composition document.
+ *
+ * Pure — it sweeps, decides, and hands back what it found. Nothing here prints
+ * or exits.
+ */
+export function judge() {
   // A REFUSAL IS A SENTENCE, NOT A STACK. Everything below this line is a
   // finding about the tree; everything `sweepClaims` throws is a fact about the
   // repository it was pointed at — no `composition` stated, no application to
@@ -347,24 +353,19 @@ function main() {
   try {
     result = sweepClaims()
   } catch (error) {
-    console.error(`::error::${error.message}`)
-    process.exitCode = 1
-    return
+    return { what: 'an assembled file a composition document claims', findings: [`::error::${error.message}`] }
   }
   const { problems, sources, docs } = result
-  if (problems.length > 0) {
-    for (const problem of problems) console.error(`::error::${problem}`)
-    console.error(
+  return {
+    what: 'an assembled file a composition document claims',
+    count: sources.length,
+    findings: problems.map((problem) => `::error::${problem}`),
+    closing:
       `\n${problems.length} composition-claim problem(s). A file this repository does not own ` +
-        'is claimed where it is owned: the package documents what the package ships, and a ' +
-        'deployment documents the trees `composition.claimed` names.\n\n  npm run check:harness\n',
-    )
-    process.exitCode = 1
-    return
+      'is claimed where it is owned: the package documents what the package ships, and a ' +
+      'deployment documents the trees `composition.claimed` names.\n\n  npm run check:harness\n',
+    line: `check-harness-claims: composition claims are complete — ${sources.length} assembled files across ${docs.length} documents.`,
   }
-  console.log(
-    `check-harness-claims: composition claims are complete — ${sources.length} assembled files across ${docs.length} documents.`,
-  )
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main()
+whenRun(import.meta.url, judge)

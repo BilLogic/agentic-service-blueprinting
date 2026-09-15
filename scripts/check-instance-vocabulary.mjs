@@ -30,6 +30,8 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
+import { whenRun } from './verdict.mjs'
+
 /** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
 const ROOT = process.cwd()
 export const SCHEMA = resolve(ROOT, 'supabase/generated/portable-core.schema.sql')
@@ -161,35 +163,51 @@ export async function loadInstanceRenameMap(source = process.env.INSTANCE_RENAME
   return { map: module.RENAME_MAP, from }
 }
 
-async function main() {
-  const { map, from } = await loadInstanceRenameMap()
-  const inventory = schemaInventory(readFileSync(SCHEMA, 'utf8'))
-  const { findings, stale } = trailingNames(map, inventory)
-  console.log(
-    `${map.length} instance rename(s) from ${from.startsWith('http') ? 'GitHub' : 'the sibling checkout'}, ` +
-      `against ${inventory.tables.size} tables / ${inventory.columns.size} columns / ${inventory.values.size} value lists`,
-  )
-  for (const f of findings) {
-    console.error(
-      `::error::instance vocabulary — \`${f.was}\` is still ${f.hit}; the instance renamed it to ` +
-        `\`${f.is}\` in ${f.migration}. Port the rename, or list it in ACCEPTED_DIVERGENCES with the issue that will.`,
+// THE CENSUS AND THE EXEMPTIONS ARE PRINTED HERE, NOT HANDED OVER. The census
+// says what the comparison was made against and belongs above whatever comes
+// of it, failing or not; an exemption is a name this template keeps on purpose
+// and is reported on a red run too. Neither is a finding and neither is the
+// green line, so neither is the verdict's to render.
+/**
+ * The verdict: every name the instance retired, looked for here.
+ *
+ * Pure — it fetches the map, reads the dump, decides, and hands back what it
+ * found. Nothing here exits, and what it prints is the census, not a verdict.
+ */
+export async function judge() {
+  try {
+    const { map, from } = await loadInstanceRenameMap()
+    const inventory = schemaInventory(readFileSync(SCHEMA, 'utf8'))
+    const { findings, stale } = trailingNames(map, inventory)
+    console.log(
+      `${map.length} instance rename(s) from ${from.startsWith('http') ? 'GitHub' : 'the sibling checkout'}, ` +
+        `against ${inventory.tables.size} tables / ${inventory.columns.size} columns / ${inventory.values.size} value lists`,
     )
+    const accepted = ACCEPTED_DIVERGENCES.filter((entry) => !stale.includes(entry))
+    for (const a of accepted) console.log(`accepted until ${a.until}: \`${a.was}\` — ${a.because}`)
+    return {
+      what: 'a rename the instance shipped',
+      count: map.length,
+      findings: [
+        ...findings.map(
+          (f) =>
+            `::error::instance vocabulary — \`${f.was}\` is still ${f.hit}; the instance renamed it to ` +
+            `\`${f.is}\` in ${f.migration}. Port the rename, or list it in ACCEPTED_DIVERGENCES with the issue that will.`,
+        ),
+        ...stale.map(
+          (s) =>
+            `::error::instance vocabulary — ACCEPTED_DIVERGENCES still lists \`${s.was}\` (until ${s.until}) ` +
+            `but nothing here matches it any more. The port landed; remove the entry.`,
+        ),
+      ],
+      line: 'ok — every name the instance retired is retired here too, or accepted with an issue',
+    }
+  } catch (error) {
+    // A map that could not be fetched or a dump that could not be read is not a
+    // finding about the vocabulary, but this check has always said it in the
+    // same register as one, and a raw stack would say less.
+    return { what: 'a rename the instance shipped', findings: [`::error::instance vocabulary: ${error.message}`] }
   }
-  for (const s of stale) {
-    console.error(
-      `::error::instance vocabulary — ACCEPTED_DIVERGENCES still lists \`${s.was}\` (until ${s.until}) ` +
-        `but nothing here matches it any more. The port landed; remove the entry.`,
-    )
-  }
-  const accepted = ACCEPTED_DIVERGENCES.filter((entry) => !stale.includes(entry))
-  for (const a of accepted) console.log(`accepted until ${a.until}: \`${a.was}\` — ${a.because}`)
-  if (findings.length + stale.length > 0) process.exitCode = 1
-  else console.log('ok — every name the instance retired is retired here too, or accepted with an issue')
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((error) => {
-    console.error(`::error::instance vocabulary: ${error.message}`)
-    process.exitCode = 1
-  })
-}
+whenRun(import.meta.url, judge)
