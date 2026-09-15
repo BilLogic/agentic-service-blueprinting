@@ -1,5 +1,172 @@
 # Changelog
 
+## 1.44.16
+
+**Three things the reviews of the last round named are done.** A check that
+needs a database and was never pointed at one says so through the unverified
+register and exits clean; one that was pointed at a database it could not
+reach stays red with the error quoted, and CI, which names its databases,
+keeps every red it had. Four lookups in the fallbacks module that nothing
+called are deleted, and the board's one mutable field with them. And the last
+guards under the application that resolved a repository root from their own
+file take it from the sweep. Nothing a person sees changes; the built chunk
+shrinks by a few bytes.
+
+**Upgrading a deployment:**
+
+- Take `scripts/check-target-schema.mjs` byte-identical; your shared-scripts
+  guard names it. Run without the public URL and key it now exits clean with
+  an unverified line where it exited 2; a workflow of yours that relied on
+  that exit code should set the variables instead.
+- If a file of yours called `hasRegisteredPathFallback`,
+  `getFallbackBlueprintsForScenarios`, `getFallbackCell` or
+  `showsBlueprintFilters`, none is known and none has a replacement: they
+  answered nothing the application asked.
+
+### Patch Changes
+
+- b788f9b: A database that was never named is unverified; one that was named and not reached is a finding
+
+  Two checks need a live database and each answered "there is no database" in its
+  own words and with its own exit code. `scripts/check-target-schema.mjs` printed
+  `no target configured` and set **exit 2** by hand, with a comment saying the
+  verdict module renders four outcomes and none of them is this one.
+  `scripts/check-retired-identifiers.mjs` went red with `could not sweep a
+database` whether or not anybody had named one — correctly in CI, where the
+  sweep follows the migration replay and an absent catalogue is a real failure,
+  and wrongly on a laptop with no Postgres, where nothing was ever asked.
+
+  **One rule, stated once per file and applied to both.** A database that was
+  never named is **unverified**: the check says what it could not look at through
+  the `unverified` register `scripts/sweep.mjs` owns, and the run stays clean. A
+  database that **was** named and could not be reached is a **finding**: red,
+  with the connection error quoted. A reachable database is untouched — output
+  byte-identical, both checks, both modes.
+
+  **Naming one is not only `--database`.** libpq reads a connection out of the
+  environment a piece at a time, and the command at the top of the identifiers
+  check's own usage block takes no arguments at all. So `PGHOST`, `PGUSER`,
+  `PGPORT` and `PGSERVICE` each count as naming a server, alongside `--database`
+  and `PGDATABASE`: the sweep is attempted and a failure is the finding it always
+  was. Only a run with none of them is the one nobody asked anything.
+
+  **The exit codes that changed**, and nothing else did:
+
+  | case                                                                                                                         | before                          | after                                                                                  |
+  | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------- |
+  | `check-target-schema.mjs`, no URL and key                                                                                    | 2, printed by hand on stderr    | **0**, `::warning::unverified — the target database. …`                                |
+  | `check-target-schema.mjs`, named and unreachable                                                                             | 1                               | 1 (unchanged)                                                                          |
+  | `check-target-schema.mjs`, reachable                                                                                         | 0 / 1 by answer                 | unchanged, byte for byte                                                               |
+  | `check-retired-identifiers.mjs`, nothing named — no `--database`, no `PGDATABASE`, no `PGHOST`/`PGUSER`/`PGPORT`/`PGSERVICE` | 1, `could not sweep a database` | **0**, `::warning::unverified — a retired word swept across the database catalogue. …` |
+  | `check-retired-identifiers.mjs`, `PGHOST`/`PGUSER` only, server unreachable                                                  | 1                               | 1 (unchanged)                                                                          |
+  | `check-retired-identifiers.mjs`, named and unreachable                                                                       | 1                               | 1                                                                                      |
+  | `check-retired-identifiers.mjs`, `--database` with no value                                                                  | 1, as a connection failure      | 1, as `--database was given no value`                                                  |
+  | `check-retired-identifiers.mjs`, reachable (sweep and `--self-test`)                                                         | 0 / 1 by answer                 | unchanged, byte for byte                                                               |
+
+  **CI keeps its red.** `ci.yml` runs both identifier lines with `--database
+migration_replay`, so the only case CI can reach is the named one. The rule is
+  applied once, at the top of `judge()`, which is why `--self-test` obeys it too —
+  and names what _it_ measures, the planted object, rather than the sweep it did
+  not run.
+
+  **`scripts/check-target-schema.mjs` is a shared script.** A deployment holds it
+  byte-identical (it is on `SHARED_SCRIPTS` in
+  `scripts/tests/a-shared-script-cites-no-local-path.test.mjs`), so the new branch
+  imports nothing deployment-specific and cites no local path: it returns a
+  judgement and lets `scripts/verdict.mjs` — also shared — render and set the
+  code. A deployment that pins the new version gets the warning line every other
+  check already gives instead of an exit 2 its own runner had to know about.
+
+  The messages keep their text where the case is unchanged. One sentence moved
+  rather than being copied: `this check compares the CATALOGUE, not the migration
+files, and has nothing to say without one` is now a constant both the finding
+  and the register read, because it is the same fact either way. The finding's
+  remedy line is the one deliberate rewording — it used to end `Set
+PGHOST/PGUSER/PGDATABASE, or pass --database <name>` for a reader who might have
+  named nothing, and now says a database **was** named and did not answer, which
+  is the only way that branch is reachable.
+
+  `docs/engineering/checks.md` already said all three live guards write to the
+  unverified register when they look at nothing. That was true of two of them.
+  Its `check:target` row now says what the third does.
+
+  `scripts/tests/a-database-nobody-named-is-unverified.test.mjs` proves the cases
+  for each check with no live database: a `psql` on PATH that is a shell script, a
+  port nothing serves, and — for the reachable target — a listener the test stands
+  up itself. It runs each check as a **command**, because what changed is the exit
+  code and a judgement object does not carry one.
+
+- 773b870: Four lookups nothing asked are gone, and the cell cache goes with them
+
+  The offline-board change threaded a board argument through every lookup in
+  `src/data/blueprintFallbacks.ts`. Four of them had no one to thread it to.
+  `hasRegisteredPathFallback` asked whether a path id is in the registry,
+  `getFallbackBlueprintsForScenarios` collected a map of scenario to blueprint,
+  `getFallbackCell` answered one cell by id, and `showsBlueprintFilters` in
+  `src/types/nav.ts` said whether a slide shows the blueprint filters. Nothing
+  called any of them: not a surface, not a hook, not a script, not the agent's
+  tool definitions, not the generator, not a deployment-facing document, not a
+  test. **None was kept**, because none had a reader to justify keeping.
+
+  `getFallbackCell` took a field with it. `OfflineBoard.cellsById` was the one
+  mutable field on a type whose every other field is settled when the board is
+  built — a lazily filled cache of cells by id, built on the first call to the
+  only function that read it. With that function gone the cache was a mutable
+  field nothing wrote and nothing read, so the board is now settled in all of its
+  fields, and `indexRegistry` has one fewer thing to say.
+
+  The module's vocabulary is untouched and `getBlueprintFallback` still forwards
+  to `getRawBlueprintFallback`: this is the deletion and nothing else. The lookups
+  that do have callers — `hasBlueprintFallback`, `filterPathsForScenarioUi`,
+  `getFallbackPathsForScenario`, `getRawBlueprintFallback`, `getBlueprintFallback`
+  — are as they were, and the nav helper the deleted one leaned on,
+  `getBlueprintScenarioId`, keeps its own caller in `src/lib/sliceCells.ts`.
+
+  Four exports of the nav module are still without a caller, and stay: the
+  post-to-pre loop arrow predicate, the integrated-slide predicate, the
+  side-by-side predicate and the nav-order listing. They are not this deletion's
+  subject — the integrated-slide predicate says in its own comment why it is kept
+  as a named predicate while the layout is disabled, and the other three are a
+  question about the overview and the filmstrip rather than about the offline
+  board. `getSlideById` is exported with no importer but has five callers inside
+  its own module. They are a follow-up, not silence.
+
+  Nothing a person sees is different, and nothing shipped grows: the built main
+  chunk is **2,073,831 bytes against 2,073,846 at the base commit**.
+
+- 99a8906: The application's last guard that resolved a root from its own file asks the sweep
+
+  The tokens guard sweeps the `commit` subject for prose that spells a registered
+  custom property, and it used to hand that sweep a root it had computed itself —
+  `resolve(dirname(fileURLToPath(import.meta.url)), '../..')`, two hops of path
+  arithmetic that a file carries with it when it moves. It names no root now. The
+  sweep's default is the tree the run is in, which is where `lib/sourceTree`
+  takes the application's reading from too.
+
+  `deploymentRoot.test.ts` was doing the same thing one hop up, to reach the
+  build files it copies into a scratch tree and the `node_modules` it links
+  beside them. It reads `process.cwd()` now.
+
+  **No test module under `src/` computes a repository root from
+  `import.meta.url`.** What remains there are reads of files outside the
+  application — the authored figures, the generated schema, the migrations, the
+  published references — each addressed relative to its own module rather than
+  used as a root, which is a different thing and not this one.
+
+  This SWAPS which opinion is trusted rather than simply deleting one, and the
+  trade is worth naming: the old spelling was right whatever directory the runner
+  started in, and the new one is right because the runner starts at the root. For
+  a guard of the APPLICATION that is the only available answer — the application
+  is a deployment's `src` laid over the package's, so a guard resolved from its
+  own location inside `node_modules` would measure the package instead of the
+  tree that installed it. The opposite spelling stays deliberately in
+  `scripts/tests/every-sweep-knows-what-it-measures.test.mjs`, which measures the
+  scripts of THIS tree and says why in its own header; nothing here disturbs it.
+
+  The assertions are untouched. `scripts/sweep.mjs` is untouched too: it already
+  answered this question, and a deployment holding it byte-identical has nothing
+  to take.
+
 ## 1.44.15
 
 **Three seams the third round left for later are closed.** The agent
@@ -7413,8 +7580,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                              ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                              "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
