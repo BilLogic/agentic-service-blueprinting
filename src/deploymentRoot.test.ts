@@ -16,7 +16,6 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
 import { createServer, resolveConfig } from 'vite'
 import { afterAll, describe, expect, it } from 'vitest'
@@ -46,7 +45,21 @@ import { coverContent } from '@/content/coverContent'
  * paired with one about this tree being unchanged by the naming.
  */
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+/**
+ * The tree this guard runs in: the working directory, the same root
+ * `lib/sourceTree` takes the reading from — the reading this file already
+ * asks, two imports up.
+ *
+ * It used to be arithmetic on this file's own URL, which was right whatever
+ * directory the runner started in. That is a real property and this trades it
+ * away deliberately: `scripts/tests/every-sweep-knows-what-it-measures.test.mjs`
+ * keeps the opposite spelling, with the reason, for a suite that measures the
+ * scripts of THIS tree. A guard of the APPLICATION cannot have it — the
+ * application is the deployment's `src` laid over the package's, and a guard
+ * resolved from its own location inside `node_modules` would measure the
+ * package rather than the tree that installed it.
+ */
+const repoRoot = process.cwd()
 
 /** The directory the convention reserves, and the alias that reaches it. */
 const DEPLOYMENT_ROOT_DIRNAME = 'deployment'

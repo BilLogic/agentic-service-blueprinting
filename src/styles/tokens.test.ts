@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { sweep } from '../../scripts/sweep.mjs'
 import { GROUNDS } from '@/lib/ground'
 import {
@@ -25,9 +23,6 @@ import {
   stylesheets,
   winningDeclaration,
 } from '@/lib/tokenModel'
-
-/** `src/styles/` up to the repository root, where the content scan starts. */
-const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
 /**
  * Token drift guard for the ported design-system foundation. The app resolves
@@ -398,10 +393,11 @@ describe('token resolution', () => {
     // hide, tracked or not, which is exactly what the `commit` subject of
     // `scripts/sweep.mjs` lists. Asking for that subject rather than walking
     // the tree means the answer moves with `.gitignore` instead of with a skip
-    // list kept here.
+    // list kept here. No root is named either: the sweep's default is the
+    // tree the run is in, which is where `lib/sourceTree` takes the
+    // application's from too.
     const walk = sweep({
       subject: 'commit',
-      root: REPO_ROOT,
       where: (file) =>
         file.endsWith('.md') && !excluded.some((pattern) => pattern.test(file)),
       what: 'prose file a commit would carry',
