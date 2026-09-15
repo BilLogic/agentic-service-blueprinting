@@ -34,12 +34,10 @@
  *
  * Run: node scripts/check-router-budget.mjs   (also: npm run check:budget)
  */
-import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-
 import { ALWAYS_LOADED, TIER_NOUN } from './always-loaded.mjs'
 import { repoConfig } from './repo-config.mjs'
 import { sweep } from './sweep.mjs'
+import { whenRun } from './verdict.mjs'
 
 
 /** The ceiling, in characters. Lower it whenever the tier lands well under. */
@@ -110,13 +108,8 @@ export function verdict({ counted, total }, { budget = BUDGET, slack = SLACK } =
   }
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-
-if (isMain) {
-  const { failures, line } = verdict(measure())
-  if (failures.length > 0) {
-    for (const failure of failures) console.error(failure)
-    process.exit(1)
-  }
-  console.log(line)
-}
+whenRun(import.meta.url, () => {
+  const census = measure()
+  const { failures, line } = verdict(census)
+  return { what: `the files of the ${TIER_NOUN}`, count: census.counted.length, findings: failures, line }
+})

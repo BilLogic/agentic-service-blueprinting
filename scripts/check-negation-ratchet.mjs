@@ -56,12 +56,10 @@
  *
  * Run: node scripts/check-negation-ratchet.mjs   (also: npm run check:negation)
  */
-import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-
 import { ALWAYS_LOADED, TIER_NOUN } from './always-loaded.mjs'
 import { repoConfig } from './repo-config.mjs'
 import { sweep } from './sweep.mjs'
+import { whenRun } from './verdict.mjs'
 
 
 /** The five tokens, in one place, so the regex and the label cannot drift apart. */
@@ -151,13 +149,8 @@ export function verdict({ files, counts, total }, recorded = RECORDED) {
   }
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-
-if (isMain) {
-  const { failures, line } = verdict(measure())
-  if (failures.length > 0) {
-    for (const failure of failures) console.error(failure)
-    process.exit(1)
-  }
-  console.log(line)
-}
+whenRun(import.meta.url, () => {
+  const counted = measure()
+  const { failures, line } = verdict(counted)
+  return { what: `the files of the ${TIER_NOUN}`, count: counted.files, findings: failures, line }
+})
