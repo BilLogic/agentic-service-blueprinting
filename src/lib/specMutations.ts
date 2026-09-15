@@ -12,13 +12,26 @@ type Client = SupabaseClient<Database>
  *
  * CONTEXT.md says spec is four levels and one word — what a board object is
  * like, as opposed to where it sits — and a panel writes it over a
- * column-scoped grant rather than through an authoring RPC. The write was six
- * modules re-deriving the same six stations, comments included: normalise the
- * values, update the columns, translate the failure, require that a row was
- * written, refresh what the change shows in, and record the inverse. Six
- * copies of a rule is six places for the empty-is-null convention the read
- * path depends on to drift, and six places a new level has to be discovered
- * from rather than declared into.
+ * column-scoped grant rather than through an authoring RPC. The same paragraph
+ * says scenario, step and path own no spec, and that is still true of the
+ * WORD: those three own a summary and a note, not a description of what they
+ * are like. It was never true of the WRITE. All nine of these are the same
+ * thing to the database and to the person saving — a panel writing its own
+ * columns over its own grant, capturing its own inverse — and the six modules
+ * that held them re-derived the same six stations, comments included:
+ * normalise the values, update the columns, translate the failure, require
+ * that a row was written, refresh what the change shows in, and record the
+ * inverse. Six copies of a rule is six places for the empty-is-null convention
+ * the read path depends on to drift, and six places a new level has to be
+ * discovered from rather than declared into.
+ *
+ * `specMutations` rather than `specWrite`: this is the write path, so it wears
+ * the name the write path's two contract guards match by shape —
+ * `writeBoundaryContract` asks who may write without recording an inverse, and
+ * `writeTranslationContract` asks who may raise a database's own text at a
+ * person. A module that executes the only `.from(…).update(…)` for seven
+ * tables and sits outside both patterns would be exempt by invisibility rather
+ * than by argument, which is the thing those two rules exist to refuse.
  *
  * So the rule lives here once and a level declares what is genuinely its own:
  * its table, the column the write is addressed by, the columns a spec may
@@ -47,6 +60,9 @@ type Client = SupabaseClient<Database>
  *     direct table write is one `call()` never sees, so it logs itself.
  */
 
+/** A table a spec level may live on, as the generated schema names them. */
+export type SpecTable = keyof Database['public']['Tables'] & string
+
 /**
  * Which row, or rows: one id, or the set a fan-out lands on. A lane's spec
  * belongs to the label rather than to the row the panel was opened from — the
@@ -56,17 +72,32 @@ type Client = SupabaseClient<Database>
  */
 export type SpecTarget = string | readonly string[]
 
-/** The columns of one update, spelled as the database spells them. */
-export type SpecColumns = Record<string, unknown>
+/**
+ * The argument the inverse carries the previous values under: `update` for a
+ * level whose write takes an object, `summary` for the three whose write takes
+ * one string. A union rather than a name, because `executeRevert` reads it
+ * back and a third spelling would be an undo nothing on the far side consumes.
+ */
+export type SpecPreviousArg = 'update' | 'summary'
 
-export type SpecLevel<Target extends SpecTarget, Value> = {
+/** The argument names `executeRevert` reads a spec change's target back under. */
+export type SpecTargetArg =
+  | 'cell_id'
+  | 'lane_ids'
+  | 'phase_id'
+  | 'scenario_id'
+  | 'path_id'
+  | 'service_id'
+  | 'step_id'
+
+export type SpecLevel<Table extends SpecTable, Target extends SpecTarget, Value> = {
   /** The table the spec's columns live on. */
-  table: string
+  table: Table
   /**
    * The column the write is addressed by — and the column it selects, which
    * are the same question: which rows did this land on.
    */
-  addressedBy: string
+  addressedBy: keyof Database['public']['Tables'][Table]['Row'] & string
   /**
    * The level as a person would name it in a sentence about it going missing:
    * "That lane no longer exists". Read out loud on both refusals.
@@ -80,8 +111,16 @@ export type SpecLevel<Target extends SpecTarget, Value> = {
    * is `NOT NULL` with `[]` as its default, so an emptied list is the empty
    * list; a jsonb map drops the key it emptied, because an absent key and a
    * blank one are not the same to the read.
+   *
+   * Typed against the generated Update row for the level's own table, the way
+   * a cell field descriptor is typed against the generated cell row: a column
+   * the schema does not have is a type error here, and so is a value the
+   * column refuses. That guarantee used to come from the literal `.from`, and
+   * clearing a cell's value propositions to null rather than to `[]` is the
+   * defect it caught; it is kept at the declaration rather than lost to the
+   * seam below.
    */
-  columns: (value: Value) => SpecColumns
+  columns: (value: Value) => Database['public']['Tables'][Table]['Update']
   /** What the change shows in, refetched. */
   invalidate: (target: Target) => void
   /**
@@ -92,15 +131,20 @@ export type SpecLevel<Target extends SpecTarget, Value> = {
    * spelled here as a literal rather than derived from anything.
    */
   fn: WriteFn
-  /** The argument the recorded change names its target under. */
-  targetArg: string
   /**
-   * The argument the inverse carries the previous values under. `update` for
-   * a level whose write takes an object — `executeRevert` hands the payload
-   * straight back, so it has to be the shape the parameter takes — and
-   * `summary` for the three levels whose write takes one string.
+   * The argument the recorded change names its target under. A closed set:
+   * `executeRevert` reads each of these back by name, so a spelling no case
+   * there knows is an undo that cannot be performed.
    */
-  previousAs: string
+  targetArg: SpecTargetArg
+  /**
+   * The argument the inverse carries the previous values under.
+   * `executeRevert` hands the payload straight back, so it has to be the shape
+   * the parameter takes — `update_business_model` originally spread a
+   * camelCase update flat into its args, which no caller on either side could
+   * consume, and the undo did nothing anyone could see.
+   */
+  previousAs: SpecPreviousArg
 }
 
 /**
@@ -130,22 +174,24 @@ export type SpecWrite<Target extends SpecTarget, Value> = (
  * module goes on exporting the function its panel already imports and no
  * caller learns that there is a shared rule underneath.
  */
-export function specWriter<Target extends SpecTarget, Value>(
-  level: SpecLevel<Target, Value>,
+export function specWriter<Table extends SpecTable, Target extends SpecTarget, Value>(
+  level: SpecLevel<Table, Target, Value>,
 ): SpecWrite<Target, Value> {
   return async (client, target, value, previous, options = {}) => {
+    // One value or a set, read off the target rather than declared: `eq` and
+    // `in` are the same question asked of one id or several, and a level that
+    // declared which it was could disagree with the target it is handed.
     const addressed = Array.isArray(target) ? (target as readonly string[]) : null
     if (addressed && addressed.length === 0) {
       throw new Error(`That ${level.subject} no longer exists — nothing to save onto.`)
     }
 
-    // The generated table types cannot follow a table name held in a variable:
-    // the payload's type is a function of the literal, and a declaration is
-    // the one shape that is not one. The same seam `authoringRpc.invoke` takes
-    // for the same reason. What holds the columns instead is
-    // `scripts/panel-write-surface.mjs`, which asserts every one of them
-    // against the schema and asks a real database whether an author may write
-    // it.
+    // The builder cannot follow a table name held in a variable: its payload
+    // type is a function of the literal, and a declaration is the one shape
+    // that is not one. The same seam `authoringRpc.invoke` takes, for the same
+    // reason — and narrower than it looks, because the declaration's `table`,
+    // `addressedBy` and `columns` are all typed against the generated schema
+    // above. What is erased here is the chain, not the payload.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- see above
     const query = (client.from as any)(level.table).update(level.columns(value))
     const { data, error } = await (addressed

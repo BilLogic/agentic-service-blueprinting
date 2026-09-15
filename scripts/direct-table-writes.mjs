@@ -52,7 +52,7 @@
  *
  * AND ONE SHAPE IS A WRITE WITHOUT LOOKING LIKE ONE. A spec level declares its
  * table rather than naming it in a chain: the six spec modules hand a
- * declaration to `src/lib/specWrite.ts`, which builds the one
+ * declaration to `src/lib/specMutations.ts`, which builds the one
  * `.from(…).update(…)` they all take. A scan that only read chains would find
  * no writer for `lanes`, `phases`, `paths`, `scenarios`, `services`,
  * `business_models` or `steps` — and a surface with no writers to contradict
@@ -113,7 +113,7 @@ export const TABLE_WRITE =
  * writers. A file that imports the shared write is asking for the write to be
  * made on its behalf, which is what a writer is.
  */
-export const DECLARES_SPEC_LEVELS = "from '@/lib/specWrite'"
+export const DECLARES_SPEC_LEVELS = "from '@/lib/specMutations'"
 
 /** The table of one spec-level declaration. */
 export const SPEC_LEVEL_TABLE = /\btable:\s*'([a-z_]+)'\s*,/g

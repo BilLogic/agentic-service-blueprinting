@@ -1,4 +1,4 @@
-import { specWriter, type SpecLevel } from '@/lib/specWrite'
+import { specWriter, type SpecLevel } from '@/lib/specMutations'
 import type { ValueProp } from '@/lib/valueProps'
 import { invalidateCellBoard, invalidateQueries } from '@/lib/queryClient'
 import { queryKeys } from '@/lib/queryKeys'
@@ -21,7 +21,7 @@ export type CellSpecUpdate = {
  * written as the empty list. It used to be written as null, which the column
  * refuses — a bug the generated types now spell out.
  */
-const CELL_SPEC: SpecLevel<string, CellSpecUpdate> = {
+const CELL_SPEC: SpecLevel<'cells', string, CellSpecUpdate> = {
   table: 'cells',
   addressedBy: 'id',
   subject: 'cell',

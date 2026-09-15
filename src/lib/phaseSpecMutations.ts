@@ -1,4 +1,4 @@
-import { specWriter, type SpecLevel } from '@/lib/specWrite'
+import { specWriter, type SpecLevel } from '@/lib/specMutations'
 import { invalidateQueries } from '@/lib/queryClient'
 import { queryKeys } from '@/lib/queryKeys'
 
@@ -23,7 +23,7 @@ export type PhaseSpecUpdate = {
  * `name` is not here: renaming a phase is a structural edit with its own RPC
  * and its own ledger entry.
  */
-const PHASE_SPEC: SpecLevel<string, PhaseSpecUpdate> = {
+const PHASE_SPEC: SpecLevel<'phases', string, PhaseSpecUpdate> = {
   table: 'phases',
   addressedBy: 'id',
   subject: 'phase',

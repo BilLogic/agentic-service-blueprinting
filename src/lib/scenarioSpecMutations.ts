@@ -1,5 +1,5 @@
 import type { EntityStatus } from '@/lib/entityStatus'
-import { specWriter, type SpecLevel } from '@/lib/specWrite'
+import { specWriter, type SpecLevel } from '@/lib/specMutations'
 import { invalidateQueries } from '@/lib/queryClient'
 import { queryKeys } from '@/lib/queryKeys'
 
@@ -12,7 +12,7 @@ import { queryKeys } from '@/lib/queryKeys'
  * change what you are looking at. `name` is a structural rename with its own
  * RPC.
  */
-const SCENARIO_SPEC: SpecLevel<string, string> = {
+const SCENARIO_SPEC: SpecLevel<'scenarios', string, string> = {
   table: 'scenarios',
   addressedBy: 'id',
   subject: 'scenario',
@@ -44,7 +44,7 @@ export type PathSpecUpdate = {
  * a path can be edited at all. `status` is a domain value rather than prose,
  * so it passes through as it came.
  */
-const PATH_SPEC: SpecLevel<string, PathSpecUpdate> = {
+const PATH_SPEC: SpecLevel<'paths', string, PathSpecUpdate> = {
   table: 'paths',
   addressedBy: 'id',
   subject: 'path',

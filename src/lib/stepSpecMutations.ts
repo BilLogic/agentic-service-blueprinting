@@ -1,4 +1,4 @@
-import { specWriter, type SpecLevel } from '@/lib/specWrite'
+import { specWriter, type SpecLevel } from '@/lib/specMutations'
 import { invalidateQueries } from '@/lib/queryClient'
 import { queryKeys } from '@/lib/queryKeys'
 
@@ -9,7 +9,7 @@ import { queryKeys } from '@/lib/queryKeys'
  * One column, so one declaration. `name` is a structural rename with its own
  * RPC, and a step's POSITION belongs to `path_steps`, not here.
  */
-const STEP_SPEC: SpecLevel<string, string> = {
+const STEP_SPEC: SpecLevel<'steps', string, string> = {
   table: 'steps',
   addressedBy: 'id',
   subject: 'step',

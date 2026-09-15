@@ -1,4 +1,4 @@
-import { specWriter, type SpecLevel } from '@/lib/specWrite'
+import { specWriter, type SpecLevel } from '@/lib/specMutations'
 import { invalidateQueries } from '@/lib/queryClient'
 import { queryKeys } from '@/lib/queryKeys'
 
@@ -32,7 +32,7 @@ export type LaneSpecUpdate = {
  * Empty is stored as `null` (text) or `[]` (jsonb) to match what the import
  * writes, so "not specified" has one representation per column type.
  */
-const LANE_SPEC: SpecLevel<readonly string[], LaneSpecUpdate> = {
+const LANE_SPEC: SpecLevel<'lanes', readonly string[], LaneSpecUpdate> = {
   table: 'lanes',
   addressedBy: 'id',
   subject: 'lane',

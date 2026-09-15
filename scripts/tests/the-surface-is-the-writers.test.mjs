@@ -338,12 +338,12 @@ test('the scan reads writes, and not reads or uploads', () => {
 
 test('a declared spec level is a writer, and only where the write is imported', () => {
   // The shape the chain scan cannot see. Six spec modules stopped writing the
-  // six stations out and now declare a level for `src/lib/specWrite.ts` to
+  // six stations out and now declare a level for `src/lib/specMutations.ts` to
   // write — so the table is a property, not an argument to `.from`. A scan
   // blind to it reports no writer for seven tables at once, and the surface
   // those seven sit on becomes a set of questions asked of nobody.
   const declaration = [
-    "import { specWriter, type SpecLevel } from '@/lib/specWrite'",
+    "import { specWriter, type SpecLevel } from '@/lib/specMutations'",
     'const LANE_SPEC: SpecLevel<readonly string[], LaneSpecUpdate> = {',
     "  table: 'lanes',",
     "  addressedBy: 'id',",
@@ -365,7 +365,7 @@ test('a declared spec level is a writer, and only where the write is imported', 
     }),
     [],
   )
-  assert.equal(DECLARES_SPEC_LEVELS, "from '@/lib/specWrite'")
+  assert.equal(DECLARES_SPEC_LEVELS, "from '@/lib/specMutations'")
   assert.deepEqual(
     [..."  table: 'paths',".matchAll(SPEC_LEVEL_TABLE)].map((one) => one[1]),
     ['paths'],

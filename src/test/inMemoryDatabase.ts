@@ -27,8 +27,13 @@ export type InMemoryDatabase = {
   client: SupabaseClient<Database>
   /** The tables, live: a write lands here and a read-back reads from here. */
   tables: Record<string, Row[]>
-  /** Every update issued, in order. */
-  updates: Array<{ table: string; patch: Row; filters: Row }>
+  /**
+   * Every update issued, in order. `select` is the columns the chain asked
+   * for: PostgREST 400s on a column the table does not have, and the count
+   * `requireRowsWritten` reads exists only because the chain selected at all,
+   * so a test that asserts the write asserts what it selected too.
+   */
+  updates: Array<{ table: string; patch: Row; filters: Row; select?: string }>
   /** Every RPC issued, in order. */
   rpcs: Array<{ fn: string; args: Row }>
 }
@@ -80,6 +85,7 @@ export function inMemoryDatabase(
     let deleting = false
     let ordering: { column: string; ascending: boolean } | null = null
     let selected = false
+    let selectedColumns: string | undefined
     const matching = () =>
       rows.filter(
         (row) =>
@@ -110,6 +116,7 @@ export function inMemoryDatabase(
         updates.push({
           table,
           patch,
+          ...(selectedColumns === undefined ? {} : { select: selectedColumns }),
           filters: memberships.reduce<Row>(
             (all, one) => ({ ...all, [one.column]: [...one.values] }),
             { ...filters },
@@ -138,8 +145,9 @@ export function inMemoryDatabase(
         deleting = true
         return api
       },
-      select() {
+      select(columns?: string) {
         selected = true
+        selectedColumns = columns
         return api
       },
       eq(column: string, value: unknown) {

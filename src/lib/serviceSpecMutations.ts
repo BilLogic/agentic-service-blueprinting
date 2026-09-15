@@ -1,9 +1,7 @@
 import { ENTITY_KIND_ORDER, type EntityExamples } from '@/lib/panelTerms'
-import { specWriter, type SpecLevel } from '@/lib/specWrite'
+import { specWriter, type SpecLevel } from '@/lib/specMutations'
 import { invalidateQueries } from '@/lib/queryClient'
 import { queryKeys } from '@/lib/queryKeys'
-
-export type ServiceSummaryUpdate = { summary: string }
 
 /**
  * The six example inputs as the panel holds them — one string per kind, blanks
@@ -55,7 +53,7 @@ const invalidateServicePanel = () => {
  * `name` is not writable from here for the same reason a scenario's is not:
  * renaming the root is structure, and structure goes through an RPC.
  */
-const SERVICE_SUMMARY: SpecLevel<string, string> = {
+const SERVICE_SUMMARY: SpecLevel<'services', string, string> = {
   table: 'services',
   addressedBy: 'id',
   subject: 'service',
@@ -78,7 +76,7 @@ export const updateServiceSummary = specWriter(SERVICE_SUMMARY)
  * table also seeded it — so this is always an update, never an upsert, and it
  * is the one level addressed by a column that is not `id`.
  */
-const BUSINESS_MODEL: SpecLevel<string, BusinessModelUpdate> = {
+const BUSINESS_MODEL: SpecLevel<'business_models', string, BusinessModelUpdate> = {
   table: 'business_models',
   addressedBy: 'service_id',
   subject: 'business model',
@@ -108,7 +106,7 @@ export const updateBusinessModel = specWriter(BUSINESS_MODEL)
  * whole object rather than merging; the normaliser is what decides which keys
  * survive, and an emptied input drops its key.
  */
-const ENTITY_EXAMPLES: SpecLevel<string, EntityExamplesUpdate> = {
+const ENTITY_EXAMPLES: SpecLevel<'services', string, EntityExamplesUpdate> = {
   table: 'services',
   addressedBy: 'id',
   subject: 'service',
