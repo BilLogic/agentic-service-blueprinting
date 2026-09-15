@@ -12,7 +12,7 @@ import { shouldUseTouchpointCellContent } from '@/lib/blueprintLayout'
 import { isBlueprintStepStoryboardPlaceholder } from '@/lib/blueprintStoryboardPlaceholder'
 import { useTouchpointToneResolver } from '@/hooks/useTouchpointToneResolver'
 import { PANEL_TERMS } from '@/lib/panelTerms'
-import type { CellDetailFacts } from '@/components/blueprint/cellDetailFacts'
+import type { CellOverviewFacts } from '@/components/blueprint/cellDetailFacts'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 import type { ReactNode } from 'react'
 
@@ -30,8 +30,9 @@ const CELL_DETAIL_LOGO_CLASS =
  *
  * Everything here is a READING of the facts — which sentence is the title,
  * whether the touchpoint's name repeats it, whether a summary would be the
- * same words twice. The facts themselves are resolved once by
- * `useCellDetailFacts` and arrive whole; nothing below re-derives one.
+ * same words twice. The facts themselves are resolved once from the selected
+ * cell and arrive as this reader's own narrow set; nothing below re-derives
+ * one, and nothing below can reach a fact it was not given.
  */
 export function CellDetailOverview({
   facts,
@@ -40,24 +41,22 @@ export function CellDetailOverview({
   editingCell,
   onDone,
 }: {
-  facts: CellDetailFacts
+  facts: CellOverviewFacts
   selection: BlueprintCellSelection
   laneBadge: ReactNode
   editingCell: boolean
   onDone: () => void
 }) {
   const {
-    laneResolution,
-    resolvedCellId,
-    selectedCell,
-    cellTouchpointList,
-    cellResourceList,
-    selectedPlacement,
+    cellId,
+    frame,
+    touchpoints,
+    resources,
+    lane: selectedLane,
+    placement,
     touchpointDetail,
     featured,
   } = facts
-  // The lane, read from the one resolution rather than passed beside it.
-  const selectedLane = laneResolution?.lane ?? null
   /*
     The touchpoint badge's colour. A resolver rather than a value because the
     label it is about is worked out below, from the placement and the lane.
@@ -88,7 +87,7 @@ export function CellDetailOverview({
     an author can set and nobody can see is the shape this panel exists to
     avoid, and it would have been reintroduced here.
   */
-  const hasRealPlacement = Boolean(selectedPlacement?.id)
+  const hasRealPlacement = Boolean(placement?.id)
   const techDetailLabel =
     isTechLane || hasRealPlacement ? (touchpointDetail?.name ?? null) : null
   const detailSummaryText =
@@ -96,14 +95,14 @@ export function CellDetailOverview({
       ? ''
       : detailBodyText
   // The featured image is the frame: what is stored is what shows.
-  const storedFrame = selectedCell?.frame?.trim() || null
+  const storedFrame = frame?.trim() || null
   const featuredImage =
     storedFrame && !isBlueprintStepStoryboardPlaceholder(storedFrame)
       ? storedFrame
       : null
   // A logo when it IS the registry icon of a touchpoint placed here — a string
   // on the registry row, not a tool name matched against a table in code.
-  const frameIsLogo = cellTouchpointList.some(
+  const frameIsLogo = touchpoints.some(
     (placement) => placement.iconUrl?.trim() === featuredImage,
   )
   // No `&& !isStoryboardLane` term: a storyboard cell never reaches this
@@ -258,13 +257,13 @@ export function CellDetailOverview({
       </div>
       {editingCell ? (
         <CellPanelEditor
-          cellId={resolvedCellId}
+          cellId={cellId}
           // The placement the reader clicked, so its detail fields join the
           // cell's form under one Save rather than arriving as a second
           // editor with a second Save button.
-          placement={selectedPlacement}
-          placementResources={cellResourceList}
-          frame={selectedCell?.frame ?? null}
+          placement={placement}
+          placementResources={resources}
+          frame={frame}
           // Never seed the field with the title wearing a summary's
           // clothes — only prose that actually says more than the cell text.
           fallbackSummary={
@@ -276,8 +275,8 @@ export function CellDetailOverview({
         <>
           {/* Basic info (text, summary, owners) first; the function/form/
               value spec is a deeper layer of the same cell and reads below it. */}
-          <CellContentSection cellId={resolvedCellId} />
-          <CellOverviewSpec cellId={resolvedCellId} />
+          <CellContentSection cellId={cellId} />
+          <CellOverviewSpec cellId={cellId} />
         </>
       )}
     </>

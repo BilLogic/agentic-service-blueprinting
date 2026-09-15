@@ -12,7 +12,12 @@ import {
 } from '@/components/blueprint/CellDetailTabs'
 import { useCellPanelAgentCommands } from '@/components/blueprint/cellDetailAgentCommands'
 import { PanelSurfaceSwitcher } from '@/components/blueprint/PanelSurfaceSwitcher'
-import { useCellDetailFacts } from '@/components/blueprint/cellDetailFacts'
+import {
+  useCellOverviewFacts,
+  useCellPanelFacts,
+  useCellTabsFacts,
+  useSelectedCell,
+} from '@/components/blueprint/cellDetailFacts'
 import {
   CELL_PANEL_FOOTER_ID,
   DetailPanelErrorBoundary,
@@ -43,7 +48,6 @@ import {
 } from '@/lib/compareReviewStore'
 import {
   buildBlueprintCellSelectionForId,
-  getBlueprintForPath,
   scrollBlueprintCellIntoView,
 } from '@/lib/blueprintCellConnections'
 import {
@@ -225,16 +229,25 @@ function BlueprintCellDetailPanelBody() {
     return () => setCompareLedgerOpen(false)
   }, [ledgerShowing])
 
-  const facts = useCellDetailFacts({ blueprints, selection, draft })
+  /*
+    ONE resolution of the selected cell — the path's board, the cell in it, the
+    lane it sits in, the arrows that reach it — and three narrow readings hung
+    off it, one per reader. Each reader's props name what that reader reads and
+    nothing else; none of the three is handed the resolution itself.
+  */
+  const selectedCell = useSelectedCell({ blueprints, selection, draft })
+  const panelFacts = useCellPanelFacts(selectedCell, selection)
+  const overviewFacts = useCellOverviewFacts(selectedCell, selection)
+  const tabsFacts = useCellTabsFacts(selectedCell, selection)
   const {
     pathEntry,
-    resolvedCellId,
-    laneResolution,
+    cellId: resolvedCellId,
+    lane: laneResolution,
     dependencyCandidates,
     existingDependencies,
     dependencySource,
     storyboardStepEntries,
-  } = facts
+  } = panelFacts
 
   const selectedLane = selection ? (laneResolution?.lane ?? null) : null
 
@@ -367,11 +380,10 @@ function BlueprintCellDetailPanelBody() {
   const isStoryboardLane = Boolean(
     selectedLane && shouldUseStoryboardContent(selectedLane),
   )
+  // The board comes from the one resolution above — the panel does not look
+  // the path up a second time to answer a click on a row of it.
   const handleConnectionSelect = (cellId: string) => {
-    const pathId = pathEntry?.pathId
-    if (!pathId) return
-
-    const blueprint = getBlueprintForPath(blueprints, pathId)
+    const blueprint = selectedCell.blueprint
     if (!blueprint) return
 
     const nextSelection = buildBlueprintCellSelectionForId(
@@ -412,10 +424,7 @@ function BlueprintCellDetailPanelBody() {
       : null
 
   const handleTechSelect = (cellId: string, techItem: string) => {
-    const pathId = pathEntry?.pathId
-    if (!pathId) return
-
-    const blueprint = getBlueprintForPath(blueprints, pathId)
+    const blueprint = selectedCell.blueprint
     if (!blueprint) return
 
     const nextSelection = buildTouchpointSelectionForItem(
@@ -506,7 +515,7 @@ function BlueprintCellDetailPanelBody() {
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto blueprint-scroll">
               <div className="flex flex-col gap-5 px-4 pb-5">
                 <CellDetailOverview
-                  facts={facts}
+                  facts={overviewFacts}
                   selection={selection}
                   laneBadge={laneBadge}
                   editingCell={editingCell}
@@ -516,7 +525,7 @@ function BlueprintCellDetailPanelBody() {
               <CellDetailTabs
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
-                facts={facts}
+                facts={tabsFacts}
                 dependencyEditing={dependencyEditing}
                 addingDependency={addingDependency}
                 onAddingDependencyChange={setAddingDependency}

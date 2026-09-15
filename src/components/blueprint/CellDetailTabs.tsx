@@ -5,7 +5,7 @@ import { CellEvidenceTab } from '@/components/blueprint/CellEvidenceTab'
 import { CellResourcesTab } from '@/components/blueprint/CellResourcesTab'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import type { CellDetailFacts } from '@/components/blueprint/cellDetailFacts'
+import type { CellTabsFacts } from '@/components/blueprint/cellDetailFacts'
 import type { ComponentProps } from 'react'
 
 /** The three tabs, in reading order; Dependencies is where a cell opens. */
@@ -42,7 +42,7 @@ export function CellDetailTabs({
 }: {
   activeTab: PanelTab
   onTabChange: (tab: PanelTab) => void
-  facts: CellDetailFacts
+  facts: CellTabsFacts
   dependencyEditing: ComponentProps<typeof CellDependencySections>['editing']
   addingDependency: boolean
   onAddingDependencyChange: (adding: boolean) => void
@@ -50,13 +50,13 @@ export function CellDetailTabs({
   onTechSelect: (cellId: string, techItem: string) => void
 }) {
   const {
-    resolvedCellId,
+    cellId,
     connections,
-    otherTechEntries,
+    otherTech,
     selectedLaneRowPosition,
-    selectedCell,
-    cellResourceList,
-    cellTouchpointList,
+    frame,
+    resources,
+    touchpoints,
   } = facts
   return (
     <Tabs
@@ -91,9 +91,9 @@ export function CellDetailTabs({
             <CellDependencySections
               // Keyed on the cell, so the row whose note field is
               // open does not carry over to the next cell.
-              key={resolvedCellId ?? 'no-cell'}
+              key={cellId ?? 'no-cell'}
               connections={connections}
-              otherTech={otherTechEntries}
+              otherTech={otherTech}
               selectedLaneRowPosition={selectedLaneRowPosition}
               editing={dependencyEditing}
               onCellSelect={onCellSelect}
@@ -131,14 +131,14 @@ export function CellDetailTabs({
           </>
         ) : null}
         {activeTab === 'evidence' ? (
-          <CellEvidenceTab cellId={resolvedCellId} />
+          <CellEvidenceTab cellId={cellId} />
         ) : null}
         {activeTab === 'resources' ? (
           <CellResourcesTab
-            cellId={resolvedCellId}
-            resources={cellResourceList}
-            touchpoints={cellTouchpointList}
-            frame={selectedCell?.frame ?? null}
+            cellId={cellId}
+            resources={resources}
+            touchpoints={touchpoints}
+            frame={frame}
           />
         ) : null}
       </div>
