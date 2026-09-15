@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { sourceFiles } from '@/lib/tokenModel'
+import { bytesOf, sourcePathsOn } from '@/lib/sourceTree'
 
 /**
  * Every source file ends with a newline.
@@ -17,10 +16,8 @@ import { sourceFiles } from '@/lib/tokenModel'
  */
 describe('the source tree', () => {
   it('ends every file with a newline', () => {
-    const offenders = sourceFiles()
-      .map((file) => file.file)
-      .filter((file) => {
-        const bytes = readFileSync(new URL(`../${file}`, import.meta.url))
+    const offenders = sourcePathsOn().filter((file) => {
+        const bytes = bytesOf(file)
         return bytes.length > 0 && bytes.at(-1) !== 0x0a
       })
     expect(offenders, offenders.join('\n')).toEqual([])

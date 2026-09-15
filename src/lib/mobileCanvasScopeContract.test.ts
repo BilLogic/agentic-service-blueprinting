@@ -1,6 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { sourceOf as read } from '@/lib/sourceTree'
 
 /*
  * The mobile canvas draws one scenario, and navigates nowhere.
@@ -23,14 +22,9 @@ import { describe, expect, it } from 'vitest'
  * inertness needs a rendered board, so both are held to the source.
  */
 
-const read = (path: string) =>
-  readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8')
-
-const MOBILE_SHELL = read('../components/mobile/MobileShell.tsx')
-const OVERVIEW_VIEW = read('../components/editor/ServiceOverviewView.tsx')
-const PHASE_OVERVIEW = read(
-  '../components/blueprint/PhaseScenarioOverview.tsx',
-)
+const MOBILE_SHELL = read('components/mobile/MobileShell.tsx')
+const OVERVIEW_VIEW = read('components/editor/ServiceOverviewView.tsx')
+const PHASE_OVERVIEW = read('components/blueprint/PhaseScenarioOverview.tsx')
 
 describe('mobile canvas scope', () => {
   it('draws one scenario, not one phase row', () => {
@@ -91,8 +85,8 @@ describe('mobile canvas navigation', () => {
       `role="button"`, no pointer cursor and no aria-label promising a
       destination — instead of a button that swallows taps.
     */
-    const panel = read('../components/blueprint/ResizableComparePanel.tsx')
-    const section = read('../components/editor/CanvasPhaseSection.tsx')
+    const panel = read('components/blueprint/ResizableComparePanel.tsx')
+    const section = read('components/editor/CanvasPhaseSection.tsx')
     for (const source of [panel, section]) {
       expect(source).toContain('const interactive = Boolean(onNavigate)')
       expect(source).toContain('const navigable = interactive && !focusActive')
@@ -107,8 +101,8 @@ describe('mobile canvas navigation', () => {
       unfilled panel under a mistyped badge the moment navigation is
       withheld — which is exactly what the mobile canvas does.
     */
-    const panel = read('../components/blueprint/ResizableComparePanel.tsx')
-    const section = read('../components/editor/CanvasPhaseSection.tsx')
+    const panel = read('components/blueprint/ResizableComparePanel.tsx')
+    const section = read('components/editor/CanvasPhaseSection.tsx')
     expect(panel).toContain('data-phase-scenario-panel=""')
     expect(panel).not.toContain(
       "interactive ? { 'data-phase-scenario-panel': '' }",

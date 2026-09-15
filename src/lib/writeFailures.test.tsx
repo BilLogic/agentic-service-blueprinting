@@ -21,10 +21,9 @@
  * those files reports through `reportWriteFailure`, with whitespace collapsed
  * first so that only the channel is being read, never the layout.
  */
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { sourceOf } from '@/lib/sourceTree'
 import { EditorErrorBoundary } from '@/components/EditorErrorBoundary'
 import { WriteFailureNotices } from '@/components/editor/WriteFailureNotices'
 import { AuthoringError } from '@/lib/authoringErrors'
@@ -183,15 +182,15 @@ describe('⌘Z, when the revert fails', () => {
  */
 const FAILING_PATHS = [
   {
-    file: 'src/components/editor/CanvasCellContextMenu.tsx',
+    file: 'components/editor/CanvasCellContextMenu.tsx',
     subject: 'The cell was not deleted',
   },
   {
-    file: 'src/components/blueprint/BlueprintColumnHandles.tsx',
+    file: 'components/blueprint/BlueprintColumnHandles.tsx',
     subject: 'The step was not added',
   },
   {
-    file: 'src/components/editor/SlicesSidebarSection.tsx',
+    file: 'components/editor/SlicesSidebarSection.tsx',
     subject: 'was not duplicated',
   },
 ] as const
@@ -229,7 +228,7 @@ function catchBodies(source: string): string[] {
 describe('the paths that used to fail in silence', () => {
   for (const { file, subject } of FAILING_PATHS) {
     it(`${file} reports to the user, not the console`, () => {
-      const source = readFileSync(join(process.cwd(), file), 'utf8')
+      const source = sourceOf(file)
       expect(source, `${file} no longer names what did not happen`).toContain(
         subject,
       )
@@ -285,7 +284,7 @@ describe('the notice outlives the shell', () => {
   })
 
   it('is mounted outside the boundary in the app tree', () => {
-    const app = readFileSync(join(process.cwd(), 'src/App.tsx'), 'utf8')
+    const app = sourceOf('App.tsx')
     const opened = app.indexOf('<EditorErrorBoundary>')
     const closed = app.indexOf('</EditorErrorBoundary>')
     const notice = app.indexOf('<WriteFailureNotices />')

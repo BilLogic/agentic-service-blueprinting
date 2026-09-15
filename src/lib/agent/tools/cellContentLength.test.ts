@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { sourceOf } from '@/lib/sourceTree'
 import { dispatchTool } from '@/lib/agent/tools/registry'
 import {
   configureCellBudget,
@@ -139,10 +138,7 @@ describe('the guidance itself', () => {
 
 describe('the budget comes from config, as target and warning per kind', () => {
   it('keeps the numbers out of the budget module', () => {
-    const src = readFileSync(
-      join(process.cwd(), 'src/lib/cellContentLimits.ts'),
-      'utf8',
-    )
+    const src = sourceOf('lib/cellContentLimits.ts')
     expect(src).not.toMatch(/\b120\b/)
     expect(src).not.toMatch(/\b80\b/)
     expect(src).not.toMatch(/\b100\b/)

@@ -1,6 +1,5 @@
-import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { pathsOn, sourceOf as src } from '@/lib/sourceTree'
 import {
   ENTITY_STATUS,
   ENTITY_STATUS_LABEL,
@@ -10,9 +9,6 @@ import {
   isUnbuilt,
 } from '@/lib/entityStatus'
 import type { EntityStatus as DatabaseEntityStatus } from '@/types/database'
-
-const src = (path: string) =>
-  readFileSync(join(process.cwd(), 'src', path), 'utf8')
 
 /*
   THE VOCABULARY, AND ONLY THE VOCABULARY.
@@ -106,12 +102,9 @@ describe('the status is a column, not a prefix on a name', () => {
     // products called "Planned — swap flow UI". The fallbacks are the offline
     // copy of the board; a `Planned — ` here would put the prefix back on a
     // canvas no migration can reach.
-    const dir = join(process.cwd(), 'src', 'data')
-    const offenders = readdirSync(dir)
-      .filter((f) => f.endsWith('.ts'))
-      .filter((f) =>
-        readFileSync(join(dir, f), 'utf8').includes('Planned — '),
-      )
+    const offenders = pathsOn('data', (path) => path.endsWith('.ts')).filter(
+      (path) => src(path).includes('Planned — '),
+    )
     expect(offenders).toEqual([])
   })
 

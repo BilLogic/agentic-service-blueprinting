@@ -1,11 +1,7 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { sourceOf } from '@/lib/sourceTree'
 
-const editorShell = readFileSync(
-  resolve(__dirname, '../components/editor/EditorShell.tsx'),
-  'utf-8',
-)
+const editorShell = sourceOf('components/editor/EditorShell.tsx')
 
 describe('workspace tab navigation contract', () => {
   it('enters from the cover and returns an active canvas to overview', () => {

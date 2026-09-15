@@ -1,6 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { sourceOf } from '@/lib/sourceTree'
 
 import { clearSession, sessionSnapshot } from '@/lib/authoringSession'
 import { updateCellSpec } from '@/lib/cellSpecMutations'
@@ -435,9 +434,7 @@ describe('a spec write, at every level', () => {
     // here with no recording at all — so the expected count is read off the
     // declarations, the way the revert-coverage contract reads `fn` off them.
     const declared = MUTATION_MODULES.flatMap((file) => [
-      ...readFileSync(join(process.cwd(), 'src', 'lib', file), 'utf8').matchAll(
-        /\bspecWriter\(/g,
-      ),
+      ...sourceOf(`lib/${file}`).matchAll(/\bspecWriter\(/g),
     ]).length
     expect(declared).toBeGreaterThan(0)
     expect(

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { sourceOf as src } from '@/lib/sourceTree'
 
 import {
   PANEL_SHEET_DEFAULT_SNAP,
@@ -9,9 +10,6 @@ import {
   rememberSheetSnap,
   resetSheetSnapMemory,
 } from '@/lib/panelSheetSnap'
-
-const src = (relative: string) =>
-  readFileSync(resolve(__dirname, '..', relative), 'utf8')
 
 /**
  * THE CAP IS THE POINT OF THIS FILE.

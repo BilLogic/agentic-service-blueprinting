@@ -1,6 +1,5 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { expect, test } from 'vitest'
+import { sourcesOn } from '@/lib/sourceTree'
 
 /**
  * The client may edit a placement's DETAIL and nothing about where it sits.
@@ -36,8 +35,6 @@ import { expect, test } from 'vitest'
  * one says writes must live in a `*Mutations` module, this one says what a
  * mutation module may write on this table.
  */
-const SRC = resolve(__dirname, '..')
-
 /** Creating or removing a placement — what only the gated sync may do. */
 const PLACEMENT_CREATE =
   /\.from\(\s*'cell_touchpoints'\s*\)[\s\S]{0,200}?\.(insert|upsert|delete)\s*\(/g
@@ -46,26 +43,12 @@ const PLACEMENT_CREATE =
 const PLACEMENT_REANCHOR =
   /\.from\(\s*'cell_touchpoints'\s*\)[\s\S]{0,200}?\.update\s*\(\s*\{[\s\S]{0,400}?\b(cell_id|touchpoint_id|position)\s*:/g
 
-function walk(dir: string): string[] {
-  const out: string[] = []
-  for (const name of readdirSync(dir)) {
-    const path = resolve(dir, name)
-    if (statSync(path).isDirectory()) {
-      out.push(...walk(path))
-    } else if (/\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name)) {
-      out.push(path)
-    }
-  }
-  return out
-}
-
 function offendersFor(pattern: RegExp): string[] {
   const found: string[] = []
-  for (const file of walk(SRC)) {
-    const source = readFileSync(file, 'utf-8')
-    for (const match of source.matchAll(pattern)) {
-      const line = source.slice(0, match.index).split('\n').length
-      found.push(`${file.slice(SRC.length + 1)}:${line} — ${match[1]}`)
+  for (const { file, text } of sourcesOn()) {
+    for (const match of text.matchAll(pattern)) {
+      const line = text.slice(0, match.index).split('\n').length
+      found.push(`${file}:${line} — ${match[1]}`)
     }
   }
   return found

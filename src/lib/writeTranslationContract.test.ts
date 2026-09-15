@@ -1,6 +1,5 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { expect, test } from 'vitest'
+import { sourceOf, sourcePathsOn } from '@/lib/sourceTree'
 
 /**
  * A write that is refused is translated, never forwarded raw.
@@ -26,8 +25,6 @@ import { expect, test } from 'vitest'
  * The pattern is anchored at `lib/` on purpose: a `components/FooMutations.ts`
  * is not a mutation module, it is this test being routed around.
  */
-const SRC = resolve(__dirname, '..')
-
 const MUTATION_MODULE = /^lib\/[A-Za-z]+Mutations\.ts$/
 
 /** Writers outside the `*Mutations` family, each asserted to exist below. */
@@ -35,18 +32,7 @@ const ALSO_WRITES: readonly string[] = ['lib/authoringRpc.ts']
 
 const RAW_THROW = /throw new Error\(\s*[A-Za-z_$][\w$]*\.message\s*\)/g
 
-function walk(directory: string, prefix = ''): string[] {
-  const out: string[] = []
-  for (const entry of readdirSync(directory).sort()) {
-    const full = resolve(directory, entry)
-    const relative = prefix ? `${prefix}/${entry}` : entry
-    if (statSync(full).isDirectory()) out.push(...walk(full, relative))
-    else if (/\.tsx?$/.test(entry) && !/\.test\.tsx?$/.test(entry)) out.push(relative)
-  }
-  return out
-}
-
-const writers = walk(SRC).filter(
+const writers = sourcePathsOn().filter(
   (relative) => MUTATION_MODULE.test(relative) || ALSO_WRITES.includes(relative),
 )
 
@@ -60,7 +46,7 @@ test('the writers this rule covers exist, so a rename fails loudly', () => {
 test('a write that is refused is translated, never forwarded raw', () => {
   const offenders: string[] = []
   for (const relative of writers) {
-    const text = readFileSync(resolve(SRC, relative), 'utf8')
+    const text = sourceOf(relative)
     for (const hit of text.match(RAW_THROW) ?? []) {
       offenders.push(`src/${relative}: ${hit}`)
     }

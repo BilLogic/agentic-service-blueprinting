@@ -29,11 +29,10 @@
  * saying what to check in a browser, because narrow-and-loud is the most an
  * assertion at this altitude can be.
  */
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { cleanup, render } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { useZoomPanViewport } from '@/hooks/useZoomPanViewport'
+import { sourceOf } from '@/lib/sourceTree'
 
 beforeAll(() => {
   vi.stubGlobal(
@@ -238,7 +237,7 @@ describe('a container that mounts late', () => {
  * everything above depends on. Chromium walks the chain correctly, so no
  * amount of checking in a Chromium pane can catch a regression here either.
  */
-const CSS = readFileSync(join(process.cwd(), 'src/styles/blueprint.css'), 'utf8')
+const CSS = sourceOf('styles/blueprint.css')
 
 describe('the CSS declaration, which only a browser can verify', () => {
   it('kills native touch handling on the whole board subtree', () => {

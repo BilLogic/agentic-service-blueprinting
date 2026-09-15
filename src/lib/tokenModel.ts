@@ -1,4 +1,11 @@
-import { type Sweep, sweep } from '../../scripts/sweep.mjs'
+import {
+  blankComments,
+  filesOn,
+  sourceOf,
+  type StrippedSource,
+  stripComments,
+  strippedSourcesOn,
+} from '@/lib/sourceTree'
 import {
   composite,
   hexToRgb,
@@ -76,31 +83,21 @@ import {
  *
  * So the sample is the `app` subject of `scripts/sweep.mjs`: the deployment's
  * `src` laid over the package's, per path, which is the same overlay the build
- * applies. The paths read `src/…` wherever the file is, the sweep's `read`
- * opens them, and the root is the tree the run is in — never this file's
- * location, which is the rule `sweep.mjs`'s header states for every check.
+ * applies. The paths read `src/…` wherever the file is, and the root is the
+ * tree the run is in — never this file's location, which is the rule
+ * `sweep.mjs`'s header states for every check.
+ *
+ * The two walkers that used to state that here are now ONE reading, in
+ * `lib/sourceTree.ts`, which asks the sweep once for the whole application and
+ * answers by surface. This model takes its stylesheets and its source from it,
+ * and so does every guard that used to open a file of this tree by hand: a
+ * file that moves is then answered in one listing rather than in each reader.
+ * What stays here is the parsing — what a declaration is, what the cascade
+ * says, who consumes a name — which is the model's own job and not a walk.
  */
-const SRC_PREFIX = 'src/'
-const STYLES_PREFIX = 'src/styles/'
+const STYLES_PREFIX = 'styles/'
 /** The stylesheet entry. Import order is read from it, never restated here. */
 const ENTRY = `${STYLES_PREFIX}tailwind.config.css`
-
-/**
- * The text of one file the sweep listed.
- *
- * The sweep's `read` hands back null for a path that has gone between the
- * listing and the read — a skip a walk over a moving tree can afford, and this
- * model cannot. Every rule below is an assertion about a COMPLETE sample, and
- * a sample that quietly lost a file passes each one of them. So the vanishing
- * is a failure here, and it says which file did it.
- */
-function readListed(walk: Sweep, path: string): string {
-  const text = walk.read(path)
-  if (text === null) {
-    throw new Error(`${path} went away between the listing and the read`)
-  }
-  return text
-}
 
 export type Theme = 'light' | 'dark'
 
@@ -197,12 +194,8 @@ export type SourceDeclaration = {
   via: 'style-key' | 'arbitrary-property' | 'set-property' | 'named-constant'
 }
 
-export type SourceFile = {
-  /** Path relative to `src`. */
-  file: string
-  /** Contents with comments stripped — a comment naming a class is not a use. */
-  code: string
-}
+/** A source file of the application, comments blanked. The reading's shape. */
+export type SourceFile = StrippedSource
 
 export type Stylesheet = {
   /** Path relative to `src/styles`. */
@@ -239,23 +232,19 @@ let cachedSheets: Stylesheet[] | null = null
  */
 export function stylesheets(): Stylesheet[] {
   if (cachedSheets) return cachedSheets
-  const walk = sweep({
-    subject: 'app',
-    where: (path) => path.startsWith(STYLES_PREFIX) && path.endsWith('.css'),
-    what: 'stylesheet of the application',
-  })
-  const entry = readListed(walk, ENTRY)
-  const imported = [...entry.matchAll(/@import\s+'\.\/([^']+)'/g)].map(
+  const sheets = filesOn('styles', (path) => path.endsWith('.css'))
+  const entryText = sourceOf(ENTRY)
+  const imported = [...entryText.matchAll(/@import\s+'\.\/([^']+)'/g)].map(
     ([, path]) => path,
   )
-  const swept = walk.files.map((path) => path.slice(STYLES_PREFIX.length))
+  const swept = sheets.map(({ file }) => file.slice(STYLES_PREFIX.length))
   const ordered = [
     ...imported,
     ...swept.filter((file) => !imported.includes(file)).sort(),
   ]
   cachedSheets = ordered.map((file, order) => ({
     file,
-    text: readListed(walk, `${STYLES_PREFIX}${file}`),
+    text: sourceOf(`${STYLES_PREFIX}${file}`),
     // Files the entry never imports sort after everything it does, and are
     // excluded from cascade resolution below.
     order: imported.includes(file) ? order : Number.POSITIVE_INFINITY,
@@ -370,20 +359,6 @@ function allDeclarations(): Declaration[] {
   }
   cachedAll = out
   return cachedAll
-}
-
-/**
- * Blank out CSS comments while keeping every newline, so line numbers survive.
- *
- * Needed because the selector a declaration sits under is assembled from the
- * text before its `{`, and this codebase writes a paragraph of prose above
- * almost every block — a per-line comment strip would leave that prose glued
- * to the selector.
- */
-function blankComments(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, (comment) =>
-    comment.replace(/[^\n]/g, ' '),
-  )
 }
 
 /** Every declaration in one stylesheet. */
@@ -609,8 +584,6 @@ function substitute(
 // Source
 // ---------------------------------------------------------------------------
 
-let cachedSource: SourceFile[] | null = null
-
 /**
  * Every non-test TypeScript file under `src`, comments stripped.
  *
@@ -622,37 +595,15 @@ let cachedSource: SourceFile[] | null = null
  * get right, and the safe direction is outward.
  */
 export function sourceFiles(): SourceFile[] {
-  if (cachedSource) return cachedSource
-  const walk = sweep({
-    subject: 'app',
-    where: (path) => /\.tsx?$/.test(path) && !path.includes('.test.'),
-    what: 'source file of the application',
-  })
-  cachedSource = walk.files
-    .map((path) => ({
-      file: path.slice(SRC_PREFIX.length),
-      code: stripComments(readListed(walk, path)),
-    }))
-    .sort((a, b) => a.file.localeCompare(b.file))
-  return cachedSource
+  return strippedSourcesOn()
 }
 
 /**
- * A comment naming the class it replaced is not a use of that class.
- *
- * Block comments are BLANKED rather than deleted, for the same reason
- * `blankComments` blanks them in the stylesheets: every newline has to
- * survive, or every line number this model reports after a file's header
- * comment is wrong. It used to delete them, and the drift was not small —
- * `dev/ArrowSituationCatalogPage.tsx` opens with a thirteen-line header, so
- * the `#2563eb` on its line 28 was reported at line 15, pointing the reader
- * at an import. Nothing failed while it was wrong, because a passing rule
- * reports no lines at all; the number only has to be right at the moment a
- * rule starts failing, which is the moment nobody is checking it.
+ * Blanking comments is the reading's, and re-exported because this model's
+ * consumers have always asked it for the stripped shape. The account of why a
+ * comment is blanked rather than deleted is in `lib/sourceTree.ts`.
  */
-export function stripComments(source: string): string {
-  return blankComments(source).replace(/(^|[^:])\/\/.*$/gm, '$1')
-}
+export { stripComments }
 
 let cachedSourceDeclarations: SourceDeclaration[] | null = null
 
