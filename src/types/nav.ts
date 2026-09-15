@@ -153,22 +153,6 @@ export function getSlideViewType(slide: NavItem): SlideViewType {
   return slide.layout ?? 'stacked'
 }
 
-export function showsBlueprintFilters(
-  board: OfflineBoard,
-  slide: NavItem,
-  slides: NavItem[],
-): boolean {
-  if (getBlueprintScenarioId(board, slide) !== undefined) return true
-
-  if (!isSubslide(slide)) {
-    return getSubslides(slide.id, slides).some(
-      (scenario) => getBlueprintScenarioId(board, scenario) !== undefined,
-    )
-  }
-
-  return false
-}
-
 export function isIntegratedBlueprintSlide(_slide: NavItem): boolean {
   // The integrated (single-grid, all-paths) layout is disabled app-wide: a
   // scenario's paths render stacked. Kept as a named predicate because the

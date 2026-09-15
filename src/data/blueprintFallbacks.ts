@@ -136,13 +136,6 @@ export type OfflineBoard = {
   readonly pathsByScenario: Record<string, FallbackPathListItem[]>
   readonly byScenario: Record<string, BlueprintData>
   readonly hiddenByScenario: Record<string, readonly string[]>
-  /**
-   * Every cell by id, built lazily — most sessions never open a panel. The one
-   * field declared mutable, and deliberately: it is a cache of what the tables
-   * beside it already hold, so filling it changes no answer. Every other field
-   * is settled when the board is built.
-   */
-  cellsById: Map<string, BlueprintData['cells'][number]> | null
 }
 
 function indexRegistry(registry: SampleBlueprintRegistry): OfflineBoard {
@@ -172,7 +165,6 @@ function indexRegistry(registry: SampleBlueprintRegistry): OfflineBoard {
     pathsByScenario,
     byScenario,
     hiddenByScenario: registry.uiHiddenPathIdsByScenario ?? {},
-    cellsById: null,
   }
 }
 
@@ -259,13 +251,6 @@ function withPathIdentity(
   }
 }
 
-export function hasRegisteredPathFallback(
-  board: OfflineBoard,
-  pathId: string | undefined | null,
-): boolean {
-  return Boolean(pathId && pathId in board.byPath)
-}
-
 export function getRawBlueprintFallback(
   board: OfflineBoard,
   scenarioId: string | undefined,
@@ -305,37 +290,4 @@ export function getBlueprintFallback(
   pathKind?: BlueprintData['path']['kind'],
 ): BlueprintData | null {
   return getRawBlueprintFallback(board, scenarioId, pathId, pathKind)
-}
-
-export function getFallbackBlueprintsForScenarios(
-  board: OfflineBoard,
-  scenarioIds: string[],
-): Map<string, BlueprintData> {
-  const map = new Map<string, BlueprintData>()
-  for (const id of scenarioIds) {
-    const data = getBlueprintFallback(board, id)
-    if (data) map.set(id, data)
-  }
-  return map
-}
-
-/**
- * One fallback cell by id, for panels that read a cell on its own rather than
- * through the grid query (`useCellContent`). Without this a keyless clone shows
- * the grid text but none of the cell spec — owner, perceived owner, function,
- * form, value props — which is exactly the part the sample content is teaching.
- */
-export function getFallbackCell(
-  board: OfflineBoard,
-  cellId: string | null | undefined,
-): BlueprintData['cells'][number] | null {
-  if (!cellId) return null
-  if (!board.cellsById) {
-    board.cellsById = new Map(
-      Object.values(board.byPath).flatMap((data) =>
-        data.cells.map((cell) => [cell.id, cell] as const),
-      ),
-    )
-  }
-  return board.cellsById.get(cellId) ?? null
 }
