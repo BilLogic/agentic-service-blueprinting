@@ -14,7 +14,8 @@ jsdom slice and as a browser case in the render walk — and the annotation
 layer's split is unblocked; see the end. Amended again 2026-09-14 (#770): all
 three flows are covered, so the hold is lifted. Amended again 2026-09-14
 (#774): the agent panel is split, and the record now carries an outcome per
-component; see the end.
+component; see the end. Amended again 2026-09-14 (#791): the cell panel's facts
+are one resolution and three narrow readings; see the cell-panel amendment.
 **Context** `src/components/editor/CanvasAnnotationLayer.tsx`,
 `src/components/blueprint/BlueprintCellDetailPanel.tsx`,
 `src/components/editor/AgentPanel.tsx`
@@ -342,11 +343,12 @@ was not run here: no machine in this estate carries a PostgREST binary and
 this work downloaded none, so `npm run slice:cell-edit:postgrest` is CI's
 proof, exactly as the amendment above anticipated.
 
-*Amended again 2026-09-14: the facts that split fell out as one module handing
-every reader the same sixteen keys are now one resolution of the selected cell
-— the path's board found once rather than in seven derivations — with three
-narrow readings hung off it, one per reader, each naming only what its reader
-reads and each read by a unit test through that interface.*
+*Amended again 2026-09-14 (#791): the facts that split fell out as one module
+handing every reader the same sixteen keys are now one resolution of the
+selected cell — the path's board found once rather than in seven derivations —
+with three narrow readings hung off it, one per reader, each taking that
+resolution and nothing else, each naming only what its reader reads, and each
+read by a unit test through that interface.*
 
 **What the split is NOT is a redesign.** No class, no `data-` attribute, no
 aria label and no test id changed; the one save still writes the same columns

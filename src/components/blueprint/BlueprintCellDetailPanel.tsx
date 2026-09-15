@@ -231,17 +231,20 @@ function BlueprintCellDetailPanelBody() {
 
   /*
     ONE resolution of the selected cell — the path's board, the cell in it, the
-    lane it sits in, the arrows that reach it — and three narrow readings hung
-    off it, one per reader. Each reader's props name what that reader reads and
-    nothing else; none of the three is handed the resolution itself.
+    lane it sits in, the dependencies that reach it — and three narrow readings
+    hung off it, one per reader. The resolution is a handle this body forwards,
+    never a bag it reads facts out of: everything below comes from the drawer's
+    own reading, and each reader's props name what that reader reads and
+    nothing else.
   */
   const selectedCell = useSelectedCell({ blueprints, selection, draft })
-  const panelFacts = useCellPanelFacts(selectedCell, selection)
-  const overviewFacts = useCellOverviewFacts(selectedCell, selection)
-  const tabsFacts = useCellTabsFacts(selectedCell, selection)
+  const panelFacts = useCellPanelFacts(selectedCell)
+  const overviewFacts = useCellOverviewFacts(selectedCell)
+  const tabsFacts = useCellTabsFacts(selectedCell)
   const {
     pathEntry,
     cellId: resolvedCellId,
+    blueprint: selectedBlueprint,
     lane: laneResolution,
     dependencyCandidates,
     existingDependencies,
@@ -380,10 +383,10 @@ function BlueprintCellDetailPanelBody() {
   const isStoryboardLane = Boolean(
     selectedLane && shouldUseStoryboardContent(selectedLane),
   )
-  // The board comes from the one resolution above — the panel does not look
+  // The board is named by the drawer's own reading — the panel does not look
   // the path up a second time to answer a click on a row of it.
   const handleConnectionSelect = (cellId: string) => {
-    const blueprint = selectedCell.blueprint
+    const blueprint = selectedBlueprint
     if (!blueprint) return
 
     const nextSelection = buildBlueprintCellSelectionForId(
@@ -424,7 +427,7 @@ function BlueprintCellDetailPanelBody() {
       : null
 
   const handleTechSelect = (cellId: string, techItem: string) => {
-    const blueprint = selectedCell.blueprint
+    const blueprint = selectedBlueprint
     if (!blueprint) return
 
     const nextSelection = buildTouchpointSelectionForItem(

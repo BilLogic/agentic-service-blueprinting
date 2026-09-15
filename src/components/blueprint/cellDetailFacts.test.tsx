@@ -9,8 +9,8 @@
  * reach the clicked placement, would be the wide interface growing back.
  *
  * The board here is invented, and small on purpose: two rows, two columns,
- * one placement and two arrows is enough for every question these hooks
- * answer.
+ * one placement and two dependencies — one of each kind — is enough for every
+ * question these hooks answer.
  */
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
@@ -20,6 +20,7 @@ import {
   useCellTabsFacts,
   useSelectedCell,
 } from '@/components/blueprint/cellDetailFacts'
+import type { DraftCellTarget } from '@/components/blueprint/CellPanelEditor'
 import type { BlueprintData } from '@/types/blueprint'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
 
@@ -145,8 +146,6 @@ function selectionFor(
   }
 }
 
-type Draft = Parameters<typeof useSelectedCell>[0]['draft']
-
 /**
  * The resolution and all three readings, from one render.
  *
@@ -154,14 +153,17 @@ type Draft = Parameters<typeof useSelectedCell>[0]['draft']
  * nothing else, so reading them apart would be testing something the panel
  * never does.
  */
-function read(selection: BlueprintCellSelection | null, draft: Draft = null) {
+function read(
+  selection: BlueprintCellSelection | null,
+  draft: DraftCellTarget | null = null,
+) {
   return renderHook(() => {
     const resolved = useSelectedCell({ blueprints: [BOARD], selection, draft })
     return {
       resolved,
-      panel: useCellPanelFacts(resolved, selection),
-      overview: useCellOverviewFacts(resolved, selection),
-      tabs: useCellTabsFacts(resolved, selection),
+      panel: useCellPanelFacts(resolved),
+      overview: useCellOverviewFacts(resolved),
+      tabs: useCellTabsFacts(resolved),
     }
   }).result.current
 }
@@ -205,16 +207,35 @@ describe('the selected cell, resolved once', () => {
   it('reads the draft’s lane when nothing is selected, so the new-cell badge is the saved one', () => {
     const { resolved } = read(null, {
       pathId: BOARD.path.id,
-      laneName: 'Tools',
+      laneId: 'lane-tools',
       stepId: 'step-arrives',
-    } as Draft)
+      laneName: 'Tools',
+      // Never consulted: the role is re-resolved from the board by lane NAME,
+      // so a draft claiming a role the board disagrees with loses.
+      laneRole: 'support_actions',
+      stepName: 'Arrives',
+      stepIndex: 0,
+    })
 
     expect(resolved.cellId).toBeNull()
     expect(resolved.cell).toBeNull()
+    expect(resolved.positionLabel).toBeNull()
     expect(resolved.lane?.lane.role).toBe('frontstage_touchpoints')
   })
 
-  it('walks the arrows once, into the two directions the panel tells apart', () => {
+  it('falls back to the selection’s own copy when the board holds no such cell', () => {
+    const selection = selectionFor('cell-guest-arrives')
+    selection.paths[0]!.cellId = 'cell-nobody-drew'
+    selection.paths[0]!.content = 'What the click carried'
+
+    const { resolved } = read(selection)
+
+    expect(resolved.cellId).toBe('cell-nobody-drew')
+    expect(resolved.cell?.content).toBe('What the click carried')
+    expect(resolved.cell?.touchpoints).toEqual([])
+  })
+
+  it('walks the dependencies once, into the two directions the panel tells apart', () => {
     const { resolved } = read(selectionFor('cell-guest-arrives'))
 
     expect(resolved.connections.outgoing.map((entry) => entry.cellId)).toEqual([
@@ -230,9 +251,10 @@ describe('the drawer’s reading', () => {
   const panelFacts = (selection: BlueprintCellSelection) =>
     read(selection).panel
 
-  it('names the cell’s position and its arrows, and nothing the tabs or the overview read', () => {
+  it('names the cell’s position and its dependencies, and nothing the tabs or the overview read', () => {
     expect(Object.keys(panelFacts(selectionFor('cell-guest-arrives'))).sort())
       .toEqual([
+        'blueprint',
         'cellId',
         'dependencyCandidates',
         'dependencySource',
@@ -257,7 +279,7 @@ describe('the drawer’s reading', () => {
     ).toBe(false)
   })
 
-  it('carries only the arrows this cell is the source of', () => {
+  it('carries only the dependencies this cell is the source of', () => {
     const facts = panelFacts(selectionFor('cell-guest-arrives'))
 
     expect(facts.existingDependencies).toEqual([
@@ -275,13 +297,32 @@ describe('the drawer’s reading', () => {
       label: '1. Arrives · Guest',
     })
   })
+
+  it('carries the column’s strip — every frame drawn in it, whichever row drew it', () => {
+    // The strip is the COLUMN's, not the selected row's: the one cell of this
+    // column that carries a frame contributes it, and the row without one
+    // contributes nothing.
+    expect(
+      panelFacts(selectionFor('cell-guest-arrives')).storyboardStepEntries,
+    ).toEqual([
+      {
+        frame: KIOSK_ICON,
+        label: 'Tools',
+        laneName: 'Tools',
+        summary: 'The screen beside the door.',
+      },
+    ])
+    expect(
+      panelFacts(selectionFor('cell-guest-chooses')).storyboardStepEntries,
+    ).toEqual([])
+  })
 })
 
 describe('the overview’s reading', () => {
   const overviewFacts = (selection: BlueprintCellSelection) =>
     read(selection).overview
 
-  it('names the cell’s own fields and its placement, and no arrow at all', () => {
+  it('names the cell’s own fields and its placement, and no dependency at all', () => {
     expect(
       Object.keys(overviewFacts(selectionFor('cell-tools-arrives'))).sort(),
     ).toEqual([
@@ -333,7 +374,7 @@ describe('the tab row’s reading', () => {
   const tabsFacts = (selection: BlueprintCellSelection) =>
     read(selection).tabs
 
-  it('names the arrows and the two lists its Resources tab renders, and no placement', () => {
+  it('names the dependencies and the two lists its Resources tab renders, and no placement', () => {
     expect(Object.keys(tabsFacts(selectionFor('cell-guest-arrives'))).sort())
       .toEqual([
         'cellId',
@@ -346,7 +387,7 @@ describe('the tab row’s reading', () => {
       ])
   })
 
-  it('reads the tech reached through an arrow, named by the row it sits in', () => {
+  it('reads the tech reached through a dependency, named by the row it sits in', () => {
     const facts = tabsFacts(selectionFor('cell-guest-arrives'))
 
     expect(facts.otherTech).toEqual([
@@ -360,7 +401,7 @@ describe('the tab row’s reading', () => {
     ])
   })
 
-  it('says which row the cell sits in, so a same-column arrow knows up from down', () => {
+  it('says which row the cell sits in, so a same-column dependency knows up from down', () => {
     expect(tabsFacts(selectionFor('cell-guest-arrives')).selectedLaneRowPosition)
       .toBe(0)
     expect(tabsFacts(selectionFor('cell-tools-arrives')).selectedLaneRowPosition)

@@ -6,6 +6,7 @@ import {
   getBlueprintForPath,
   getLinkedTechFromConnections,
   getSelectedCellLaneRowPosition,
+  type BlueprintCellConnection,
   type BlueprintCellConnections,
 } from '@/lib/blueprintCellConnections'
 import { getBlueprintStepTechItems } from '@/lib/blueprintStepTech'
@@ -76,10 +77,10 @@ type PanelCell = Pick<BlueprintCell, 'content' | 'summary' | 'frame'> & {
  * gets the honest answer — none recorded — where an absent key would be a type
  * error at every call site that asks.
  */
-export type SelectedLane = { name: string; role: string | null }
+type SelectedLane = { name: string; role: string | null }
 
 /** The lane, as the panel's badge needs it: the row, its tint and its meaning. */
-export type SelectedLaneResolution = {
+type SelectedLaneResolution = {
   laneName: string
   lane: SelectedLane
   style: ReturnType<typeof getBlueprintLaneStyle>
@@ -97,12 +98,19 @@ export type SelectedLaneResolution = {
  * one origin rather than a quorum.
  *
  * `connections` belongs here for the same reason the board does: the tab row
- * shows them and the panel's editable arrows are cut from the same walk, and
- * walking the dependency list twice is two chances to disagree about it.
+ * shows the dependencies and the panel's editable ones are cut from the same
+ * walk, and walking that list twice is two chances to disagree about it.
+ *
+ * The three fields the readings need from the selection are resolved here too
+ * — the clicked touchpoint, the column, and where the cell sits said the way
+ * the dependency picker says it — so a reading takes this and nothing else.
+ * A reading handed the whole selection could reach the clicked placement
+ * through `paths[0].touchpoints`, which is the interface widening back by a
+ * second door.
  *
  * Nothing here is state, and nothing here writes.
  */
-export type SelectedCell = {
+type SelectedCell = {
   pathEntry: BlueprintCellPathEntry | undefined
   /** The cell's id with any path suffix resolved away, or null for a draft. */
   cellId: string | null
@@ -111,13 +119,33 @@ export type SelectedCell = {
   cell: PanelCell | null
   lane: SelectedLaneResolution | null
   connections: BlueprintCellConnections
+  /** The touchpoint the reader clicked, where one was clicked. */
+  techItem: string | undefined
+  /** The column the cell sits in. */
+  stepId: string | undefined
+  /**
+   * Where this cell sits, said the way the dependency picker says it — and
+   * null for a draft, which sits nowhere until it is saved. Doubles as the
+   * answer to "is something selected?", which is the only thing the readings
+   * asked the selection itself.
+   */
+  positionLabel: string | null
 }
 
-const NO_CONNECTIONS: BlueprintCellConnections = { incoming: [], outgoing: [] }
+/**
+ * Shared, and frozen: an empty walk is read from many places and written by
+ * none. The identity is the point — a fresh `[]` per render is a new prop for
+ * every list that receives it — and freezing is what keeps one shared object
+ * from being one stray `push` away from a cross-panel defect.
+ */
+const NO_CONNECTIONS: BlueprintCellConnections = Object.freeze({
+  incoming: Object.freeze([]) as unknown as BlueprintCellConnection[],
+  outgoing: Object.freeze([]) as unknown as BlueprintCellConnection[],
+})
 
 /**
  * Resolve the selected cell — the path's board, the cell, the lane, the
- * arrows — once per selection.
+ * dependencies that reach it — once per selection.
  *
  * Reads the DRAFT's lane when there is no selection: a cell being created sits
  * in a real row, and the badge above the new-cell form is the same badge the
@@ -217,33 +245,59 @@ export function useSelectedCell({
     }
   }, [blueprint, draft?.laneName, selection?.laneName])
 
-  return { pathEntry, cellId, blueprint, cell, lane, connections }
+  const positionLabel = selection
+    ? cellPositionLabel(
+        selection.stepIndex,
+        selection.stepName,
+        selection.laneName,
+      )
+    : null
+
+  return {
+    pathEntry,
+    cellId,
+    blueprint,
+    cell,
+    lane,
+    connections,
+    techItem: selection?.techItem,
+    stepId: selection?.stepId,
+    positionLabel,
+  }
 }
 
 /**
- * What the DRAWER reads: where the cell sits, which row it is in, and the
- * arrows and storyboard frames only the panel itself hands on.
+ * What the DRAWER reads: where the cell sits, which row it is in, the board it
+ * routes a click through, and the dependency endpoints and storyboard frames
+ * only the panel itself hands on.
  *
  * The drawer is the one reader that composes — it mints the lane badge, routes
- * a clicked arrow and decides whether this is a storyboard row — so its
- * reading is the cell's position plus the dependency endpoints the editor
- * needs. It carries no placement, no featured link and no tab content.
+ * a clicked dependency row to the cell at the other end and decides whether
+ * this is a storyboard row — which is why the board is named here rather than
+ * read off the resolution behind this interface's back. It carries no
+ * placement, no featured link and no tab content.
  */
-export type CellPanelFacts = {
+type CellPanelFacts = {
   pathEntry: BlueprintCellPathEntry | undefined
   cellId: string | null
+  blueprint: BlueprintData | null
   lane: SelectedLaneResolution | null
-  /** Every other cell in this version, as somewhere an arrow could point. */
+  /** Every other cell in this version, as somewhere a dependency could point. */
   dependencyCandidates: DependencyEndpoint[]
   existingDependencies: ExistingDependency[]
   dependencySource: DependencyEndpoint | null
   storyboardStepEntries: StoryboardFrameEntry[]
 }
 
-export function useCellPanelFacts(
-  { pathEntry, cellId, blueprint, lane, connections }: SelectedCell,
-  selection: BlueprintCellSelection | null,
-): CellPanelFacts {
+export function useCellPanelFacts({
+  pathEntry,
+  cellId,
+  blueprint,
+  lane,
+  connections,
+  stepId,
+  positionLabel,
+}: SelectedCell): CellPanelFacts {
   /**
    * Scoped to the version on purpose — the RPC refuses a cross-version
    * dependency, and offering one here would only be a way to reach that
@@ -292,8 +346,8 @@ export function useCellPanelFacts(
       }))
   }, [blueprint, cellId, pathEntry?.pathId])
 
-  // Only outgoing arrows: this cell owns the ones it is the source of, and
-  // those are the ones it may change or remove. An incoming arrow belongs to
+  // Only outgoing dependencies: this cell owns the ones it is the source of,
+  // and those are the ones it may change or remove. An incoming one belongs to
   // the cell at the other end, and is edited from there.
   const existingDependencies = useMemo<ExistingDependency[]>(
     () =>
@@ -313,27 +367,19 @@ export function useCellPanelFacts(
 
   const dependencySource = useMemo<DependencyEndpoint | null>(() => {
     const pathId = pathEntry?.pathId
-    if (!cellId || !pathId || !selection) return null
-    return {
-      cellId,
-      pathId,
-      label: cellPositionLabel(
-        selection.stepIndex,
-        selection.stepName,
-        selection.laneName,
-      ),
-    }
-  }, [cellId, pathEntry?.pathId, selection])
+    if (!cellId || !pathId || !positionLabel) return null
+    return { cellId, pathId, label: positionLabel }
+  }, [cellId, pathEntry?.pathId, positionLabel])
 
   const storyboardStepEntries = useMemo(() => {
-    const stepId = selection?.stepId
     if (!stepId || !pathEntry?.pathId || !blueprint) return []
     return resolveStoryboardStripEntries(blueprint, stepId)
-  }, [blueprint, pathEntry?.pathId, selection?.stepId])
+  }, [blueprint, pathEntry?.pathId, stepId])
 
   return {
     pathEntry,
     cellId,
+    blueprint,
     lane,
     dependencyCandidates,
     existingDependencies,
@@ -363,10 +409,12 @@ export type CellOverviewFacts = {
   featured: FeaturedPresentation
 }
 
-export function useCellOverviewFacts(
-  { cellId, cell, lane }: SelectedCell,
-  selection: BlueprintCellSelection | null,
-): CellOverviewFacts {
+export function useCellOverviewFacts({
+  cellId,
+  cell,
+  lane,
+  techItem,
+}: SelectedCell): CellOverviewFacts {
   const touchpoints = useMemo(
     (): CellTouchpoint[] => cell?.touchpoints ?? [],
     [cell?.touchpoints],
@@ -388,8 +436,8 @@ export function useCellOverviewFacts(
   */
   const placement = useMemo(
     () =>
-      cell ? findCellPlacement({ touchpoints: cell.touchpoints }, selection?.techItem) : null,
-    [cell, selection?.techItem],
+      cell ? findCellPlacement({ touchpoints: cell.touchpoints }, techItem) : null,
+    [cell, techItem],
   )
 
   /*
@@ -405,10 +453,10 @@ export function useCellOverviewFacts(
       cell
         ? resolveTouchpointDetail(
             { summary: cell.summary, touchpoints: cell.touchpoints },
-            selection?.techItem,
+            techItem,
           )
         : null,
-    [cell, selection?.techItem],
+    [cell, techItem],
   )
 
   /*
@@ -417,13 +465,13 @@ export function useCellOverviewFacts(
   */
   const featured = useMemo(
     () =>
-      selection
+      cell
         ? featuredPresentation({
             placementId: placement?.id ?? null,
             resources,
           })
         : { buttons: [] },
-    [placement, resources, selection],
+    [cell, placement, resources],
   )
 
   return {
@@ -439,7 +487,7 @@ export function useCellOverviewFacts(
 }
 
 /** One tech item shown on a dependency row, wherever it was reached from. */
-export type OtherTechEntry = {
+type OtherTechEntry = {
   id: string
   cellId: string
   item: string
@@ -448,7 +496,7 @@ export type OtherTechEntry = {
 }
 
 /**
- * What the TAB ROW reads: the arrows, the tech reached through them, where
+ * What the TAB ROW reads: the dependencies, the tech reached through them, where
  * this cell sits among its lane's rows, and the two lists the Resources tab
  * renders.
  *
@@ -466,20 +514,22 @@ export type CellTabsFacts = {
   resources: CellResource[]
 }
 
-export function useCellTabsFacts(
-  { cellId, blueprint, cell, connections }: SelectedCell,
-  selection: BlueprintCellSelection | null,
-): CellTabsFacts {
+export function useCellTabsFacts({
+  cellId,
+  blueprint,
+  cell,
+  connections,
+  techItem,
+  stepId,
+}: SelectedCell): CellTabsFacts {
   const stepTechItems = useMemo(() => {
-    const techItem = selection?.techItem
-    const stepId = selection?.stepId
     if (!cellId || !techItem || !stepId || !blueprint) return []
 
     return getBlueprintStepTechItems(blueprint, stepId, {
       cellId,
       item: techItem,
     })
-  }, [blueprint, cellId, selection?.stepId, selection?.techItem])
+  }, [blueprint, cellId, stepId, techItem])
 
   const linkedTechItems = useMemo(
     () => getLinkedTechFromConnections(connections),
@@ -530,13 +580,24 @@ export function useCellTabsFacts(
     return getSelectedCellLaneRowPosition(blueprint, cellId)
   }, [blueprint, cellId])
 
+  // Memoized for the same reason the overview's are: an empty list minted
+  // afresh each render is a new prop identity for the tab that renders it.
+  const touchpoints = useMemo(
+    (): CellTouchpoint[] => cell?.touchpoints ?? [],
+    [cell?.touchpoints],
+  )
+  const resources = useMemo(
+    (): CellResource[] => cell?.resources ?? [],
+    [cell?.resources],
+  )
+
   return {
     cellId,
     connections,
     otherTech,
     selectedLaneRowPosition,
     frame: cell?.frame ?? null,
-    touchpoints: cell?.touchpoints ?? [],
-    resources: cell?.resources ?? [],
+    touchpoints,
+    resources,
   }
 }
