@@ -664,8 +664,11 @@ test('the source tree stays on the 4px spacing grid', () => {
 
 /**
  * Radius by kind. Controls sit on md; containment (cells, cards, popovers)
- * on lg; dialogs and plates on xl; the floating toolbar capsule on 2xl;
- * rounded-full stays. A file listed here may not pick up another rung.
+ * on lg; dialogs, drawers and plates on xl; the floating toolbar capsule on
+ * 2xl; rounded-full stays; sm is for kbd, inline code and marks under 12px.
+ * A file listed here may not pick up another rung. The list covers every
+ * primitive, editor and blueprint file that carries more than one rung or
+ * sits on a rung the kind table reserves.
  */
 const RADIUS_KIND_ALLOWLIST: Record<string, readonly string[]> = {
   'components/ui/button.tsx': ['md', 'none', 'full'],
@@ -679,12 +682,41 @@ const RADIUS_KIND_ALLOWLIST: Record<string, readonly string[]> = {
   'components/ui/popover.tsx': ['lg'],
   'components/ui/dropdown-menu.tsx': ['lg', 'md'],
   'components/ui/tabs.tsx': ['lg', 'md', 'none'],
-  'components/ui/sidebar.tsx': ['md', 'lg', 'xl', 'none', 'full'],
+  'components/ui/sidebar.tsx': ['md', 'lg', 'xl', 'full'],
   'components/ui/switch.tsx': ['full'],
+  // The menu arrow is an 8px rotated square, the kind of mark sm is for.
+  'components/ui/navigation-menu.tsx': ['lg', 'md', 'sm'],
   'components/editor/CanvasAnnotationToolbar.tsx': ['2xl', 'md', 'full'],
   'components/editor/CanvasAnnotationBarChrome.tsx': ['2xl', 'md'],
   'components/editor/EditorZoomIndicator.tsx': ['lg', 'md'],
   'components/editor/JumpToSearch.tsx': ['md'],
+  'components/editor/CanvasEmptyState.tsx': ['xl'],
+  'components/editor/SlideStickyHeader.tsx': ['xl', 'md'],
+  'components/editor/EditorLoadingSkeletons.tsx': ['xl', 'lg', 'md', 'full'],
+  // Blueprint surfaces. Drawer, modal, plates on xl; cells, cards, storyboard
+  // frames on lg; controls and badges on md; rounded-full stays.
+  'components/blueprint/panelShell.tsx': ['xl', 'lg', 'md'],
+  'components/blueprint/ResizableComparePanel.tsx': ['xl', 'md'],
+  'components/blueprint/StoryboardWalkthroughModal.tsx': ['xl', 'full'],
+  'components/blueprint/ZoomableImage.tsx': ['xl', 'full'],
+  'components/blueprint/ComparePathSectionFrame.tsx': ['xl'],
+  'components/blueprint/MergedCompareGrid.tsx': ['xl', 'md'],
+  'components/blueprint/BlueprintStepStoryboard.tsx': ['lg', 'md'],
+  'components/blueprint/StoryboardStepDetailStack.tsx': ['lg'],
+  'components/blueprint/CellDetailOverview.tsx': ['lg'],
+  'components/blueprint/ScenarioBlueprintPanel.tsx': ['lg'],
+  'components/blueprint/CellEvidenceTab.tsx': ['lg', 'md', 'full'],
+  'components/blueprint/PathMultiSelect.tsx': ['lg', 'md', 'full'],
+  'components/blueprint/BlueprintDividerBadge.tsx': ['md', 'none'],
+  'components/blueprint/BlueprintCellButton.tsx': ['full'],
+  'components/blueprint/StatusBadge.tsx': ['full'],
+  'components/blueprint/CellDetailTabs.tsx': ['none'],
+  'components/blueprint/panelLoading.tsx': ['md', 'full'],
+  'components/blueprint/EntityHeader.tsx': ['md'],
+  'components/blueprint/BlueprintLabelRail.tsx': ['md'],
+  'components/blueprint/OwnerTagSelect.tsx': ['md'],
+  'components/blueprint/ResourcesList.tsx': ['md', 'full'],
+  'components/blueprint/CompareDifferencesSurface.tsx': ['md', 'full'],
 }
 
 test('a component kind stays on its assigned radius rung', () => {

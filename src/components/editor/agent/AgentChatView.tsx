@@ -303,9 +303,9 @@ export function AgentChatView({
                   // skeleton bubbles, not the "Ready" copy, which read as
                   // the agent having no loading state at all.
                   <div className="flex flex-col gap-3" aria-hidden>
-                    <Skeleton className="ml-auto h-8 w-3/5 rounded-2xl" />
-                    <Skeleton className="h-8 w-4/5 rounded-2xl" />
-                    <Skeleton className="h-8 w-2/5 rounded-2xl" />
+                    <Skeleton className="ml-auto h-8 w-3/5 rounded-full" />
+                    <Skeleton className="h-8 w-4/5 rounded-full" />
+                    <Skeleton className="h-8 w-2/5 rounded-full" />
                   </div>
                 ) : keyed ? (
                   isSampleTrial ? (

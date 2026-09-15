@@ -72,7 +72,7 @@ function SlideHeaderContent({
   return (
     <div
       className={cn(
-        'rounded-2xl border border-muted bg-card shadow-sm',
+        'rounded-xl border border-muted bg-card shadow-sm',
         'px-4 py-3',
       )}
     >

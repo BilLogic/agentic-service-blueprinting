@@ -383,7 +383,7 @@ export function ResizableComparePanel({
       <div
         ref={panelRef}
         className={cn(
-          'relative flex shrink-0 flex-col overflow-hidden rounded-2xl border shadow-sm',
+          'relative flex shrink-0 flex-col overflow-hidden rounded-xl border shadow-sm',
           navigable &&
             'cursor-pointer transition-[box-shadow,border-color] duration-(--motion-micro) ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0',
         )}

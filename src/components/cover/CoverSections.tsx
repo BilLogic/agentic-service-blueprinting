@@ -83,7 +83,7 @@ function Portrait({
       className={cn(
         'size-20 shrink-0 object-cover sm:size-24',
         image.size === 'badge'
-          ? 'rounded-2xl'
+          ? 'rounded-xl'
           : 'rounded-xl border border-border bg-white object-contain p-1',
       )}
     />

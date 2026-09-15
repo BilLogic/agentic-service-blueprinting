@@ -39,7 +39,7 @@ export function BlueprintPanelLoadingSkeleton({
     >
       {showTitle ? <Skeleton className="h-5 w-40 rounded-full" /> : null}
       <Skeleton
-        className={cn('rounded-2xl', isFluid && 'w-full min-h-[320px]')}
+        className={cn('rounded-xl', isFluid && 'w-full min-h-[320px]')}
         style={{
           height,
           ...(isFluid ? {} : { width }),
