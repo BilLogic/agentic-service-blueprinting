@@ -1,5 +1,8 @@
 import type { CSSProperties } from 'react'
-import type { CanvasPoint } from '@/lib/canvasAnnotations'
+import type {
+  CanvasPoint,
+  PlacedAnnotation,
+} from '@/lib/canvasAnnotations'
 
 /**
  * The annotation layer's board-space arithmetic, held apart from the machine
@@ -58,4 +61,56 @@ export function pointsToPath(points: CanvasPoint[]): string {
       index === 0 ? `M ${point.x} ${point.y}` : `L ${point.x} ${point.y}`,
     )
     .join(' ')
+}
+
+/**
+ * The box a text mark occupies, from its font size alone.
+ *
+ * A text mark carries no width or height of its own — it is a font size and a
+ * string — so the box has to be derived, and it was derived twice: the mark
+ * drew itself at a floor of 120 while the layer handed the drag and resize
+ * machine a floor of 80. Both stand for the same box, so the two floors were a
+ * disagreement rather than two rules.
+ *
+ * Nobody ever saw it, and that is worth saying rather than dressing up: a drag
+ * takes only the mark's `x` and `y`, and a text resize scales the font off the
+ * box's HEIGHT alone (`CanvasAnnotationLayer.tsx`, where `originFontSize` is
+ * set) and discards the width it was handed. So the 80 was a number nothing
+ * read. It is gone because a second floor for one box is a bug waiting for its
+ * first reader, not because it was already biting.
+ */
+const ANNOTATION_TEXT_MIN_WIDTH = 120
+const ANNOTATION_TEXT_MIN_HEIGHT = 32
+
+export function annotationTextBox(fontSize: number): {
+  width: number
+  height: number
+} {
+  return {
+    width: Math.max(ANNOTATION_TEXT_MIN_WIDTH, fontSize * 8),
+    height: Math.max(ANNOTATION_TEXT_MIN_HEIGHT, fontSize * 2.2),
+  }
+}
+
+/**
+ * Where a mark sits and how big it is, in board units — what the drag and
+ * resize machine is handed, and what a floating style bar anchors over. Every
+ * kind but text carries its own box; text's is a reading of its font size.
+ */
+export function annotationMarkBox(mark: PlacedAnnotation): {
+  x: number
+  y: number
+  width: number
+  height: number
+  fontSize?: number
+} {
+  if (mark.type === 'text') {
+    return {
+      x: mark.x,
+      y: mark.y,
+      ...annotationTextBox(mark.fontSize),
+      fontSize: mark.fontSize,
+    }
+  }
+  return { x: mark.x, y: mark.y, width: mark.width, height: mark.height }
 }
