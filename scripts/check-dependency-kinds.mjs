@@ -45,10 +45,9 @@
  *
  *   node scripts/check-dependency-kinds.mjs
  */
-import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { sweep } from './sweep.mjs'
+import { whenRun } from './verdict.mjs'
 
 
 const SCHEMA = 'supabase/generated/portable-core.generated.sql'
@@ -326,34 +325,42 @@ export function compare(root = process.cwd()) {
   }
 }
 
-function main() {
-  const { undocumented, unknown, retired, bare } = compare()
-  if (undocumented.length + unknown.length + retired.length + bare.length === 0) {
-    console.log(
-      `${DATA_MODEL} states the kind vocabulary the constraint enforces, and no` +
-        ` rulebook document contradicts it`,
-    )
-    return
-  }
-  for (const value of undocumented) {
-    console.error(`the constraint accepts kind '${value}', which ${DATA_MODEL} does not state`)
-  }
-  for (const value of unknown) {
-    console.error(`${DATA_MODEL} states kind '${value}', which the constraint refuses`)
-  }
-  for (const { file, line, found, instead } of [...retired, ...bare]) {
-    console.error(`${file}:${line} says ${found}; the database calls it ${instead}`)
-  }
-  console.error(
-    `\nThe enforced vocabulary wins — a documented value the CHECK constraint` +
+/**
+ * The verdict: the documented vocabulary against the enforced one, and the
+ * rulebook against both.
+ *
+ * Pure — it reads the tree, decides, and hands back what it found. Nothing
+ * here prints or exits.
+ */
+function judge(root = process.cwd()) {
+  const { undocumented, unknown, retired, bare: bareWords } = compare(root)
+  const findings = [
+    ...undocumented.map(
+      (value) => `the constraint accepts kind '${value}', which ${DATA_MODEL} does not state`,
+    ),
+    ...unknown.map(
+      (value) => `${DATA_MODEL} states kind '${value}', which the constraint refuses`,
+    ),
+    ...[...retired, ...bareWords].map(
+      ({ file, line, found, instead }) =>
+        `${file}:${line} says ${found}; the database calls it ${instead}`,
+    ),
+  ]
+  return {
+    // The subject is the files a kind could be named in — the rulebook markdown
+    // and the committed files the bare-word sweep reads — because that is what
+    // this check actually opened, and a run that opened none of them has
+    // compared the vocabulary against nothing.
+    what: 'a rulebook document and a committed file that could name a dependency kind',
+    count: rulebook(root).files.length + bare(root).files.length,
+    findings,
+    closing:
+      `\nThe enforced vocabulary wins — a documented value the CHECK constraint` +
       ` refuses is an agent writing a call that cannot land. Fix the documents.`,
-  )
-  process.exit(1)
+    line:
+      `${DATA_MODEL} states the kind vocabulary the constraint enforces, and no` +
+      ` rulebook document contradicts it`,
+  }
 }
 
-// Same shape as scripts/check-version-agreement.mjs: comparing against a
-// hand-built `file://` URL silently no-ops whenever the path needs escaping.
-const isMain =
-  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-
-if (isMain) main()
+whenRun(import.meta.url, () => judge())

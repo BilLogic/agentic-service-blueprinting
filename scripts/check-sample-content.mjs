@@ -114,11 +114,11 @@
  * from the other end.
  */
 import { join, relative, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { SAMPLE_ID_PREFIX } from './check-content-coupling.mjs'
 import { resolveSeedFiles } from './check-deployment-seed-loads.mjs'
 import { readFileSync } from 'node:fs'
 import { sweep } from './sweep.mjs'
+import { whenRun } from './verdict.mjs'
 
 /** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
 const REPO_ROOT = process.cwd()
@@ -359,22 +359,39 @@ export function groupSites(sites, files = []) {
 /** Named sites printed per group before the count takes over. */
 export const EXAMPLES = 3
 
+/**
+ * One group's lines of the report, in the order they are printed.
+ *
+ * Strings rather than writes: the report is one stdout block, and the verdict
+ * prints it. A blank string is the blank line that separated the groups.
+ */
 function report(groups, { all }) {
+  const lines = []
   for (const { label, path, why, sites } of groups) {
-    console.log(`  ${path} — ${sites.length} × ${label}`)
-    console.log(`    ${why}`)
+    lines.push(`  ${path} — ${sites.length} × ${label}`)
+    lines.push(`    ${why}`)
     const shown = all ? sites : sites.slice(0, EXAMPLES)
     for (const site of shown) {
-      console.log(`      ${path}:${site.line} — ${site.match}`)
-      console.log(`        ${site.text.slice(0, 120)}`)
+      lines.push(`      ${path}:${site.line} — ${site.match}`)
+      lines.push(`        ${site.text.slice(0, 120)}`)
     }
     const rest = sites.length - shown.length
-    if (rest > 0) console.log(`      … and ${rest} more — run with --all to list them`)
-    console.log('')
+    if (rest > 0) lines.push(`      … and ${rest} more — run with --all to list them`)
+    lines.push('')
   }
+  return lines
 }
 
-function main(argv = process.argv.slice(2)) {
+/**
+ * The verdict: what the sample still holds, as a report rather than a failure.
+ *
+ * THIS CHECK IS ADVISORY AND STAYS GREEN. A fresh clone ships the sample
+ * deliberately, so its sites are not findings — they are the answer, and they
+ * go out on stdout as the summary line however many of them there are. The
+ * only red left to it is the one every check has: a run that examined no
+ * content file at all.
+ */
+function judge(argv = process.argv.slice(2)) {
   const all = argv.includes('--all')
   // One sweep of the application for both halves of the answer: the files the
   // report counts and the files it reads are the same files.
@@ -382,42 +399,37 @@ function main(argv = process.argv.slice(2)) {
   const files = contentFiles(REPO_ROOT, board.files)
   const sites = findings(contentFromTree(REPO_ROOT, board))
 
+  const judgement = { what: 'a content file this deployment serves its blueprint from', count: files.length }
+
   if (sites.length === 0) {
-    console.log(
-      `no sample content in the ${files.length} file${files.length === 1 ? '' : 's'} ` +
+    return {
+      ...judgement,
+      line:
+        `no sample content in the ${files.length} file${files.length === 1 ? '' : 's'} ` +
         'this deployment serves its blueprint from — ' +
         `${MARKERS.length} markers, ${files.join(', ')}`,
-    )
-    return 0
+    }
   }
 
-  const groups = groupSites(sites, files)
-  console.log(
-    'The template’s own sample content — the meta-blueprint, this template mapped as ' +
-      'its own service — is still what this deployment serves.\n',
-  )
-  report(groups, { all })
-  console.log(
-    `${sites.length} site${sites.length === 1 ? '' : 's'} across ` +
-      `${new Set(sites.map((site) => site.path)).size} of ${files.length} content ` +
-      `file${files.length === 1 ? '' : 's'}.\n` +
-      '\nThis is a report, and the check exits 0 on purpose. A fresh clone ' +
-      'ships the sample deliberately — SETUP.md § 2 asks you to run the app ' +
-      'against it before configuring anything — and a half-migrated ' +
-      'deployment, seed replaced and fallbacks not yet re-registered, is a ' +
-      'legitimate place to be for a while. Nothing here is failing.\n' +
-      '\nWhen you do want it gone: SETUP.md § 5 replaces the seed, and ' +
-      '`python3 scripts/generate_fallbacks.py --register` rewrites the ' +
-      'offline board under src/data/ to match it.',
-  )
-  return 0
+  return {
+    ...judgement,
+    line: [
+      'The template’s own sample content — the meta-blueprint, this template mapped as ' +
+        'its own service — is still what this deployment serves.\n',
+      ...report(groupSites(sites, files), { all }),
+      `${sites.length} site${sites.length === 1 ? '' : 's'} across ` +
+        `${new Set(sites.map((site) => site.path)).size} of ${files.length} content ` +
+        `file${files.length === 1 ? '' : 's'}.\n` +
+        '\nThis is a report, and the check exits 0 on purpose. A fresh clone ' +
+        'ships the sample deliberately — SETUP.md § 2 asks you to run the app ' +
+        'against it before configuring anything — and a half-migrated ' +
+        'deployment, seed replaced and fallbacks not yet re-registered, is a ' +
+        'legitimate place to be for a while. Nothing here is failing.\n' +
+        '\nWhen you do want it gone: SETUP.md § 5 replaces the seed, and ' +
+        '`python3 scripts/generate_fallbacks.py --register` rewrites the ' +
+        'offline board under src/data/ to match it.',
+    ].join('\n'),
+  }
 }
 
-// Same shape as scripts/check-content-coupling.mjs: comparing against a
-// hand-built `file://` URL silently no-ops whenever the path needs escaping,
-// so a checkout under a directory with a space in its name would run this
-// script and have it do nothing, successfully.
-const isMain =
-  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-
-if (isMain) process.exit(main())
+whenRun(import.meta.url, () => judge())

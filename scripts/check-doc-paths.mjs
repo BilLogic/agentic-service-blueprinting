@@ -93,10 +93,10 @@
  */
 import { existsSync } from 'node:fs'
 import { dirname, join, normalize } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { repoConfig } from './repo-config.mjs'
 import { sweep } from './sweep.mjs'
+import { whenRun } from './verdict.mjs'
 
 
 /**
@@ -363,7 +363,13 @@ export function resolves(token, docDir, tracked) {
   return false
 }
 
-function main() {
+/**
+ * The verdict: every path this package's own documents name, resolved.
+ *
+ * Pure — it reads the tree, decides, and hands back what it found and how many
+ * documents it looked at. Nothing here prints or exits.
+ */
+function judge() {
   const tracked = trackedPaths()
   const unresolved = []
 
@@ -381,51 +387,47 @@ function main() {
   const failures = unresolved.filter(({ doc, token }) => !isAbsentByDesign(doc, token))
   const stale = staleAbsences(unresolved)
 
-  // The breadth assertion the sweep's `read` asks each of its callers for: the
-  // skip above is right for a file that went away mid-run and wrong as an
-  // account of the whole subject, so a sweep where every read skipped is a
-  // sweep that measured nothing.
-  if (read === 0) {
-    throw new Error(
-      `${docs.length} plugin-surface document(s) were listed and none could be read: this ` +
-        `check has no subject, which is a failure and not a pass`,
-    )
+  // `read` is the count the verdict is handed, and it is the breadth assertion
+  // the sweep's `read` asks each of its callers for: the skip above is right
+  // for a file that went away mid-run and wrong as an account of the whole
+  // subject, so a sweep where every read skipped is a sweep that measured
+  // nothing — which is the empty-subject rule, decided one place for every
+  // check rather than restated here.
+  const judgement = {
+    what: 'packaged document',
+    count: read,
+    line:
+      `check-doc-paths: every path named by ${read} packaged documents resolves` +
+      ` — ${ABSENT_BY_DESIGN.length} absent by design.`,
   }
 
   if (failures.length > 0) {
-    console.error(
-      `${failures.length} path${failures.length === 1 ? '' : 's'} named by this package's own documents that nothing in the tree matches:\n`,
-    )
-    for (const { doc, line, token } of failures) {
-      console.error(`  ${doc}:${line}  ${token}`)
-    }
-    console.error(
-      '\nFix the document to name the file that exists, or — if the path is an' +
+    return {
+      ...judgement,
+      opening: `${failures.length} path${failures.length === 1 ? '' : 's'} named by this package's own documents that nothing in the tree matches:\n`,
+      findings: failures.map(({ doc, line, token }) => `  ${doc}:${line}  ${token}`),
+      closing:
+        '\nFix the document to name the file that exists, or — if the path is an' +
         '\nartifact of an adopter workspace rather than of this repository — add it' +
         '\nto WORKSPACE_ARTIFACTS in scripts/check-doc-paths.mjs with its reason.' +
         '\nIf the sentence is right and the absence is correct only THERE, the list' +
         '\nis ABSENT_BY_DESIGN, which takes the document and the token together.' +
         '\n\n  npm run check:doc-paths\n',
-    )
-    process.exitCode = 1
-    return
+    }
   }
 
   if (stale.length > 0) {
-    console.error(
-      `\n${stale.length} entr${stale.length === 1 ? 'y' : 'ies'} in ABSENT_BY_DESIGN match ` +
+    return {
+      ...judgement,
+      opening:
+        `\n${stale.length} entr${stale.length === 1 ? 'y' : 'ies'} in ABSENT_BY_DESIGN match ` +
         'nothing any more. An exemption nobody can reach is a hole nobody is ' +
         'watching — delete each one:\n',
-    )
-    for (const entry of stale) console.error(`  ${entry.doc} — ${entry.token}`)
-    process.exitCode = 1
-    return
+      findings: stale.map((entry) => `  ${entry.doc} — ${entry.token}`),
+    }
   }
 
-  console.log(
-    `check-doc-paths: every path named by ${read} packaged documents resolves` +
-      ` — ${ABSENT_BY_DESIGN.length} absent by design.`,
-  )
+  return judgement
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) main()
+whenRun(import.meta.url, judge)
