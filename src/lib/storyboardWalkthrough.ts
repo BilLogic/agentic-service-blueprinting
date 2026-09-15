@@ -123,7 +123,7 @@ type StoryboardBlueprint = Pick<BlueprintData, 'lanes' | 'cells'>
  * of the touchpoint rows either, because a touchpoint cell's frame is its
  * logo, not a moment. Placing a touchpoint fills the cell's empty frame with
  * the touchpoint's icon, so every placed touchpoint carries one; a walkthrough
- * that took them would step a reader through a LinkedIn mark as though a
+ * that took them would step a reader through a product's mark as though a
  * person had drawn it. Nothing is written or cleared to arrange that: the
  * cell panel still shows the touchpoint's frame at logo size.
  *

@@ -9,9 +9,9 @@ for that step; the canvas draws the same frames as the step's strip. The roster
 was every lane that is not a storyboard row, and it takes any cell in the step
 carrying a non-empty frame. Since a cell's featured image became its frame, and
 placing a touchpoint fills an empty frame with that touchpoint's icon, every
-placed touchpoint cell carries its logo as a frame — so a LinkedIn or a Figma
-mark appeared in the stack and in the strip as though somebody had drawn it for
-that moment. The slice slide never did this: it collects frames from the
+placed touchpoint cell carries its logo as a frame — so a product's own mark
+appeared in the stack and in the strip as though somebody had drawn it for that
+moment. The slice slide never did this: it collects frames from the
 slice's own cells and the storyboard cell, and nothing else.
 
 What a person sees change: the logos leave the storyboard stack and the canvas

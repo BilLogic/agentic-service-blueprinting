@@ -64,7 +64,7 @@ describe('the walkthrough roster leaves out the touchpoint lanes', () => {
       cells: [
         cell('lane-storyboard', '', 'storyboard/step-1.png'),
         cell('lane-front', 'Checks the papers', 'frames/front-desk.png'),
-        cell('lane-front-tp', 'LinkedIn', 'logos/linkedin.svg'),
+        cell('lane-front-tp', 'Booking app', 'logos/booking-app.svg'),
         cell('lane-back-tp', 'Case system', 'logos/case-system.svg'),
       ],
     }
@@ -81,7 +81,7 @@ describe('the walkthrough roster leaves out the touchpoint lanes', () => {
     const blueprint = {
       lanes: LANES,
       cells: [
-        cell('lane-front-tp', 'LinkedIn', 'logos/linkedin.svg'),
+        cell('lane-front-tp', 'Booking app', 'logos/booking-app.svg'),
         cell('lane-back-tp', 'Case system', 'logos/case-system.svg'),
       ],
     }
@@ -96,7 +96,7 @@ describe('the walkthrough roster leaves out the touchpoint lanes', () => {
       lanes: LANES,
       cells: [
         cell('lane-customer', 'Arrives', null),
-        cell('lane-front-tp', 'LinkedIn', 'logos/linkedin.svg'),
+        cell('lane-front-tp', 'Booking app', 'logos/booking-app.svg'),
       ],
     }
 
