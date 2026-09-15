@@ -103,7 +103,11 @@ reader, and not a new regex over a hand-picked subset.
 **The sample is widened here, once.** `sourceFiles()` reads every non-test
 `.ts`/`.tsx` under `src`, deliberately rather than a tidier list of roots: the
 rule this model absorbed already read the whole tree, and a model sampling less
-while claiming to generalise would have narrowed a live guard.
+while claiming to generalise would have narrowed a live guard. Where the files
+come from is no longer this model's own walk: `src/lib/sourceTree.ts` reads the
+application once, addressed by surface, and the model and `classList` both take
+their files from it — one seam for what the style vocabulary MEANS, one for
+where the application IS.
 
 ## Consequences
 

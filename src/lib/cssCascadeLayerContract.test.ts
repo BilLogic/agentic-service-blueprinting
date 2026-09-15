@@ -1,7 +1,5 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { pathsOn, sourceOf } from '@/lib/sourceTree'
 
 /*
  * Every at-rule in the stylesheets has to be one a browser knows.
@@ -21,8 +19,6 @@ import { describe, expect, it } from 'vitest'
  * So the file-reading contracts get a floor underneath them: whatever else
  * they assert, the rules they assert about must at least be parsed.
  */
-
-const STYLES = fileURLToPath(new URL('../styles', import.meta.url))
 
 /** Tailwind v4's own at-rules, plus the standard ones we use. */
 const ALLOWED = new Set([
@@ -46,25 +42,17 @@ const ALLOWED = new Set([
   'variant',
 ])
 
-function cssFiles(dir: string): string[] {
-  return readdirSync(dir).flatMap((entry) => {
-    const path = join(dir, entry)
-    if (statSync(path).isDirectory()) return cssFiles(path)
-    return path.endsWith('.css') ? [path] : []
-  })
-}
-
 describe('stylesheet at-rules', () => {
-  const files = cssFiles(STYLES)
+  const files = pathsOn('styles', (path) => path.endsWith('.css'))
 
   it('finds stylesheets to check', () => {
     expect(files.length).toBeGreaterThan(0)
   })
 
-  it.each(files.map((path) => [path.slice(STYLES.length + 1), path]))(
+  it.each(files.map((path) => [path.slice('styles/'.length), path]))(
     '%s uses only at-rules a browser parses',
     (_name, path) => {
-      const source = readFileSync(path, 'utf8')
+      const source = sourceOf(path)
       // Line-initial only: an at-rule inside a comment or a string is prose.
       const used = [...source.matchAll(/^@([a-z-]+)/gm)].map(
         (match) => match[1],

@@ -1,19 +1,14 @@
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-
-function read(path: string): string {
-  return readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8')
-}
+import { sourceOf as read } from '@/lib/sourceTree'
 
 /** Whitespace collapsed, so a selector reads the same however it is wrapped. */
 function flat(source: string): string {
   return source.replace(/\s+/g, ' ').replace(/\( /g, '(').replace(/ \)/g, ')')
 }
 
-const phaseSectionSource = read('../components/editor/CanvasPhaseSection.tsx')
-const zoomPanSource = read('../hooks/useZoomPanViewport.ts')
-const blueprintCss = flat(read('../styles/blueprint.css'))
+const phaseSectionSource = read('components/editor/CanvasPhaseSection.tsx')
+const zoomPanSource = read('hooks/useZoomPanViewport.ts')
+const blueprintCss = flat(read('styles/blueprint.css'))
 
 const DIMMED_PHASE = '[data-canvas-phase-section][data-canvas-focus-dimmed]'
 

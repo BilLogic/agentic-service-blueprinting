@@ -1,7 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { sourceOf } from '@/lib/sourceTree'
 import {
   classListHas,
   classListOf,
@@ -23,19 +21,12 @@ import {
  * the tree rather than invented ones. It asserts no rule of its own.
  */
 
-const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-
 const CELL_BADGE_FILE = 'components/editor/SlicePresentation.tsx'
 const SEQUENCE_BADGE_FILE = 'components/blueprint/BlueprintCellButton.tsx'
 const EYEBROW_FILE = 'components/blueprint/ScenarioTitleBadge.tsx'
 const HEADER_TEXT_FILE = 'lib/canvasHeaderStyle.ts'
 const HEADER_CN_FILE = 'components/blueprint/StepHeaderAffordance.tsx'
 const NAMED_CN_FILE = 'components/blueprint/StepPanel.tsx'
-
-/** Read a source file under `src/`, as the tree spells it. */
-function sourceOf(file: string): string {
-  return readFileSync(resolve(SRC, file), 'utf8')
-}
 
 /**
  * The first `className="…"` in `file` whose value contains `needle`.

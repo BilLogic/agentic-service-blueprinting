@@ -1,16 +1,9 @@
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { sourceOf } from '@/lib/sourceTree'
 
-const field = readFileSync(
-  fileURLToPath(new URL('../components/editor/SlideImagesField.tsx', import.meta.url)),
-  'utf8',
-)
+const field = sourceOf('components/editor/SlideImagesField.tsx')
 
-const presentation = readFileSync(
-  fileURLToPath(new URL('../components/editor/SlicePresentation.tsx', import.meta.url)),
-  'utf8',
-)
+const presentation = sourceOf('components/editor/SlicePresentation.tsx')
 
 describe('a slide shows a set of images', () => {
   it('labels the row Images, never Strip', () => {
@@ -55,10 +48,7 @@ describe('a slide shows a set of images', () => {
   })
 })
 
-const mutations = readFileSync(
-  fileURLToPath(new URL('./sliceMutations.ts', import.meta.url)),
-  'utf8',
-)
+const mutations = sourceOf('lib/sliceMutations.ts')
 
 describe('replacing slides keeps the authored image set', () => {
   it('carries members from the prior row instead of forcing untouched', () => {
@@ -75,10 +65,7 @@ describe('replacing slides keeps the authored image set', () => {
   })
 })
 
-const revert = readFileSync(
-  fileURLToPath(new URL('./revertChange.ts', import.meta.url)),
-  'utf8',
-)
+const revert = sourceOf('lib/revertChange.ts')
 
 describe('restoring slides keeps captured upload URLs', () => {
   it('writes image_url verbatim and only deletes folders the inverse does not restore', () => {

@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { sourceOf } from '@/lib/sourceTree'
 import {
   AGENT_PROVIDERS,
   DEFAULT_MODELS,
@@ -72,8 +72,7 @@ describe('the list a person sees before they have a key', () => {
     // The freshness guarantee is a person and a date. If the date goes, the
     // list is unfalsifiable — nobody can tell a current list from a forgotten
     // one without calling three endpoints themselves.
-    const source = new URL('./settings.ts', import.meta.url)
-    const text = readFileSync(source, 'utf8')
+    const text = sourceOf('lib/agent/settings.ts')
     const stamp = /Verified (\d{4})-(\d{2})-(\d{2})\./.exec(text)
     expect(stamp, 'settings.ts must carry `Verified YYYY-MM-DD.`').not.toBeNull()
     expect(Number(stamp![1])).toBeGreaterThanOrEqual(2026)

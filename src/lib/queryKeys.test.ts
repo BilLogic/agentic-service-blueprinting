@@ -1,6 +1,5 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { sourcesOn } from '@/lib/sourceTree'
 import { KEY_PREFIXES, STRUCTURE_KEYS, queryKeys } from '@/lib/queryKeys'
 
 /*
@@ -8,16 +7,6 @@ import { KEY_PREFIXES, STRUCTURE_KEYS, queryKeys } from '@/lib/queryKeys'
  * that invalidated one by hand could spell the same cache two ways, and did:
  * the guard here is what keeps a third spelling from coming back.
  */
-
-const SRC = new URL('..', import.meta.url).pathname
-
-function* sourceFiles(dir: string): Generator<string> {
-  for (const name of readdirSync(dir)) {
-    const path = join(dir, name)
-    if (statSync(path).isDirectory()) yield* sourceFiles(path)
-    else if (/\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name)) yield path
-  }
-}
 
 /**
  * The files that read or invalidate the cache — the ones that could spell a
@@ -30,8 +19,8 @@ const CACHE_MODULES =
   /from '(?:@\/lib\/queryClient|@\/hooks\/useSupabaseQuery|@tanstack\/react-query)'/
 
 /** Source with its comments and table names removed — either may name a key in prose. */
-function code(path: string): string {
-  return readFileSync(path, 'utf8')
+function code(text: string): string {
+  return text
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/\/\/.*$/gm, '')
     .replace(/\.from\(['"][a-z_]+['"]\)/g, '.from()')
@@ -42,12 +31,12 @@ describe('the query key builder', () => {
     const prefixes = KEY_PREFIXES.map((prefix) => prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     const literal = new RegExp(`['"\`](?:${prefixes.join('|')})`)
     const offenders: string[] = []
-    for (const path of sourceFiles(SRC)) {
-      if (path.endsWith('/lib/queryKeys.ts')) continue
-      const source = code(path)
+    for (const file of sourcesOn()) {
+      if (file.file === 'lib/queryKeys.ts') continue
+      const source = code(file.text)
       if (!CACHE_MODULES.test(source)) continue
       const match = source.match(literal)
-      if (match) offenders.push(`${path.slice(SRC.length)}: ${match[0]}`)
+      if (match) offenders.push(`${file.file}: ${match[0]}`)
     }
     expect(offenders).toEqual([])
   })

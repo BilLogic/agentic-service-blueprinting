@@ -1,6 +1,5 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { test } from 'vitest'
+import { sourcesOn } from '@/lib/sourceTree'
 import assert from 'node:assert/strict'
 import {
   CELL_DETAIL_PANEL_BOTTOM_CLASS,
@@ -27,25 +26,14 @@ test('the drawer bottom class states the gap it clears', () => {
   )
 })
 
-const SRC = resolve(__dirname, '..')
-
-function sourceFiles(dir: string): string[] {
-  return readdirSync(dir).flatMap((entry) => {
-    const path = resolve(dir, entry)
-    if (statSync(path).isDirectory()) return sourceFiles(path)
-    return /\.tsx?$/.test(entry) && !/\.test\.tsx?$/.test(entry) ? [path] : []
-  })
-}
-
 test('no Tailwind arbitrary value is assembled at runtime', () => {
   const offenders: string[] = []
-  for (const path of sourceFiles(SRC)) {
-    const source = readFileSync(path, 'utf8')
-    source.split('\n').forEach((line, index) => {
+  for (const { file, text } of sourcesOn()) {
+    text.split('\n').forEach((line, index) => {
       // `something-[${…}` — a utility whose arbitrary value comes from a
       // template hole. The compiler cannot see the resulting class.
       if (/[a-z0-9]-\[\$\{/.test(line)) {
-        offenders.push(`${path.slice(SRC.length + 1)}:${index + 1}`)
+        offenders.push(`${file}:${index + 1}`)
       }
     })
   }

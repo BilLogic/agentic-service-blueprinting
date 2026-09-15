@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { bytesOf } from '@/lib/sourceTree'
 import { sourceFiles } from '@/lib/tokenModel'
 
 /**
@@ -20,7 +20,7 @@ describe('the source tree', () => {
     const offenders = sourceFiles()
       .map((file) => file.file)
       .filter((file) => {
-        const bytes = readFileSync(new URL(`../${file}`, import.meta.url))
+        const bytes = bytesOf(file)
         return bytes.length > 0 && bytes.at(-1) !== 0x0a
       })
     expect(offenders, offenders.join('\n')).toEqual([])

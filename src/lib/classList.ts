@@ -1,4 +1,5 @@
-import { sourceFiles, stripComments } from '@/lib/tokenModel'
+import { type Surface, sourcesOn } from '@/lib/sourceTree'
+import { stripComments } from '@/lib/tokenModel'
 
 /**
  * A class list, not a class string.
@@ -112,24 +113,40 @@ export function classListsIn(
 }
 
 /**
- * Every class list in non-test TypeScript under `src`.
+ * Every class list written on a surface of the application.
  *
- * Sampling is the same walk `tokenModel.sourceFiles` already does — the
- * whole of `src`, comments stripped, tests excluded — so a guard written
- * against this reader and a guard written against the token model are
- * looking at the same tree. Named class-list constants resolve across
- * files: `cn(CANVAS_HEADER_TEXT, 'truncate')` is the named list plus
- * `truncate`, not `truncate` alone.
+ * Sampling is the one reading in `lib/sourceTree.ts` — the whole of the
+ * application, comments stripped, tests excluded — so a guard written against
+ * this reader and a guard written against the token model are looking at the
+ * same tree, because there is only one tree being read.
+ *
+ * `surface` narrows WHERE THE SITES COME FROM and nothing else. The named
+ * class-list constants are always resolved across the whole application:
+ * `cn(CANVAS_HEADER_TEXT, 'truncate')` on the editor surface is the named list
+ * plus `truncate` whichever file declares the name, and a table built from the
+ * surface alone would silently report the extra class on its own — a narrowing
+ * that looks like a pass. Default is the whole application, which is what
+ * every caller before surfaces meant.
  */
-export function classLists(): ClassListSite[] {
-  const files = sourceFiles()
+export function classLists(surface: Surface = 'app'): ClassListSite[] {
+  return sourcesOn(surface)
+    .map((file) => ({ file: file.file, code: stripComments(file.text) }))
+    .flatMap((file) => extractSites(file.code, file.file, namedClassLists()))
+}
+
+let cachedNames: ReadonlyMap<string, readonly string[]> | null = null
+
+/** Every named class-list constant the application declares. */
+function namedClassLists(): ReadonlyMap<string, readonly string[]> {
+  if (cachedNames) return cachedNames
   const names = new Map<string, readonly string[]>()
-  for (const file of files) {
-    for (const [name, classes] of namedClassListsIn(file.code)) {
+  for (const file of sourcesOn()) {
+    for (const [name, classes] of namedClassListsIn(stripComments(file.text))) {
       names.set(name, classes)
     }
   }
-  return files.flatMap((file) => extractSites(file.code, file.file, names))
+  cachedNames = names
+  return names
 }
 
 const UNHYPHENATED = new Set([

@@ -1,7 +1,6 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
+import { sourceOf } from '@/lib/sourceTree'
 import { rulesDeclaring } from '@/lib/tokenModel'
 import {
   CANVAS_REVEAL_ARROWS,
@@ -24,10 +23,7 @@ import {
  * asserts both sides carry the same numbers, the same way palette.test.ts
  * pins the TypeScript palette to colors.css.
  */
-const css = readFileSync(
-  resolve(__dirname, '../styles/animations.css'),
-  'utf-8',
-)
+const css = sourceOf('styles/animations.css')
 
 function cssToken(name: string): string {
   const match = css.match(new RegExp(`${name}:\\s*([^;]+);`))
@@ -103,10 +99,7 @@ test('every animation is disabled under reduced motion, in every stylesheet', ()
  * inserting a stage means correct edits in both, and three-of-four correct
  * edits leave the suite green while a layer reveals on the wrong beat.
  */
-const blueprintCss = readFileSync(
-  resolve(__dirname, '../styles/blueprint.css'),
-  'utf-8',
-)
+const blueprintCss = sourceOf('styles/blueprint.css')
 
 test('reveal stages match between canvasRevealContext and blueprint.css', () => {
   const stages = [

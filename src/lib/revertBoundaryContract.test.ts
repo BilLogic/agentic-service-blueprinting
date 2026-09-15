@@ -1,6 +1,5 @@
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { expect, test } from 'vitest'
+import { hasSource, pathsOn, sourceOf } from '@/lib/sourceTree'
 
 /**
  * The undo path takes its input off the in-memory stack, and from nowhere else.
@@ -72,8 +71,6 @@ import { expect, test } from 'vitest'
  *      wear the brand legitimately — which is the one hole the type alone
  *      cannot see.
  */
-const SRC = resolve(__dirname, '..')
-
 /** `src`-relative paths this file reasons about, read eagerly so a rename fails loudly. */
 const SESSION = 'lib/authoringSession.ts'
 const APPLIER = 'lib/revertChange.ts'
@@ -88,12 +85,11 @@ const LOG = 'lib/authoringLog.ts'
  */
 const SELF = 'lib/revertBoundaryContract.test.ts'
 
-const read = (relative: string): string =>
-  readFileSync(resolve(SRC, relative), 'utf8')
+const read = sourceOf
 
 test('every module this contract reasons about still exists', () => {
   const missing = [SESSION, APPLIER, LOG, SELF].filter(
-    (relative) => !existsSync(resolve(SRC, relative)),
+    (relative) => !hasSource(relative),
   )
   expect(
     missing,
@@ -137,22 +133,11 @@ test('executeRevert accepts a session entry and nothing else', () => {
  */
 const MINT = /\bas\s+(?:unknown\s+as\s+)?SessionEntry\b/g
 
-function walk(dir: string): string[] {
-  const out: string[] = []
-  for (const name of readdirSync(dir)) {
-    const path = resolve(dir, name)
-    if (statSync(path).isDirectory()) out.push(...walk(path))
-    else if (/\.tsx?$/.test(name)) out.push(path)
-  }
-  return out
-}
-
 test('only the session stack mints a session entry', () => {
   const offenders: string[] = []
-  for (const file of walk(SRC)) {
-    const relative = file.slice(SRC.length + 1)
+  for (const relative of pathsOn('app', (path) => /\.tsx?$/.test(path))) {
     if (relative === SESSION || relative === SELF) continue
-    const source = readFileSync(file, 'utf8')
+    const source = read(relative)
     for (const match of source.matchAll(MINT)) {
       const line = source.slice(0, match.index).split('\n').length
       offenders.push(`${relative}:${line} — ${match[0]}`)

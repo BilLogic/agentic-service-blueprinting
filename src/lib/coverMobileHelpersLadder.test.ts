@@ -1,7 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { sourceOf } from '@/lib/sourceTree'
 import { classLists, type ClassListSite } from '@/lib/classList'
 import { sourceFiles } from '@/lib/tokenModel'
 
@@ -14,9 +12,6 @@ import { sourceFiles } from '@/lib/tokenModel'
  * across `cn()` arguments. The panel role layer is retired, so these
  * surfaces name no rung below `xs`.
  */
-
-const HERE = dirname(fileURLToPath(import.meta.url))
-const SRC = resolve(HERE, '..')
 
 const SUB_XS = /(?:^|:)text-(?:2xs|3xs|4xs|5xs)$/
 const BELOW_SM = /(?:^|:)text-(?:xs|2xs|3xs|4xs|5xs)$/
@@ -88,7 +83,7 @@ function isIconOnly(classes: readonly string[]): boolean {
  * @param file - path relative to `src`
  */
 function rawSource(file: string): string {
-  return readFileSync(resolve(SRC, file), 'utf8')
+  return sourceOf(file)
 }
 
 /**

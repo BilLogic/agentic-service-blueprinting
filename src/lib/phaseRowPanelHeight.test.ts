@@ -1,6 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { sourceOf } from '@/lib/sourceTree'
 import { resolveScenarioPanelHeight } from './phaseRowPanelHeight'
 import {
   getComparePanelScrollPaddingY,
@@ -131,8 +130,7 @@ describe('panel height estimates and the chrome they assume', () => {
  * that are easy to get wrong are held to the text instead.
  */
 describe('phase row height wiring', () => {
-  const read = (path: string) =>
-    readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8')
+  const read = sourceOf
 
   it('excludes on an attribute of its own, not on the focus marker', () => {
     /*
@@ -141,7 +139,7 @@ describe('phase row height wiring', () => {
       row: the measuring loop then measured nothing, and the whole row stayed
       pinned to its estimate.
     */
-    const hook = read('../hooks/useAlignedPhaseRowPanelHeight.ts')
+    const hook = read('hooks/useAlignedPhaseRowPanelHeight.ts')
     expect(hook).toContain("node.closest('[data-row-height-excluded]')")
     // The doc comment above that line names the wrong attribute on purpose,
     // to say why it is not used; the call must never reach for it.
@@ -154,7 +152,7 @@ describe('phase row height wiring', () => {
       focused starts a second camera ease over the first. The overview used
       to hand the focused scenario `undefined` for both.
     */
-    const overview = read('../components/blueprint/PhaseScenarioOverview.tsx')
+    const overview = read('components/blueprint/PhaseScenarioOverview.tsx')
     expect(overview).toContain('lockPanelHeight={alignPanelHeights}')
     expect(overview).not.toContain(
       'lockedPanelHeight={isFocusedScenario ? undefined : rowPanelHeight}',

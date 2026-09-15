@@ -1,30 +1,22 @@
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { sourceOf as source } from '@/lib/sourceTree'
 
-function source(relativePath: string): string {
-  return readFileSync(
-    fileURLToPath(new URL(relativePath, import.meta.url)),
-    'utf8',
-  )
-}
-
-const compareCell = source('../components/blueprint/CompareCellBlock.tsx')
-const mergedGrid = source('../components/blueprint/MergedCompareGrid.tsx')
-const cellButton = source('../components/blueprint/BlueprintCellButton.tsx')
-const pathTheme = source('./pathColorTheme.ts')
+const compareCell = source('components/blueprint/CompareCellBlock.tsx')
+const mergedGrid = source('components/blueprint/MergedCompareGrid.tsx')
+const cellButton = source('components/blueprint/BlueprintCellButton.tsx')
+const pathTheme = source('lib/pathColorTheme.ts')
 const scenarioPanel = source(
-  '../components/blueprint/ScenarioBlueprintPanel.tsx',
+  'components/blueprint/ScenarioBlueprintPanel.tsx',
 )
 const resizablePanel = source(
-  '../components/blueprint/ResizableComparePanel.tsx',
+  'components/blueprint/ResizableComparePanel.tsx',
 )
 const touchpointCell = source(
-  '../components/blueprint/BlueprintTouchpointCell.tsx',
+  'components/blueprint/BlueprintTouchpointCell.tsx',
 )
-const blueprintCss = source('../styles/blueprint.css')
+const blueprintCss = source('styles/blueprint.css')
 const dependencySections = source(
-  '../components/blueprint/CellDependencySections.tsx',
+  'components/blueprint/CellDependencySections.tsx',
 )
 
 describe('merged path-membership outline contract', () => {

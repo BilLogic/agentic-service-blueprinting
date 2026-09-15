@@ -1,10 +1,6 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { sourceOf as src } from '@/lib/sourceTree'
 import { PATH_BLUEPRINT_SELECT } from '@/lib/workflowQueries'
-
-const src = (path: string) =>
-  readFileSync(join(process.cwd(), 'src', path), 'utf8')
 
 /*
   THE PANEL READS THE BOARD.

@@ -20,8 +20,9 @@ import { readFileSync } from 'node:fs'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { describe, expect, it } from 'vitest'
 import { toAuthoringError } from '@/lib/authoringErrors'
+import { sourceOf } from '@/lib/sourceTree'
 
-const SOURCE = readFileSync(new URL('./authoringErrors.ts', import.meta.url), 'utf8')
+const SOURCE = sourceOf('lib/authoringErrors.ts')
 const SCHEMA = readFileSync(
   new URL('../../supabase/generated/portable-core.schema.sql', import.meta.url),
   'utf8',

@@ -1,6 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { sourceOf as source } from '@/lib/sourceTree'
 
 /**
  * The canvas stacking order, as far as a file can hold it.
@@ -27,17 +26,13 @@ import { describe, expect, it } from 'vitest'
  * of which now dispatch real events. Regressions in this file are caught by
  * looking at the board.
  */
-function source(relativePath: string): string {
-  return readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8')
-}
-
-const legacyArrows = source('../components/blueprint/BlueprintDependencyArrows.tsx')
+const legacyArrows = source('components/blueprint/BlueprintDependencyArrows.tsx')
 const integratedArrows = source(
-  '../components/blueprint/IntegratedDependencyArrows.tsx',
+  'components/blueprint/IntegratedDependencyArrows.tsx',
 )
-const phaseSection = source('../components/editor/CanvasPhaseSection.tsx')
-const phaseLoop = source('../components/editor/PhaseOverviewPhaseLoopArrow.tsx')
-const viewport = source('../components/editor/ZoomPanViewport.tsx')
+const phaseSection = source('components/editor/CanvasPhaseSection.tsx')
+const phaseLoop = source('components/editor/PhaseOverviewPhaseLoopArrow.tsx')
+const viewport = source('components/editor/ZoomPanViewport.tsx')
 
 /** The `layer === 'forward' ? <a> : <b>` z pair a connector renderer picks. */
 function connectorBands(file: string): { forward: number; back: number } {

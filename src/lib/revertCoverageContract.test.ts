@@ -22,8 +22,6 @@
  * same files. The one claim here that was about a payload's spelling has moved
  * onto a run, where it is about the payload instead.
  */
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
@@ -37,15 +35,14 @@ import {
   type CellFeaturedImageBefore,
   type CellWrite,
 } from '@/lib/authoringRpc'
+import { sourceOf } from '@/lib/sourceTree'
 import { clearSession, sessionSnapshot } from '@/lib/authoringSession'
 import { executeRevert } from '@/lib/revertChange'
 import { updateBusinessModel, updateServiceSummary } from '@/lib/serviceSpecMutations'
 import { inMemoryDatabase } from '@/test/inMemoryDatabase'
 import type { Database } from '@/types/database'
 
-const LIB = join(process.cwd(), 'src', 'lib')
-
-const readLib = (file: string) => readFileSync(join(LIB, file), 'utf8')
+const readLib = (file: string) => sourceOf(`lib/${file}`)
 
 /**
  * Files that can record a revert. A mutation module not listed here is

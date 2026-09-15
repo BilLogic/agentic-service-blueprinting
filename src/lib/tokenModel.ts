@@ -1,4 +1,4 @@
-import { type Sweep, sweep } from '../../scripts/sweep.mjs'
+import { filesOn, sourceOf, sourcesOn } from '@/lib/sourceTree'
 import {
   composite,
   hexToRgb,
@@ -76,31 +76,21 @@ import {
  *
  * So the sample is the `app` subject of `scripts/sweep.mjs`: the deployment's
  * `src` laid over the package's, per path, which is the same overlay the build
- * applies. The paths read `src/…` wherever the file is, the sweep's `read`
- * opens them, and the root is the tree the run is in — never this file's
- * location, which is the rule `sweep.mjs`'s header states for every check.
+ * applies. The paths read `src/…` wherever the file is, and the root is the
+ * tree the run is in — never this file's location, which is the rule
+ * `sweep.mjs`'s header states for every check.
+ *
+ * The two walkers that used to state that here are now ONE reading, in
+ * `lib/sourceTree.ts`, which asks the sweep once for the whole application and
+ * answers by surface. This model takes its stylesheets and its source from it,
+ * and so does every guard that used to open a file of this tree by hand: a
+ * file that moves is then answered in one listing rather than in each reader.
+ * What stays here is the parsing — what a declaration is, what the cascade
+ * says, who consumes a name — which is the model's own job and not a walk.
  */
-const SRC_PREFIX = 'src/'
-const STYLES_PREFIX = 'src/styles/'
+const STYLES_PREFIX = 'styles/'
 /** The stylesheet entry. Import order is read from it, never restated here. */
 const ENTRY = `${STYLES_PREFIX}tailwind.config.css`
-
-/**
- * The text of one file the sweep listed.
- *
- * The sweep's `read` hands back null for a path that has gone between the
- * listing and the read — a skip a walk over a moving tree can afford, and this
- * model cannot. Every rule below is an assertion about a COMPLETE sample, and
- * a sample that quietly lost a file passes each one of them. So the vanishing
- * is a failure here, and it says which file did it.
- */
-function readListed(walk: Sweep, path: string): string {
-  const text = walk.read(path)
-  if (text === null) {
-    throw new Error(`${path} went away between the listing and the read`)
-  }
-  return text
-}
 
 export type Theme = 'light' | 'dark'
 
@@ -239,23 +229,20 @@ let cachedSheets: Stylesheet[] | null = null
  */
 export function stylesheets(): Stylesheet[] {
   if (cachedSheets) return cachedSheets
-  const walk = sweep({
-    subject: 'app',
-    where: (path) => path.startsWith(STYLES_PREFIX) && path.endsWith('.css'),
-    what: 'stylesheet of the application',
-  })
-  const entry = readListed(walk, ENTRY)
-  const imported = [...entry.matchAll(/@import\s+'\.\/([^']+)'/g)].map(
+  const sheets = filesOn('styles', (path) => path.endsWith('.css'))
+  const entry = sheets.find(({ file }) => file === ENTRY)
+  if (!entry) throw new Error(`the application has no ${ENTRY}`)
+  const imported = [...entry.text.matchAll(/@import\s+'\.\/([^']+)'/g)].map(
     ([, path]) => path,
   )
-  const swept = walk.files.map((path) => path.slice(STYLES_PREFIX.length))
+  const swept = sheets.map(({ file }) => file.slice(STYLES_PREFIX.length))
   const ordered = [
     ...imported,
     ...swept.filter((file) => !imported.includes(file)).sort(),
   ]
   cachedSheets = ordered.map((file, order) => ({
     file,
-    text: readListed(walk, `${STYLES_PREFIX}${file}`),
+    text: sourceOf(`${STYLES_PREFIX}${file}`),
     // Files the entry never imports sort after everything it does, and are
     // excluded from cascade resolution below.
     order: imported.includes(file) ? order : Number.POSITIVE_INFINITY,
@@ -623,17 +610,10 @@ let cachedSource: SourceFile[] | null = null
  */
 export function sourceFiles(): SourceFile[] {
   if (cachedSource) return cachedSource
-  const walk = sweep({
-    subject: 'app',
-    where: (path) => /\.tsx?$/.test(path) && !path.includes('.test.'),
-    what: 'source file of the application',
-  })
-  cachedSource = walk.files
-    .map((path) => ({
-      file: path.slice(SRC_PREFIX.length),
-      code: stripComments(readListed(walk, path)),
-    }))
-    .sort((a, b) => a.file.localeCompare(b.file))
+  cachedSource = sourcesOn().map(({ file, text }) => ({
+    file,
+    code: stripComments(text),
+  }))
   return cachedSource
 }
 
