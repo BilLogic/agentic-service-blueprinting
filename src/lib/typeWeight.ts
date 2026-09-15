@@ -33,9 +33,9 @@ const RETIRED = new Set(['bold', 'extrabold', 'black'])
 
 /**
  * Class lists that *are* headings, even when the tag they land on is a
- * `span` or a `p`. Panel title (the inlined class string), canvas
- * column/row header, menubar title — the three the doctrine lists by job
- * rather than by tag.
+ * `span` or a `p`. Panel title — as the class string and as the name the
+ * panels write it under — canvas column/row header, menubar title: the ones
+ * the doctrine lists by job rather than by tag.
  *
  * Every entry must still appear in the tree; `typeWeight.test.ts` holds
  * that, so a rename cannot leave a dead token behind while the guard
@@ -43,6 +43,7 @@ const RETIRED = new Set(['bold', 'extrabold', 'black'])
  */
 export const HEADING_TOKENS = [
   'min-w-0 text-sm font-semibold text-foreground',
+  'PANEL_HEADING_CLASS',
   'CANVAS_HEADER_TEXT',
   'BLUEPRINT_MENUBAR_TITLE_TEXT_CLASS',
 ] as const

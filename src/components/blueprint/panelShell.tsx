@@ -86,6 +86,12 @@ export const CELL_PANEL_FOOTER_ID = 'cell-panel-editor-footer'
 export const PANEL_EXIT_MS = 200
 
 /**
+ * A panel heading, in one place: the identity block's name, the header's
+ * heading when a surface shows one rather than reading it out, and the
+ * differences surface's word for itself beside the switcher. Four writers of
+ * one string is how one heading ends up a weight off the other three.
+ */
+/**
  * The multi-line field treatment, in one place.
  *
  * A bare `<textarea>` with the cell panel's border, padding and focus ring —
@@ -95,6 +101,8 @@ export const PANEL_EXIT_MS = 200
  * four-way copy of a focus ring is how one field ends up focusing differently
  * from the field above it.
  */
+export const PANEL_HEADING_CLASS =
+  'min-w-0 text-sm font-semibold text-foreground'
 export const PANEL_TEXTAREA_CLASS =
   'w-full resize-y rounded-md border border-input bg-transparent px-2 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50'
 export const LANE_PANEL_FOOTER_ID = 'lane-panel-editor-footer'
@@ -378,28 +386,7 @@ export function PanelCloseButton({
  * difference ledger; a lane's owner, KPIs and tools do not get easier to read
  * at 1.5× the width. The cell panel has one, and passes it as an action.
  */
-export function PanelHeader({
-  crumbs,
-  lead,
-  onClose,
-  closeLabel,
-  closeAriaLabel,
-  actions,
-  banded = false,
-  title,
-  titleShown = false,
-  description,
-  descriptionShown = false,
-}: {
-  /** Ancestors first, the entity itself last. Empty labels are dropped. */
-  crumbs?: PanelCrumb[]
-  /**
-   * What stands in the header row itself, rather than in the block the
-   * crumbs and the title share — the differences surface's Details │
-   * Differences switcher, which is chrome for the whole panel and sits
-   * unwrapped beside ✕.
-   */
-  lead?: ReactNode
+type PanelHeaderChrome = {
   onClose: () => void
   /** Says what closes, e.g. "Close lane properties". */
   closeLabel: string
@@ -413,16 +400,65 @@ export function PanelHeader({
    * the row is drawn for a passed `null` and not for a prop nobody passed.
    */
   actions?: ReactNode
-  /** The differences surface's bordered band, rather than the plain header. */
+  /**
+   * The bordered band the differences surface wears instead of the plain
+   * header. Not derived from `lead`, which happens to have the same one
+   * caller today: the band is about the surface being a sibling of the whole
+   * panel — a rule under it, the ledger below — and a panel could grow a
+   * switcher without the rule, or the rule without a switcher.
+   */
   banded?: boolean
   /** Screen-reader title for the dialog, or the visible one when shown. */
   title: string
-  /** Draws the title as the header's heading instead of reading it out. */
-  titleShown?: boolean
   description: string
-  /** Draws the description under the heading — the draft's placement line. */
-  descriptionShown?: boolean
-}) {
+}
+
+/**
+ * The header's left is a block — the title, the description and the trail —
+ * or a node standing in the header row itself. Never both: a lead that
+ * silently dropped the crumbs beside it is a prop that reads as supported
+ * and is not, so the two shapes are two types.
+ */
+type PanelHeaderProps =
+  | (PanelHeaderChrome & {
+      lead?: never
+      /**
+       * Ancestors first, the entity itself last. Empty labels are dropped,
+       * and a trail with nothing left in it draws nothing — an empty
+       * breadcrumb landmark is a landmark a reader lands on for no reason.
+       */
+      crumbs?: PanelCrumb[]
+      /** Draws the title as the heading instead of reading it out. */
+      titleShown?: boolean
+      /** Draws the description under the heading — the draft's placement line. */
+      descriptionShown?: boolean
+    })
+  | (PanelHeaderChrome & {
+      /**
+       * What stands in the header row itself, rather than in the block the
+       * crumbs and the title share — the differences surface's Details │
+       * Differences switcher, which is chrome for the whole panel. Its title
+       * and description are read out, never drawn, so neither flag applies.
+       */
+      lead: ReactNode
+      crumbs?: never
+      titleShown?: never
+      descriptionShown?: never
+    })
+
+export function PanelHeader({
+  crumbs,
+  lead,
+  onClose,
+  closeLabel,
+  closeAriaLabel,
+  actions,
+  banded = false,
+  title,
+  titleShown = false,
+  description,
+  descriptionShown = false,
+}: PanelHeaderProps) {
   const shown = (crumbs ?? [])
     .map((crumb) =>
       typeof crumb === 'string' ? { label: crumb, collapsed: false } : crumb,
@@ -447,11 +483,7 @@ export function PanelHeader({
       ) : (
         <div className="min-w-0 flex-1">
           <DrawerTitle
-            className={
-              titleShown
-                ? 'min-w-0 text-sm font-semibold text-foreground'
-                : 'sr-only'
-            }
+            className={titleShown ? PANEL_HEADING_CLASS : 'sr-only'}
           >
             {title}
           </DrawerTitle>
@@ -462,7 +494,7 @@ export function PanelHeader({
           >
             {description}
           </DrawerDescription>
-          {crumbs === undefined ? null : (
+          {shown.length === 0 ? null : (
             <Breadcrumb className="min-w-0">
               <BreadcrumbList className="flex-nowrap gap-0.5 text-xs font-normal text-muted-foreground">
                 {shown.map((crumb, index) => (
@@ -549,7 +581,7 @@ export function PanelIdentity({
   return (
     <div className="flex min-w-0 flex-col items-start gap-1.5">
       {badge}
-      {title ? <p className="min-w-0 text-sm font-semibold text-foreground">{title}</p> : null}
+      {title ? <p className={PANEL_HEADING_CLASS}>{title}</p> : null}
       {meta ? <p className="text-xs font-normal text-muted-foreground">{meta}</p> : null}
       {children}
     </div>

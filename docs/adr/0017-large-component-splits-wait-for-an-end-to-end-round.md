@@ -358,12 +358,14 @@ counting the shared header's, the header's class list four times, and the
 crumb loop twice. All of it is `PanelHeader` now, which learned a crumb that
 collapses to an ellipsis so the cell's trail is the trail the other five
 panels draw. The slice was green before the first move and after every one of
-them, with no assertion edited in it or in the 302 tests over
+them, with no assertion edited in it or in the 301 tests over
 `src/components/blueprint`; each surface's rendered class, `aria-` and `data-`
-set was hashed before and after and matches, with one exception recorded
-plainly: the cell's trail gains `font-normal` on its list and `shrink-0` on
+set was hashed before and after and matches, with two exceptions recorded
+plainly. The cell's trail gains `font-normal` on its list and `shrink-0` on
 its first separator — two utilities the entity panels' trail already wrote and
-this copy had drifted without, each a no-op where it lands. The one guard that
+this copy had drifted without, each a no-op where it lands. And an empty trail
+draws no breadcrumb landmark at all, which is a change to the service panel
+and to four loading states rather than to any cell surface. The one guard that
 moved is `panelText.test.ts`, a per-file inventory of literal class lists: two
 files stopped writing the panel title because one place writes it now.*
 

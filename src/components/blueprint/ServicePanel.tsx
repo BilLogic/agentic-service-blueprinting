@@ -51,7 +51,8 @@ export function ServicePanel({ onClose }: { onClose: () => void }) {
   return (
     <>
       <PanelHeader
-        crumbs={[]}
+        // No crumbs, and so no trail: a service is the root, and an empty
+        // breadcrumb landmark is one a reader lands on for no reason.
         title="Service properties"
         description="What this service is, and how it is funded"
         closeLabel="Close service properties"

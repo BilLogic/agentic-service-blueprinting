@@ -26,10 +26,14 @@ with ✕.
 
 Nobody opening, drafting, comparing or closing a cell sees a change. The
 instrument says so: `npm run slice:cell-edit` was green before the first move
-and after every one of them, with no assertion edited, and the 302 tests over
-`src/components/blueprint` are unchanged. Each surface's rendered class,
-`aria-` and `data-` attribute set was hashed before and after and matches,
-with one difference recorded rather than hidden: the cell's trail now writes
-`font-normal` on its list and `shrink-0` on its first separator — two
-utilities the entity panels' trail already wrote, each a no-op where it lands,
-and the drift that made two nearly-identical headers worth reading twice.
+and after every one of them, with no assertion edited, and the 301 tests over
+`src/components/blueprint` are unchanged — five cases read the new header
+beside them. Each surface's rendered class, `aria-` and `data-` attribute set
+was hashed before and after and matches, with two differences recorded rather
+than hidden. The cell's trail now writes `font-normal` on its list and
+`shrink-0` on its first separator — two utilities the entity panels' trail
+already wrote, each a no-op where it lands, and the drift that made two
+nearly-identical headers worth reading twice. And a trail with no crumbs left
+in it draws nothing rather than an empty breadcrumb landmark, which the
+service panel always reserved and the other four reserved while loading: a
+landmark that tells a reader nothing is worse than no landmark.

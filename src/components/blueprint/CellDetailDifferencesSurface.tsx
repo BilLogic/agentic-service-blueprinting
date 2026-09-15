@@ -1,5 +1,8 @@
 import { CompareDifferencesSurface } from '@/components/blueprint/CompareDifferencesSurface'
-import { PanelHeader } from '@/components/blueprint/panelShell'
+import {
+  PANEL_HEADING_CLASS,
+  PanelHeader,
+} from '@/components/blueprint/panelShell'
 import { PanelSurfaceSwitcher } from '@/components/blueprint/PanelSurfaceSwitcher'
 import type { BlueprintPanelSurface } from '@/contexts/BlueprintCellDetailContext'
 import type { CompareReviewRegistration } from '@/lib/compareReviewStore'
@@ -39,9 +42,7 @@ export function CellDetailDifferencesSurface({
               onValueChange={onSurfaceChange}
             />
           ) : (
-            <span className="min-w-0 text-sm font-semibold text-foreground">
-              Differences
-            </span>
+            <span className={PANEL_HEADING_CLASS}>Differences</span>
           )
         }
         actions={expandToggle}

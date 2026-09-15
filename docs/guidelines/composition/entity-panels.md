@@ -55,8 +55,8 @@ behaviour. `panelShell.tsx` is that drawer, lifted rather than duplicated.
 
 `src/components/blueprint/panelShell.tsx` owns posture, keying, the footer host,
 the field label, the header, the close control, the kind badge, the empty state
-and the Save/Cancel row. Two panels sit on it: `EntityDetailPanel` (the five non-cell subjects) and
-`BlueprintCellDetailPanel`.
+and the Save/Cancel row. Two panels sit on it: `EntityDetailPanel` (the five
+non-cell subjects) and `BlueprintCellDetailPanel`.
 
 - **Posture** is the drawer/sheet contract, owned by
   [dialogs-sheets-and-forms.md](dialogs-sheets-and-forms.md): a right-pinned
@@ -371,6 +371,11 @@ it renders as inert prose, not a disabled button.
 14. Saving the lane panel against `lane.id`, or dropping the fan-out alert.
 15. Dropping the canvas invalidation from the step save.
 16. A second ⓘ beside a term label, a tab or a status badge.
+17. Dropping `actions` from a panel that has an action row, or passing crumbs
+    that all resolve empty. The row follows a passed `null` and not a prop
+    nobody passed, because the widen toggle is desktop-only; and a trail with
+    nothing left in it draws no landmark, because a landmark that tells the
+    reader nothing is worse than no landmark.
 
 > `NotionPropertyRow`'s docstring says it belongs to the cell detail panel. It
 > does not — its only consumer is `ScenarioSlideHeader`. The docstring is stale;

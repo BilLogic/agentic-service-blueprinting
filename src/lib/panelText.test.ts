@@ -32,8 +32,10 @@ type PanelRole = keyof typeof FORMER_PANEL_TEXT
  * A count follows the class list when a file stops writing it. The draft
  * and empty surfaces each wrote the panel title on their own drawer header;
  * both headers are the shell's one header now, so the two sites are the
- * shell's single heading — same class list, one place, and the file that
- * writes it is named here as every other writer is.
+ * shell's single heading. The list itself is `PANEL_HEADING_CLASS`, which
+ * this reader resolves across files — a site writing the constant is a site
+ * writing the classes, which is why the differences surface still counts as
+ * a writer of the title it shows beside the surface switcher.
  */
 const FORMER_SITE_COUNTS: Readonly<
   Record<string, Partial<Record<PanelRole, number>>>
@@ -41,9 +43,9 @@ const FORMER_SITE_COUNTS: Readonly<
   // The cell panel's four sites moved with the split of its body: its three
   // titles were each the heading of one drawer surface, and its value is the
   // summary paragraph in the overview. Two of the three headings are the
-  // shared header's now; the differences surface still writes its own,
+  // shared header's now; the differences surface keeps a site of its own
   // because its heading is a span beside the surface switcher rather than
-  // the drawer title.
+  // the drawer title — the same class list, named rather than retyped.
   'components/blueprint/CellDetailDifferencesSurface.tsx': { title: 1 },
   'components/blueprint/CellDetailOverview.tsx': { value: 1 },
   'components/blueprint/CellContentSection.tsx': {
