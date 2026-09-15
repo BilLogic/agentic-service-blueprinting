@@ -339,7 +339,7 @@ export function BlueprintLabelRow({
               data-blueprint-row-header=""
               className={cn(
                 CANVAS_HEADER_TEXT,
-                'group/lane relative min-w-0 flex-1 cursor-pointer rounded-sm text-left whitespace-normal break-words underline-offset-4 hover:underline',
+                'group/lane relative min-w-0 flex-1 cursor-pointer rounded-md text-left whitespace-normal break-words underline-offset-4 hover:underline',
               )}
               style={{ color: labelColor }}
             >

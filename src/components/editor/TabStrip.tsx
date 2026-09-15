@@ -8,6 +8,7 @@ import {
 import { Info, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { HomeNavButton, WorkspaceBadges } from '@/components/editor/EditorChrome'
+import { JumpToSearch } from '@/components/editor/JumpToSearch'
 import { IconTooltip } from '@/components/editor/IconTooltip'
 import {
   ContextMenu,
@@ -107,7 +108,7 @@ function MissingSliceNotice({ onDismiss }: { onDismiss: () => void }) {
   }, [])
 
   return (
-    <div className="shrink-0 border-b border-border bg-sidebar px-2 py-1.5">
+    <div className="shrink-0 border-b border-border bg-sidebar px-2 py-2">
       {/* Nothing failed and nothing is at risk — the link is just stale. That
           is information, and reserving warning for actual cautions is what
           keeps a warning worth reading. */}
@@ -303,7 +304,10 @@ export function TabStrip({
     <>
       {notice}
       {seed}
-      <div className="flex shrink-0 items-center gap-1 border-b border-border bg-sidebar pr-2 py-1.5">
+      <div
+        data-editor-top-nav=""
+        className="flex shrink-0 items-center gap-1 border-b border-border bg-sidebar pr-2 py-2"
+      >
         {/* Home occupies the same 48px column as the rail below, centered,
             so the icon stack reads as one continuous left edge. The tabs then
             start exactly where the sidebar panel starts. */}
@@ -363,7 +367,7 @@ export function TabStrip({
             className={cn(
               'flex shrink-0 items-center rounded-md border text-sm',
               active
-                ? 'border-border bg-background shadow-sm'
+                ? 'border-border bg-background'
                 : 'border-transparent hover:bg-accent',
             )}
           >
@@ -374,7 +378,7 @@ export function TabStrip({
               tabIndex={active ? 0 : -1}
               onClick={() => activateTab(key)}
               className={cn(
-                'max-w-56 truncate px-2.5 py-1 font-medium',
+                'max-w-56 truncate px-2 py-1 font-medium',
                 active ? 'text-foreground' : 'text-muted-foreground',
               )}
             >
@@ -389,7 +393,7 @@ export function TabStrip({
                 // ARIA tabs pattern, and close stays reachable via the row's
                 // context menu (and pointer).
                 tabIndex={-1}
-                className="mr-1 rounded-sm p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="mr-1 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 <X className="size-3" />
               </button>
@@ -422,7 +426,8 @@ export function TabStrip({
         </div>
         {/* Environment badges (authoring / edit preview) keep their home in
             the top nav, at the quiet end of the strip. */}
-        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <JumpToSearch />
           <WorkspaceBadges />
         </div>
         <DeleteSliceDialog

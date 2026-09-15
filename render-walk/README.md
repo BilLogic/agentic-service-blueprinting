@@ -34,6 +34,17 @@ So the count is *paths per scenario*, summed, plus one for each scenario with
 two or more paths — not *scenarios × 2*. The walk prints it at the end of the
 run.
 
+## The phone walk
+
+`mobile-cover.spec.ts` is a second Playwright project at **375×812**. It opens
+the cover, follows the CTA onto the first scenario, then walks **one scenario
+per phase**, screenshotting each under `render-walk-output/views/mobile/`. It
+fails on a console error the same way the desktop walk does, so a blank phone
+canvas is a red check rather than a screenshot nobody looks at.
+
+The desktop project ignores that spec; the mobile project runs only that spec.
+`npm run check:render-walk` runs both.
+
 ## The annotation-drag case
 
 `annotation-drag.spec.ts` runs beside the walk under the same config, so
@@ -247,6 +258,7 @@ from here. It is listed so a rename knows what it breaks:
 | What the walk reads | Where the app writes it |
 | --- | --- |
 | `[data-cover-page]`, and the `header button` inside it | the cover page; the walk clicks that button to get past the overlay |
+| `aria-label="Open navigation"` and the sheet's `Close` | the phone top-bar menu opens the drawer; the sheet's own close dismisses it so the canvas is visible again |
 | `[data-nav-row]` — value is the phase or scenario id | the sidebar's rows |
 | `button[aria-controls^="phase-panel-…"]` and `id="phase-panel-<id>"` | the sidebar's phase disclosure and its panel |
 | `[data-focus-slide-id="<scenario id>"]` | the canvas artboard for one scenario |

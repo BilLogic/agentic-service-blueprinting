@@ -8,8 +8,15 @@ import {
   type ReactNode,
 } from 'react'
 
-type CanvasZoomChromeState = {
+export type CanvasZoomChromeState = {
   onResetView?: () => void
+  zoomIn?: () => void
+  zoomOut?: () => void
+  /**
+   * Frames the fit target. Matches `useZoomPanViewport`'s `fitToView`, so a
+   * consumer can pass `{ animate: true }` rather than wrapping at publish time.
+   */
+  fitToView?: (options?: { animate?: boolean }) => unknown
 }
 
 type CanvasZoomChromeContextValue = {
@@ -42,17 +49,20 @@ export function useCanvasZoomChrome() {
   return useContext(CanvasZoomChromeContext)
 }
 
-/** Publishes reset-view chrome from the active viewport; clears on unmount. */
-export function usePublishCanvasZoomChrome(onResetView?: () => void) {
+/** Publishes zoom chrome from the active viewport; clears on unmount. */
+export function usePublishCanvasZoomChrome(
+  chrome: CanvasZoomChromeState = {},
+) {
   // Depend on the stable setter only — depending on the whole context value
   // loops: publishing chrome changes the value identity, which re-runs the
   // effect, which publishes a fresh object, forever ("Maximum update depth
   // exceeded" storms that re-render the entire canvas subtree).
   const setChrome = useContext(CanvasZoomChromeContext)?.setChrome
+  const { onResetView, zoomIn, zoomOut, fitToView } = chrome
 
   useEffect(() => {
     if (!setChrome) return
-    setChrome({ onResetView })
+    setChrome({ onResetView, zoomIn, zoomOut, fitToView })
     return () => setChrome(null)
-  }, [setChrome, onResetView])
+  }, [setChrome, onResetView, zoomIn, zoomOut, fitToView])
 }

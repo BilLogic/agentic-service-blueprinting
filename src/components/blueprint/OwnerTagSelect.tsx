@@ -105,7 +105,7 @@ export function OwnerTagSelect({
           </button>
         }
       />
-      <PopoverContent align="start" className="w-56 p-1.5">
+      <PopoverContent align="start" className="w-56 p-2">
         <Input
           value={filter}
           placeholder="Find or create…"
@@ -126,7 +126,7 @@ export function OwnerTagSelect({
           {value ? (
             <button
               type="button"
-              className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-muted"
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-muted-foreground hover:bg-muted"
               onClick={() => pick('')}
             >
               <X className="size-3" aria-hidden />
@@ -135,7 +135,7 @@ export function OwnerTagSelect({
           ) : null}
           {visible.map((tag) =>
             renaming === tag ? (
-              <div key={tag} className="flex items-center gap-1 px-1 py-0.5">
+              <div key={tag} className="flex items-center gap-1 px-1 py-1">
                 <Input
                   value={renameText}
                   autoFocus
@@ -162,11 +162,11 @@ export function OwnerTagSelect({
             ) : (
               <div
                 key={tag}
-                className="group/tag flex items-center gap-1 rounded-sm hover:bg-muted"
+                className="group/tag flex items-center gap-1 rounded-md hover:bg-muted"
               >
                 <button
                   type="button"
-                  className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-xs"
+                  className="flex min-w-0 flex-1 items-center gap-2 px-2 py-2 text-left text-xs"
                   onClick={() => pick(tag)}
                 >
                   <span className="min-w-0 flex-1 truncate">{tag}</span>
@@ -178,7 +178,7 @@ export function OwnerTagSelect({
                   <button
                     type="button"
                     aria-label={`Rename ${tag}`}
-                    className="mr-1 shrink-0 rounded-sm p-0.5 text-muted-foreground opacity-0 transition-opacity group-hover/tag:opacity-100 focus-visible:opacity-100 hover:text-foreground"
+                    className="mr-1 shrink-0 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity group-hover/tag:opacity-100 focus-visible:opacity-100 hover:text-foreground"
                     onClick={() => {
                       setRenaming(tag)
                       setRenameText(tag)
@@ -193,14 +193,14 @@ export function OwnerTagSelect({
           {trimmedFilter && !exactExists ? (
             <button
               type="button"
-              className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs text-primary hover:bg-muted"
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-primary hover:bg-muted"
               onClick={() => pick(trimmedFilter)}
             >
               Create “{trimmedFilter}”
             </button>
           ) : null}
           {visible.length === 0 && !trimmedFilter ? (
-            <p className="px-2 py-1.5 text-xs text-muted-foreground">
+            <p className="px-2 py-2 text-xs text-muted-foreground">
               No tags yet — type to create one.
             </p>
           ) : null}

@@ -81,7 +81,7 @@ export function CreatePhaseDialog({
         </DialogHeader>
 
         <div className="flex flex-col gap-3 px-6" data-create-phase-fields="">
-          <label className="flex flex-col gap-1.5">
+          <label className="flex flex-col gap-2">
             <span className="text-sm font-medium text-foreground">Name</span>
             <Input
               value={name}

@@ -4,7 +4,7 @@
  * The row header (a lane's name) and the column header (a step's name) are the
  * same kind of object — the label of an axis, and the way into what that axis
  * describes — and they had drifted into two: 11px bold ink-coloured in a
- * `px-1 py-0.5` box on one axis, 12px medium muted in a `px-2 pb-1.5` box on
+ * `px-1 py-1` box on one axis, 12px medium muted in a `px-2 pb-2` box on
  * the other, with different gaps to their icons and a selected state that
  * looked exactly like hover.
  *
@@ -17,7 +17,7 @@
 export const CANVAS_HEADER_TEXT = 'text-xs font-semibold tracking-tight'
 
 /** The box: one radius, one padding, one gap to the ⓘ. */
-export const CANVAS_HEADER_BOX = 'rounded-md px-2 py-1.5 gap-1.5'
+export const CANVAS_HEADER_BOX = 'rounded-md px-2 py-2 gap-2'
 
 /**
  * Rest → hover → selected, as three distinguishable states.
@@ -133,13 +133,13 @@ export const CANVAS_HEADER_INFO = [
  * The horizontal inset of one column of the board — the lane label and the
  * cell slot beside it, one value.
  *
- * The rail carried `pl-5 pr-3` while the slot carried `px-3.5`, so the label
+ * The rail carried `pl-5 pr-3` while the slot carried `px-4`, so the label
  * started 6px further in than the cells it names and stopped 2px short of
  * them on the other edge. Nothing enforced the relationship; the two numbers
  * were set in separate files and drifted. Reading them from here is what
  * makes the rail sit on the grid's rhythm rather than near it.
  */
-export const BLUEPRINT_SLOT_INSET = 'px-3.5'
+export const BLUEPRINT_SLOT_INSET = 'px-4'
 
 /** The same inset at compact density. */
 export const BLUEPRINT_SLOT_INSET_COMPACT = 'px-3'
@@ -152,4 +152,4 @@ export const BLUEPRINT_SLOT_INSET_COMPACT = 'px-3'
  * It was `pl-5`, so the "LINE OF …" captions started 6px left of the lane
  * labels stacked directly above them and the column read as two columns.
  */
-export const BLUEPRINT_SLOT_INSET_LEFT = 'pl-3.5'
+export const BLUEPRINT_SLOT_INSET_LEFT = 'pl-4'

@@ -57,6 +57,12 @@
   }
 
   [data-canvas-phase-interactive] [data-phase-frame] {
+    background-color: var(--background);
+    border-color: var(--border);
+    border-width: 1px;
+  }
+
+  .dark [data-canvas-phase-interactive] [data-phase-frame] {
     background-color: var(--color-slate-700);
     border-color: var(--color-slate-800);
   }

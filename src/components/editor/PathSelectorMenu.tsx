@@ -67,8 +67,8 @@ export function PathSelectorMenu({ options }: { options: PathOption[] }) {
                       : 'none'
                   }`}
                   className={cn(
-                    'pointer-events-auto flex h-7 items-center gap-1.5 rounded-full border border-border bg-card',
-                    'px-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground',
+                    'pointer-events-auto flex h-7 items-center gap-2 rounded-full border border-border bg-card',
+                    'px-2 text-sm text-muted-foreground transition-colors hover:text-foreground',
                   )}
                 >
                   <span className="flex items-center" aria-hidden>
@@ -88,23 +88,30 @@ export function PathSelectorMenu({ options }: { options: PathOption[] }) {
                       ? selected[0].name
                       : `${selected.length} paths`}
                   </span>
+                  {selected.length > 0 ? (
+                    <span
+                      data-path-selector-status=""
+                      className="size-2 shrink-0 rounded-full bg-brand"
+                      aria-hidden
+                    />
+                  ) : null}
                   <ChevronDown className="size-3 shrink-0" aria-hidden />
                 </button>
               }
             />
           </IconTooltip>
-          <PopoverContent align="end" className="w-72 p-1.5">
+          <PopoverContent align="end" className="w-72 p-2">
             {/* What a PATH is, where the reader picks one. The in-grid
                 path badge already carries this definition; the selector is the
                 other place a reader meets paths, so it heads the list with the
                 same word and the same explanation, reachable on hover, focus
                 and tap. */}
             <EntityDefinitionPopover kind="path" side="left">
-              <Eyebrow className="flex w-fit px-2 pb-1 pt-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+              <Eyebrow className="flex w-fit px-2 pb-1 pt-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
                 Path
               </Eyebrow>
             </EntityDefinitionPopover>
-            <ul className="flex flex-col gap-0.5">
+            <ul className="flex flex-col gap-1">
               {options.map((option) => {
                 const checked = activePathKeys.includes(option.id)
                 return (
@@ -114,7 +121,7 @@ export function PathSelectorMenu({ options }: { options: PathOption[] }) {
                       aria-pressed={checked}
                       onClick={() => togglePathKey(option.id)}
                       className={cn(
-                        'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors',
+                        'flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors',
                         'hover:bg-accent',
                         checked
                           ? 'font-medium text-foreground'

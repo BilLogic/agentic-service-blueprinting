@@ -34,7 +34,7 @@ function FieldSkeleton({ rows = 3 }: { rows?: number }) {
 /** Badge, title, meta — every panel opens with these three. */
 function IdentitySkeleton() {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2">
       <Skeleton className="h-5 w-20 rounded-full" />
       <Skeleton className="h-5 w-40" />
     </div>

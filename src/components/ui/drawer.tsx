@@ -7,6 +7,14 @@ import { cn } from "@/lib/utils"
 import { ground } from "@/lib/ground"
 
 type DrawerContextProps = {
+
+/*
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Radius and spacing retagged onto the visual-system ladder (controls md /
+ * containment lg / dialogs xl; whole-step padding and gap). Timings and
+ * structure stay upstream.
+ */
+
   hasSnapPoints: boolean
   modal: DrawerPrimitive.Root.Props["modal"]
   showSwipeHandle: boolean
@@ -171,7 +179,7 @@ function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="drawer-header"
       className={cn(
-        "flex shrink-0 flex-col gap-0.5 p-4 pb-0 group-data-[swipe-axis=y]/drawer-popup:text-center md:gap-0.5 md:text-left",
+        "flex shrink-0 flex-col gap-1 p-4 pb-0 group-data-[swipe-axis=y]/drawer-popup:text-center md:gap-1 md:text-left",
         className
       )}
       {...props}

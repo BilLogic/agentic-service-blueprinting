@@ -158,7 +158,7 @@ export function AgentSessionsView({
       </div>
 
       {pendingAttachment ? (
-        <p className="mx-2 mb-1 flex items-start gap-1.5 rounded-md bg-muted px-2 py-1.5 text-xs text-muted-foreground">
+        <p className="mx-2 mb-1 flex items-start gap-2 rounded-md bg-muted px-2 py-2 text-xs text-muted-foreground">
           <Pencil className="mt-px size-3 shrink-0" aria-hidden />
           <span>
             {pendingAttachment.label} ready — open or start a session to send
@@ -187,15 +187,15 @@ export function AgentSessionsView({
           skeleton={<AgentSessionsLoadingSkeleton />}
         >
           {sessions.length === 0 ? (
-          <p className="px-1.5 pt-2 text-xs text-muted-foreground">
+          <p className="px-2 pt-2 text-xs text-muted-foreground">
             No sessions yet. A session is one conversation plus the changes
             it made.
           </p>
         ) : searching ? (
           // A filter answers "where is it", so groups get out of the way.
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-1">
             {filtered.length === 0 ? (
-              <p className="px-1.5 pt-2 text-xs text-muted-foreground">
+              <p className="px-2 pt-2 text-xs text-muted-foreground">
                 No session matches “{query.trim()}”.
               </p>
             ) : (

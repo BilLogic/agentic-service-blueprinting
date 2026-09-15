@@ -30,6 +30,8 @@ vi.mock('@/contexts/EditorContext', async (importOriginal) => ({
   useEditor: () => ({
     getScenarioDisplayViewType: () => 'stacked',
     setScenarioDisplayViewType: () => {},
+    openDetail: () => {},
+    goHome: () => {},
   }),
 }))
 

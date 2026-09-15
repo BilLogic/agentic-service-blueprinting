@@ -32,12 +32,24 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { setActiveService } from '@/contexts/activeService'
 import { ActiveServiceProvider } from '@/contexts/ActiveServiceContext'
 import { DeploymentConfigProvider } from '@/contexts/DeploymentConfigContext'
-import { EditorProvider, useEditor } from '@/contexts/EditorContext'
+import {
+  EditorProvider,
+  useEditor,
+  useEditorNavCloser,
+} from '@/contexts/EditorContext'
+import {
+  PathSelectionProvider,
+  usePathSelectionContext,
+  usePathSelectionsByScenario,
+} from '@/contexts/PathSelectionContext'
+import { ViewStateProvider } from '@/contexts/ViewStateContext'
 import {
   hasBlueprintFallback,
   PACKAGE_OFFLINE_BOARD,
 } from '@/data/blueprintFallbacks'
 import { SAMPLE_NAV } from '@/data/sampleNav'
+import { writeLastViewedPath } from '@/lib/mobilePathMemory'
+import type { PathListItem } from '@/lib/pathSelection'
 import type { NavItem } from '@/types/nav'
 
 const supabase = vi.hoisted(() => ({
@@ -340,5 +352,151 @@ describe('the editor navigation', () => {
     // nullable now, and null is what an empty nav has.
     expect(observedActiveSlideId).toBeNull()
     expect(observedActiveSlide).toBeNull()
+  })
+})
+
+/**
+ * Opening a scenario from anywhere: phase, scenario, default path, camera.
+ *
+ * The provider tree is the app's: editor, view state, path selection. The
+ * catalog is registered the way a rendered board would, so `openScenario`
+ * can set the path rather than waiting on a fetch.
+ */
+const OPEN_SCENARIO = SAMPLE_NAV.find((item) => item.parentId)!
+const OPEN_PHASE = OPEN_SCENARIO.parentId!
+
+const HAPPY_PATH = 'path-happy'
+const VARIANT_PATH = 'path-variant'
+
+function openPath(
+  id: string,
+  name: string,
+  kind: PathListItem['kind'],
+): PathListItem {
+  return { id, name, summary: null, note: null, kind }
+}
+
+const OPEN_CATALOG = new Map<string, PathListItem[]>([
+  [
+    OPEN_SCENARIO.id,
+    [
+      openPath(HAPPY_PATH, 'Happy Path', 'happy'),
+      openPath(VARIANT_PATH, 'Reschedule', 'variant'),
+    ],
+  ],
+])
+
+type OpenHandles = {
+  editor: ReturnType<typeof useEditor>
+  paths: ReturnType<typeof usePathSelectionContext>
+}
+
+let openHandles: OpenHandles | null = null
+let navClosed = false
+
+function OpenProbe() {
+  const editor = useEditor()
+  const paths = usePathSelectionContext()
+  usePathSelectionsByScenario(OPEN_CATALOG)
+  useEditorNavCloser(() => {
+    navClosed = true
+  })
+  useEffect(() => {
+    openHandles = { editor, paths }
+  })
+  return null
+}
+
+async function mountOpen() {
+  openHandles = null
+  navClosed = false
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  await act(async () => {
+    render(
+      <QueryClientProvider client={client}>
+        <DeploymentConfigProvider>
+          <ActiveServiceProvider>
+            <EditorProvider>
+              <ViewStateProvider>
+                <PathSelectionProvider>
+                  <OpenProbe />
+                </PathSelectionProvider>
+              </ViewStateProvider>
+            </EditorProvider>
+          </ActiveServiceProvider>
+        </DeploymentConfigProvider>
+      </QueryClientProvider>,
+    )
+  })
+}
+
+function openEditor(): OpenHandles['editor'] {
+  if (!openHandles) throw new Error('the open-scenario probe never rendered')
+  return openHandles.editor
+}
+
+function openPaths(): OpenHandles['paths'] {
+  if (!openHandles) throw new Error('the open-scenario probe never rendered')
+  return openHandles.paths
+}
+
+describe('openScenario', () => {
+  afterEach(() => {
+    openHandles = null
+    navClosed = false
+    window.localStorage.clear()
+  })
+
+  it('lands on the scenario, its phase, and the happy path', async () => {
+    await mountOpen()
+
+    await act(async () => {
+      openEditor().openScenario(OPEN_SCENARIO.id)
+    })
+
+    expect(openEditor().selectedScenarioId).toBe(OPEN_SCENARIO.id)
+    expect(openEditor().selectedPhaseId).toBe(OPEN_PHASE)
+    expect(openEditor().view).toBe('detail')
+    expect(openEditor().skipCanvasFitAnimation).toBe(false)
+    expect(openEditor().focusNonce).toBeGreaterThan(0)
+    expect(openPaths().getSelectedPathIds(OPEN_SCENARIO.id)).toEqual([
+      HAPPY_PATH,
+    ])
+  })
+
+  it('opens on the last-viewed path when that path still exists', async () => {
+    writeLastViewedPath(OPEN_SCENARIO.id, VARIANT_PATH)
+    await mountOpen()
+
+    await act(async () => {
+      openEditor().openScenario(OPEN_SCENARIO.id)
+    })
+
+    expect(openEditor().selectedScenarioId).toBe(OPEN_SCENARIO.id)
+    expect(openPaths().getSelectedPathIds(OPEN_SCENARIO.id)).toEqual([
+      VARIANT_PATH,
+    ])
+  })
+
+  it('closes the mobile drawer when asked', async () => {
+    await mountOpen()
+
+    await act(async () => {
+      openEditor().openScenario(OPEN_SCENARIO.id, { closeNav: true })
+    })
+
+    expect(navClosed).toBe(true)
+  })
+
+  it('leaves the drawer alone when closeNav is omitted', async () => {
+    await mountOpen()
+
+    await act(async () => {
+      openEditor().openScenario(OPEN_SCENARIO.id)
+    })
+
+    expect(navClosed).toBe(false)
   })
 })

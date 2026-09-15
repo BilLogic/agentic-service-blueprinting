@@ -29,7 +29,7 @@ export function AnnotationStyleBarFrame({
     <div
       data-annotation-editable=""
       data-annotation-chrome=""
-      className="pointer-events-auto absolute z-50 flex h-10 items-center gap-0.5 rounded-full bg-annotation-chrome px-1.5 shadow-floating"
+      className="pointer-events-auto absolute z-50 flex h-10 items-center gap-1 rounded-2xl bg-annotation-chrome px-2 shadow-floating"
       style={chromeAnchorStyle(x, y, width, zoom)}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.preventDefault()}
@@ -42,7 +42,7 @@ export function AnnotationStyleBarFrame({
 export function AnnotationBarDivider() {
   return (
     <div
-      className="mx-0.5 h-4 w-px shrink-0 bg-(--border-annotation-chrome-divider)"
+      className="mx-1 h-4 w-px shrink-0 bg-(--border-annotation-chrome-divider)"
       aria-hidden
     />
   )
@@ -67,7 +67,7 @@ export function AnnotationBarTooltip({
       label={label}
       side="top"
       sideOffset={8}
-      className="rounded-md bg-annotation-chrome px-2.5 py-1.5 font-medium text-(--foreground-annotation-chrome) shadow-floating **:!bg-annotation-chrome **:!fill-annotation-chrome"
+      className="rounded-md bg-annotation-chrome px-2 py-2 font-medium text-(--foreground-annotation-chrome) shadow-floating **:!bg-annotation-chrome **:!fill-annotation-chrome"
     >
       {children}
     </IconTooltip>

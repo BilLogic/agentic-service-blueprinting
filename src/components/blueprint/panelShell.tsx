@@ -104,7 +104,7 @@ export const PANEL_EXIT_MS = 200
 export const PANEL_HEADING_CLASS =
   'min-w-0 text-sm font-semibold text-foreground'
 export const PANEL_TEXTAREA_CLASS =
-  'w-full resize-y rounded-md border border-input bg-transparent px-2 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50'
+  'w-full resize-y rounded-md border border-input bg-transparent px-2 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50'
 export const LANE_PANEL_FOOTER_ID = 'lane-panel-editor-footer'
 export const PHASE_PANEL_FOOTER_ID = 'phase-panel-editor-footer'
 export const SCENARIO_PANEL_FOOTER_ID = 'scenario-panel-editor-footer'
@@ -235,11 +235,11 @@ export function PanelDrawerShell({
               // A height cap here would clamp the tallest snap to 70svh and the
               // full point would stop short of full, with the drag still
               // travelling the whole way.
-              '!inset-x-0 !bottom-0 !top-auto !m-0 w-auto border-t border-border bg-popover shadow-sm after:hidden [--drawer-inset:0px]'
+              '!inset-x-0 !bottom-0 !top-auto !m-0 w-auto border-t border-border bg-popover shadow-md after:hidden [--drawer-inset:0px]'
             : cn(
                 CELL_DETAIL_PANEL_TOP_CLASS,
                 CELL_DETAIL_PANEL_BOTTOM_CLASS,
-                '!right-4 !left-auto !m-0 !h-auto !max-h-none rounded-2xl border border-border bg-popover shadow-sm after:hidden [--drawer-inset:1rem] md:!right-8 md:[--drawer-inset:2rem]',
+                '!right-4 !left-auto !m-0 !h-auto !max-h-none rounded-xl border border-border bg-popover shadow-md after:hidden [--drawer-inset:1rem] md:!right-8 md:[--drawer-inset:2rem]',
                 expanded
                   ? 'w-(--width-cell-panel-expanded)'
                   : 'w-(--width-cell-panel)',
@@ -293,11 +293,11 @@ export function Field({
         // alone. The help cursor and the dotted rule went with every other
         // announcement that a word is defined.
         hint &&
-          'rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+          'rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
       )}
     >
       {label}
-      {required ? <span className="ml-0.5 text-destructive">*</span> : null}
+      {required ? <span className="ml-1 text-destructive">*</span> : null}
     </span>
   )
   return (
@@ -496,7 +496,7 @@ export function PanelHeader({
           </DrawerDescription>
           {shown.length === 0 ? null : (
             <Breadcrumb className="min-w-0">
-              <BreadcrumbList className="flex-nowrap gap-0.5 text-xs font-normal text-muted-foreground">
+              <BreadcrumbList className="flex-nowrap gap-1 text-xs font-normal text-muted-foreground">
                 {shown.map((crumb, index) => (
                   <Fragment key={`${crumb.label}-${index}`}>
                     <BreadcrumbItem
@@ -537,7 +537,7 @@ export function PanelHeader({
           onClose={onClose}
         />
       ) : (
-        <div className="flex shrink-0 items-center gap-0.5">
+        <div className="flex shrink-0 items-center gap-1">
           {actions}
           <PanelCloseButton
             label={closeLabel}
@@ -579,7 +579,7 @@ export function PanelIdentity({
   children?: ReactNode
 }) {
   return (
-    <div className="flex min-w-0 flex-col items-start gap-1.5">
+    <div className="flex min-w-0 flex-col items-start gap-2">
       {badge}
       {title ? <p className={PANEL_HEADING_CLASS}>{title}</p> : null}
       {meta ? <p className="text-xs font-normal text-muted-foreground">{meta}</p> : null}

@@ -222,6 +222,13 @@ describe('brand fill', () => {
       expect(inSrgbGamut(oklchToLinearSrgb(L, C, HUE))).toBe(true)
     })
 
+    it('keeps brand chroma inside sRGB at the brand lightness', () => {
+      const brandL = dial('--brand-lightness', theme)
+      const brandC = dial('--brand-chroma', theme)
+      expect(brandC).toBeLessThan(chromaCeiling(brandL, HUE) + Number.EPSILON)
+      expect(inSrgbGamut(oklchToLinearSrgb(brandL, brandC, HUE))).toBe(true)
+    })
+
     it('carries its ink at AAA', () => {
       // --primary-foreground: the hard flip
       //   oklch(from --primary clamp(0.205, (0.62 - l) * 100, 0.985) c*0.08 h)

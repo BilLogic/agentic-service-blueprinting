@@ -91,12 +91,12 @@ export const COMPARE_CARD_PADDING_X = 12
  * COMPARE_RAIL_GUTTER. That made the gutter carry a constraint it should
  * not have, and forced it wide enough to leave the lane label stranded.
  *
- * 214 is what the caption needs once it shares the lane label's left inset
- * (BLUEPRINT_SLOT_INSET_LEFT, 14px, down from 20). The caption now ends inside
- * the rail, the gutter is free to be small, and both gaps land where they
- * should — see COMPARE_RAIL_GUTTER.
+ * 216 is what the caption needs once it shares the lane label's left inset
+ * (BLUEPRINT_SLOT_INSET_LEFT, 16px) on the 4px grid. The caption now ends
+ * inside the rail, the gutter is free to be small, and both gaps land where
+ * they should — see COMPARE_RAIL_GUTTER.
  */
-export const COMPARE_LABEL_WIDTH = 214
+export const COMPARE_LABEL_WIDTH = 216
 /**
  * The rail's grid TRACK is wider than the rail it paints.
  *
@@ -109,10 +109,10 @@ export const COMPARE_LABEL_WIDTH = 214
  *
  * 8 makes the frame sit evenly between what is outside it and what is inside:
  *
- *   lane label -> outline    BLUEPRINT_SLOT_INSET (14) + GUTTER (8)
- *                            + (STEP_COLUMN_GAP - H_INSET) (8)   = 30
+ *   lane label -> outline    BLUEPRINT_SLOT_INSET (16) + GUTTER (8)
+ *                            + (STEP_COLUMN_GAP - H_INSET) (8)   = 32
  *   outline -> first cell    COMPARE_PATH_SECTION_H_INSET (16)
- *                            + the cell's own inset (14)          = 30
+ *                            + the cell's own inset (16)          = 32
  *
  * Two earlier values, both wrong for reasons worth keeping:
  *
@@ -124,7 +124,7 @@ export const COMPARE_LABEL_WIDTH = 214
  *        the words touched the board.
  *
  * Neither could be right, because the caption was wider than the rail it sat
- * in. Widening COMPARE_LABEL_WIDTH to 214 removed that constraint from this
+ * in. Widening COMPARE_LABEL_WIDTH to 216 removed that constraint from this
  * constant, which is why 8 can now serve the geometry instead of the text.
  */
 export const COMPARE_RAIL_GUTTER = 8

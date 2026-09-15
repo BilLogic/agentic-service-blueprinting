@@ -143,4 +143,21 @@ describe('PathSelectionProvider', () => {
       ...result.current.activePathKeys,
     ])
   })
+
+  it('selectDefaultPath lands on the happy path once the catalog has it', () => {
+    const { result } = renderStore()
+    act(() => result.current.syncScenarioPaths(CATALOG, [...CATALOG.keys()]))
+    act(() => result.current.selectDefaultPath('adopt'))
+
+    expect(result.current.getSelectedPathIds('adopt')).toEqual(['p-nodb'])
+  })
+
+  it('selectDefaultPath waits for the catalog, then applies', () => {
+    const { result } = renderStore()
+    act(() => result.current.selectDefaultPath('adopt'))
+    expect(result.current.getSelectedPathIds('adopt')).toEqual([])
+
+    act(() => result.current.syncScenarioPaths(CATALOG, [...CATALOG.keys()]))
+    expect(result.current.getSelectedPathIds('adopt')).toEqual(['p-nodb'])
+  })
 })

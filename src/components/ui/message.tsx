@@ -2,6 +2,14 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+
+/*
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Radius and spacing retagged onto the visual-system ladder (controls md /
+ * containment lg / dialogs xl; whole-step padding and gap). Timings and
+ * structure stay upstream.
+ */
+
 function MessageGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -48,7 +56,7 @@ function MessageContent({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="message-content"
       className={cn(
-        "flex w-full min-w-0 flex-col gap-2.5 wrap-break-word group-data-[align=end]/message:*:data-slot:self-end",
+        "flex w-full min-w-0 flex-col gap-2 wrap-break-word group-data-[align=end]/message:*:data-slot:self-end",
         className
       )}
       {...props}

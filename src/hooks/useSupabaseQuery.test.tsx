@@ -18,19 +18,18 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery'
 import { QUERY_DEFAULTS } from '@/lib/queryClient'
 import type { Database } from '@/types/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-// The fetchers below never touch the client; only `configured` and a non-null
-// client matter, because together they are what keeps the hook out of its
-// no-database branch.
+const supabase = vi.hoisted(() => ({ configured: true }))
+
 vi.mock('@/contexts/SupabaseProvider', () => ({
   useSupabase: () => ({
-    client: {} as SupabaseClient<Database>,
-    configured: true,
+    client: supabase.configured ? ({} as SupabaseClient<Database>) : null,
+    configured: supabase.configured,
   }),
 }))
 
@@ -56,6 +55,10 @@ function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: QUERY_DEFAULTS } })
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>
 }
+
+afterEach(() => {
+  supabase.configured = true
+})
 
 describe('useSupabaseQuery (read lifetime)', () => {
   it('cancels the read when its consumer leaves', async () => {
@@ -130,5 +133,25 @@ describe('useSupabaseQuery (read lifetime)', () => {
       data: 'the newer answer',
       source: 'database',
     })
+  })
+})
+
+describe('useSupabaseQuery (no database)', () => {
+  it('names the missing connection without a vendor', () => {
+    supabase.configured = false
+
+    const { result } = renderHook(
+      () => useSupabaseQuery<string>('offline', () => Promise.resolve('n/a'), noFallback),
+      { wrapper },
+    )
+
+    expect(result.current).toEqual({
+      status: 'error',
+      message: 'No database connected',
+      fallback: null,
+    })
+    expect(result.current.status === 'error' && result.current.message).not.toMatch(
+      /Supabase/i,
+    )
   })
 })

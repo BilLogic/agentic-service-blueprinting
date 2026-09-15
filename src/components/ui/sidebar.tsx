@@ -26,7 +26,15 @@ import { ground } from "@/lib/ground"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "16rem"
+/*
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Widths are rem literals here so this file does not import `@/lib/layoutTokens`
+ * — vendored primitives stay pristine of product imports. The pixel owners are
+ * `SIDEBAR_DEFAULT_WIDTH` (288 → 18rem) and `RAIL_WIDTH` (48 → 3rem) in that
+ * module; EditorShell reads those for the drag clamp. Keep the rem strings in
+ * lockstep when those pixels move.
+ */
+const SIDEBAR_WIDTH = "18rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
@@ -656,7 +664,9 @@ function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
       data-slot="sidebar-menu-sub"
       data-sidebar="menu-sub"
       className={cn(
-        "mx-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l border-sidebar-border px-2.5 py-0.5 group-data-[collapsible=icon]:hidden",
+        // Half-steps (mx-3.5, px-2.5, py-0.5) sit off the 4px grid. The
+        // indent still reads as nested; timings are untouched.
+        "mx-4 flex min-w-0 translate-x-px flex-col gap-1 border-l border-sidebar-border px-2 py-1 group-data-[collapsible=icon]:hidden",
         className
       )}
       {...props}

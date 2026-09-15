@@ -20,8 +20,10 @@ import { setDevSimulatedTier, setDevSimulation, SIMULATION_OFF } from '@/lib/dev
  * it says "sample data", which is the other badge's subject, not this one's.
  * An ordinary session is a connected one with no key and no simulation.
  */
+const supabase = vi.hoisted(() => ({ configured: true }))
+
 vi.mock('@/lib/supabase', () => ({
-  isSupabaseConfigured: () => true,
+  isSupabaseConfigured: () => supabase.configured,
   hasDevAuthoringKey: () => false,
   hasDevAuthoringUi: () => false,
   devLoginCredentials: () => null,
@@ -39,6 +41,7 @@ vi.mock('@/lib/supabase', () => ({
 
 beforeEach(() => {
   window.localStorage.clear()
+  supabase.configured = true
   act(() => setDevSimulation(SIMULATION_OFF))
 })
 
@@ -64,4 +67,11 @@ test('the badge row names the simulated tier while the simulation is on', () => 
   renderBadges()
   expect(screen.getByText('simulating regular')).toBeTruthy()
   expect(document.querySelector('[data-dev-tier-badge="regular"]')).not.toBeNull()
+})
+
+test('the sample-data badge names the bundled sample when no database is connected', () => {
+  supabase.configured = false
+  renderBadges()
+  expect(screen.getByText('sample data')).toBeTruthy()
+  expect(document.body.textContent).not.toMatch(/Supabase/i)
 })

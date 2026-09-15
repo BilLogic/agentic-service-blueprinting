@@ -38,9 +38,11 @@ under a spacer so keys are reachable from any surface.
 
 > `EditorSidebarRail.tsx` contains no rail despite its name, and neither it nor
 > the DS primitive's own `SidebarRail` has a live consumer. Its `w-60` / `15rem`
-> constants also contradict the live 320px default. Treat it as dead code, not
-> as a second rail. The primitive's `SIDEBAR_WIDTH`, cookie and ⌘B shortcut are
-> likewise not this app's contract — the app overrides `--sidebar-width` inline.
+> constants also contradict the live 288px default, which has one owner:
+> `src/lib/layoutTokens.ts`. Treat it as dead code, not as a second rail. The
+> primitive's cookie and ⌘B shortcut are likewise not this app's contract — the
+> app overrides `--sidebar-width` inline, and the primitive derives rem widths
+> from that same owner rather than keeping its own width constants.
 
 ## One disclosure vocabulary
 

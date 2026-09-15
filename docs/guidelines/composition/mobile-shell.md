@@ -60,11 +60,14 @@ reading view. An earlier vertical "reader" existed and was deleted in the
 
 ## Chrome
 
+The phone's first screen is the cover. The cover CTA opens the first
+scenario of the first phase through `openScenario`, drawer closed. The
+drawer does not open on mount.
+
 `MobileTopBar` (menu · title · contextual right slot) up top; `MobileNavSheet` —
 a left sheet holding a rail + panel, the same IA and `NavRow` components as the
 desktop [sidebar](sidebar.md), with Blueprints/Slices surfaces and the theme
-toggle at the rail's foot — as the index. It opens on first load when nothing is
-selected. Phase rows are pure accordion headers; only scenarios (and slices)
+toggle at the rail's foot — as the index. Phase rows are pure accordion headers; only scenarios (and slices)
 navigate.
 
 - **Paths are single-select.** The top-bar control (`MobilePathSelector`) picks

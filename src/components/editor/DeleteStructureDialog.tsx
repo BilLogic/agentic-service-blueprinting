@@ -195,7 +195,7 @@ export function DeleteStructureDialog({
           ) : null}
 
           {impact ? (
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-2">
               {/* The counts, set apart from prose. These are the consequence;
                   in a sentence they read as decoration. */}
               <div className="flex gap-2">
@@ -242,7 +242,7 @@ export function DeleteStructureDialog({
                 className="text-sm font-medium text-foreground"
               >
                 Type{' '}
-                <span className="rounded-sm border border-border bg-background px-1.5 py-0.5 font-mono text-foreground">
+                <span className="rounded-md border border-border bg-background px-2 py-1 font-mono text-foreground">
                   {target.label}
                 </span>{' '}
                 to confirm

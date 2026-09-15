@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useReducer,
   useRef,
@@ -9,6 +10,7 @@ import {
 import { serializeUrlViewState, type UrlViewState } from '@/lib/urlViewState'
 import { useOpenCellId } from '@/lib/openCellStore'
 import { deleteCanvasViewStatesForTab } from '@/lib/canvasViewState'
+import { registerOpenScenarioActivateTab } from '@/lib/openScenarioSeam'
 import {
   createInitialViewState,
   tabKey,
@@ -164,6 +166,11 @@ export function ViewStateProvider({ children }: ViewStateProviderProps) {
     (key: TabKey | null) => dispatch({ type: 'activate', key }),
     [],
   )
+  useLayoutEffect(() => {
+    const toBase = () => activateTab(null)
+    registerOpenScenarioActivateTab(toBase)
+    return () => registerOpenScenarioActivateTab(null)
+  }, [activateTab])
   const closeTabsForSlice = useCallback(
     (sliceId: string) => {
       deleteCanvasViewStatesForTab(`slice:${sliceId}`)

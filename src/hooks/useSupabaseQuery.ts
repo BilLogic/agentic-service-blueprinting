@@ -15,7 +15,7 @@ type SettledQueryResult<T> = Exclude<QueryResult<T>, { status: 'loading' }>
 
 const LOADING_RESULT = { status: 'loading' } as const
 
-const NOT_CONFIGURED_MESSAGE = 'Supabase is not configured'
+const NOT_CONFIGURED_MESSAGE = 'No database connected'
 
 
 /**

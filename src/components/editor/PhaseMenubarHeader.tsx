@@ -2,6 +2,7 @@ import { Columns2, Diff, GitCompareArrows } from 'lucide-react'
 import type { PathOption } from '@/components/blueprint/PathMultiSelect'
 import { EntityHeader } from '@/components/blueprint/EntityHeader'
 import { IconTooltip } from '@/components/editor/IconTooltip'
+import { ScenarioMenubarBreadcrumb } from '@/components/editor/ScenarioMenubarBreadcrumb'
 import { BLUEPRINT_MENUBAR_HEADER_CLASS } from '@/components/editor/menubarHeaderLayout'
 import {
   SegmentedControl,
@@ -151,7 +152,7 @@ function CompareDifferencesCount({ slide }: { slide: NavItem }) {
         aria-hidden
         className={cn(
           // geometry: the count is a digit packed into a 24px rounded control, not a prose line.
-          'ml-0.5 rounded-full px-1.5 py-px font-mono text-xs leading-none tabular-nums',
+          'ml-1 rounded-full px-2 py-px font-mono text-xs leading-none tabular-nums',
           // Resting: neutral. Pressed: brand tint one step stronger than the
           // button's own selected fill, so the count stays legible on it.
           open
@@ -194,7 +195,7 @@ export function CompareControlsCluster({
   if (!isSubslide(slide) || selectedPathIds.length < 2) return null
   return (
     <div
-      className="flex shrink-0 items-center gap-1.5"
+      className="flex shrink-0 items-center gap-2"
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
     >
@@ -230,9 +231,21 @@ export function PhaseMenubarHeader({
         summary used to live only inside the title's hover tooltip, which is a
         strange place for the one sentence that says what you are looking at.
 
+        On a scenario the phase crumb sits before the title — the trail's
+        current page is the title itself (`excludeCurrent`), so the crumb
+        is the way back to that phase on the overview.
+
         The block itself is `EntityHeader`, shared with the service bar above
-        — same shape, same class, one place to change it.
+        — same shape, same class, one place to change it. Identity is props,
+        never a query result: this bar does not print `status` / `message`.
       */}
+      {isScenario ? (
+        <ScenarioMenubarBreadcrumb
+          slide={slide}
+          slides={slides}
+          excludeCurrent
+        />
+      ) : null}
       <EntityHeader
         kind={isScenario ? 'scenario' : 'phase'}
         id={slide.id}

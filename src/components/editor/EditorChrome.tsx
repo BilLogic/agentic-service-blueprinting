@@ -93,12 +93,12 @@ export function WorkspaceBadges() {
           deployment's own database. Connecting one hides the sample for good,
           gaps and all — too large a difference to leave to the code. */}
       {!configured ? (
-        <Badge
-          variant="outline"
-          title="No database configured — every board here is the template's bundled sample. Connect one and it is replaced by your own rows, including where they are empty."
+        <span
+          title="No database connected — every board here is the template's bundled sample. Connect one and it is replaced by your own rows, including where they are empty."
+          className="inline-flex items-center rounded-md px-2 py-1 text-xs text-muted-foreground"
         >
           sample data
-        </Badge>
+        </span>
       ) : null}
       {/* Writing with the local authoring key is a privileged state that
           looks exactly like the read-only app otherwise. Say so. */}
@@ -154,7 +154,7 @@ export function FloatingSidebarNavbar({ onExpand }: { onExpand: () => void }) {
     // `pl-1 pr-3` is the mirror of what it was: the icon button carries its
     // own padding, so the tight side is whichever end the toggle is on.
     <div
-      className="pointer-events-auto flex max-w-[min(36rem,calc(100vw-6rem))] items-center gap-1.5 rounded-lg border border-border bg-background/95 py-1 pl-1 pr-3 shadow-md backdrop-blur-sm"
+      className="pointer-events-auto flex max-w-[min(36rem,calc(100vw-6rem))] items-center gap-2 rounded-lg border border-border bg-background/95 py-1 pl-1 pr-3 shadow-md backdrop-blur-sm"
       data-editor-sidebar-navbar
     >
       {/* First, not last. This is the control that brings the sidebar back,
@@ -179,7 +179,7 @@ export function FloatingSidebarNavbar({ onExpand }: { onExpand: () => void }) {
             <Button
               type="button"
               size="sm"
-              className="ml-0.5 h-6 shrink-0 px-2 text-xs"
+              className="ml-1 h-6 shrink-0 px-2 text-xs"
               onClick={summary.action.onClick}
             >
               <Play className="size-3" aria-hidden />

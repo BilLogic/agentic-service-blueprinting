@@ -11,10 +11,14 @@ import {
   type ReactNode,
 } from 'react'
 import { getOverviewPathKey } from '@/lib/overviewPathFilters'
+import {
+  registerOpenScenarioDefaultPath,
+} from '@/lib/openScenarioSeam'
 import type { PathListItem } from '@/lib/pathSelection'
 import {
   defaultPathKeysFromCatalog,
   deriveSelections,
+  resolveScenarioOpenPathId,
   type ActivePathKeys,
   type PathCatalog,
 } from '@/lib/pathCatalogSelection'
@@ -48,6 +52,14 @@ type PathSelectionContextValue = {
   /** Toggle by scenario path UUID — resolves to a path key, then updates globally. */
   togglePathSelection: (scenarioId: string, pathId: string) => void
   setSelectedPathIds: (scenarioId: string, pathIds: string[]) => void
+  /**
+   * Open this scenario on its default path (last-viewed if it still exists,
+   * else the happy path). If the catalog has not yet registered the scenario,
+   * the choice is held until those paths arrive.
+   *
+   * @param scenarioId - Scenario whose default path should become the filter.
+   */
+  selectDefaultPath: (scenarioId: string) => void
   /**
    * Register/update paths for scenarios and apply the active path keys.
    * `scope` — the scenario ids the caller asked about — additionally prunes
@@ -92,6 +104,37 @@ function pathSignature(path: PathListItem): string {
       .sort()
       .map((key) => [key, path[key as keyof PathListItem]]),
   )
+}
+
+/**
+ * Apply an explicit path-id selection the way the PATHS filter does: resolve
+ * ids against the catalog, then derive every scenario's selection from those
+ * identities.
+ *
+ * @param prev - Current path-selection state.
+ * @param scenarioId - Scenario the ids belong to.
+ * @param pathIds - Path uuids to select.
+ * @returns Next state, including the global key list derived from those ids.
+ */
+function stateWithSelectedPathIds(
+  prev: PathSelectionState,
+  scenarioId: string,
+  pathIds: string[],
+): PathSelectionState {
+  const paths = prev.catalog[scenarioId] ?? []
+  const activePathKeys = [
+    ...new Set(
+      pathIds
+        .map((id) => paths.find((path) => path.id === id))
+        .filter((path): path is PathListItem => path !== undefined)
+        .map((path) => getOverviewPathKey(path)),
+    ),
+  ]
+  return {
+    ...prev,
+    activePathKeys,
+    selections: deriveSelections(prev.catalog, activePathKeys),
+  }
 }
 
 function samePaths(a: PathListItem[] | undefined, b: PathListItem[]): boolean {
@@ -156,6 +199,14 @@ export function PathSelectionProvider({ children }: { children: ReactNode }) {
     catalog: {},
     activePathKeys: null,
     selections: {},
+  })
+  const [
+    pendingDefaultScenarioId,
+    setPendingDefaultScenarioId,
+  ] = useState<string | null>(null)
+  const catalogRef = useRef(state.catalog)
+  useEffect(() => {
+    catalogRef.current = state.catalog
   })
 
   const syncScenarioPaths = useCallback(
@@ -271,32 +322,45 @@ export function PathSelectionProvider({ children }: { children: ReactNode }) {
 
   const setSelectedPathIds = useCallback(
     (scenarioId: string, pathIds: string[]) => {
-      setState((prev) => {
-        const paths = prev.catalog[scenarioId] ?? []
-        const activePathKeys = [
-          ...new Set(
-            pathIds
-              .map((id) => paths.find((path) => path.id === id))
-              .filter((path): path is PathListItem => path !== undefined)
-              .map((path) => getOverviewPathKey(path)),
-          ),
-        ]
-        return {
-          ...prev,
-          activePathKeys,
-          selections: deriveSelections(prev.catalog, activePathKeys),
-        }
-      })
+      setState((prev) => stateWithSelectedPathIds(prev, scenarioId, pathIds))
     },
     [],
   )
 
+  /**
+   * Select this scenario's default path now, or hold the request until the
+   * catalog registers it.
+   *
+   * @param scenarioId - Scenario whose default path should become the filter.
+   */
+  const selectDefaultPath = useCallback((scenarioId: string) => {
+    const paths = catalogRef.current[scenarioId] ?? []
+    const resolved = resolveScenarioOpenPathId(scenarioId, paths)
+    if (resolved) {
+      setSelectedPathIds(scenarioId, [resolved])
+      setPendingDefaultScenarioId(null)
+      return
+    }
+    setPendingDefaultScenarioId(scenarioId)
+  }, [setSelectedPathIds])
+
+  useLayoutEffect(() => {
+    registerOpenScenarioDefaultPath(selectDefaultPath)
+    return () => registerOpenScenarioDefaultPath(null)
+  }, [selectDefaultPath])
+
+  useEffect(() => {
+    if (pendingDefaultScenarioId === null) return
+    const paths = state.catalog[pendingDefaultScenarioId] ?? []
+    if (paths.length === 0) return
+    const resolved = resolveScenarioOpenPathId(pendingDefaultScenarioId, paths)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- catalog-wait for openScenario; the pending id is the latch, so this settles in one pass once paths exist
+    if (resolved) setSelectedPathIds(pendingDefaultScenarioId, [resolved])
+    setPendingDefaultScenarioId(null)
+  }, [pendingDefaultScenarioId, state.catalog, setSelectedPathIds])
+
   // Agent parity: the PATHS filter checkboxes. Reads the live catalog via
   // a ref so registration stays stable.
-  const catalogRef = useRef(state.catalog)
-  useEffect(() => {
-    catalogRef.current = state.catalog
-  })
   useEffect(() => {
     const unregister = [
       registerAgentUiCommand({
@@ -345,6 +409,7 @@ export function PathSelectionProvider({ children }: { children: ReactNode }) {
       togglePathKey,
       togglePathSelection,
       setSelectedPathIds,
+      selectDefaultPath,
       restoreDefaultPathKeys,
       syncScenarioPaths,
     }
@@ -356,6 +421,7 @@ export function PathSelectionProvider({ children }: { children: ReactNode }) {
     togglePathKey,
     togglePathSelection,
     setSelectedPathIds,
+    selectDefaultPath,
     restoreDefaultPathKeys,
     syncScenarioPaths,
   ])

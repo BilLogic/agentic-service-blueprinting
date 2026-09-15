@@ -136,7 +136,7 @@ function DependencyRow({
   const row = (
     <button
       type="button"
-      className="flex min-w-0 flex-col items-stretch gap-0.5 text-left text-foreground transition-colors hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+      className="flex min-w-0 flex-col items-stretch gap-1 text-left text-foreground transition-colors hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
       onMouseEnter={() => preview(null)}
       onMouseLeave={clearPreview}
       onFocus={() => preview(null)}
@@ -178,7 +178,7 @@ function DependencyRow({
     >
       <div
         className={cn(
-          'flex flex-col gap-0.5 px-2 py-1.5 text-xs transition-colors group-hover:bg-accent group-focus-within:bg-accent',
+          'flex flex-col gap-1 px-2 py-2 text-xs transition-colors group-hover:bg-accent group-focus-within:bg-accent',
           action ? 'pr-8' : undefined,
         )}
       >
@@ -191,7 +191,7 @@ function DependencyRow({
           row
         )}
         {connection.isTech && connection.techItems.length > 0 ? (
-          <span className={cn('flex flex-wrap gap-1 pt-0.5', detailIndentClass)}>
+          <span className={cn('flex flex-wrap gap-1 pt-1', detailIndentClass)}>
             {connection.techItems.map((item) => (
               <button
                 key={item}
@@ -212,7 +212,7 @@ function DependencyRow({
                   asSpan
                   inline
                   // geometry: packs the name into the compact inline face, not a canvas cell.
-                  className="!w-fit max-w-full !px-2 !py-0.5 !text-xs !font-normal leading-none text-muted-foreground"
+                  className="!w-fit max-w-full !px-2 !py-1 !text-xs !font-normal leading-none text-muted-foreground"
                 />
               </button>
             ))}
@@ -402,7 +402,7 @@ export function CellDependencySections({
       ) : null}
       {remainingTech.length > 0 ? (
         <DependencyGroup title="Also on this step">
-          <li className="px-2 py-1.5">
+          <li className="px-2 py-2">
             <span className="flex flex-wrap gap-1">
               {remainingTech.map((entry) => (
                 <button
@@ -417,7 +417,7 @@ export function CellDependencySections({
                     asSpan
                     inline
                     // geometry: packs the name into the compact inline face, not a canvas cell.
-                    className="!w-fit max-w-full !px-2 !py-0.5 !text-xs !font-normal leading-none text-muted-foreground"
+                    className="!w-fit max-w-full !px-2 !py-1 !text-xs !font-normal leading-none text-muted-foreground"
                   />
                 </button>
               ))}

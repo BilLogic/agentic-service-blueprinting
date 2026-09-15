@@ -106,6 +106,7 @@ vi.mock('@/contexts/EditorContext', () => ({
     slides: [],
     selectPhase: () => {},
     selectScenario: () => {},
+    openScenario: () => {},
     selectedPhaseId: null,
     selectedScenarioId: null,
     focusNonce: 0,

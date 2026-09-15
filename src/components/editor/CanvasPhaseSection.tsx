@@ -182,7 +182,7 @@ export function CanvasPhaseSection({
         */
         'relative inline-flex w-max flex-col items-start',
         navigable &&
-          'cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0',
+          'cursor-pointer rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0',
         className,
       )}
       data-canvas-phase-section=""
@@ -216,7 +216,7 @@ export function CanvasPhaseSection({
       <div
         aria-hidden
         data-phase-frame=""
-        className="pointer-events-none absolute rounded-2xl border border-solid"
+        className="pointer-events-none absolute rounded-xl border border-solid"
         style={{
           top: -sectionTopInset,
           left: -sectionInset,

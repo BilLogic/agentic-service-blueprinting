@@ -15,6 +15,13 @@ import type {
 import type { ActiveService } from '@/contexts/ActiveServiceContext'
 import { useActiveService } from '@/contexts/ActiveServiceContext'
 import { useEditor } from '@/contexts/EditorContext'
+import { useSupabase } from '@/contexts/SupabaseProvider'
+import { useMobileShell } from '@/hooks/useMobileShell'
+import { coverCanvasAction } from '@/lib/coverOpenAction'
+
+/** Shown under the cover CTA when no database is configured. */
+export const COVER_DISCONNECTED_STATUS =
+  'No database connected · read-only. Sample data shown.'
 
 /**
  * The cover page — the shell's landing view.
@@ -32,15 +39,24 @@ import { useEditor } from '@/contexts/EditorContext'
  * workspace whether or not a reader ever opens one.
  */
 export function CoverPage({ content }: { content: CoverContent }) {
-  const { enterCanvas } = useEditor()
+  const { enterCanvas, openScenario, slides } = useEditor()
   const { services, service, switchService } = useActiveService()
+  const { configured } = useSupabase()
+  const mobile = useMobileShell()
+  const onOpenCanvas = coverCanvasAction({
+    mobile,
+    slides,
+    enterCanvas,
+    openScenario,
+  })
   return (
     <CoverPageView
       content={content}
-      onOpenCanvas={enterCanvas}
+      onOpenCanvas={onOpenCanvas}
       services={services}
       activeServiceSlug={service?.slug ?? null}
       onSelectService={switchService}
+      configured={configured}
     />
   )
 }
@@ -65,6 +81,21 @@ function pickServicePage(
 }
 
 /**
+ * One muted line under the cover CTA: the workspace is the bundled sample
+ * and cannot be written to. Hidden the moment a database is connected.
+ *
+ * @param configured - `useSupabase().configured`; false shows the line.
+ */
+function CoverConnectionStatus({ configured }: { configured: boolean }) {
+  if (configured) return null
+  return (
+    <p className="text-sm text-muted-foreground">
+      {COVER_DISCONNECTED_STATUS}
+    </p>
+  )
+}
+
+/**
  * The provider-free surface — tests hand it a plain callback.
  *
  * `services` is the deployment's roster. With more than one, the tab whose
@@ -80,12 +111,15 @@ export function CoverPageView({
   services = [],
   activeServiceSlug = null,
   onSelectService,
+  configured = true,
 }: {
   content: CoverContent
   onOpenCanvas: () => void
   services?: ActiveService[]
   activeServiceSlug?: string | null
   onSelectService?: (slug: string) => void
+  /** False when no database is connected — shows the read-only sample line. */
+  configured?: boolean
 }) {
   const [activeTab, setActiveTab] = useState(content.tabs[0]?.value ?? '')
   const multiService = services.length > 1
@@ -119,7 +153,7 @@ export function CoverPageView({
         */
         data-cover-shell
         className={cn(
-          'mx-auto flex w-full flex-col px-8 py-10 sm:px-10 sm:py-12 lg:py-14',
+          'mx-auto flex w-full flex-col px-gutter py-10 sm:py-12 lg:py-14',
           COVER_MEASURE,
         )}
       >
@@ -134,7 +168,7 @@ export function CoverPageView({
           enter. It also stops the action jumping position between a short
           title and a long one.
         */}
-        <header className="flex flex-col items-start gap-5 pb-10">
+        <header className="flex flex-col items-start gap-content pb-10">
           <div className="flex flex-col gap-3">
             <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               {content.title ?? ORG_NAME}
@@ -148,13 +182,17 @@ export function CoverPageView({
               {renderInline(content.lede)}
             </p>
           </div>
-          <Button
-            type="button"
-            onClick={onOpenCanvas}
-            className="h-9 shrink-0 px-3.5"
-          >
-            {content.primaryCtaLabel}
-          </Button>
+          <div className="flex flex-col items-start gap-2">
+            <Button
+              type="button"
+              variant="brand"
+              onClick={onOpenCanvas}
+              className="h-9 shrink-0 px-4"
+            >
+              {content.primaryCtaLabel}
+            </Button>
+            <CoverConnectionStatus configured={configured} />
+          </div>
         </header>
 
         <Tabs

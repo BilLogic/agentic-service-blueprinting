@@ -82,7 +82,7 @@ function SliceGroups({
     // is in flight, the empty message only once it has truly come back bare.
     if (loading) return <SliceListLoadingSkeleton />
     return (
-      <p className="px-2 py-1.5 text-xs text-tertiary-foreground">
+      <p className="px-2 py-2 text-xs text-tertiary-foreground">
         No saved slices yet.
       </p>
     )
@@ -104,7 +104,7 @@ function SliceGroups({
             })
           }
         >
-          <ul className="flex flex-col gap-0.5">
+          <ul className="flex flex-col gap-1">
             {group.slices.map((slice) => (
               <li key={slice.id}>
                 <NavRow
@@ -171,7 +171,7 @@ export function MobileNavSheet({
         {/* The rail: surface radio on top, utilities at the foot. */}
         <nav
           aria-label="Sidebar surfaces"
-          className="flex h-full w-14 shrink-0 flex-col items-center gap-1 border-r border-muted px-1.5 py-2"
+          className="flex h-full w-14 shrink-0 flex-col items-center gap-1 border-r border-muted px-2 py-2"
         >
           {RAIL_SURFACES.map(({ id, label, icon: Icon }) => (
             <button
@@ -252,12 +252,12 @@ export function MobileNavSheet({
               phasesLoading ? (
                 <SlideNavLoadingSkeleton rows={4} />
               ) : (
-                <p className="px-2 py-1.5 text-xs text-tertiary-foreground">
+                <p className="px-2 py-2 text-xs text-tertiary-foreground">
                   No phases in this workspace yet.
                 </p>
               )
             ) : (
-              <div className="flex flex-col gap-0.5">
+              <div className="flex flex-col gap-1">
                 {phases.map((phase) => {
                   const children = scenariosByPhase.get(phase.id) ?? []
                   const hasChildren = children.length > 0

@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
 
 function SectionHeading({ children }: { children: ReactNode }) {
   return (
-    <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+    <h3 className="text-lg font-medium tracking-tight text-foreground sm:text-xl">
       {children}
     </h3>
   )
@@ -83,7 +83,7 @@ function Portrait({
       className={cn(
         'size-20 shrink-0 object-cover sm:size-24',
         image.size === 'badge'
-          ? 'rounded-2xl'
+          ? 'rounded-xl'
           : 'rounded-xl border border-border bg-white object-contain p-1',
       )}
     />
@@ -175,13 +175,13 @@ function DefsTable({
           <tr className="bg-muted/50">
             <th
               scope="col"
-              className="border-b border-border px-4 py-2.5 font-medium text-foreground"
+              className="border-b border-border px-4 py-2 font-medium text-foreground"
             >
               {columns.term}
             </th>
             <th
               scope="col"
-              className="border-b border-border px-4 py-2.5 font-medium text-foreground"
+              className="border-b border-border px-4 py-2 font-medium text-foreground"
             >
               {columns.definition}
             </th>
@@ -250,7 +250,7 @@ function SkillPanel({
   */
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="font-mono text-lg font-semibold tracking-tight text-foreground">
+      <h3 className="font-mono text-lg font-medium tracking-tight text-foreground">
         {section.command}
       </h3>
       <Paragraph>{renderInline(section.summary)}</Paragraph>
@@ -306,9 +306,9 @@ function SkillTabs({
             aria-selected={index === active}
             onClick={() => setActive(index)}
             className={cn(
-              'rounded-full px-3.5 py-1.5 font-mono text-sm transition-colors duration-(--motion-structural) ease-structural',
+              'rounded-full px-4 py-2 font-mono text-sm transition-colors duration-(--motion-structural) ease-structural',
               index === active
-                ? 'bg-background text-foreground shadow-sm'
+                ? 'bg-background text-foreground'
                 : 'text-muted-foreground hover:text-foreground',
             )}
           >

@@ -65,7 +65,7 @@ function SequenceNavPreview({
       aria-label={ariaLabel}
       data-canvas-nav=""
       className={cn(
-        'pointer-events-auto absolute bottom-3 z-30 h-auto max-w-40 gap-1.5 py-1.5',
+        'pointer-events-auto absolute bottom-3 z-30 h-auto max-w-40 gap-2 py-2',
         /*
           Ordinary elevated chrome. This used to pin itself white in both
           themes ("the nav floats over the always-light canvas") on Tailwind's

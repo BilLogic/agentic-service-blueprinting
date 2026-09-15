@@ -52,7 +52,7 @@ export function StoryboardStepDetailStack({
 
     return (
       <div
-        className={cn('grid h-full min-h-0 gap-x-4 gap-y-2.5', className)}
+        className={cn('grid h-full min-h-0 gap-x-4 gap-y-2', className)}
         style={gridStyle}
       >
         {entries.map((entry, index) => (
@@ -117,7 +117,7 @@ export function StoryboardStepDetailStack({
   return (
     <div className={cn('flex flex-col gap-5', className)}>
       {entries.map((entry, index) => (
-        <div key={entry.laneName} className="flex flex-col gap-2.5">
+        <div key={entry.laneName} className="flex flex-col gap-2">
           <div className={PICTURE_FRAME_CLASS}>
             <ZoomableImage
               src={entry.frame}

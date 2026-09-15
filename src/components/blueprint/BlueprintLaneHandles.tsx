@@ -173,7 +173,7 @@ function BlueprintLaneHandlesActive({
 
       {naming ? (
         <div
-          className="pointer-events-auto absolute left-6 z-40 flex items-center gap-1.5 rounded-md border border-border bg-popover p-1.5 shadow-md"
+          className="pointer-events-auto absolute left-6 z-40 flex items-center gap-2 rounded-md border border-border bg-popover p-2 shadow-md"
           style={{ top: naming.y - 16, width: Math.min(260, bodyWidth - 48) }}
         >
           <Input

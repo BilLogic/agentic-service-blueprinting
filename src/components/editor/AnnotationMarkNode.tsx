@@ -140,7 +140,7 @@ function markSurface(
 } {
   if (annotation.type === 'sticky') {
     return {
-      base: 'absolute box-border rounded-sm p-2 shadow-md',
+      base: 'absolute box-border rounded-md p-2 shadow-md',
       // The sticky is the one kind that wears a border either way — an
       // unselected note still has to read as a card on the board.
       chrome: showChrome
@@ -172,7 +172,7 @@ function markSurface(
 
   const hasFill = Boolean(annotation.fillColor)
   return {
-    base: 'absolute box-border flex flex-col items-center justify-center p-2.5 transition-[box-shadow,outline-color] duration-(--motion-micro)',
+    base: 'absolute box-border flex flex-col items-center justify-center p-2 transition-[box-shadow,outline-color] duration-(--motion-micro)',
     chrome:
       showChrome && 'outline outline-2 outline-offset-0 outline-annotation-selected',
     extra: cn(hasFill && 'shadow-sm', !selected && 'overflow-hidden'),
@@ -225,7 +225,7 @@ function ShapeBody({
   const isEllipse = annotation.type === 'ellipse'
   const textColor = annotationTextOnFill(annotation.fillColor)
   return (
-    <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-2.5">
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-2">
       {editing ? (
         <textarea
           ref={textareaRef}
@@ -332,14 +332,14 @@ function TextBody({
         rows={2}
         // geometry: type is fitted to the drawn annotation box.
         className={cn(
-          'w-full resize-none px-1.5 py-1 font-sans leading-snug outline-none',
+          'w-full resize-none px-2 py-1 font-sans leading-snug outline-none',
           'pointer-events-auto cursor-text',
           textAlignClass,
           annotation.bold && 'font-medium',
           annotation.strike && 'line-through',
           showChrome
             ? 'border-0 bg-transparent text-inherit'
-            : 'rounded-sm border border-muted bg-card/95 text-foreground shadow-sm focus:border-ring',
+            : 'rounded-md border border-muted bg-card/95 text-foreground shadow-sm focus:border-ring',
         )}
         style={{ fontSize: annotation.fontSize }}
         onChange={(e) => onUpdate({ text: e.target.value })}
@@ -357,7 +357,7 @@ function TextBody({
     <div
       // geometry: type is fitted to the drawn annotation box.
       className={cn(
-        'max-w-full px-1.5 py-1 whitespace-pre-wrap font-sans leading-snug',
+        'max-w-full px-2 py-1 whitespace-pre-wrap font-sans leading-snug',
         textAlignClass,
         annotation.bold && 'font-medium',
         annotation.strike && 'line-through',

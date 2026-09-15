@@ -160,7 +160,7 @@ export function CanvasCellContextMenu() {
         type="button"
         role="menuitem"
         onClick={viewDetail}
-        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-muted"
+        className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-muted"
       >
         <Eye className="size-3.5 text-muted-foreground" aria-hidden />
         View cell detail
@@ -173,7 +173,7 @@ export function CanvasCellContextMenu() {
             pick.pick(pickId, 'toggle')
             setMenu(null)
           }}
-          className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-muted"
+          className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-muted"
         >
           {picked ? (
             <Minus className="size-3.5 text-muted-foreground" aria-hidden />
@@ -190,7 +190,7 @@ export function CanvasCellContextMenu() {
           disabled={deleting}
           onClick={() => void destroy()}
           className={cn(
-            'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left',
+            'flex w-full items-center gap-2 rounded-md px-2 py-2 text-left',
             confirmingDelete
               ? 'bg-destructive/10 text-destructive hover:bg-destructive/15'
               : 'text-destructive/90 hover:bg-muted',

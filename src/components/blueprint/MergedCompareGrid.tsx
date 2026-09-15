@@ -434,7 +434,7 @@ function MergedSectionFrame({
         }}
       />
       <div
-        className="pointer-events-auto absolute z-50 flex max-w-[calc(100%-12px)] items-center gap-1.5"
+        className="pointer-events-auto absolute z-50 flex max-w-[calc(100%-12px)] items-center gap-2"
         style={{
           top: -COMPARE_PATH_SECTION_TOP_INSET,
           left:
@@ -487,7 +487,7 @@ function MergedLaneRow({
   const flushBottom = lanePrecedesBlueprintDivider(lane, lanes)
 
   return (
-    <div className="relative flex items-stretch rounded-sm">
+    <div className="relative flex items-stretch rounded-md">
       {tracks.map((track, trackIndex) => {
         const isLast = trackIndex === tracks.length - 1
         // The gap element the arrow router measures, indexed in the CANONICAL

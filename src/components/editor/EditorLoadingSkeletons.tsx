@@ -39,7 +39,7 @@ export function BlueprintPanelLoadingSkeleton({
     >
       {showTitle ? <Skeleton className="h-5 w-40 rounded-full" /> : null}
       <Skeleton
-        className={cn('rounded-2xl', isFluid && 'w-full min-h-[320px]')}
+        className={cn('rounded-xl', isFluid && 'w-full min-h-[320px]')}
         style={{
           height,
           ...(isFluid ? {} : { width }),
@@ -185,18 +185,18 @@ export function SliceHeaderBandSkeleton() {
           content in it.
         */}
         <div className="flex min-w-0 items-center gap-2">
-          <Skeleton className="h-5 w-48 max-w-full rounded-sm" />
+          <Skeleton className="h-5 w-48 max-w-full rounded-md" />
           <Skeleton className="h-5 w-16 shrink-0 rounded-md" />
         </div>
         {/* Caption row: `text-sm` line box, matching the loaded band. */}
-        <div className="mt-0.5 flex min-w-0 items-baseline gap-2">
-          <Skeleton className="h-5 w-72 max-w-full rounded-sm" />
+        <div className="mt-1 flex min-w-0 items-baseline gap-2">
+          <Skeleton className="h-5 w-72 max-w-full rounded-md" />
         </div>
       </div>
       {/* Primary action — `size="sm"` is h-8, and it has an icon before its
           label, so the skeleton carries both rather than one flat bar. */}
-      <div className="flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-border px-3">
-        <Skeleton className="size-3 shrink-0 rounded-sm" />
+      <div className="flex h-8 shrink-0 items-center gap-2 rounded-md border border-border px-3">
+        <Skeleton className="size-3 shrink-0 rounded-md" />
         <Skeleton className="h-3.5 w-14" />
       </div>
     </div>
@@ -283,7 +283,7 @@ export function SlicePresentationLoadingSkeleton() {
               className="flex shrink-0 flex-col gap-2 border-t-2 border-border pt-2"
             >
               <Skeleton className="h-4 w-24" />
-              <div className="flex gap-1.5">
+              <div className="flex gap-2">
                 {Array.from({ length: squares }, (_, square) => (
                   <Skeleton key={square} className="size-10" />
                 ))}
@@ -333,13 +333,13 @@ function BootNavSectionSkeleton({ rows }: { rows: readonly string[] }) {
   return (
     <div>
       <div className="flex h-[29px] items-center gap-1 px-1">
-        <Skeleton className="size-4 shrink-0 rounded-sm" />
+        <Skeleton className="size-4 shrink-0 rounded-md" />
         <Skeleton className="h-2.5 w-12" />
       </div>
-      <div className="flex flex-col gap-0.5 pb-1">
+      <div className="flex flex-col gap-1 pb-1">
         {rows.map((width, index) => (
           <div key={index} className="flex h-8 items-center pl-6">
-            <Skeleton className="h-4 rounded-sm" style={{ width }} />
+            <Skeleton className="h-4 rounded-md" style={{ width }} />
           </div>
         ))}
       </div>
@@ -351,7 +351,7 @@ function BootNavSectionSkeleton({ rows }: { rows: readonly string[] }) {
 function BootRailIconSkeleton({ hit }: { hit: string }) {
   return (
     <div className={cn('flex shrink-0 items-center justify-center', hit)}>
-      <Skeleton className="size-4 rounded-sm" />
+      <Skeleton className="size-4 rounded-md" />
     </div>
   )
 }
@@ -393,17 +393,17 @@ export function EditorSidebarBootSkeleton({
         data-shell-entrance-part="rail"
         className={cn(
           'flex h-full shrink-0 flex-col items-center gap-1',
-          'border-r border-muted px-1.5 py-2',
+          'border-r border-muted px-2 py-2',
           EDITOR_RAIL_WIDTH_CLASS,
         )}
       >
         <BootRailIconSkeleton hit="size-6" />
-        <div className="my-0.5 h-px w-6 shrink-0 bg-border/60" />
+        <div className="my-1 h-px w-6 shrink-0 bg-border/60" />
         <BootRailIconSkeleton hit="size-9" />
         <BootRailIconSkeleton hit="size-9" />
         <div className="flex-1" />
         {showAgent ? <BootRailIconSkeleton hit="size-9" /> : null}
-        <div className="my-0.5 h-px w-6 shrink-0 bg-border/60" />
+        <div className="my-1 h-px w-6 shrink-0 bg-border/60" />
         <BootRailIconSkeleton hit="size-7" />
         <BootRailIconSkeleton hit="size-9" />
       </div>
@@ -426,12 +426,12 @@ export function EditorSidebarBootSkeleton({
               style={{ height: `${dockRatio * 100}%` }}
             >
               {/* Grab bar: grip, title, close. */}
-              <div className="flex h-6 shrink-0 items-center gap-1 border-b border-muted pl-1.5 pr-2">
-                <Skeleton className="size-3 shrink-0 rounded-sm" />
+              <div className="flex h-6 shrink-0 items-center gap-1 border-b border-muted pl-2 pr-2">
+                <Skeleton className="size-3 shrink-0 rounded-md" />
                 <Skeleton className="h-2.5 w-10" />
                 <div className="flex-1" />
                 <div className="flex size-6 shrink-0 items-center justify-center">
-                  <Skeleton className="size-3 rounded-sm" />
+                  <Skeleton className="size-3 rounded-md" />
                 </div>
               </div>
               {/* Sessions header: title, filter, new. */}
@@ -439,10 +439,10 @@ export function EditorSidebarBootSkeleton({
                 <Skeleton className="ml-1 h-2.5 w-12" />
                 <div className="flex-1" />
                 <div className="flex size-6 shrink-0 items-center justify-center">
-                  <Skeleton className="size-3.5 rounded-sm" />
+                  <Skeleton className="size-3.5 rounded-md" />
                 </div>
                 <div className="flex size-6 shrink-0 items-center justify-center">
-                  <Skeleton className="size-3.5 rounded-sm" />
+                  <Skeleton className="size-3.5 rounded-md" />
                 </div>
               </div>
               <div className="min-h-0 flex-1 overflow-hidden px-2 pb-2">
@@ -479,7 +479,7 @@ export function AgentSessionsLoadingSkeleton() {
 
 export function SliceListLoadingSkeleton() {
   return (
-    <div className="flex flex-col gap-0.5 px-2" aria-hidden>
+    <div className="flex flex-col gap-1 px-2" aria-hidden>
       <Skeleton className="my-1 h-3.5 w-16" />
       <Skeleton className="my-1 ml-4 h-3.5 w-40" />
       <Skeleton className="my-1 ml-4 h-3.5 w-28" />

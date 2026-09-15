@@ -34,10 +34,10 @@ test('the list is eighteen references, four skill bodies, the render walk and th
   // the installed package: one per assembled surface, plus the survey.
   const composition = CONSUMER_IMPORTS.filter((path) => path.startsWith('docs/'))
   assert.equal(skills.length, 4)
-  // Four files, and only four: the runner a deployment names on the command
-  // line, the config it stages and hands to Playwright, and the two specs that
-  // travel beside it — the view walk and the annotation-drag case.
-  assert.equal(renderWalk.length, 4)
+  // The runner a deployment names on the command line, the config it stages
+  // and hands to Playwright, and the specs that travel beside it — the view
+  // walk, the annotation-drag case, and the phone cover walk.
+  assert.equal(renderWalk.length, 5)
   assert.equal(composition.length, 10)
   assert.equal(
     CONSUMER_IMPORTS.length - skills.length - renderWalk.length - composition.length,

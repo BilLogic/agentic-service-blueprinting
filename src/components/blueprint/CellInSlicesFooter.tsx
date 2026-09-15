@@ -80,19 +80,19 @@ export function CellInSlicesFooter({ cellId }: CellInSlicesFooterProps) {
         In slices ({matches.length})
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <ul className="flex flex-col gap-0.5 pt-1.5 pb-1">
+        <ul className="flex flex-col gap-1 pt-2 pb-1">
           {matches.map((slice) => (
             <li key={slice.id}>
               <button
                 type="button"
-                className="flex w-full min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs text-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-foreground transition-colors hover:bg-accent hover:text-foreground"
                 onClick={() => openTab({ kind: 'slice', sliceId: slice.id })}
               >
                 <span aria-hidden>◇</span>
                 <span className="min-w-0 flex-1 truncate">{slice.title}</span>
                 <span
                   // geometry: packs the count into a fitted badge, not a prose line.
-                  className="shrink-0 rounded-full border border-border bg-muted px-1.5 py-px font-mono text-xs leading-none text-muted-foreground"
+                  className="shrink-0 rounded-full border border-border bg-muted px-2 py-px font-mono text-xs leading-none text-muted-foreground"
                 >
                   {slice.kind}
                 </span>

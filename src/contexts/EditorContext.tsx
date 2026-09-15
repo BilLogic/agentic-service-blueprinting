@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -12,6 +13,10 @@ import { useDeploymentConfig } from '@/contexts/DeploymentConfigContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { useServicePhases } from '@/hooks/useServicePhases'
 import { isBundledSampleActive } from '@/lib/bundledSample'
+import {
+  activateBaseView,
+  selectOpenScenarioDefaultPath,
+} from '@/lib/openScenarioSeam'
 import { persistScenarioLayout } from '@/lib/scenarioLayout'
 import {
   getSlideViewType,
@@ -109,9 +114,74 @@ type EditorContextValue = {
   activeSlide: NavItem | null
 }
 
+/** Options for {@link useEditor}'s `openScenario`. */
+export type OpenScenarioOptions = {
+  /**
+   * Close the mobile navigation drawer after the move, so the camera
+   * change is visible. No-op on desktop (no drawer is registered).
+   */
+  closeNav?: boolean
+}
+
+/**
+ * Editor navigation plus the scenario-open seam. `openScenario` is composed
+ * in {@link useEditor} rather than stored on the provider, so it can reach
+ * the path store and the tab store without those providers learning about
+ * the editor — the same reason `BoardAddressSync` is a bridge.
+ */
+export type EditorHandle = EditorContextValue & {
+  /**
+   * Open a scenario from anywhere: select its phase and the scenario, select
+   * its default path, and move the camera the way the sidebar does.
+   *
+   * @param scenarioId - Scenario to open.
+   * @param opts - Optional extras; `{ closeNav: true }` shuts the mobile drawer.
+   */
+  openScenario: (scenarioId: string, opts?: OpenScenarioOptions) => void
+}
+
 const EditorContext = createContext<EditorContextValue | null>(null)
 
 const EMPTY_EXPANDED: ReadonlySet<string> = new Set<string>()
+
+/** Mobile drawer closer registered by the shell that owns the drawer. */
+let editorNavCloser: (() => void) | null = null
+
+/**
+ * Register the mobile drawer closer so `openScenario(..., { closeNav: true })`
+ * can shut it. Desktop never registers one, so the flag is a no-op there.
+ *
+ * @param close - Function that closes the nav drawer.
+ */
+export function useEditorNavCloser(close: () => void): void {
+  useLayoutEffect(() => {
+    editorNavCloser = close
+    return () => {
+      if (editorNavCloser === close) editorNavCloser = null
+    }
+  }, [close])
+}
+
+/**
+ * Compose the scenario-open seam from the editor primitives plus the path
+ * store and tab store, when those are mounted.
+ *
+ * @param selectScenario - Narrow scenario selection (phase + camera).
+ * @returns The shared `openScenario` action.
+ */
+function useOpenScenarioAction(
+  selectScenario: (scenarioId: string) => void,
+): (scenarioId: string, opts?: OpenScenarioOptions) => void {
+  return useCallback(
+    (scenarioId: string, opts?: OpenScenarioOptions) => {
+      activateBaseView()
+      selectScenario(scenarioId)
+      selectOpenScenarioDefaultPath(scenarioId)
+      if (opts?.closeNav) editorNavCloser?.()
+    },
+    [selectScenario],
+  )
+}
 
 function withPhaseExpanded(
   current: ReadonlySet<string>,
@@ -540,12 +610,16 @@ export function EditorProvider({ children }: EditorProviderProps) {
   )
 }
 
-export function useEditor() {
+export function useEditor(): EditorHandle {
   const context = useContext(EditorContext)
   if (!context) {
     throw new Error('useEditor must be used within EditorProvider')
   }
-  return context
+  const openScenario = useOpenScenarioAction(context.selectScenario)
+  return useMemo(
+    () => ({ ...context, openScenario }),
+    [context, openScenario],
+  )
 }
 
 /**

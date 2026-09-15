@@ -256,7 +256,7 @@ function ScenarioPanelBody({
         <Accordion multiple value={openPath} onValueChange={setOpenPath}>
           {scenario.paths.map((path) => (
             <AccordionItem key={path.id} value={path.id}>
-              <AccordionTrigger className="w-full min-w-0 gap-1.5 py-2 hover:no-underline">
+              <AccordionTrigger className="w-full min-w-0 gap-2 py-2 hover:no-underline">
                 {/*
                   Dot, name, status — and no type badge.
 
@@ -280,7 +280,7 @@ function ScenarioPanelBody({
                       properties — not a badge on the header. The header is a
                       dot and a name; everything you can say ABOUT the route
                       lives inside it. */}
-                  <div className="flex flex-col gap-0.5">
+                  <div className="flex flex-col gap-1">
                     <PanelSectionLabel>Status</PanelSectionLabel>
                     <div className="flex min-w-0">
                       {canEdit ? (

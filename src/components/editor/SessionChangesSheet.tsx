@@ -516,7 +516,7 @@ export function SessionChangesSheet() {
               variant="ghost"
               size="sm"
               aria-label={`Review ${changes.length} changes`}
-              className="pointer-events-auto shrink-0 gap-1.5 border border-primary/30 bg-primary/10 px-2.5 text-primary hover:bg-primary/15 hover:text-primary"
+              className="pointer-events-auto shrink-0 gap-2 border border-primary/30 bg-primary/10 px-2 text-primary hover:bg-primary/15 hover:text-primary"
             >
               <History className="size-3.5" aria-hidden />
               Changes
@@ -546,7 +546,7 @@ export function SessionChangesSheet() {
               back closes. Everything else the header used to say (that a list
               is a list, that reverting is possible) the rows demonstrate.
             */}
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="mt-1 text-xs text-muted-foreground">
               Already saved — Save just clears the list.
             </p>
           </div>
@@ -599,7 +599,7 @@ export function SessionChangesSheet() {
                   type="button"
                   variant="destructive"
                   size="sm"
-                  className="shrink-0 px-2.5"
+                  className="shrink-0 px-2"
                   onClick={() =>
                     void revertAll().catch((error: unknown) => {
                       console.error('[authoring] revert all failed:', error)
@@ -626,7 +626,7 @@ export function SessionChangesSheet() {
                 <Button
                   type="button"
                   size="sm"
-                  className="shrink-0 gap-1.5 px-2.5"
+                  className="shrink-0 gap-2 px-2"
                   onClick={save}
                 >
                   <Check className="size-3.5" aria-hidden />
@@ -641,7 +641,7 @@ export function SessionChangesSheet() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="shrink-0 gap-1.5 px-2 text-muted-foreground"
+                    className="shrink-0 gap-2 px-2 text-muted-foreground"
                     disabled={reverting}
                     onClick={() => setConfirming('revert')}
                   >
@@ -655,7 +655,7 @@ export function SessionChangesSheet() {
                 <Button
                   type="button"
                   size="sm"
-                  className="shrink-0 gap-1.5 px-2.5"
+                  className="shrink-0 gap-2 px-2"
                   disabled={reverting}
                   onClick={save}
                 >
@@ -734,7 +734,7 @@ function ChangeRow({
   return (
     <div
       className={cn(
-        'group/change flex flex-col rounded-md px-2 py-1.5',
+        'group/change flex flex-col rounded-md px-2 py-2',
         'hover:bg-muted/60',
       )}
     >
@@ -784,7 +784,7 @@ function ChangeRow({
         ) : null}
       </div>
       {error ? (
-        <p className="mt-0.5 text-xs text-destructive">{error}</p>
+        <p className="mt-1 text-xs text-destructive">{error}</p>
       ) : null}
     </div>
   )

@@ -27,7 +27,7 @@ import {
  * two dropdowns would put that dependency across a component boundary and
  * buy nothing.
  *
- * Renders as a fragment into the settings column's `flex flex-col gap-2.5`,
+ * Renders as a fragment into the settings column's `flex flex-col gap-2`,
  * the same as AdminSessionFields.
  *
  * `active` is only the model-list fetch gate: skip the provider round-trip

@@ -211,7 +211,7 @@ describe('a switch uses named colours', () => {
   })
 
   it('keeps the filled-control colour when on', () => {
-    expect(classesOf('switch', <Switch />)).toContain('data-checked:bg-primary')
+    expect(classesOf('switch', <Switch />)).toContain('data-checked:bg-brand')
   })
 
   it('gives the off track an edge, since the wash alone is nearly the page', () => {

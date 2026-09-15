@@ -78,14 +78,14 @@ export function SlideNav({
   // this nav.)
   if (mains.length === 0) {
     return (
-      <p className="px-2 py-1.5 text-xs text-tertiary-foreground">
+      <p className="px-2 py-2 text-xs text-tertiary-foreground">
         No phases in this workspace yet.
       </p>
     )
   }
 
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-1">
       {mains.map((main) => {
         const children = getSubslides(main.id, slides)
         const hasChildren = children.length > 0

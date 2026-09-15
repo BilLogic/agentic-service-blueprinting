@@ -105,12 +105,12 @@ import {
  * THE SUBJECT IS THE COLOUR NAMESPACES — `--color-*` and the utility-scoped
  * `--border-color-*` and `--text-color-*`. The other namespaces this file
  * registers are deliberately out, and not because they would be inconvenient:
- * `--radius-sm: calc(var(--radius) - 4px)` is a real derivation and the radius
+ * `--radius-sm: calc(var(--radius) * 0.5)` is a real derivation and the radius
  * ladder is arithmetic by design, `--font-sans` is a fallback chain whose
- * shape the file argues for at length, and `--radius-panel: 6px`,
- * `--width-listbox: 320px` and `--shadow-floating` are literal measures with
- * no token underneath them. Colour is where a tier confusion is invisible in
- * review and shows up as a wrong pixel, so colour is what is claimed.
+ * shape the file argues for at length, and `--width-listbox: 320px` and
+ * `--shadow-floating` are measures with no colour underneath them. Colour is
+ * where a tier confusion is invisible in review and shows up as a wrong pixel,
+ * so colour is what is claimed.
  *
  * A COLOUR NAMESPACE THAT DOES NOT CONTAIN THE WORD `color` is outside the
  * pattern — Tailwind's `--fill-*` and `--stroke-*` are colour and would not be
@@ -289,10 +289,9 @@ test('the non-colour namespaces are out of subject, and say so by passing', () =
     throw new Error('reach must not be asked about a non-colour key')
   }
   for (const entry of [
-    { name: '--radius-sm', value: 'calc(var(--radius) - 4px)' },
-    { name: '--radius-panel', value: '6px' },
+    { name: '--radius-sm', value: 'calc(var(--radius) * 0.5)' },
     { name: '--width-listbox', value: '320px' },
-    { name: '--shadow-floating', value: '0 8px 28px rgb(0 0 0 / 0.3)' },
+    { name: '--shadow-floating', value: 'var(--shadow-md)' },
     { name: '--text-xs', value: '.75rem' },
     { name: '--font-mono', value: "var(--font-source-code-pro), monospace" },
   ]) {

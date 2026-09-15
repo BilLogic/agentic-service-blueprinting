@@ -247,7 +247,7 @@ export function SlideImagesField({
                   siblings.findIndex((sibling) => sibling.src === frame.src),
                 )}
                 triggerClassName={cn(
-                  'w-16 shrink-0 overflow-hidden rounded-sm border',
+                  'w-16 shrink-0 overflow-hidden rounded-md border',
                   on ? 'border-ring' : 'border-border opacity-45',
                 )}
               >
@@ -265,7 +265,7 @@ export function SlideImagesField({
                   className={cn(
                     // geometry: the tick sits in a size-4 box; the rung's
                     // line box would overflow it.
-                    'absolute right-0.5 bottom-0.5 size-4 rounded-sm border bg-background/90 text-xs leading-none',
+                    'absolute right-0.5 bottom-0.5 size-4 rounded-md border bg-background/90 text-xs leading-none',
                     on ? 'border-ring' : 'border-border',
                   )}
                 >
@@ -292,7 +292,7 @@ export function SlideImagesField({
                   siblings.findIndex((sibling) => sibling.src === src),
                 )}
                 triggerClassName={cn(
-                  'w-16 shrink-0 overflow-hidden rounded-sm border',
+                  'w-16 shrink-0 overflow-hidden rounded-md border',
                   on ? 'border-ring' : 'border-border opacity-45',
                 )}
               >
@@ -310,7 +310,7 @@ export function SlideImagesField({
                   className={cn(
                     // geometry: the tick sits in a size-4 box; the rung's
                     // line box would overflow it.
-                    'absolute right-0.5 bottom-0.5 size-4 rounded-sm border bg-background/90 text-xs leading-none',
+                    'absolute right-0.5 bottom-0.5 size-4 rounded-md border bg-background/90 text-xs leading-none',
                     on ? 'border-ring' : 'border-border',
                   )}
                 >
@@ -352,7 +352,7 @@ export function SlideImagesField({
             size="icon-xs"
             disabled={busy}
             aria-label="Upload an image"
-            className="aspect-[4/3] w-16 shrink-0 rounded-sm border border-border border-dashed text-muted-foreground"
+            className="aspect-[4/3] w-16 shrink-0 rounded-md border border-border border-dashed text-muted-foreground"
             onClick={() => inputRef.current?.click()}
           >
             {busy ? (

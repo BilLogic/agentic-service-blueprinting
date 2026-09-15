@@ -14,13 +14,13 @@
  * board. Every value that made the lane row look right put the caption on
  * the outline, and vice versa.
  *
- * Two changes took the text out of the gutter's job: widening the rail to 214,
+ * Two changes took the text out of the gutter's job: widening the rail to 216,
  * and dropping the caption's left inset entirely. A lane label is a label IN
  * the rail and sits inside its padding; a line of interaction names a boundary
  * of the whole blueprint, so it starts at the far edge and runs out past the
  * outline. Flush-left is not a shortcut here, it is what the thing is.
  *
- * Measured in the browser after the change: 30 / 30 / 30 — the caption, the
+ * Measured after the 4px-grid sweep: 32 / 32 / 32 — the caption, the
  * lane label and the first cell all sit the same distance from the frame.
  */
 import { describe, expect, it } from 'vitest'
@@ -32,7 +32,7 @@ import {
 } from '@/lib/sideBySideCompareLayout'
 import { STEP_COLUMN_GAP } from '@/lib/blueprintLayout'
 
-/** `px-3.5` / `pl-3.5` -> 14. Tailwind's scale is 4px per unit. */
+/** `px-4` / `pl-4` -> 16. Tailwind's scale is 4px per unit. */
 function insetPx(className: string): number {
   const match = /^p[xl]-(\d+(?:\.\d+)?)$/.exec(className)
   if (!match) throw new Error(`not a px-*/pl-* class: ${className}`)
@@ -61,13 +61,13 @@ describe('the outline sits evenly between the rail and the board', () => {
     expect(LABEL_TO_OUTLINE).toBe(OUTLINE_TO_CELL)
   })
 
-  it('lands on 30px, so a regression names a number rather than a ratio', () => {
-    expect(LABEL_TO_OUTLINE).toBe(30)
+  it('lands on 32px, so a regression names a number rather than a ratio', () => {
+    expect(LABEL_TO_OUTLINE).toBe(32)
   })
 })
 
 describe('the longest divider caption stays out of it', () => {
-  it('clears the outline by the same 30px as everything else', () => {
+  it('clears the outline by the same 32px as everything else', () => {
     // The caption gets NO left inset — the one row in this column that does
     // not — so it ends at LONGEST_CAPTION_PX from the rail's left edge, and
     // the outline sits at the rail's width plus the gutter and the frame's

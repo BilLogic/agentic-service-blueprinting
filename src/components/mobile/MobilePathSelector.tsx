@@ -36,7 +36,7 @@ export function MobilePathSelector({
         aria-label={`Path: ${active.name}`}
         className={cn(
           'flex h-8 max-w-40 items-center rounded-full border border-muted bg-transparent',
-          'px-2.5 text-xs text-muted-foreground',
+          'px-2 text-xs text-muted-foreground',
         )}
       >
         <span className="min-w-0 truncate">{active.name}</span>
@@ -53,7 +53,7 @@ export function MobilePathSelector({
             aria-label={`Path: ${active.name}`}
             className={cn(
               'flex h-8 max-w-40 items-center gap-1 rounded-full border border-border bg-card',
-              'px-2.5 text-xs text-muted-foreground',
+              'px-2 text-xs text-muted-foreground',
             )}
           >
             <span className="min-w-0 truncate">{active.name}</span>

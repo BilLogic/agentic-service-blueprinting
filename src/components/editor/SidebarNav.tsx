@@ -7,6 +7,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import { IconTooltip } from '@/components/editor/IconTooltip'
+import { SIDEBAR_ROW_PITCH } from '@/lib/layoutTokens'
 import { cn } from '@/lib/utils'
 
 /**
@@ -29,7 +30,7 @@ import { cn } from '@/lib/utils'
 
 /** Fixed chevron slot. Its width is also the indent step for child rows. */
 const CHEVRON_SLOT_CLASS =
-  'flex size-4 shrink-0 items-center justify-center rounded-sm'
+  'flex size-4 shrink-0 items-center justify-center rounded-md'
 
 /** Hidden at rest, revealed by hover or focus anywhere in the row. Coarse
  * pointers have no hover, so there it is always shown — same rule
@@ -43,7 +44,7 @@ export const NAV_CHILD_INDENT_CLASS = 'pl-4'
 
 /**
  * Hit target for a row action. 24px square — the accessible minimum for a
- * control this dense — inside a 28–30px row, so it fills the row's height
+ * control this dense — inside a 30px row, so it fills the row's height
  * without forcing it taller. The glyph inside stays small (`size-3.5`); the
  * target is bigger than the mark, which is the point.
  */
@@ -192,6 +193,7 @@ export function NavRow({
   return (
     <div
       data-nav-row={rowId}
+      style={{ height: SIDEBAR_ROW_PITCH }}
       className={cn(
         'group/nav-row relative flex w-full min-w-0 items-center gap-1 rounded-md pl-1 pr-1 transition-colors',
         // ONE focus ring for the whole row (keyboard focus on the label or
@@ -230,7 +232,7 @@ export function NavRow({
         onKeyDown={handleKeyDown}
         aria-current={selected ? 'true' : undefined}
         className={cn(
-          'min-w-0 flex-1 truncate rounded-md py-1.5 pr-2 text-left transition-colors focus-visible:outline-none',
+          'min-w-0 flex-1 truncate rounded-md pr-2 text-left transition-colors focus-visible:outline-none',
           size === 'md' ? 'text-sm' : 'text-xs',
           selected
             ? 'font-medium text-sidebar-selected-foreground'
@@ -238,7 +240,7 @@ export function NavRow({
         )}
       >
         {icon ? (
-          <span className="mr-1.5 text-muted-foreground" aria-hidden>
+          <span className="mr-2 text-muted-foreground" aria-hidden>
             {icon}
           </span>
         ) : null}
@@ -288,14 +290,14 @@ export function NavSection({
           <span className={cn(CHEVRON_SLOT_CLASS, CHEVRON_REVEAL_CLASS)}>
             <NavChevron open={open} />
           </span>
-          <Eyebrow className="min-w-0 flex-1 truncate py-1.5">
+          <Eyebrow className="min-w-0 flex-1 truncate py-2">
             {title}
           </Eyebrow>
         </CollapsibleTrigger>
         {trailing}
       </div>
       <CollapsibleContent id={panelId}>
-        <div className="flex flex-col gap-0.5 pb-1">{children}</div>
+        <div className="flex flex-col gap-1 pb-1">{children}</div>
       </CollapsibleContent>
     </Collapsible>
   )
@@ -310,7 +312,7 @@ export function NavChildren({
   children: ReactNode
 }) {
   return (
-    <ul id={id} className={cn('flex flex-col gap-0.5', NAV_CHILD_INDENT_CLASS)}>
+    <ul id={id} className={cn('flex flex-col gap-1', NAV_CHILD_INDENT_CLASS)}>
       {children}
     </ul>
   )

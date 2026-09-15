@@ -246,7 +246,7 @@ export function SliceSlideComposer({
               holdsDrag ? 'border-primary bg-primary/[0.03]' : 'border-border',
             )}
           >
-            <div className="mb-1.5 flex items-center gap-1.5">
+            <div className="mb-2 flex items-center gap-2">
               <Eyebrow className="shrink-0">
                 Slide {slideIndex + 1}
               </Eyebrow>
@@ -278,7 +278,7 @@ export function SliceSlideComposer({
 
                     <div
                       className={cn(
-                        'flex items-center gap-1.5 rounded-md px-1 py-1 transition-opacity hover:bg-muted/60',
+                        'flex items-center gap-2 rounded-md px-1 py-1 transition-opacity hover:bg-muted/60',
                         isDragging && 'opacity-40',
                       )}
                     >

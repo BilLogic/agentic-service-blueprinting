@@ -68,6 +68,7 @@ claims:
   - src/components/editor/ServiceOverviewHeader.tsx
   - src/components/editor/ServiceOverviewView.tsx
   - src/components/editor/TabStrip.tsx
+  - src/components/editor/JumpToSearch.tsx
   - src/components/editor/ThemeToggle.tsx
   - src/components/editor/ToolFamilyMenu.tsx
   - src/components/editor/WorkspaceServiceSwitcher.tsx
@@ -82,6 +83,12 @@ The board, the viewport it lives in, and the desktop chrome wrapped around
 both. This doc answers "what does this gesture MEAN and why", for every surface
 that renders a blueprint. What a *phone* does with the same canvas is
 [mobile-shell.md](mobile-shell.md).
+
+The top nav's right cluster includes **Jump to…** (`JumpToSearch`): a labelled
+field with a ⌘K hint at desktop widths, collapsing to an icon below `md`. It
+opens a command dialog grouped as Scenarios, Cells and Actions. Selecting a
+scenario goes through the editor's `openScenario` seam; selecting a cell opens
+that cell's panel after the same seam.
 
 ## The click grammar
 

@@ -133,7 +133,7 @@ function DesktopEditorShell() {
     goLanding,
     enterCanvas,
     selectPhase,
-    selectScenario,
+    openScenario,
     selectedPhaseId,
     selectedScenarioId,
     slides,
@@ -367,8 +367,7 @@ function DesktopEditorShell() {
           selectPhase(phaseId)
         },
         selectScenario: (scenarioId) => {
-          activateTab(null)
-          selectScenario(scenarioId)
+          openScenario(scenarioId)
         },
         openAgentSurface: () => {
           toggleAgentOpen(true)
@@ -376,7 +375,7 @@ function DesktopEditorShell() {
         },
         setSidebarCollapsed: setCollapsedByUser,
       }),
-    [activateTab, selectPhase, selectScenario, setCollapsedByUser],
+    [activateTab, selectPhase, openScenario, setCollapsedByUser],
   )
 
   // The read side: what the shell itself knows about what's on screen.

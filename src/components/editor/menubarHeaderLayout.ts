@@ -60,7 +60,7 @@ export const BLUEPRINT_MENUBAR_FLAT_CLASS =
  * of the absolutely-positioned zoom indicator / Reset View cluster.
  */
 export const BLUEPRINT_MENUBAR_TITLE_CLASS =
-  'relative z-10 flex h-full min-w-0 max-w-[calc(100%-9rem)] items-center gap-2.5 px-1'
+  'relative z-10 flex h-full min-w-0 max-w-[calc(100%-9rem)] items-center gap-2 px-1'
 
 /*
   `max-w-full` is what makes `truncate` truncate. The summary's parent is a
@@ -85,8 +85,8 @@ export const BLUEPRINT_MENUBAR_SUMMARY_CLASS =
  * A LENGTH and not a Tailwind class, so the bars agree on one value a test
  * can read back off the box: the claim is that five different states measure
  * the same, and a class name cannot be measured. 24px title row (a 20px
- * `text-sm` line box inside `EntityTitleAffordance`'s `py-0.5`) + 2px for the
- * block's `gap-0.5` + a 16px `text-xs` summary line.
+ * `text-sm` line box inside `EntityTitleAffordance`'s `py-1`) + 2px for the
+ * block's `gap-1` + a 16px `text-xs` summary line.
  */
 export const BLUEPRINT_MENUBAR_IDENTITY_HEIGHT = '2.625rem'
 

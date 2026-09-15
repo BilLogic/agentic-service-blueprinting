@@ -72,20 +72,20 @@ function SlideHeaderContent({
   return (
     <div
       className={cn(
-        'rounded-2xl border border-muted bg-card shadow-sm',
+        'rounded-xl border border-muted bg-card shadow-sm',
         'px-4 py-3',
       )}
     >
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-1.5">
+          <div className="flex min-w-0 items-center gap-2">
             <ScenarioTitleDefinition
               kind={isScenario ? 'scenario' : 'phase'}
               slide={isScenario ? slide : null}
             >
               <h1
                 className={cn(
-                  'w-fit rounded-sm text-base font-semibold tracking-tight text-foreground outline-none',
+                  'w-fit rounded-md text-base font-semibold tracking-tight text-foreground outline-none',
                   'focus-visible:ring-2 focus-visible:ring-ring/50',
                 )}
               >

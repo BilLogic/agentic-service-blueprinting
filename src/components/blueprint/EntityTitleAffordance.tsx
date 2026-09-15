@@ -49,7 +49,7 @@ export function EntityTitleAffordance({
       data-entity-title=""
       data-open={open ? '' : undefined}
       className={cn(
-        'group/entity-title relative flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-0.5',
+        'group/entity-title relative flex min-w-0 items-center gap-2 rounded-md px-2 py-1',
         'transition-colors duration-(--motion-micro)',
         'hover:bg-sidebar-accent data-open:bg-sidebar-accent',
         'has-[button:focus-visible]:ring-2 has-[button:focus-visible]:ring-ring/50',
@@ -74,7 +74,7 @@ export function EntityTitleAffordance({
           // heading and the button's accessible name.
           className={cn(
             BLUEPRINT_MENUBAR_TITLE_TEXT_CLASS,
-            'w-fit max-w-full cursor-pointer truncate rounded-sm text-left outline-none',
+            'w-fit max-w-full cursor-pointer truncate rounded-md text-left outline-none',
           )}
           onClick={(event) => {
             event.stopPropagation()

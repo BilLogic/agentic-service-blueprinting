@@ -3,8 +3,16 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+
+/*
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Radius and spacing retagged onto the visual-system ladder (controls md /
+ * containment lg / dialogs xl; whole-step padding and gap). Timings and
+ * structure stay upstream.
+ */
+
 const alertVariants = cva(
-  "group/alert relative grid w-full gap-0.5 rounded-lg border px-2.5 py-2 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-18 has-[>svg]:grid-cols-[auto_1fr] has-[>svg]:gap-x-2 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4",
+  "group/alert relative grid w-full gap-1 rounded-lg border px-2 py-2 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-18 has-[>svg]:grid-cols-[auto_1fr] has-[>svg]:gap-x-2 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -13,7 +21,7 @@ const alertVariants = cva(
         // upstream's own recipe (`[&>svg]:bg-foreground [&>svg]:text-background`).
         // Without it `default` was the one alert whose icon was a bare glyph.
         default:
-          "bg-card text-card-foreground *:[svg]:rounded-sm *:[svg]:bg-foreground *:[svg]:p-0.5 *:[svg]:text-contrast",
+          "bg-card text-card-foreground *:[svg]:rounded-md *:[svg]:bg-foreground *:[svg]:p-1 *:[svg]:text-contrast",
         // Supabase's own recipe, in one mechanism for all four status roles:
         // the role's resting tint as the surface, the edge that belongs to
         // that tint, the copy at `--foreground`, and the status carried by the
@@ -42,12 +50,12 @@ const alertVariants = cva(
         // the old pairing wrote the tint itself as the glyph colour, which for
         // warning was one colour on another at 2.96:1.
         destructive:
-          "border-border-destructive bg-surface-destructive text-foreground *:[svg]:rounded-sm *:[svg]:bg-destructive *:[svg]:p-0.5 *:[svg]:text-destructive-foreground",
+          "border-border-destructive bg-surface-destructive text-foreground *:[svg]:rounded-md *:[svg]:bg-destructive *:[svg]:p-1 *:[svg]:text-destructive-foreground",
         warning:
-          "border-border-warning bg-surface-warning text-foreground *:[svg]:rounded-sm *:[svg]:bg-warning *:[svg]:p-0.5 *:[svg]:text-warning-foreground",
-        info: "border-border-info bg-surface-info text-foreground *:[svg]:rounded-sm *:[svg]:bg-info *:[svg]:p-0.5 *:[svg]:text-info-foreground",
+          "border-border-warning bg-surface-warning text-foreground *:[svg]:rounded-md *:[svg]:bg-warning *:[svg]:p-1 *:[svg]:text-warning-foreground",
+        info: "border-border-info bg-surface-info text-foreground *:[svg]:rounded-md *:[svg]:bg-info *:[svg]:p-1 *:[svg]:text-info-foreground",
         success:
-          "border-border-success bg-surface-success text-foreground *:[svg]:rounded-sm *:[svg]:bg-success *:[svg]:p-0.5 *:[svg]:text-success-foreground",
+          "border-border-success bg-surface-success text-foreground *:[svg]:rounded-md *:[svg]:bg-success *:[svg]:p-1 *:[svg]:text-success-foreground",
       },
     },
     defaultVariants: {

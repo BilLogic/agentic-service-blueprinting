@@ -56,6 +56,31 @@ export function sliceFocusCellsKey(sliceId: string): string {
 }
 
 /**
+ * Ask the focused scenario's viewport to fly to a cell and optionally open
+ * its panel. Same pending pipeline as a slice-tab badge: if the viewport is
+ * not registered yet (the reader is still navigating to the scenario), the
+ * request waits for {@link registerFocusCells} / {@link flushPendingFocus}.
+ *
+ * @param scenarioId - Registry key — the scenario's slide id.
+ * @param cellId - Cell to bring into view.
+ * @param opts.openDetail - Open the cell panel once the flight has found it.
+ */
+export function requestScenarioCellFocus(
+  scenarioId: string,
+  cellId: string,
+  opts?: { openDetail?: boolean },
+): void {
+  const request = {
+    cellIds: [cellId],
+    openDetail: opts?.openDetail ?? true,
+  }
+  pendingByKey.set(scenarioId, request)
+  latestByKey.set(scenarioId, request)
+  const viewport = registry.get(scenarioId)
+  if (viewport) attemptPendingFocus(scenarioId, viewport, false)
+}
+
+/**
  * Ask a slice tab's viewport to fly to these cells.
  *
  * If that viewport is already registered, it flies now; a miss there (the

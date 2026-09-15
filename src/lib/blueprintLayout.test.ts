@@ -15,6 +15,10 @@
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import {
+  BLUEPRINT_CELL_INNER_X,
+  BLUEPRINT_CELL_INNER_X_CLASS,
+  BLUEPRINT_CELL_INNER_Y,
+  BLUEPRINT_CELL_INNER_Y_CLASS,
   countBlueprintDividerRows,
   countBlueprintWrapCorridorMargins,
   laneHasWrapCorridorBelow,
@@ -323,4 +327,11 @@ test('only the spine actor gets a corridor BELOW its row', () => {
   const other = lane(null, 'somebody else', 1)
   assert.equal(laneHasWrapCorridorBelow(spine), true)
   assert.equal(laneHasWrapCorridorBelow(other), false)
+})
+
+test('the cell inner padding class is the layout constant on the 4px grid', () => {
+  assert.equal(BLUEPRINT_CELL_INNER_X, 16)
+  assert.equal(BLUEPRINT_CELL_INNER_Y, 12)
+  assert.equal(BLUEPRINT_CELL_INNER_X_CLASS, 'px-4')
+  assert.equal(BLUEPRINT_CELL_INNER_Y_CLASS, 'py-3')
 })

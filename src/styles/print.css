@@ -76,6 +76,11 @@
        `.dark` arm has to take this one back or a printed alert keeps dark's
        step on a light ground. */
     --role-edge-step: 0.08;
+
+    /* Elevation. Dark raises the alpha and adds an inset highlight; paper
+       takes the light pair so a print from dark is not a slab of night. */
+    --shadow-md: 0 1px 2px oklch(from var(--background) calc(l * 0.4) c h / 0.12), 0 8px 24px oklch(from var(--background) calc(l * 0.4) c h / 0.08);
+    --shadow-lg: 0 2px 4px oklch(from var(--background) calc(l * 0.4) c h / 0.14), 0 16px 40px oklch(from var(--background) calc(l * 0.4) c h / 0.1);
   }
 
   /* Preserve lane fills, badges, and divider colors in the PDF. */

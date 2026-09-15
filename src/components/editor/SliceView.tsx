@@ -294,7 +294,7 @@ function SliceSurface({ sliceId, onPresent }: SliceViewProps) {
               // canvas); desktop slice tabs carry no float at all.
               floatingChrome={
                 mobileShell ? (
-                  <div className="rounded-full border border-border bg-card px-1 shadow-sm">
+                  <div className="rounded-full border border-border bg-card px-1">
                     <NavbarZoomIndicator />
                   </div>
                 ) : undefined
@@ -338,7 +338,7 @@ function SliceRefocusButton({ onRefocus }: { onRefocus: () => void }) {
         type="button"
         onClick={onRefocus}
         className={cn(
-          'pointer-events-auto flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5',
+          'pointer-events-auto flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2',
           'text-xs font-medium text-muted-foreground shadow-md transition-colors',
           'hover:bg-accent hover:text-foreground',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',

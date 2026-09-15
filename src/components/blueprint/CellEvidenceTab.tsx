@@ -80,7 +80,7 @@ function EvidenceRow({ row }: { row: Evidence }) {
   return (
     <li className="flex items-start gap-2 border-b border-muted py-2 last:border-0">
       {kindIcon(row.kind)}
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p className="text-xs font-medium break-words text-foreground">
           {row.title}{' '}
           <span className="font-normal text-muted-foreground">{row.kind}</span>
@@ -178,7 +178,7 @@ function AddSourceForm({
 
   return (
     <form
-      className="flex flex-col gap-2 rounded-lg border border-border bg-muted/20 p-2.5"
+      className="flex flex-col gap-2 rounded-lg border border-border bg-muted/20 p-2"
       onSubmit={(event) => {
         void handleSubmit(event)
       }}
@@ -247,7 +247,7 @@ function AddSourceForm({
           <AlertDescription className="text-xs">{error}</AlertDescription>
         </Alert>
       ) : null}
-      <div className="flex items-center justify-end gap-1.5">
+      <div className="flex items-center justify-end gap-2">
         <Button
           type="button"
           variant="ghost"

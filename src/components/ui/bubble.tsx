@@ -5,6 +5,14 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+
+/*
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Radius and spacing retagged onto the visual-system ladder (controls md /
+ * containment lg / dialogs xl; whole-step padding and gap). Timings and
+ * structure stay upstream.
+ */
+
 function BubbleGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -86,7 +94,7 @@ function BubbleContent({
 }
 
 const bubbleReactionsVariants = cva(
-  "absolute z-10 flex w-fit shrink-0 items-center justify-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-sm ring-3 ring-card has-[button]:p-0",
+  "absolute z-10 flex w-fit shrink-0 items-center justify-center gap-1 rounded-full bg-muted px-2 py-1 text-sm ring-3 ring-card has-[button]:p-0",
   {
     variants: {
       side: {

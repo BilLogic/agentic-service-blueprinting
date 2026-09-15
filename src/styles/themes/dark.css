@@ -17,7 +17,7 @@
      themes/light.css, which would carry it across on its own: that is the
      mechanism the `--surface-hue` note below describes, and a mode-invariant
      value is the kind that hides in it. */
-  --radius: 0.625rem;
+  --radius: 0.5rem;
 
   /* Same dial, same value as light — see the BRAND SEAM note in
      themes/light.css. The brand hue is mode-invariant, so these two must
@@ -56,6 +56,13 @@
      the identity does not, because 0.594 reads on both canvases. */
   --brand-lightness: 0.594;
   --brand-chroma: 0;
+  /*
+   * Two-layer shadows restated so dark actually applies: higher alpha plus
+   * a 1px inset highlight along the top edge. These win over the light
+   * values in the plain `@theme` block because that block is not `inline`.
+   */
+  --shadow-md: 0 1px 2px oklch(from var(--background) calc(l * 0.4) c h / 0.36), 0 8px 24px oklch(from var(--background) calc(l * 0.4) c h / 0.28), inset 0 1px 0 oklch(from var(--background) calc(l + 0.14) c h / 0.22);
+  --shadow-lg: 0 2px 4px oklch(from var(--background) calc(l * 0.4) c h / 0.4), 0 16px 40px oklch(from var(--background) calc(l * 0.4) c h / 0.32), inset 0 1px 0 oklch(from var(--background) calc(l + 0.14) c h / 0.22);
   /* 0.62 on the charcoal canvas: 5.07:1, clearing SC 1.4.11 with headroom. */
   --ring-lightness: 0.62;
 

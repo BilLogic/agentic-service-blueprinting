@@ -371,7 +371,7 @@ export function ResizableComparePanel({
             // The focused scenario's label steps up a size. On a board of
             // twenty-two panels the one you are IN should say so at a glance,
             // and the badge is the only chrome each panel carries.
-            focusActive && 'px-2.5 py-1 text-sm',
+            focusActive && 'px-2 py-1 text-sm',
           )}
           style={{
             top: 0,
@@ -383,7 +383,7 @@ export function ResizableComparePanel({
       <div
         ref={panelRef}
         className={cn(
-          'relative flex shrink-0 flex-col overflow-hidden rounded-2xl border shadow-sm',
+          'relative flex shrink-0 flex-col overflow-hidden rounded-xl border shadow-sm',
           navigable &&
             'cursor-pointer transition-[box-shadow,border-color] duration-(--motion-micro) ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0',
         )}
@@ -463,7 +463,7 @@ export function ResizableComparePanel({
           <button
             type="button"
             aria-label="Resize comparison panel"
-            className="absolute bottom-1 right-1 z-20 flex cursor-se-resize items-end justify-end rounded-sm p-1 text-tertiary-foreground hover:bg-muted/70 hover:text-foreground"
+            className="absolute bottom-1 right-1 z-20 flex cursor-se-resize items-end justify-end rounded-md p-1 text-tertiary-foreground hover:bg-muted/70 hover:text-foreground"
             style={{
               width: COMPARE_RESIZE_HANDLE_SIZE + 8,
               height: COMPARE_RESIZE_HANDLE_SIZE + 8,

@@ -102,7 +102,7 @@ export function BlueprintDividerBadge({
       className={cn(
         // geometry: packs the caption into the badge's fixed height, not a prose line.
         'border-transparent font-medium uppercase leading-none tracking-wide',
-        connected ? 'rounded-l-sm rounded-r-none' : 'rounded-sm',
+        connected ? 'rounded-l-md rounded-r-none' : 'rounded-md',
       )}
       style={getBlueprintFillStyle(BLUEPRINT_THEME.dividerBadgeBg)}
     >

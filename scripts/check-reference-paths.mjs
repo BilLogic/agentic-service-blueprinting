@@ -102,8 +102,8 @@ export const CONSUMER_IMPORTS = [
   // by running this runner out of its own `node_modules` and walking its own
   // sample board with the config and the specs that travel beside it
   // (`render-walk/README.md`). The runner is the path a deployment NAMES, and
-  // the other three are the files it stages and hands to Playwright, so all
-  // four are the interface. Same promise as the documents above, and the same
+  // the other files are the config and specs it stages and hands to Playwright,
+  // so all of them are the interface. Same promise as the documents above, and the same
   // failure without it: a move lands green here and surfaces at the
   // deployment's next pin as a command that is not there, or a run that
   // collects no tests.
@@ -111,6 +111,7 @@ export const CONSUMER_IMPORTS = [
   'render-walk/playwright.config.ts',
   'render-walk/sample-board.spec.ts',
   'render-walk/annotation-drag.spec.ts',
+  'render-walk/mobile-cover.spec.ts',
 
   // The composition documents. Not imported either — READ, out of this
   // package's installed tree, by the deployment's own copy of

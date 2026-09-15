@@ -14,7 +14,7 @@
      list opens on a bare `:root`, so everything in it reaches there anyway —
      which is exactly why it is written twice. A value that arrives in the
      other mode by leak reads the same as one that arrived by mistake. */
-  --radius: 0.625rem;
+  --radius: 0.5rem;
 
   /* -------------------------------------------------------------------------
    * BRAND SEAM — the block an adopter edits to rebrand the app chrome.
@@ -77,6 +77,11 @@
    * to leak.
    */
   --brand-lightness: 0.594;
+  /*
+   * Chroma ceiling is about .135 at this lightness (sRGB gamut at hue 159).
+   * A deployment that turns the dial past that gets a colour no browser
+   * draws — `palette.test.ts` rejects it. The template stays at 0.
+   */
   --brand-chroma: 0;
   /*
    * Focus ring / selection chrome lightness. 0.58, not the mid-grey 0.708 a

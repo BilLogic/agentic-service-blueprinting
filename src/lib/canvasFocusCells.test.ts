@@ -4,6 +4,7 @@ import {
   flushPendingFocus,
   registerActiveFocusCells,
   registerFocusCells,
+  requestScenarioCellFocus,
   requestSliceCellFocus,
   resolveActiveFocusCells,
   sliceFocusCellsKey,
@@ -54,6 +55,23 @@ describe('active canvas owner', () => {
     cleanups.push(registerActiveFocusCells(miss))
     hidden()
     expect(resolveActiveFocusCells()).toBe(miss)
+  })
+})
+
+describe('requestScenarioCellFocus', () => {
+  it('flies now when a viewport is already registered', () => {
+    const { focus, calls } = recordingFocus()
+    cleanups.push(registerFocusCells('scenario-1', focus))
+    requestScenarioCellFocus('scenario-1', 'cell-a')
+    expect(calls).toEqual([['cell-a']])
+  })
+
+  it('stores a pending focus and flies when the viewport registers', () => {
+    const { focus, calls } = recordingFocus()
+    requestScenarioCellFocus('scenario-1', 'cell-a')
+    expect(calls).toEqual([])
+    cleanups.push(registerFocusCells('scenario-1', focus))
+    expect(calls).toEqual([['cell-a']])
   })
 })
 

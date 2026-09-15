@@ -131,7 +131,7 @@ function PathNotionToggle({
       type="button"
       onClick={() => onToggle(path.id)}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-sm transition-colors',
+        'inline-flex items-center gap-2 rounded-full px-2 py-1 text-sm transition-colors',
         checked
           ? 'bg-accent font-medium text-foreground'
           : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground',
@@ -211,7 +211,7 @@ function PathCheckbox({
       className={cn(
         'inline-flex cursor-pointer items-center rounded-md transition-colors',
         dense ? 'gap-1 px-0 py-0 text-xs' : 'gap-2 text-sm',
-        compact && !dense ? 'px-1 py-0.5' : !dense ? 'px-1 py-1' : undefined,
+        compact && !dense ? 'px-1 py-1' : !dense ? 'px-1 py-1' : undefined,
         checked && 'font-medium text-foreground',
         !checked && 'text-foreground',
       )}
@@ -222,7 +222,7 @@ function PathCheckbox({
         id={inputId}
         type="checkbox"
         className={cn(
-          'shrink-0 rounded-sm border-input accent-foreground',
+          'shrink-0 rounded-md border-input accent-foreground',
           dense ? 'size-3' : 'size-4',
         )}
         checked={checked}
@@ -288,9 +288,9 @@ export function PathMultiSelect({
           'flex items-start gap-x-4',
           isVertical ? 'flex-col gap-y-2' : 'flex-row',
           layout === 'horizontal' &&
-            'mt-1 gap-y-2 rounded-lg border border-border bg-background px-3 py-2.5',
+            'mt-1 gap-y-2 rounded-lg border border-border bg-background px-3 py-2',
           isBar && 'flex-row items-center gap-x-3 gap-y-0',
-          isNotion && 'flex-row flex-wrap gap-1.5',
+          isNotion && 'flex-row flex-wrap gap-2',
           isToolbar && 'flex-row flex-wrap items-center gap-2',
         )}
       >

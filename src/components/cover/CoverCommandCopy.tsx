@@ -51,7 +51,7 @@ export function CoverCommandCopy({
       onClick={copy}
       aria-label={`${copyLabel} ${command}`}
       className={cn(
-        'inline-flex items-center gap-2 rounded-md border border-border bg-muted/40 px-2.5 py-1',
+        'inline-flex items-center gap-2 rounded-md border border-border bg-muted/40 px-2 py-1',
         'font-mono text-sm text-foreground transition-colors duration-(--motion-structural) ease-structural',
         'hover:bg-muted focus-visible:outline-1 focus-visible:outline-ring',
       )}

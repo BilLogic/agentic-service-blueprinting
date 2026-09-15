@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Info, Menu, X } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { MobileTopBar } from '@/components/mobile/MobileTopBar'
@@ -16,8 +16,10 @@ import { StoryboardWalkthroughShell } from '@/components/blueprint/StoryboardWal
 import { Button } from '@/components/ui/button'
 import { SlicePresentation } from '@/components/editor/SlicePresentation'
 import { SliceView } from '@/components/editor/SliceView'
+import { CoverPage } from '@/components/cover/CoverPage'
 import { EditorErrorBoundary } from '@/components/EditorErrorBoundary'
-import { useEditor } from '@/contexts/EditorContext'
+import { useCoverContent } from '@/contexts/DeploymentConfigContext'
+import { useEditor, useEditorNavCloser } from '@/contexts/EditorContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { tabKey, useViewState } from '@/contexts/viewStateStore'
 import { useCanvasBlueprints } from '@/hooks/useCanvasBlueprints'
@@ -46,8 +48,9 @@ import { useActiveServiceId } from '@/contexts/activeService'
  * board (the whole board is what used to jam the main thread). There is no
  * mobile-specific reading view (removed 2026-08-17 by request): navigation
  * is a camera move on the shared canvas — tapping a phase frames it,
- * tapping a scenario focuses it. The drawer is the index and opens on
- * first load when nothing is selected. Nothing here can write: no design
+ * tapping a scenario focuses it. The drawer is the index and stays closed
+ * on first load — the cover is the first screen, and its CTA opens the
+ * first scenario. Nothing here can write: no design
  * mode, no editors, and the agent's tool roster is filtered to reading
  * (loop.ts).
  *
@@ -62,7 +65,7 @@ export function MobileShell() {
     slides,
     slidesLoading,
     selectPhase,
-    selectScenario,
+    openScenario,
     selectedPhaseId,
     selectedScenarioId,
     expandedPhaseIds,
@@ -86,18 +89,15 @@ export function MobileShell() {
     dismissMissingSlice,
   } = useViewState()
   useCellDeepLink()
+  const cover = useCoverContent()
 
-  // First load with nothing selected: the drawer IS the index, so it opens.
-  // Captured at mount — a deep link (cell or slice) is a destination of its
-  // own, so it keeps the drawer closed rather than racing it.
-  const [navOpen, setNavOpen] = useState(
-    () =>
-      selectedScenarioId === null &&
-      selectedPhaseId === null &&
-      pendingUrlState === null,
-  )
+  // The cover is the first screen. The drawer stays closed until the reader
+  // opens it — a deep link is a destination of its own and must not race it.
+  const [navOpen, setNavOpen] = useState(false)
   const [navSurface, setNavSurface] = useState<MobileNavSurface>('blueprints')
   const [agentOpen, setAgentOpen] = useState(false)
+  const closeNavDrawer = useCallback(() => setNavOpen(false), [])
+  useEditorNavCloser(closeNavDrawer)
 
   const slicesQuery = useSlices(useActiveServiceId())
   const slices =
@@ -178,25 +178,6 @@ export function MobileShell() {
     return pathsByScenario.get(selectedScenarioId) ?? []
   }, [selectedScenarioId, catalog, pathsByScenario])
 
-  // Apply the default once per scenario visit — but only after the canvas
-  // has synced this scenario into the context catalog: setSelectedPathIds
-  // resolves ids against the catalog, so applying earlier maps to an empty
-  // key set and blanks the canvas ("No paths selected"). Also what
-  // collapses a desktop multi-select down to one on this shell.
-  const appliedForRef = useRef<string | null>(null)
-  useEffect(() => {
-    if (!selectedScenarioId) return
-    const catalogPaths = catalog[selectedScenarioId] ?? []
-    if (catalogPaths.length === 0) return
-    if (appliedForRef.current === selectedScenarioId) return
-    appliedForRef.current = selectedScenarioId
-    const resolved = resolveDefaultPathId(
-      readLastViewedPath(selectedScenarioId),
-      catalogPaths,
-    )
-    if (resolved) setSelectedPathIds(selectedScenarioId, [resolved])
-  }, [selectedScenarioId, catalog, setSelectedPathIds])
-
   const activePathId = selectedScenarioId
     ? (getSelectedPathIds(selectedScenarioId)[0] ??
       resolveDefaultPathId(readLastViewedPath(selectedScenarioId), paths))
@@ -221,13 +202,12 @@ export function MobileShell() {
           },
           selectScenario: (scenarioId) => {
             setAgentOpen(false)
-            activateTab(null)
-            selectScenario(scenarioId)
+            openScenario(scenarioId, { closeNav: true })
           },
           openAgent: () => setAgentOpen(true),
         }),
       ),
-    [selectPhase, selectScenario, activateTab],
+    [selectPhase, openScenario, activateTab],
   )
 
   // What the shell knows about the phone's screen, for get_ui_state.
@@ -255,12 +235,8 @@ export function MobileShell() {
   // Navigation is a camera move on the one canvas; the drawer closes so the
   // move is visible. Phases are accordion headers in the drawer, not
   // destinations — only scenarios (and slices) navigate.
-  const openScenario = (scenarioId: string) => {
-    selectScenario(scenarioId)
-    // Back to the base canvas; the tab stays open in the store (desktop
-    // keeps closed-over tabs too) but stops covering the view.
-    activateTab(null)
-    setNavOpen(false)
+  const handleSelectScenario = (scenarioId: string) => {
+    openScenario(scenarioId, { closeNav: true })
   }
   const openSlice = (sliceId: string) => {
     openTab({ kind: 'slice', sliceId })
@@ -268,6 +244,17 @@ export function MobileShell() {
   }
 
   const hasSelection = selectedScenarioId !== null || selectedPhaseId !== null
+  const isLanding = view === 'landing'
+
+  if (isLanding) {
+    return (
+      <CanvasModeProvider>
+        <div className="flex h-full max-h-svh flex-col overflow-hidden bg-background">
+          <CoverPage content={cover} />
+        </div>
+      </CanvasModeProvider>
+    )
+  }
 
   return (
     <CanvasModeProvider>
@@ -292,7 +279,7 @@ export function MobileShell() {
         {/* A dead ?slice= link: same notice desktop shows, instead of the
             link silently doing nothing. */}
         {missingSliceId !== null ? (
-          <div className="shrink-0 border-b border-border bg-sidebar px-2 py-1.5">
+          <div className="shrink-0 border-b border-border bg-sidebar px-2 py-2">
             <Alert variant="info" className="items-center">
               <Info className="size-3.5" aria-hidden />
               <AlertDescription className="text-xs">
@@ -395,7 +382,7 @@ export function MobileShell() {
         selectedPhaseId={selectedPhaseId}
         selectedScenarioId={selectedScenarioId}
         onSelectSlice={openSlice}
-        onSelectScenario={openScenario}
+        onSelectScenario={handleSelectScenario}
       />
 
       {/* Presenting a slice: full-bleed over everything; Return closes the

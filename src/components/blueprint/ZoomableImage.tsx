@@ -286,7 +286,7 @@ export function ZoomableImage({
               style={imageStyle}
               {...imageHandlers}
               className={cn(
-                'pointer-events-auto absolute top-1/2 left-1/2 max-w-none shadow-2xl select-none',
+                'pointer-events-auto absolute top-1/2 left-1/2 max-w-none shadow-lg select-none',
                 FRAME_SHAPE_CLASS,
                 // `origin-top-left` is load-bearing, not styling. The
                 // transform in `imageStyle` does its own centring, and the

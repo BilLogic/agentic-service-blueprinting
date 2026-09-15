@@ -56,10 +56,10 @@ export type EntityHeaderProps = {
 export const ENTITY_HEADER_HOLD_KEY = 'entity-header'
 
 /**
- * The title affordance's outdent: the negative of its `px-1.5` inset, so the
+ * The title affordance's outdent: the negative of its `px-2` inset, so the
  * name's text edge and the summary's text edge are one edge.
  */
-export const ENTITY_TITLE_OUTDENT_CLASS = '-ml-1.5'
+export const ENTITY_TITLE_OUTDENT_CLASS = '-ml-2'
 
 /**
  * The two lines, as boxes rather than as text. `aria-hidden` because a
@@ -71,18 +71,18 @@ function EntityHeaderSkeleton() {
     <div
       data-entity-header-skeleton=""
       aria-hidden
-      className="flex w-full min-w-0 flex-col gap-0.5"
+      className="flex w-full min-w-0 flex-col gap-1"
     >
       {/* The affordance's own 24px box — a 20px `text-sm` line inside
-          `py-0.5`. No inset: the affordance's `px-1.5` is cancelled by the
+          `py-1`. No inset: the affordance's `px-2` is cancelled by the
           header's matching negative margin, so the name lands at the column's
           edge, and the placeholder holds the space where it will land. */}
       <div className="flex h-6 items-center">
-        <Skeleton className="h-3.5 w-40 max-w-full rounded-sm" />
+        <Skeleton className="h-3.5 w-40 max-w-full rounded-md" />
       </div>
       {/* The summary's 16px `text-xs` row, on the same edge. */}
       <div className="flex h-4 items-center">
-        <Skeleton className="h-2.5 w-64 max-w-full rounded-sm" />
+        <Skeleton className="h-2.5 w-64 max-w-full rounded-md" />
       </div>
     </div>
   )
@@ -176,7 +176,7 @@ function EntityKindBadge({
  * The summary is a row UNDER the title, inside the same block. Inline after a
  * separator it competed with the name for the same line and truncated first on
  * a narrow canvas; outside the block it lost the block's own
- * `max-w-[calc(100%-9rem)]` and `gap-0.5`, so the two lines sat at a different
+ * `max-w-[calc(100%-9rem)]` and `gap-1`, so the two lines sat at a different
  * rhythm from the identical bar one level down. `title` and not a tooltip:
  * this is truncated prose, and the full text is one click away in the panel
  * the name opens.
@@ -212,7 +212,7 @@ export function EntityHeader({
         loading={status === 'loading' || shellBooting}
         holdKey={ENTITY_HEADER_HOLD_KEY}
         skeleton={<EntityHeaderSkeleton />}
-        className="flex w-full min-w-0 flex-col items-start gap-0.5"
+        className="flex w-full min-w-0 flex-col items-start gap-1"
       >
         {id && label ? (
           /*
@@ -225,9 +225,9 @@ export function EntityHeader({
           */
           <div
             data-entity-header-identity=""
-            className="flex min-w-0 max-w-full items-center gap-1.5"
+            className="flex min-w-0 max-w-full items-center gap-2"
           >
-            {/* `-ml-1.5` cancels the affordance's own `px-1.5`. The padding
+            {/* `-ml-2` cancels the affordance's own `px-2`. The padding
                 is the hover highlight's breathing room and stays; the margin
                 pulls the box out by the same amount, so the name's first
                 letter sits on the summary's left edge instead of 6px in. */}

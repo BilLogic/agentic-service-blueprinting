@@ -5,6 +5,13 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 /*
+ * DIVERGENCE from the vendored source, allowed only with a stated reason.
+ * Radius and spacing on the visual-system ladder (md / whole steps); status
+ * keeps rounded-full. Non-status badges are controls on md, not the retired
+ * 4xl capsule.
+ */
+
+/*
   A BADGE DESCRIBES THE THING IT SITS ON, and never reacts to the pointer.
 
   One per thing, not drawn from a set, never interactive — that is what
@@ -24,7 +31,7 @@ import { cn } from "@/lib/utils"
   needs a hover state is a button; use one.
 */
 const badgeVariants = cva(
-  "group/badge inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!",
+  "group/badge inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!",
   {
     variants: {
       variant: {
@@ -78,13 +85,13 @@ const badgeVariants = cva(
       */
       size: {
         /** The default: held at 20px however short its label is. */
-        default: "h-5 px-2 py-0.5 text-xs",
+        default: "h-5 px-2 py-1 text-xs",
         /** The same shape, sized to its text rather than held at 20px. */
-        fitted: "h-auto px-2 py-0.5 text-xs",
+        fitted: "h-auto px-2 py-1 text-xs",
         /** Roomier, at the default's type scale. */
-        roomy: "h-auto px-2.5 py-1 text-xs",
+        roomy: "h-auto px-3 py-1 text-xs",
         /** Roomier, one step up the type scale. */
-        comfortable: "h-auto px-2.5 py-1 text-sm",
+        comfortable: "h-auto px-3 py-1 text-sm",
       },
     },
     defaultVariants: {

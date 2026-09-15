@@ -17,7 +17,11 @@ import {
 type ScenarioMenubarBreadcrumbProps = {
   slide: NavItem
   slides: NavItem[]
-  /** Omit the active slide — shown separately as the title below. */
+  /**
+   * Omit the active slide — shown separately as the title below — and the
+   * workspace crumb, whose label is this template's own name. The header
+   * trail is the parent phase only.
+   */
   excludeCurrent?: boolean
 }
 
@@ -29,7 +33,10 @@ export function ScenarioMenubarBreadcrumb({
 }: ScenarioMenubarBreadcrumbProps) {
   const { openDetail, goHome } = useEditor()
   const crumbs = getSlideBreadcrumbs(slide, slides)
-  const visibleCrumbs = excludeCurrent ? crumbs.slice(0, -1) : crumbs
+  const withoutCurrent = excludeCurrent ? crumbs.slice(0, -1) : crumbs
+  const visibleCrumbs = excludeCurrent
+    ? withoutCurrent.filter((crumb) => crumb.id !== WORKSPACE_BREADCRUMB_ID)
+    : withoutCurrent
 
   if (visibleCrumbs.length === 0) return null
 
@@ -44,7 +51,7 @@ export function ScenarioMenubarBreadcrumb({
 
   return (
     <Breadcrumb className="min-w-0">
-      <BreadcrumbList className="flex-nowrap gap-0.5 text-xs text-muted-foreground">
+      <BreadcrumbList className="flex-nowrap gap-1 text-xs text-muted-foreground">
         {visibleCrumbs.map((crumb, index) => {
           const isLast = index === visibleCrumbs.length - 1
 
