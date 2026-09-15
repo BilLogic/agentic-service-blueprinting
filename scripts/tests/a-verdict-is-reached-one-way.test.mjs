@@ -37,7 +37,7 @@ function sinks() {
     seams: {
       out: (text) => out.push(text),
       err: (text) => err.push(text),
-      exit: (code) => exits.push(code),
+      fail: (code) => exits.push(code),
       io: { env: {}, write: (text) => warned.push(text) },
     },
   }
@@ -110,7 +110,6 @@ test('unverified — a check that could not look says so, and does not go red', 
       {
         what: 'the database catalogue',
         unverified: 'no database is configured; set PGHOST/PGUSER/PGDATABASE, or pass --database.',
-        line: 'a line nothing measured must not print',
       },
       s.seams,
     ),
@@ -159,4 +158,45 @@ test('the is-main guard compares paths, so a directory with a space in it still 
 
 test('nothing imported is the command', () => {
   assert.equal(isTheCommand(import.meta.url), false)
+})
+
+test('a check that could not look may still have a sentence of its own, said after the register', () => {
+  // The release-tag check knows which version went untagged and the register
+  // does not, so it hands over both. The order is the register first, because
+  // the annotation is what a runner surfaces against the step.
+  const s = sinks()
+  verdict(
+    {
+      what: 'every release tag',
+      unverified: 'this checkout can see no `v*` tag.',
+      line: 'no release tags yet; 1.0.0 is untagged',
+    },
+    s.seams,
+  )
+  assert.deepEqual(s.out, ['no release tags yet; 1.0.0 is untagged'])
+  assert.equal(s.warned.length, 1)
+  assert.deepEqual(s.exits, [])
+})
+
+test('a green line with no count is refused — forgetting is how the defect comes back', () => {
+  // `count` is optional because a usage error and a `--write` mode have nothing
+  // to count and nothing to say. A judgement that DOES say something and
+  // measured nothing it can name is the exact state this module exists to
+  // refuse, arriving through a field somebody left off.
+  const s = sinks()
+  assert.throws(
+    () => verdict({ what: 'a document', line: 'every path resolves' }, s.seams),
+    /summary line and no count/,
+  )
+  assert.deepEqual(s.out, [])
+})
+
+test('a judgement with nothing to say passes through silently', () => {
+  // What a usage error and a `--write` mode hand over: the check has already
+  // printed and set its own code, and the module has no verdict to add.
+  const s = sinks()
+  assert.equal(verdict({}, s.seams), 'clean')
+  assert.deepEqual(s.out, [])
+  assert.deepEqual(s.err, [])
+  assert.deepEqual(s.exits, [])
 })

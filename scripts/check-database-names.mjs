@@ -710,7 +710,13 @@ export function strayWrites(reported = new Set(), swept = subjects()) {
   return out
 }
 
-whenRun(import.meta.url, () => {
+/**
+ * The verdict: every database name a source file spells, held against the dump.
+ *
+ * Pure — it sweeps, decides, and hands back what it found and how many files it
+ * read. Nothing here prints or exits.
+ */
+export function judge() {
   // One sweep, three assertions over it: the subject is the same files for all
   // three, and walking it three times would be three chances to disagree.
   const swept = subjects()
@@ -775,4 +781,6 @@ whenRun(import.meta.url, () => {
       ' PostgREST query names a relation and columns the dump declares, and every generated' +
       ' INSERT and UPDATE writes columns the dump has',
   }
-})
+}
+
+whenRun(import.meta.url, judge)

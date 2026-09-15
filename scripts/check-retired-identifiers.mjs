@@ -311,8 +311,14 @@ function psql(args, input) {
 // compared anything — in CI it follows the migration replay, so the only way
 // to reach it is a database that should have been there and was not. So the
 // reason is said as a finding, in the words it has always used.
-whenRun(import.meta.url, () => {
-  const args = process.argv.slice(2)
+/**
+ * The verdict: a database catalogue swept for the words the schema retired.
+ *
+ * Pure — it sweeps the catalogue, decides, and hands back what it found and how
+ * many rows came back. Nothing here prints or exits.
+ */
+export function judge(argv = process.argv.slice(2)) {
+  const args = argv
   const dbIndex = args.indexOf('--database')
   const database = dbIndex === -1 ? process.env.PGDATABASE : args[dbIndex + 1]
 
@@ -359,10 +365,15 @@ whenRun(import.meta.url, () => {
     }
   }
 
-  const problems = findings(parseRows(tsv))
+  // The count is the CATALOGUE ROWS the sweep came back with, not the length of
+  // the fragment list it went looking with. The second is a constant: a query
+  // that returned nothing — the one case the empty-subject rule exists for —
+  // would report it and pass green.
+  const rows = parseRows(tsv)
+  const problems = findings(rows)
   return {
     what: 'a retired word swept across the database catalogue',
-    count: RETIRED_IDENTIFIER_FRAGMENTS.length,
+    count: rows.length,
     findings: problems.map(
       (problem) =>
         `::error::retired vocabulary in ${problem.subject} — "${problem.word}" was ` +
@@ -377,4 +388,6 @@ whenRun(import.meta.url, () => {
       `ok — no retired vocabulary in any database identifier ` +
       `(${RETIRED_IDENTIFIER_FRAGMENTS.length} fragments swept across the catalogue)`,
   }
-})
+}
+
+whenRun(import.meta.url, judge)

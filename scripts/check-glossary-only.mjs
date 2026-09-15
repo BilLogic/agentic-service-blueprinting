@@ -183,8 +183,14 @@ export function sweep(root = process.cwd(), subject = SUBJECT) {
   return { failures: findings(text, subject), terms, chars: text.length }
 }
 
-whenRun(import.meta.url, () => {
-  const { failures, terms, chars } = sweep()
+/**
+ * The verdict: the glossary read for everything in it that is not a definition.
+ *
+ * Pure — it reads, decides, and hands back what it found and how many term rows it
+ * counted. Nothing here prints or exits.
+ */
+export function judge(root = process.cwd()) {
+  const { failures, terms, chars } = sweep(root)
   return {
     what: `a term row in ${SUBJECT}`,
     count: terms,
@@ -202,4 +208,6 @@ whenRun(import.meta.url, () => {
       `(${chars.toLocaleString('en-US')} chars) — no code fence, no table naming a column, ` +
       'no section without a term.',
   }
-})
+}
+
+whenRun(import.meta.url, judge)

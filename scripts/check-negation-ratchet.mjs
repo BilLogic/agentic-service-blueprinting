@@ -149,8 +149,17 @@ export function verdict({ files, counts, total }, recorded = RECORDED) {
   }
 }
 
-whenRun(import.meta.url, () => {
+/**
+ * The verdict: the prohibitions in the router tier counted, and held to the
+ * recorded number.
+ *
+ * Pure — it measures, decides, and hands back what it found. Nothing here prints
+ * or exits.
+ */
+export function judge() {
   const counted = measure()
   const { failures, line } = verdict(counted)
   return { what: `the files of the ${TIER_NOUN}`, count: counted.files, findings: failures, line }
-})
+}
+
+whenRun(import.meta.url, judge)

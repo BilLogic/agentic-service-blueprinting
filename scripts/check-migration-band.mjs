@@ -132,7 +132,13 @@ export function check(filenames) {
   return problems
 }
 
-whenRun(import.meta.url, () => {
+/**
+ * The verdict: every migration the CLI would apply, held to the reserved band.
+ *
+ * Pure — it sweeps, decides, and hands back what it found and how many migrations
+ * it stamped. Nothing here prints or exits.
+ */
+export function judge() {
   // The subject is the `.sql` under supabase/migrations — what the CLI applies.
   // The old listing judged every entry in the folder, a stray note included;
   // a file the CLI would never run is not a migration to stamp.
@@ -147,4 +153,6 @@ whenRun(import.meta.url, () => {
       'next unused day inside the band; do not stamp with the current date.',
     line: `every upstream migration is inside ${BAND_START}–${BAND_END}`,
   }
-})
+}
+
+whenRun(import.meta.url, judge)

@@ -369,7 +369,7 @@ export function resolves(token, docDir, tracked) {
  * Pure — it reads the tree, decides, and hands back what it found and how many
  * documents it looked at. Nothing here prints or exits.
  */
-function judge() {
+export function judge() {
   const tracked = trackedPaths()
   const unresolved = []
 
@@ -400,6 +400,13 @@ function judge() {
       `check-doc-paths: every path named by ${read} packaged documents resolves` +
       ` — ${ABSENT_BY_DESIGN.length} absent by design.`,
   }
+
+  // NOTHING READ OUTRANKS BOTH REPORTS BELOW. With no document read, `failures`
+  // is empty and `staleAbsences` calls EVERY exemption stale — so the run would
+  // go red saying the exemptions match nothing, which is true and is not what
+  // happened. Handing the bare judgement over lets the empty-subject rule name
+  // the real fact.
+  if (read === 0) return judgement
 
   if (failures.length > 0) {
     return {

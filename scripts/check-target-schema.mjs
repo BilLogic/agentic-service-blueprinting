@@ -134,8 +134,15 @@ function readConfig(argv) {
 // subject for, and the caller wants to tell that apart from a target that
 // answered wrongly. The verdict renders four outcomes and none of them is
 // this, so this one branch keeps its own print and its own code.
-whenRun(import.meta.url, async () => {
-  const { url, key } = readConfig(process.argv.slice(2))
+/**
+ * The verdict: the schema version the configured target reports, held to the
+ * versions this tree supports.
+ *
+ * Pure — it asks the target, decides, and hands back what it found. Nothing here
+ * prints or exits, bar the unconfigured target, which is not a verdict.
+ */
+export async function judge(argv = process.argv.slice(2)) {
+  const { url, key } = readConfig(argv)
   if (!url || !key) {
     console.error(
       'no target configured: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env ' +
@@ -169,4 +176,6 @@ whenRun(import.meta.url, async () => {
     findings: result.ok ? [] : [result.message],
     line: result.message,
   }
-})
+}
+
+whenRun(import.meta.url, judge)

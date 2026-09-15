@@ -360,7 +360,7 @@ function skip() {
 /** The subject, said the way the sweep's register says it. */
 const WHAT = "a deployment's seed against this template's portable core"
 
-function judge(argv = process.argv.slice(2)) {
+export function judge(argv = process.argv.slice(2)) {
   const fromEnv = process.env.DEPLOYMENT_SEED
     ? process.env.DEPLOYMENT_SEED.split(',').map((part) => part.trim()).filter(Boolean)
     : []

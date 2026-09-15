@@ -344,15 +344,29 @@ export function compareTree(root = REPO_ROOT) {
   })
 }
 
-whenRun(import.meta.url, () => {
-  const failures = compareTree()
-  // What was examined is the calls, and `compareTree` hands back only the
-  // problems — a shape its own suite pins. The caller is read again for the
-  // count rather than widened, which is one file and the same sweep.
-  const app = sweep({ subject: 'app', what: 'application source' })
+/**
+ * The problems, and how many calls they were found among.
+ *
+ * `compareTree` hands back only the problems, and its own suite pins that
+ * shape. The breadth is read off the same source text rather than out of a
+ * second sweep: sweeping twice for one number is two derivations free to
+ * disagree, and the second sweep would announce a missing subject the first had
+ * already answered for.
+ */
+export function judge(root = REPO_ROOT) {
+  const app = sweep({ subject: 'app', root, what: 'application source' })
+  const caller = app.read(CALLER)
+  if (caller === null) {
+    throw new Error(`no ${CALLER} under ${app.base}: this check has no subject`)
+  }
+  const failures = compare({
+    caller,
+    schema: readFileSync(join(root, SCHEMA), 'utf8'),
+    reverter: app.read(REVERTER),
+  })
   return {
     what: `an RPC call in ${CALLER}`,
-    count: rpcCallSites(app.read(CALLER)).length,
+    count: rpcCallSites(caller).length,
     findings: failures.map(({ line, problem }) => `${CALLER}:${line}: ${problem}`),
     closing:
       `\nPostgREST resolves an RPC by its argument NAMES, so a stray or missing` +
@@ -361,4 +375,6 @@ whenRun(import.meta.url, () => {
       ` \`npm run generate:portable-schema\`.`,
     line: `${CALLER} calls every RPC with the arguments ${SCHEMA} declares`,
   }
-})
+}
+
+whenRun(import.meta.url, judge)

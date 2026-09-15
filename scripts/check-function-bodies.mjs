@@ -185,8 +185,14 @@ export function probe(label, sql) {
 // exception answered the question this asks, so it is not a finding; it is a
 // footnote to the summary, printed only where the summary is, and the summary
 // is the one string the verdict prints to stdout.
-whenRun(import.meta.url, () => {
-  const selfTest = process.argv.includes('--self-test')
+/**
+ * The verdict: every `language sql` body in public, called to see if it resolves.
+ *
+ * Pure — it stands a database up, calls, decides, and hands back what it found.
+ * Nothing here prints or exits.
+ */
+export function judge(argv = process.argv.slice(2)) {
+  const selfTest = argv.includes('--self-test')
   const what = 'a `language sql` function in public'
   run('dropdb', ['--if-exists', DB])
   run('createdb', [DB])
@@ -258,4 +264,6 @@ whenRun(import.meta.url, () => {
   } finally {
     run('dropdb', ['--if-exists', DB])
   }
-})
+}
+
+whenRun(import.meta.url, judge)

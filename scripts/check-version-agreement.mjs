@@ -93,11 +93,17 @@ export function writeLockfileVersion(root = REPO_ROOT) {
   return true
 }
 
-whenRun(import.meta.url, () => {
+/**
+ * The verdict: every file stating a version, held to package.json’s.
+ *
+ * Pure — it reads them, decides, and hands back what it found. Nothing here exits,
+ * and `--write` is the release step saying what it did rather than a verdict.
+ */
+export function judge(argv = process.argv.slice(2)) {
   // `--write` is the release step propagating package.json's number, not a
   // judgement about the tree, so it says what it did and hands the verdict
   // nothing to say.
-  if (process.argv.includes('--write')) {
+  if (argv.includes('--write')) {
     const plugin = writePluginVersion()
     const lock = writeLockfileVersion()
     console.log(plugin ? 'plugin.json version updated' : 'plugin.json already current')
@@ -115,4 +121,6 @@ whenRun(import.meta.url, () => {
     closing: '\nRun `npx changeset version` to cut a release, or fix the file by hand.',
     line: `version ${stated['package.json']} agrees everywhere`,
   }
-})
+}
+
+whenRun(import.meta.url, judge)

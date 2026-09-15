@@ -207,7 +207,7 @@ export function absences(paths, tracked, onDisk) {
  * Pure — it sweeps, decides, and hands back what it found. Nothing here prints
  * or exits.
  */
-function judge() {
+export function judge() {
   const walk = interfaceSweep()
   const missing = absences(
     CONSUMER_IMPORTS,

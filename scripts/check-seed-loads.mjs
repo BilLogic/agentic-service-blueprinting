@@ -255,7 +255,14 @@ function psql(args, extraEnv = {}, input = undefined) {
 // said out loud on a passing run, because a gap the check knows about and does
 // not name is the shape of hole this whole file exists to close — so it is part
 // of the summary rather than a finding, and it is printed where the summary is.
-whenRun(import.meta.url, () => {
+/**
+ * The verdict: the generated seed loaded on a fresh database, then read as anon
+ * and written as the roles the editors use.
+ *
+ * Pure — it stands a database up, exercises it, decides, and hands back what it
+ * found. Nothing here prints or exits.
+ */
+export function judge() {
   const what = 'a read the deployed key makes against the seeded database'
   run('dropdb', ['--if-exists', DB])
   run('createdb', [DB])
@@ -341,4 +348,6 @@ whenRun(import.meta.url, () => {
   } finally {
     run('dropdb', ['--if-exists', DB])
   }
-})
+}
+
+whenRun(import.meta.url, judge)

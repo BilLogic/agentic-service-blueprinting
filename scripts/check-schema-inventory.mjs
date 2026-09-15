@@ -265,8 +265,15 @@ export function compare(types, actual) {
   return problems
 }
 
-whenRun(import.meta.url, () => {
-  const [inventoryPath] = process.argv.slice(2)
+/**
+ * The verdict: src/types/database.ts held against an inventory of the schema that
+ * was just built.
+ *
+ * Pure — it reads both, decides, and hands back what it found. Nothing here prints
+ * or exits, bar the usage error, which is not a verdict.
+ */
+export function judge(argv = process.argv.slice(2)) {
+  const [inventoryPath] = argv
   if (!inventoryPath) {
     // Not a verdict: the command was given nothing to judge. The 2 says that,
     // and it is not one of the codes the verdict has words for, so the
@@ -291,4 +298,6 @@ whenRun(import.meta.url, () => {
       '`npm run generate:database-types`, or fix the migration that made them wrong.',
     line: 'src/types/database.ts matches the schema that was just built',
   }
-})
+}
+
+whenRun(import.meta.url, judge)

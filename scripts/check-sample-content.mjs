@@ -391,7 +391,7 @@ function report(groups, { all }) {
  * only red left to it is the one every check has: a run that examined no
  * content file at all.
  */
-function judge(argv = process.argv.slice(2)) {
+export function judge(argv = process.argv.slice(2)) {
   const all = argv.includes('--all')
   // One sweep of the application for both halves of the answer: the files the
   // report counts and the files it reads are the same files.
@@ -432,4 +432,4 @@ function judge(argv = process.argv.slice(2)) {
   }
 }
 
-whenRun(import.meta.url, () => judge())
+whenRun(import.meta.url, judge)

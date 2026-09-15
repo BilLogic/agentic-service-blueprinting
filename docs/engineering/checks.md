@@ -176,7 +176,7 @@ than as the whole suite.
 ## 7. Adding one
 
 A new guard belongs here when a claim in this repository is currently true and
-nothing would notice if it stopped being. Four rules the existing set follows:
+nothing would notice if it stopped being. Five rules the existing set follows:
 
 - **Fail by naming the file and the line.** A guard that says only "drift" is
   a guard someone has to reproduce before they can fix it.

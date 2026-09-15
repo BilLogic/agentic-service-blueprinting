@@ -141,8 +141,15 @@ export function versionAtTag(tag) {
   return JSON.parse(git('show', `${tag}:package.json`)).version
 }
 
-whenRun(import.meta.url, () => {
-  const require = process.argv.includes('--require')
+/**
+ * The verdict: the release tags this checkout can see, held to what the changelog
+ * and package.json say was released.
+ *
+ * Pure — it reads the tags and the tree, decides, and hands back what it found.
+ * Nothing here prints or exits.
+ */
+export function judge(argv = process.argv.slice(2)) {
+  const require = argv.includes('--require')
   const version = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')).version
   const released = releasedVersions(readFileSync(join(REPO_ROOT, 'CHANGELOG.md'), 'utf8'))
   const tags = localTags()
@@ -159,13 +166,13 @@ whenRun(import.meta.url, () => {
   // with none there is nothing for any of them to be true of. A checkout is
   // normally handed no tags — the workflow fetches them in a step of its own —
   // and a reader looking at a green job has no way to tell that run from one
-  // where the fetch was dropped. The green line is the check's own and says
-  // which version is untagged, which the register's sentence does not, so it
-  // is printed here and the register is left to the verdict.
+  // where the fetch was dropped. The line says which version is untagged, which
+  // the register's sentence does not, so the judgement hands over both and the
+  // module prints them in that order.
   if (faults.length === 0 && tags.length === 0) {
-    console.log(`no release tags yet; ${version} is untagged (see docs/engineering/releasing.md)`)
     return {
       what: 'every release tag',
+      line: `no release tags yet; ${version} is untagged (see docs/engineering/releasing.md)`,
       unverified:
         `this checkout can see no \`v*\` tag, so nothing was held: not that a tag names a ` +
         `released version, not that ${tagFor(version)} would point at a tree stating ` +
@@ -186,4 +193,6 @@ whenRun(import.meta.url, () => {
       ? `${tags.length} release tag(s), and ${tagFor(version)} is among them`
       : `${tags.length} release tag(s); ${version} is not tagged yet`,
   }
-})
+}
+
+whenRun(import.meta.url, judge)

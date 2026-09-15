@@ -81,7 +81,7 @@ import { unverified } from './sweep.mjs'
  * @param {{
  *   out?: (text: string) => void,
  *   err?: (text: string) => void,
- *   exit?: (code: number) => void,
+ *   fail?: (code: number) => void,
  *   io?: Parameters<typeof unverified>[2],
  * }} [sinks] Seams a test holds. By default the two consoles and this
  *   process's exit code.
@@ -91,7 +91,9 @@ export function verdict(judgement = {}, sinks = {}) {
   const { what, count, findings = [], opening, closing, line } = judgement
   const out = sinks.out ?? ((text) => console.log(text))
   const err = sinks.err ?? ((text) => console.error(text))
-  const fail = sinks.exit ?? ((code) => (process.exitCode = code))
+  // Named for the outcome rather than for `process.exit`, which is the one call
+  // this module exists to stop anybody making.
+  const fail = sinks.fail ?? ((code) => (process.exitCode = code))
 
   // COULD NOT LOOK comes first, because every question below it presumes a
   // measurement that was never taken. It is green: the skips this reaches are
@@ -99,6 +101,10 @@ export function verdict(judgement = {}, sinks = {}) {
   // that verified something.
   if (judgement.unverified) {
     unverified(what ?? 'the subject', judgement.unverified, sinks.io)
+    // A check may have a sentence of its own to add — which version went
+    // untagged, which sibling was not there. The register names the subject and
+    // what would reach it; the line names the particular. Both, in that order.
+    if (line) out(line)
     return 'unverified'
   }
 
@@ -126,6 +132,18 @@ export function verdict(judgement = {}, sinks = {}) {
     return 'no subject'
   }
 
+  // A JUDGEMENT THAT REPORTS AND DOES NOT MEASURE IS THE DEFECT, ONE LEVEL UP
+  // AGAIN. `count` is optional because the usage errors and the `--write` modes
+  // below have nothing to count and nothing to say; a judgement with a green
+  // line and no count is a check that forgot, and forgetting is how the green
+  // line over nothing comes back.
+  if (line && count === undefined) {
+    throw new Error(
+      `a verdict with a summary line and no count: ${what ?? 'this check'} would report a clean ` +
+        'run without saying how much it examined, which is the state this module refuses',
+    )
+  }
+
   if (line) out(line)
   return 'clean'
 }
@@ -140,7 +158,7 @@ export function verdict(judgement = {}, sinks = {}) {
  * have it do nothing, successfully — which is the failure mode this whole
  * guard set exists to refuse, arriving through the guard itself.
  *
- * @param {string} url The caller's `import.meta.url`.
+ * @param {string | URL} url The caller's `import.meta.url`.
  * @returns {boolean}
  */
 export function isTheCommand(url) {

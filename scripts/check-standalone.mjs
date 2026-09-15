@@ -236,7 +236,7 @@ export function violationsUnder(root = process.cwd(), walk = scannedSweep(root))
  * Pure — it sweeps, decides, and hands back what it found. Nothing here prints
  * or exits.
  */
-function judge() {
+export function judge() {
   const walk = scannedSweep()
   const problems = violationsUnder(process.cwd(), walk)
   const findings = []

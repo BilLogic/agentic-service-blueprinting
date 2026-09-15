@@ -36,7 +36,13 @@ const BINDINGS = [
   },
 ]
 
-whenRun(import.meta.url, () => {
+/**
+ * The verdict: every pinned row shape, held against the schema dump.
+ *
+ * Pure — it reads, decides, and hands back what it found. Nothing here prints or
+ * exits.
+ */
+export function judge() {
   const schemaSql = readFileSync(SCHEMA, 'utf8')
   const drift = BINDINGS.flatMap((binding) =>
     shapeDrift({ ...binding, source: readFileSync(join(ROOT, binding.file), 'utf8') }, schemaSql).map(
@@ -51,4 +57,6 @@ whenRun(import.meta.url, () => {
     closing: '\nThe document is read by a model, so a stale key here is a call the app rejects.',
     line: `${BINDINGS.length} pinned row shape(s) agree with the schema dump.`,
   }
-})
+}
+
+whenRun(import.meta.url, judge)

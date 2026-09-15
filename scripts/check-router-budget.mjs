@@ -108,8 +108,16 @@ export function verdict({ counted, total }, { budget = BUDGET, slack = SLACK } =
   }
 }
 
-whenRun(import.meta.url, () => {
+/**
+ * The verdict: the router tier measured, and its size held to the budget.
+ *
+ * Pure — it measures, decides, and hands back what it found. Nothing here prints
+ * or exits.
+ */
+export function judge() {
   const census = measure()
   const { failures, line } = verdict(census)
   return { what: `the files of the ${TIER_NOUN}`, count: census.counted.length, findings: failures, line }
-})
+}
+
+whenRun(import.meta.url, judge)

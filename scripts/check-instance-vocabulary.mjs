@@ -168,7 +168,13 @@ export async function loadInstanceRenameMap(source = process.env.INSTANCE_RENAME
 // of it, failing or not; an exemption is a name this template keeps on purpose
 // and is reported on a red run too. Neither is a finding and neither is the
 // green line, so neither is the verdict's to render.
-whenRun(import.meta.url, async () => {
+/**
+ * The verdict: every name the instance retired, looked for here.
+ *
+ * Pure — it fetches the map, reads the dump, decides, and hands back what it
+ * found. Nothing here exits, and what it prints is the census, not a verdict.
+ */
+export async function judge() {
   try {
     const { map, from } = await loadInstanceRenameMap()
     const inventory = schemaInventory(readFileSync(SCHEMA, 'utf8'))
@@ -202,4 +208,6 @@ whenRun(import.meta.url, async () => {
     // same register as one, and a raw stack would say less.
     return { what: 'a rename the instance shipped', findings: [`::error::instance vocabulary: ${error.message}`] }
   }
-})
+}
+
+whenRun(import.meta.url, judge)

@@ -322,6 +322,10 @@ export function compare(root = process.cwd()) {
     ),
     retired: retiredMentions(prose.files, prose.read),
     bare: bareMentions(everything.files, everything.read),
+    // How wide the two sweeps were, out of the walk that has just happened. A
+    // second walk for the same number is two derivations of one fact, free to
+    // disagree, and the walk paid for twice.
+    read: prose.files.length + everything.files.length,
   }
 }
 
@@ -332,8 +336,8 @@ export function compare(root = process.cwd()) {
  * Pure — it reads the tree, decides, and hands back what it found. Nothing
  * here prints or exits.
  */
-function judge(root = process.cwd()) {
-  const { undocumented, unknown, retired, bare: bareWords } = compare(root)
+export function judge(root = process.cwd()) {
+  const { undocumented, unknown, retired, bare: bareWords, read } = compare(root)
   const findings = [
     ...undocumented.map(
       (value) => `the constraint accepts kind '${value}', which ${DATA_MODEL} does not state`,
@@ -352,7 +356,7 @@ function judge(root = process.cwd()) {
     // this check actually opened, and a run that opened none of them has
     // compared the vocabulary against nothing.
     what: 'a rulebook document and a committed file that could name a dependency kind',
-    count: rulebook(root).files.length + bare(root).files.length,
+    count: read,
     findings,
     closing:
       `\nThe enforced vocabulary wins — a documented value the CHECK constraint` +
@@ -363,4 +367,4 @@ function judge(root = process.cwd()) {
   }
 }
 
-whenRun(import.meta.url, () => judge())
+whenRun(import.meta.url, judge)

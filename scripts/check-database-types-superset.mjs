@@ -210,8 +210,14 @@ export function notes(groups) {
   ]
 }
 
-whenRun(import.meta.url, () => {
-  const [deploymentPath] = process.argv.slice(2)
+/**
+ * The verdict: a deployment’s own types file, held against this package’s.
+ *
+ * Pure — it reads both files, decides, and hands back what it found. Nothing here
+ * prints or exits, bar the usage error and the notes, which are not a verdict.
+ */
+export function judge(argv = process.argv.slice(2)) {
+  const [deploymentPath] = argv
   if (!deploymentPath) {
     // Not a verdict: the command was given no file to compare against, and 2
     // is not one of the codes the verdict has words for, so the judgement
@@ -244,4 +250,6 @@ whenRun(import.meta.url, () => {
       `${deploymentPath} describes every column this package’s ${TYPES} declares, ` +
       'on every table it shares with it',
   }
-})
+}
+
+whenRun(import.meta.url, judge)

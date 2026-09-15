@@ -300,8 +300,15 @@ export function sweep(root = process.cwd(), subjects = SUBJECTS, io) {
 // verdict that says so rather than `sweep`, because a document carrying no
 // pointer is a case `sweep` is asked about directly — that is the failure it
 // reports next door.
-whenRun(import.meta.url, () => {
-  const { failures, pointers, triggers } = sweep()
+/**
+ * The verdict: every pointer in the routers, resolved, and every routing item
+ * read for the trigger word it leads with.
+ *
+ * Pure — it sweeps, decides, and hands back what it found. Nothing here prints or
+ * exits.
+ */
+export function judge(root = process.cwd()) {
+  const { failures, pointers, triggers } = sweep(root)
   return {
     what: `a pointer in ${SUBJECTS.join(', ')}`,
     count: pointers,
@@ -315,4 +322,6 @@ whenRun(import.meta.url, () => {
         : [],
     line: `[pointers] ${pointers} pointers resolve and ${triggers} routing items lead with their trigger word (${SUBJECTS.join(', ')})`,
   }
-})
+}
+
+whenRun(import.meta.url, judge)

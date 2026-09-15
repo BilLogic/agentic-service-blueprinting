@@ -353,7 +353,7 @@ export function staleAllowances(walk = scannedSweep(), allowed = ALLOWED) {
  * Pure — it sweeps, decides, and hands back what it found. Nothing here prints
  * or exits.
  */
-function judge() {
+export function judge() {
   const walk = scannedSweep()
   const problems = findings(ALLOWED, walk)
   const stale = staleAllowances(walk)

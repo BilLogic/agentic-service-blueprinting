@@ -343,7 +343,7 @@ export function sweepClaims({ root = process.cwd(), composition = repoConfig.com
  * Pure — it sweeps, decides, and hands back what it found. Nothing here prints
  * or exits.
  */
-function judge() {
+export function judge() {
   // A REFUSAL IS A SENTENCE, NOT A STACK. Everything below this line is a
   // finding about the tree; everything `sweepClaims` throws is a fact about the
   // repository it was pointed at — no `composition` stated, no application to

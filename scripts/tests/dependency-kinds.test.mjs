@@ -20,12 +20,17 @@ import {
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 
 test('this tree documents the kind vocabulary its constraint enforces', () => {
-  assert.deepEqual(compare(ROOT), {
+  const { read, ...found } = compare(ROOT)
+  assert.deepEqual(found, {
     undocumented: [],
     unknown: [],
     retired: [],
     bare: [],
   })
+  // How wide the two sweeps were, which is what the check hands the verdict as
+  // its count. Asserted here because a comparison that found nothing wrong over
+  // nothing at all reads exactly like this one.
+  assert.ok(read > 0, 'the two sweeps read no file, so nothing was compared')
 })
 
 test('the enforced values come out of the CHECK constraint', () => {
