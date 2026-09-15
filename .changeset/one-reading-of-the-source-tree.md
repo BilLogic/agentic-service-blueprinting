@@ -29,27 +29,33 @@ held this many files. `src/lib/sourceTree.test.ts` proves it over a scratch
 tree — a file is moved between two surfaces, and the reading reports it at its
 new path while the old one raises a refusal naming where it went.
 
-`tokenModel`'s two walks and `classList`'s sampling fold into it: the model
-keeps the parsing — what a declaration is, what the cascade says, who consumes
-a name — and takes its stylesheets and its source from the reading, and
-`classLists()` now takes a surface, resolving named class-list constants across
-the whole application whichever surface the sites come from. Both enumerations
-in `tokenDiscipline` still agree in both directions, and the second one is still
-independent: it decides for itself what a source file is, so the model cannot
-mark its own homework.
+`tokenModel`'s two walks and `classList`'s sampling fold into it. The decision
+that one token model is the single style seam stands unchanged: the model keeps
+the parsing — what a declaration is, what the cascade says, who consumes a name
+— and takes its files from the reading, which also owns the comment blanking
+and holds the stripped sample, so a rule and its counterpart cannot be handed
+two samples of one file. `classLists()` takes a surface, resolving named
+class-list constants across the whole application whichever surface the sites
+come from. Both enumerations in `tokenDiscipline` still agree in both
+directions, and the second one is still independent: it decides for itself what
+a source file is, so the model cannot mark its own homework.
 
-Every guard under `src/lib` that read the application with a relative path now
-asks the reading — twenty-seven modules, every assertion unchanged. Nothing
-runs at runtime that did not run before: the reading, the model and the class
-reader are test-time modules with no importer the bundle can reach.
+Twenty-seven guards under `src/lib` now ask the reading instead of the
+filesystem. Two of them changed what they report, and both widened:
+`entityStatusContract` swept `src/data` flat and now sweeps the surface, naming
+an offender `data/foo.ts` rather than `foo.ts`; `writeFailures` states its three
+paths relative to `src`, as every other guard now does. No assertion was
+weakened, no sample narrowed. Nothing runs at runtime that did not run before:
+the reading, the model and the class reader are test-time modules with no
+importer the bundle can reach.
 
 Two things are deliberately left where they are. `overviewFlowArrowAnchor` reads
 `ServiceOverviewView.tsx` to assert about behaviour rather than about text, and
 belongs with the contract half of this pair rather than with a file-reading
 seam. And eight guards under `src/lib` read something that is not the
 application — the migrations, the published references, the generated schema,
-an installed package — which are other subjects of the same sweep and are asked
-for directly.
+an installed package — so they go on opening it directly; the reading answers
+for the application and says so.
 
 **Eighteen direct readers remain outside `src/lib`**, in `src/`,
 `src/components/` and `src/styles/`. That is the contract half's starting line.

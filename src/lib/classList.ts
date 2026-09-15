@@ -1,5 +1,8 @@
-import { type Surface, sourcesOn } from '@/lib/sourceTree'
-import { stripComments } from '@/lib/tokenModel'
+import {
+  type Surface,
+  stripComments,
+  strippedSourcesOn,
+} from '@/lib/sourceTree'
 
 /**
  * A class list, not a class string.
@@ -129,9 +132,9 @@ export function classListsIn(
  * every caller before surfaces meant.
  */
 export function classLists(surface: Surface = 'app'): ClassListSite[] {
-  return sourcesOn(surface)
-    .map((file) => ({ file: file.file, code: stripComments(file.text) }))
-    .flatMap((file) => extractSites(file.code, file.file, namedClassLists()))
+  return strippedSourcesOn(surface).flatMap((file) =>
+    extractSites(file.code, file.file, namedClassLists()),
+  )
 }
 
 let cachedNames: ReadonlyMap<string, readonly string[]> | null = null
@@ -140,8 +143,8 @@ let cachedNames: ReadonlyMap<string, readonly string[]> | null = null
 function namedClassLists(): ReadonlyMap<string, readonly string[]> {
   if (cachedNames) return cachedNames
   const names = new Map<string, readonly string[]>()
-  for (const file of sourcesOn()) {
-    for (const [name, classes] of namedClassListsIn(stripComments(file.text))) {
+  for (const file of strippedSourcesOn()) {
+    for (const [name, classes] of namedClassListsIn(file.code)) {
       names.set(name, classes)
     }
   }

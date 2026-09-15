@@ -77,23 +77,13 @@ function isIconOnly(classes: readonly string[]): boolean {
 }
 
 /**
- * Raw source of a file under `src`, comments kept — surviving `leading-*`
- * has to be judged against the comment that names its geometry.
- *
- * @param file - path relative to `src`
- */
-function rawSource(file: string): string {
-  return sourceOf(file)
-}
-
-/**
  * Every `leading-*` in `file` whose line (or the comment immediately
  * above it) does not name the geometry that needs the override.
  *
  * @param file - path relative to `src`
  */
 function uncommentedLeading(file: string): string[] {
-  const lines = rawSource(file).split('\n')
+  const lines = sourceOf(file).split('\n')
   const offenders: string[] = []
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index] ?? ''

@@ -182,15 +182,15 @@ describe('⌘Z, when the revert fails', () => {
  */
 const FAILING_PATHS = [
   {
-    file: 'src/components/editor/CanvasCellContextMenu.tsx',
+    file: 'components/editor/CanvasCellContextMenu.tsx',
     subject: 'The cell was not deleted',
   },
   {
-    file: 'src/components/blueprint/BlueprintColumnHandles.tsx',
+    file: 'components/blueprint/BlueprintColumnHandles.tsx',
     subject: 'The step was not added',
   },
   {
-    file: 'src/components/editor/SlicesSidebarSection.tsx',
+    file: 'components/editor/SlicesSidebarSection.tsx',
     subject: 'was not duplicated',
   },
 ] as const
@@ -228,7 +228,7 @@ function catchBodies(source: string): string[] {
 describe('the paths that used to fail in silence', () => {
   for (const { file, subject } of FAILING_PATHS) {
     it(`${file} reports to the user, not the console`, () => {
-      const source = sourceOf(file.replace(/^src\//, ''))
+      const source = sourceOf(file)
       expect(source, `${file} no longer names what did not happen`).toContain(
         subject,
       )

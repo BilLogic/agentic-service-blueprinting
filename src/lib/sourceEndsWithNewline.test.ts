@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bytesOf } from '@/lib/sourceTree'
-import { sourceFiles } from '@/lib/tokenModel'
+import { bytesOf, sourcePathsOn } from '@/lib/sourceTree'
 
 /**
  * Every source file ends with a newline.
@@ -17,9 +16,7 @@ import { sourceFiles } from '@/lib/tokenModel'
  */
 describe('the source tree', () => {
   it('ends every file with a newline', () => {
-    const offenders = sourceFiles()
-      .map((file) => file.file)
-      .filter((file) => {
+    const offenders = sourcePathsOn().filter((file) => {
         const bytes = bytesOf(file)
         return bytes.length > 0 && bytes.at(-1) !== 0x0a
       })

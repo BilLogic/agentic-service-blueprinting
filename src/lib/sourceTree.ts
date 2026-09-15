@@ -4,8 +4,8 @@ import { type Sweep, sweep } from '../../scripts/sweep.mjs'
 /**
  * ONE READING OF THE APPLICATION, ADDRESSED BY SURFACE. Test-time only.
  *
- * Fifty-one test modules opened this tree with `readFileSync` and a path they
- * built themselves — `resolve(__dirname, '..', 'components/editor/Foo.tsx')`,
+ * Every guard of this tree used to open it with `readFileSync` and a path it
+ * built itself — `resolve(__dirname, '..', 'components/editor/Foo.tsx')`,
  * `join(process.cwd(), 'src/App.tsx')`, `new URL('../styles/blueprint.css',
  * import.meta.url)`. Each spelling is a second opinion about where the
  * application is, and each one is a copy of the tree's shape written down
@@ -39,6 +39,12 @@ import { type Sweep, sweep } from '../../scripts/sweep.mjs'
  * `tokenModel`'s `SourceFile.file` already used and every converted guard
  * already wrote. The `src/` prefix is the sweep's business, not a guard's.
  *
+ * WHAT THIS IS NOT is the style seam. The decision that one token model is the
+ * single seam for style enforcement stands unchanged: `tokenModel` keeps the
+ * parsing — what a declaration is, what the cascade says, who consumes a name
+ * — and takes its files from here. Two seams, and the line between them is
+ * where the application IS versus what it SAYS.
+ *
  * NOT here: anything outside the application. The migrations, the published
  * references, the package's own generated documents and `node_modules` are
  * other subjects of the same sweep, and a guard over one of those still asks
@@ -51,6 +57,20 @@ export type SourceFile = {
   file: string
   /** The file's text, verbatim — comments and all. */
   text: string
+}
+
+/**
+ * A source file with its comments blanked — the sample every text rule wants.
+ *
+ * `code` rather than `text`, because it is no longer what the file says: a
+ * comment naming a class is not a use of that class, and a rule counting uses
+ * has to be handed the difference rather than asked to make it.
+ */
+export type StrippedSource = {
+  /** Path relative to `src`, forward slashes. */
+  file: string
+  /** The text with every comment blanked, newline for newline. */
+  code: string
 }
 
 /**
@@ -99,8 +119,6 @@ const isSource = (path: string) =>
 
 /** What one reading of the tree can be asked. */
 export type Reading = {
-  /** The tree this reading swept. */
-  root: string
   /** The paths on a surface, `src`-relative and sorted. */
   paths: (surface?: Surface, where?: (path: string) => boolean) => string[]
   /** The files on a surface, text and all. */
@@ -155,6 +173,8 @@ export function readingIn(root: string): Reading {
   const held = new Set(listed)
   const texts = new Map<string, string>()
 
+  // `app`'s prefix is empty, so the find always matches; the fallback is
+  // what makes that fact legible to the type rather than a second answer.
   const surfaceOf = (path: string): Surface =>
     BY_DEPTH.find((surface) => path.startsWith(SURFACES[surface])) ?? 'app'
 
@@ -200,7 +220,6 @@ export function readingIn(root: string): Reading {
   }
 
   return {
-    root: walk.base,
     paths: (surface = 'app', where) => on(surface, where),
     files: (surface = 'app', where) =>
       on(surface, where).map((file) => ({ file, text: textOf(file) })),
@@ -233,11 +252,6 @@ export function reading(): Reading {
   return cached
 }
 
-/** Forget the held reading. For a test that changes the tree under it. */
-export function forgetReading(): void {
-  cached = null
-}
-
 /** The paths on a surface of this tree. */
 export const pathsOn = (
   surface?: Surface,
@@ -250,9 +264,72 @@ export const filesOn = (
   where?: (path: string) => boolean,
 ): SourceFile[] => reading().files(surface, where)
 
-/** The non-test TypeScript on a surface of this tree. */
+/**
+ * The PATHS of the non-test TypeScript on a surface of this tree.
+ *
+ * Separate from `sourcesOn` because most rules want the listing and a handful
+ * of files: a rule that asks for the sample and then reads two of it has paid
+ * to open four hundred, which is a second of an isolated test's five.
+ */
+export const sourcePathsOn = (surface?: Surface): string[] =>
+  reading().paths(surface, isSource)
+
+/** The non-test TypeScript on a surface of this tree, text and all. */
 export const sourcesOn = (surface?: Surface): SourceFile[] =>
   reading().sources(surface)
+
+const stripped = new Map<Surface, StrippedSource[]>()
+
+/**
+ * The non-test TypeScript on a surface, comments blanked, read and stripped
+ * once.
+ *
+ * The blanking is here rather than in the model that wanted it first, because
+ * two seams stripping the same file is two samples of it — and the one thing a
+ * single reading exists to make impossible is a rule and its counterpart
+ * looking at slightly different text.
+ */
+export const strippedSourcesOn = (
+  surface: Surface = 'app',
+): StrippedSource[] => {
+  const held = stripped.get(surface)
+  if (held) return held
+  const made = sourcesOn(surface).map(({ file, text }) => ({
+    file,
+    code: stripComments(text),
+  }))
+  stripped.set(surface, made)
+  return made
+}
+
+/**
+ * Blank out block comments while keeping every newline, so line numbers
+ * survive.
+ *
+ * Needed because a CSS declaration's selector is assembled from the text
+ * before its `{`, and this codebase writes a paragraph of prose above almost
+ * every block — a per-line strip would leave that prose glued to the selector.
+ */
+export function blankComments(text: string): string {
+  return text.replace(/\/\*[\s\S]*?\*\//g, (comment) =>
+    comment.replace(/[^\n]/g, ' '),
+  )
+}
+
+/**
+ * A comment naming the class it replaced is not a use of that class.
+ *
+ * Block comments are BLANKED rather than deleted: every newline has to
+ * survive, or every line number a rule reports after a file's header comment
+ * is wrong. Deleting them drifted by thirteen lines on
+ * `dev/ArrowSituationCatalogPage.tsx`, pointing the reader at an import.
+ * Nothing failed while it was wrong, because a passing rule reports no lines
+ * at all; the number only has to be right at the moment a rule starts
+ * failing, which is the moment nobody is checking it.
+ */
+export function stripComments(source: string): string {
+  return blankComments(source).replace(/(^|[^:])\/\/.*$/gm, '$1')
+}
 
 /** The text of one file of this tree, addressed relative to `src`. */
 export const sourceOf = (path: string): string => reading().textOf(path)

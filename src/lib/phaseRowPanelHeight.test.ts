@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sourceOf } from '@/lib/sourceTree'
+import { sourceOf as read } from '@/lib/sourceTree'
 import { resolveScenarioPanelHeight } from './phaseRowPanelHeight'
 import {
   getComparePanelScrollPaddingY,
@@ -130,8 +130,6 @@ describe('panel height estimates and the chrome they assume', () => {
  * that are easy to get wrong are held to the text instead.
  */
 describe('phase row height wiring', () => {
-  const read = sourceOf
-
   it('excludes on an attribute of its own, not on the focus marker', () => {
     /*
       `data-canvas-focus-active` is set on the phase SECTION as well as on

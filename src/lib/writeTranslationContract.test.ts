@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { sourceOf, sourcesOn } from '@/lib/sourceTree'
+import { sourceOf, sourcePathsOn } from '@/lib/sourceTree'
 
 /**
  * A write that is refused is translated, never forwarded raw.
@@ -32,12 +32,9 @@ const ALSO_WRITES: readonly string[] = ['lib/authoringRpc.ts']
 
 const RAW_THROW = /throw new Error\(\s*[A-Za-z_$][\w$]*\.message\s*\)/g
 
-const writers = sourcesOn()
-  .map(({ file }) => file)
-  .filter(
-    (relative) =>
-      MUTATION_MODULE.test(relative) || ALSO_WRITES.includes(relative),
-  )
+const writers = sourcePathsOn().filter(
+  (relative) => MUTATION_MODULE.test(relative) || ALSO_WRITES.includes(relative),
+)
 
 test('the writers this rule covers exist, so a rename fails loudly', () => {
   // A set derived by pattern can quietly become empty. Both halves are held:

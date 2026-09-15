@@ -1,4 +1,11 @@
-import { filesOn, sourceOf, sourcesOn } from '@/lib/sourceTree'
+import {
+  blankComments,
+  filesOn,
+  sourceOf,
+  type StrippedSource,
+  stripComments,
+  strippedSourcesOn,
+} from '@/lib/sourceTree'
 import {
   composite,
   hexToRgb,
@@ -187,12 +194,8 @@ export type SourceDeclaration = {
   via: 'style-key' | 'arbitrary-property' | 'set-property' | 'named-constant'
 }
 
-export type SourceFile = {
-  /** Path relative to `src`. */
-  file: string
-  /** Contents with comments stripped — a comment naming a class is not a use. */
-  code: string
-}
+/** A source file of the application, comments blanked. The reading's shape. */
+export type SourceFile = StrippedSource
 
 export type Stylesheet = {
   /** Path relative to `src/styles`. */
@@ -230,9 +233,8 @@ let cachedSheets: Stylesheet[] | null = null
 export function stylesheets(): Stylesheet[] {
   if (cachedSheets) return cachedSheets
   const sheets = filesOn('styles', (path) => path.endsWith('.css'))
-  const entry = sheets.find(({ file }) => file === ENTRY)
-  if (!entry) throw new Error(`the application has no ${ENTRY}`)
-  const imported = [...entry.text.matchAll(/@import\s+'\.\/([^']+)'/g)].map(
+  const entryText = sourceOf(ENTRY)
+  const imported = [...entryText.matchAll(/@import\s+'\.\/([^']+)'/g)].map(
     ([, path]) => path,
   )
   const swept = sheets.map(({ file }) => file.slice(STYLES_PREFIX.length))
@@ -357,20 +359,6 @@ function allDeclarations(): Declaration[] {
   }
   cachedAll = out
   return cachedAll
-}
-
-/**
- * Blank out CSS comments while keeping every newline, so line numbers survive.
- *
- * Needed because the selector a declaration sits under is assembled from the
- * text before its `{`, and this codebase writes a paragraph of prose above
- * almost every block — a per-line comment strip would leave that prose glued
- * to the selector.
- */
-function blankComments(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, (comment) =>
-    comment.replace(/[^\n]/g, ' '),
-  )
 }
 
 /** Every declaration in one stylesheet. */
@@ -596,8 +584,6 @@ function substitute(
 // Source
 // ---------------------------------------------------------------------------
 
-let cachedSource: SourceFile[] | null = null
-
 /**
  * Every non-test TypeScript file under `src`, comments stripped.
  *
@@ -609,30 +595,15 @@ let cachedSource: SourceFile[] | null = null
  * get right, and the safe direction is outward.
  */
 export function sourceFiles(): SourceFile[] {
-  if (cachedSource) return cachedSource
-  cachedSource = sourcesOn().map(({ file, text }) => ({
-    file,
-    code: stripComments(text),
-  }))
-  return cachedSource
+  return strippedSourcesOn()
 }
 
 /**
- * A comment naming the class it replaced is not a use of that class.
- *
- * Block comments are BLANKED rather than deleted, for the same reason
- * `blankComments` blanks them in the stylesheets: every newline has to
- * survive, or every line number this model reports after a file's header
- * comment is wrong. It used to delete them, and the drift was not small —
- * `dev/ArrowSituationCatalogPage.tsx` opens with a thirteen-line header, so
- * the `#2563eb` on its line 28 was reported at line 15, pointing the reader
- * at an import. Nothing failed while it was wrong, because a passing rule
- * reports no lines at all; the number only has to be right at the moment a
- * rule starts failing, which is the moment nobody is checking it.
+ * Blanking comments is the reading's, and re-exported because this model's
+ * consumers have always asked it for the stripped shape. The account of why a
+ * comment is blanked rather than deleted is in `lib/sourceTree.ts`.
  */
-export function stripComments(source: string): string {
-  return blankComments(source).replace(/(^|[^:])\/\/.*$/gm, '$1')
-}
+export { stripComments }
 
 let cachedSourceDeclarations: SourceDeclaration[] | null = null
 

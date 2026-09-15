@@ -5,6 +5,7 @@ import {
   classListOf,
   classLists,
   classListsIn,
+  type ClassListSite,
 } from '@/lib/classList'
 
 /**
@@ -177,5 +178,25 @@ describe('classLists', () => {
     expect(sites.some((site) => site.classes.includes('font-semibold'))).toBe(
       true,
     )
+  })
+
+  it('narrows to a surface without narrowing the names it resolves', () => {
+    // A surface selects WHERE THE SITES COME FROM. The named class-list
+    // constants stay resolved across the whole application, because a table
+    // built from one surface would report the extra class of
+    // `cn(SOME_NAMED_LIST, 'truncate')` on its own — a narrowing that reads
+    // as a pass.
+    const everywhere = classLists()
+    const editor = classLists('editor')
+    expect(editor.length).toBeGreaterThan(0)
+    expect(editor.length).toBeLessThan(everywhere.length)
+    expect(editor.every((site) => site.file.startsWith('components/editor/'))).toBe(
+      true,
+    )
+    const here = (sites: ClassListSite[]) =>
+      sites
+        .filter((site) => site.file === HEADER_CN_FILE)
+        .map((site) => site.classes.join(' '))
+    expect(here(classLists('blueprint'))).toEqual(here(everywhere))
   })
 })

@@ -6,7 +6,9 @@ import {
   pathsOn,
   readingIn,
   sourceOf,
+  sourcePathsOn,
   sourcesOn,
+  strippedSourcesOn,
   surfaceOf,
 } from '@/lib/sourceTree'
 
@@ -51,6 +53,20 @@ describe('the reading of the application', () => {
     const sources = sourcesOn('lib')
     expect(sources.every((file) => !file.file.includes('.test.'))).toBe(true)
     expect(sources.some((file) => file.file === 'lib/queryKeys.ts')).toBe(true)
+  })
+
+  it('blanks comments once, newline for newline', () => {
+    const paths = sourcePathsOn('lib')
+    expect(paths).toEqual(sourcesOn('lib').map((file) => file.file))
+    const raw = sourceOf('lib/sourceTree.ts')
+    const stripped = strippedSourcesOn('lib').find(
+      (file) => file.file === 'lib/sourceTree.ts',
+    )
+    expect(stripped?.code.split('\n').length).toBe(raw.split('\n').length)
+    expect(stripped?.code).not.toContain('ONE READING OF THE APPLICATION')
+    // Stripped once and held, so a rule and its counterpart cannot be handed
+    // two samples of the same file.
+    expect(strippedSourcesOn('lib')).toBe(strippedSourcesOn('lib'))
   })
 
   describe('a file that moved', () => {
