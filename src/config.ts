@@ -30,14 +30,15 @@ export type Brand = {
  *
  * Omitting the field is a real value here rather than a hole waiting to be
  * filled. `styles/themes/light.css` and `dark.css` ship `--chroma: 0` and
- * `--primary-chroma: 0` over a greyscale `--brand-*` ramp, so this template has no
+ * `--primary-chroma: 0`, and the identity fill derives from the filled control,
+ * so every chroma in the semantic layer is zero and this template has no
  * brand colour for an accent to be the hue of — the `--hue: 159` those files
  * declare is pinned to `--brand-hue-reference` to keep the status hues on
  * their anchors, not because anything is painted at 159. Naming a hex here
  * would assert a brand the stylesheet cannot show.
  *
  * A deployment built on this template writes its own hex into this constant
- * and layers a theme file whose `--brand-*` ramp is drawn at that hue; the two
+ * and layers a theme file whose chroma dials are raised at that hue; the two
  * belong together, and `lib/brandAccent.ts` carries why the accent alone moves
  * so little.
  */

@@ -68,11 +68,10 @@ const AUTHORED_IN_BOTH = [
   '--hue',
   '--surface-hue',
   '--chroma',
-  // The identity fill's own pair. One value in both modes because a brand mark
-  // does not invert — a neutral filled CONTROL has to, which is why
-  // `--primary-lightness` is per-theme and these two are not.
-  '--brand-lightness',
-  '--brand-chroma',
+  // No brand dial: the identity fill follows `--primary` channel by channel,
+  // so it has no input of its own to author in either file. A fork that gives
+  // the identity a colour authors the dial it sets in BOTH files for the
+  // reason above, and adds it here.
 ]
 
 /**

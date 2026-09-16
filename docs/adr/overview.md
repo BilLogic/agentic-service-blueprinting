@@ -57,6 +57,9 @@ that repository's 0013 is the import decision, which lives here as 0020.
 | [0020](0020-the-deployment-imports-the-template.md) | The deployment imports the template, and never edits it |
 | [0021](0021-the-template-owns-the-agent.md) | The template owns the agent; a deployment configures it like the UI |
 | [0022](0022-the-deployment-overlays-the-package-per-path.md) | The deployment overlays the package per path, and a residents list is the gate |
+| [0023](0023-a-document-a-deployment-resolves-is-a-published-path.md) | A document a deployment resolves by name is a published path, wherever it lives |
+| [0024](0024-an-installations-offline-board-is-a-value-on-a-tree.md) | An installation's offline board is a value on a tree, not a store |
+| [0025](0025-brand-derives-from-primary-with-one-dial-per-channel.md) | Brand derives from primary, with one dial per channel — superseding the brand mechanism of [0008](0008-a-primitive-is-a-hue-and-a-semantic-token-is-a-job.md) |
 
 ## Moved here from BilLogic/plus-uno-blueprint (#551)
 
