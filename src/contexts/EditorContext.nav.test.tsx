@@ -538,6 +538,27 @@ describe('openScenario', () => {
     expect(expanded.has(OTHER_PHASE)).toBe(true)
   })
 
+  it('re-opens the target phase when the reader had collapsed it', async () => {
+    await mountOpen()
+
+    await act(async () => {
+      openEditor().openScenario(OPEN_SCENARIO.id)
+    })
+    await act(async () => {
+      openEditor().setPhaseExpanded(OPEN_PHASE, false)
+    })
+    expect(openEditor().expandedPhaseIds.has(OPEN_PHASE)).toBe(false)
+
+    // The same scenario again: the one-shot auto-expand has already fired for
+    // it, so the seam has to open the phase itself or the reader is sent to a
+    // scenario the tree does not show.
+    await act(async () => {
+      openEditor().openScenario(OPEN_SCENARIO.id)
+    })
+
+    expect(openEditor().expandedPhaseIds.has(OPEN_PHASE)).toBe(true)
+  })
+
   it('stops owning a phase once the reader has toggled it', async () => {
     await mountOpen()
 

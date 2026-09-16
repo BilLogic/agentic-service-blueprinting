@@ -76,12 +76,12 @@ type EditorContextValue = {
   togglePhaseExpanded: (phaseId: string) => void
   setPhaseExpanded: (phaseId: string, open: boolean) => void
   /**
-   * Collapse the phases navigation expanded on the reader's behalf, keeping
-   * the one holding `keepScenarioId`. A phase the reader opened or closed by
-   * hand is theirs from that moment and is left alone, so the tree forgets
-   * its own trail rather than the reader's.
+   * Open the phase holding `scenarioId` and collapse the phases navigation
+   * had opened on the reader's behalf. A phase the reader opened by hand
+   * keeps their claim and stays open, so the tree forgets its own trail
+   * rather than theirs.
    */
-  collapsePhasesOpenedByNavigation: (keepScenarioId: string) => void
+  openPhaseForNavigation: (scenarioId: string) => void
   clearSelection: () => void
 
   /** Compat wrapper over selectPhase/selectScenario. */
@@ -152,7 +152,14 @@ export type EditorHandle = EditorContextValue & {
 
 const EditorContext = createContext<EditorContextValue | null>(null)
 
-const EMPTY_EXPANDED: ReadonlySet<string> = new Set<string>()
+/**
+ * Who a phase is open for. One map is the whole expansion state: a phase
+ * absent from it is collapsed, and a phase in it carries the reason it is
+ * open, so the two facts cannot drift apart across the places that write them.
+ */
+type PhaseExpansionOwner = 'reader' | 'nav'
+
+const EMPTY_EXPANSION: ReadonlyMap<string, PhaseExpansionOwner> = new Map()
 
 /** @see registerOpenScenarioCloseNav */
 export function useEditorNavCloser(close: () => void): void {
@@ -167,37 +174,66 @@ export function useEditorNavCloser(close: () => void): void {
  * store, the tab store and the drawer closer, when those are mounted.
  *
  * @param selectScenario - Narrow scenario selection (phase + camera).
- * @param collapsePhasesOpenedByNavigation - Drops the trail this seam left behind.
+ * @param openPhaseForNavigation - Opens the target's phase, drops the trail.
  * @returns The shared `openScenario` action.
  */
 function useOpenScenarioAction(
   selectScenario: (scenarioId: string) => void,
-  collapsePhasesOpenedByNavigation: (keepScenarioId: string) => void,
+  openPhaseForNavigation: (scenarioId: string) => void,
 ): (scenarioId: string, opts?: OpenScenarioOptions) => void {
   return useCallback(
     (scenarioId: string, opts?: OpenScenarioOptions) => {
       activateBaseView()
-      // Before the selection, so the auto-expand that follows it opens the
-      // target rather than having it swept up with the phases being dropped.
-      collapsePhasesOpenedByNavigation(scenarioId)
+      // Unconditional, and not left to the auto-expand effect: that one runs
+      // once per scenario, so re-opening the scenario already selected would
+      // leave the phase the reader had since collapsed shut.
+      openPhaseForNavigation(scenarioId)
       selectScenario(scenarioId)
       selectOpenScenarioDefaultPath(scenarioId)
       if (opts?.closeNav) closeOpenScenarioNav()
     },
-    [selectScenario, collapsePhasesOpenedByNavigation],
+    [selectScenario, openPhaseForNavigation],
   )
 }
 
-function withPhaseExpanded(
-  current: ReadonlySet<string>,
+/**
+ * Open a phase for `owner`, or collapse it when `owner` is null.
+ *
+ * @param current - The expansion map.
+ * @param phaseId - Phase to write.
+ * @param owner - Who it is open for, or null to close it.
+ * @returns The same map when nothing changed, so renders stay still.
+ */
+function withPhaseExpansion(
+  current: ReadonlyMap<string, PhaseExpansionOwner>,
   phaseId: string,
-  open: boolean,
-): ReadonlySet<string> {
-  if (current.has(phaseId) === open) return current
-  const next = new Set(current)
-  if (open) next.add(phaseId)
-  else next.delete(phaseId)
-  return next
+  owner: PhaseExpansionOwner | null,
+): ReadonlyMap<string, PhaseExpansionOwner> {
+  if (owner === null) {
+    if (!current.has(phaseId)) return current
+    const next = new Map(current)
+    next.delete(phaseId)
+    return next
+  }
+  if (current.get(phaseId) === owner) return current
+  return new Map(current).set(phaseId, owner)
+}
+
+/**
+ * Open a phase on the reader's behalf, without taking a claim they already
+ * made: a phase they opened by hand stays theirs, so navigating away later
+ * does not close it under them.
+ *
+ * @param current - The expansion map.
+ * @param phaseId - Phase navigation wants open.
+ * @returns The updated map.
+ */
+function withNavExpansion(
+  current: ReadonlyMap<string, PhaseExpansionOwner>,
+  phaseId: string,
+): ReadonlyMap<string, PhaseExpansionOwner> {
+  if (current.get(phaseId) === 'reader') return current
+  return withPhaseExpansion(current, phaseId, 'nav')
 }
 
 /**
@@ -210,14 +246,18 @@ function withPhaseExpanded(
  * - Auto-expanding the selected scenario's phase runs once per scenario
  *   selection, so a phase the user collapsed afterwards stays collapsed
  *   (the old effect re-fired whenever `slides` changed identity).
+ * - A tab-local scope collapses an expansion map the sidebar never draws —
+ *   the sidebar renders outside the scope and reads the parent's. That is on
+ *   purpose: navigating inside a slice tab must leave the blueprint tab's
+ *   tree exactly where the reader left it.
  */
 function useNavSelectionState(slides: NavItem[]) {
   const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null)
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(
     null,
   )
-  const [expandedPhaseIds, setExpandedPhaseIds] =
-    useState<ReadonlySet<string>>(EMPTY_EXPANDED)
+  const [phaseExpansion, setPhaseExpansion] =
+    useState<ReadonlyMap<string, PhaseExpansionOwner>>(EMPTY_EXPANSION)
   const [focusNonce, setFocusNonce] = useState(0)
   const [view, setView] = useState<EditorView>('landing')
   const [skipCanvasFitAnimation, setSkipCanvasFitAnimation] = useState(false)
@@ -257,32 +297,6 @@ function useNavSelectionState(slides: NavItem[]) {
     setSelectedScenarioId(null)
   }, [])
 
-  // Phases that are open only because navigation opened them. A ref rather
-  // than state: nothing renders it, and marking one must not re-render.
-  const navExpandedRef = useRef<ReadonlySet<string>>(EMPTY_EXPANDED)
-
-  /** Navigation opened this phase; the next navigation elsewhere may close it. */
-  const markExpandedByNavigation = useCallback((phaseId: string) => {
-    navExpandedRef.current = withPhaseExpanded(
-      navExpandedRef.current,
-      phaseId,
-      true,
-    )
-  }, [])
-
-  /**
-   * The reader touched this phase's chevron. Either way round — opening one
-   * navigation had not, or closing one it had — the phase becomes theirs, so
-   * navigation stops counting it as its own.
-   */
-  const claimPhaseForReader = useCallback((phaseId: string) => {
-    navExpandedRef.current = withPhaseExpanded(
-      navExpandedRef.current,
-      phaseId,
-      false,
-    )
-  }, [])
-
   // The deep-linked tab covers the base view, so seeding it moves no camera —
   // it only decides where the user lands when the tab closes.
   const seedBaseSelection = useCallback(
@@ -299,52 +313,50 @@ function useNavSelectionState(slides: NavItem[]) {
         slides.find((slide) => slide.id === scenarioId)?.parentId ?? null
       if (parentId === null) return
       setSelectedPhaseId(parentId)
-      markExpandedByNavigation(parentId)
-      setExpandedPhaseIds((current) =>
-        withPhaseExpanded(current, parentId, true),
-      )
+      setPhaseExpansion((current) => withNavExpansion(current, parentId))
     },
-    [slides, markExpandedByNavigation],
+    [slides],
   )
 
-  const setPhaseExpanded = useCallback(
-    (phaseId: string, open: boolean) => {
-      claimPhaseForReader(phaseId)
-      setExpandedPhaseIds((current) => withPhaseExpanded(current, phaseId, open))
-    },
-    [claimPhaseForReader],
-  )
+  // An expansion the reader asked for by hand is theirs either way round:
+  // opening one claims it, and closing one drops the claim with the row.
+  const setPhaseExpanded = useCallback((phaseId: string, open: boolean) => {
+    setPhaseExpansion((current) =>
+      withPhaseExpansion(current, phaseId, open ? 'reader' : null),
+    )
+  }, [])
 
-  const togglePhaseExpanded = useCallback(
-    (phaseId: string) => {
-      claimPhaseForReader(phaseId)
-      setExpandedPhaseIds((current) =>
-        withPhaseExpanded(current, phaseId, !current.has(phaseId)),
-      )
-    },
-    [claimPhaseForReader],
-  )
+  const togglePhaseExpanded = useCallback((phaseId: string) => {
+    setPhaseExpansion((current) =>
+      withPhaseExpansion(
+        current,
+        phaseId,
+        current.has(phaseId) ? null : 'reader',
+      ),
+    )
+  }, [])
 
-  const collapsePhasesOpenedByNavigation = useCallback(
-    (keepScenarioId: string) => {
+  const openPhaseForNavigation = useCallback(
+    (scenarioId: string) => {
       const keepPhaseId =
-        slides.find((slide) => slide.id === keepScenarioId)?.parentId ?? null
-      const dropping = [...navExpandedRef.current].filter(
-        (phaseId) => phaseId !== keepPhaseId,
-      )
-      if (dropping.length === 0) return
-      navExpandedRef.current = new Set(
-        keepPhaseId !== null && navExpandedRef.current.has(keepPhaseId)
-          ? [keepPhaseId]
-          : [],
-      )
-      setExpandedPhaseIds((current) => {
-        const next = new Set(current)
-        for (const phaseId of dropping) next.delete(phaseId)
-        return next.size === current.size ? current : next
+        slides.find((slide) => slide.id === scenarioId)?.parentId ?? null
+      setPhaseExpansion((current) => {
+        let next = current
+        for (const [phaseId, owner] of current) {
+          if (owner === 'nav' && phaseId !== keepPhaseId) {
+            next = withPhaseExpansion(next, phaseId, null)
+          }
+        }
+        return keepPhaseId === null ? next : withNavExpansion(next, keepPhaseId)
       })
     },
     [slides],
+  )
+
+  // The sidebar reads a set; the owner is bookkeeping nothing renders.
+  const expandedPhaseIds = useMemo<ReadonlySet<string>>(
+    () => new Set(phaseExpansion.keys()),
+    [phaseExpansion],
   )
 
   // Selecting a scenario opens its phase — once. Keyed on the scenario id
@@ -363,10 +375,9 @@ function useNavSelectionState(slides: NavItem[]) {
     // Slides may not have loaded yet — retry on the next slides change.
     if (!parentId) return
     autoExpandedForRef.current = selectedScenarioId
-    markExpandedByNavigation(parentId)
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot auto-expand keyed on the ref above; a render-phase version would re-open collapsed phases on refetch
-    setExpandedPhaseIds((current) => withPhaseExpanded(current, parentId, true))
-  }, [selectedScenarioId, slides, markExpandedByNavigation])
+    setPhaseExpansion((current) => withNavExpansion(current, parentId))
+  }, [selectedScenarioId, slides])
 
   // Reconcile the selection against the slide list: drop ids that no longer
   // exist, and re-sort an id that was selected (deep link, click during a
@@ -485,7 +496,7 @@ function useNavSelectionState(slides: NavItem[]) {
     seedBaseSelection,
     togglePhaseExpanded,
     setPhaseExpanded,
-    collapsePhasesOpenedByNavigation,
+    openPhaseForNavigation,
     clearSelection,
     openDetail,
     activeSlideId,
@@ -681,7 +692,7 @@ export function useEditor(): EditorHandle {
   }
   const openScenario = useOpenScenarioAction(
     context.selectScenario,
-    context.collapsePhasesOpenedByNavigation,
+    context.openPhaseForNavigation,
   )
   return useMemo(
     () => ({ ...context, openScenario }),
