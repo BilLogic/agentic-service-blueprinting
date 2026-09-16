@@ -718,6 +718,9 @@ const RADIUS_KIND_ALLOWLIST: Record<string, readonly string[]> = {
   'components/ui/tooltip.tsx': ['md', 'sm'],
   'components/ui/card.tsx': ['lg'],
   'components/ui/dialog.tsx': ['xl'],
+  // The kind table puts dialogs on xl; the command dialog sits on lg by
+  // decision, because it follows the benchmark's 8px command menu.
+  'components/ui/command.tsx': ['lg', 'md'],
   'components/ui/sheet.tsx': ['xl'],
   'components/ui/popover.tsx': ['lg'],
   'components/ui/dropdown-menu.tsx': ['lg', 'md'],

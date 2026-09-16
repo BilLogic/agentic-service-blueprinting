@@ -268,6 +268,7 @@ from here. It is listed so a rename knows what it breaks:
 | `[data-canvas-annotation-layer]` and `[data-annotation-id]` inside it | the annotation scratch layer and one mark on it — read by the annotation-drag case |
 | `aria-label="Rectangle"`, `aria-label="Rectangle — Shapes tools"` | the annotation toolbar's Shapes slot: the face, and the face once the family holds the tool |
 | `aria-label="Save or send these marks"`, and the `Save N marks` menu item | the capture menu's trigger and its download item |
+| the `Jump to…` dialog, opened by ⌘K | the top nav's Jump to… palette; the walk presses Enter on its first row |
 
 Renaming one of these does not fail a type check or a lint rule; it fails this
 walk, with a locator that found nothing. If you are the one renaming it, the

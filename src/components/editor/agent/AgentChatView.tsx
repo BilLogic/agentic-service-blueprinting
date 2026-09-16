@@ -484,6 +484,7 @@ export function AgentChatView({
                     value={command.id}
                     disabled={!command.content}
                     onSelect={() => pickSkill(command)}
+                    size="sm"
                     className="items-baseline gap-2 text-sm"
                   >
                     <span className="shrink-0 font-mono text-foreground">
