@@ -1,5 +1,91 @@
 # Changelog
 
+## 1.44.23
+
+**Every overview surface answers to a name, and a definition says its term
+once.** The overview container's colours, at rest and on hover in both
+themes, are declared once as job names in the blueprint namespace and read
+by name everywhere; nothing renders differently. The definition popover
+that opens from a lane, status, entity or divider badge shows its term in
+sentence case, matching the badges, and no definition body in the app
+begins by repeating its own term. One guard holds that rule across every
+definition module.
+
+**Upgrading a deployment:**
+
+- Thirty-three `--background-blueprint-*`, `--border-blueprint-*`,
+  `--text-blueprint-*` and `--stroke-blueprint-*` names are the retune
+  surface for the overview. The four `--background-blueprint-panel-*`
+  names are seams a deployment sets; the rest are defaults it may
+  override. The changelog entry below lists them.
+- Lane roles are a label plus a body. A deployment reading
+  `describeLaneRole` gets the body without the role name in front of it.
+- The definition card's term attribute is `data-definition-term`.
+
+### Patch Changes
+
+
+- e364a50: A definition popover prints its term in sentence case, and no definition
+  repeats the word above it.
+
+  The definition card's term stops borrowing the shared `Eyebrow` — a lane,
+  status, entity or divider badge reading `Frontstage` is now answered by a card
+  that spells the word the same way, instead of in the uppercase register
+  section labels use. The section eyebrows elsewhere are untouched, and the seam
+  is renamed to match what it now is: `DefinitionSection.term` and
+  `data-definition-term`.
+
+  A lane role is a label and a body rather than one `Name — meaning` sentence the
+  badge parsed on its em dash, so all eight bodies start with what the role means
+  instead of naming it again. `references/lane-roles.md` carries the same table.
+
+  One guard, `src/lib/definitionsSayItOnce.test.ts`, holds the rule across every
+  module that feeds a definition — lane roles, entity status, panel terms, entity
+  kinds, touchpoint roles, stakeholder kinds, the divider meanings and the cover's
+  definition tables. The rule itself moved into the entity-panels composition
+  guideline.
+
+- 32cd4f9: Every overview colour has a name. Nothing renders differently — every resolved
+  colour, per theme, at rest and armed, is what it was — but the phase frame, the
+  title badges, the panel edges, the label rail, the divider band and the board's
+  own ink were still written as raw ramp steps inside rules and inside
+  `blueprintTheme.ts`. They are component names in the blueprint namespace now,
+  declared once at the root of `blueprint.css` with rest and hover for the same
+  piece side by side, and the rules and the theme module read the names. The
+  block says what it is: a look the owner chose, pinned, deliberately off the
+  elevation ladder.
+
+  Two kinds of name, and they are used differently. The list below is DEFAULTS —
+  each is declared once at the root, and a deployment retunes a piece by setting
+  that name on a wrapper around the board. The four
+  `--background-blueprint-panel-*` names are SEAMS, which the app declares only
+  on an armed panel: a deployment sets one to paint that part of a panel's
+  interior, and its absence is what leaves the resting state in place.
+
+  - ground — `--background-blueprint-canvas-ground`
+  - phase frame — `--background-blueprint-phase-frame`, `-hover`,
+    `--border-blueprint-phase-frame`, `-hover`
+  - phase badge — `--background-blueprint-phase-badge`, `-hover`,
+    `--border-blueprint-phase-badge`, `-hover`, `--text-blueprint-phase-badge`
+  - scenario panel — `--background-blueprint-scenario-panel`, `-hover`,
+    `--border-blueprint-scenario-panel`, `-hover`
+  - scenario badge — `--background-blueprint-scenario-badge`, `-hover`,
+    `--border-blueprint-scenario-badge`, `-hover`,
+    `--text-blueprint-scenario-badge`
+  - panel interior — `--background-blueprint-panel-interior`, `-hover`,
+    `--border-blueprint-panel-interior`
+  - label rail — `--background-blueprint-label-rail`, `-hover`
+  - divider band — `--background-blueprint-divider-band`, `-hover`,
+    `--background-blueprint-divider-badge`,
+    `--text-blueprint-divider-caption`
+  - rules — `--border-blueprint-lane-divider`, `--border-blueprint-phase-divider`
+  - board ink — `--text-blueprint-cell`, `--text-blueprint-header`,
+    `--stroke-blueprint-arrow`
+
+  The seams — `--background-blueprint-panel-label-rail`, `-panel-canvas`,
+  `-panel-section` and `-panel-divider` — are unchanged, and stay undeclared at
+  the root because their fallback arm is the resting state.
+
 ## 1.44.22
 
 **The overview container wears the states its owner chose.** The viewport
@@ -16,7 +102,6 @@ or `-panel-interior` after v1.44.21 keeps its override; the defaults
 beneath it are the v1.44.17 colours again.
 
 ### Patch Changes
-
 
 - 26b406a: The overview's phase container looks as it did at v1.44.17 again: the viewport
   ground, the phase frame and its edge, the scenario panel and its edge, the
@@ -7879,8 +7964,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                            ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                            "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                              ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                              "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
