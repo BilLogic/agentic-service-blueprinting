@@ -232,12 +232,11 @@ build with a database the loader is never called at all, and nothing waits. A
 loader that rejects throws rather than falling back to the template's own
 registry — that registry is keyed by the template's identifiers and answers a
 deployment nothing, so falling back would be a deployment's chrome around a
-blank canvas with no error anywhere. `DeploymentConfigProvider` is the
-outermost element `App` renders and this package catches nothing above it, so
-the throw comes up as a blank page with the error in the console: that is what
-the render walk fails on. A deployment that wants a rendered message puts its
-own error boundary above `App`. A loader that RESOLVES EMPTY is the other
-reading and stays silent — an empty registry is a value a deployment may mean,
+blank canvas with no error anywhere. `App` wraps the seam in its app-scoped
+error boundary, so the throw is a rendered card naming the failure and offering
+a reload, with the error still logged to the console — and the render walk
+fails on that boundary appearing. A deployment installs nothing to get it. A
+loader that RESOLVES EMPTY is the other reading and stays silent — an empty registry is a value a deployment may mean,
 and it falls back to the template's own the way an empty `sample.nav` does.
 
 **In a build WITH a database the board handed down is the template's own**
