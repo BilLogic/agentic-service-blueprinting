@@ -63,18 +63,19 @@
    * chroma 0. A branded fork raises `--primary-chroma` and usually
    * `--primary-lightness`; the derivations in semantic.css (border, the
    * foreground flip, the ring) follow on their own.
+   *
+   * These two are the identity's dials as well, and that is the seam rather
+   * than an omission: `--brand` derives from this fill, so the template has
+   * one accent and says so. A fork gives the identity a colour of its own by
+   * adding `--brand-hue`, `--brand-chroma` or `--brand-lightness` here and in
+   * the dark file; each declaration takes exactly its channel off the accent,
+   * and `references/customization.md` carries the ceiling a brand chroma has
+   * to clear and the guards that turn red. `palette.test.ts` fails on any of
+   * those three names declared in a stylesheet or written from TypeScript,
+   * which is what makes adding one a decision rather than a drift.
    */
   --primary-lightness: 0.205;
   --primary-chroma: 0;
-  /*
-   * No brand dial here, and that is the seam rather than an omission
-   * (BRAND SEAM). The identity fill derives from the pair above, so this
-   * template has one accent and says so. A fork gives the identity a colour
-   * of its own by adding `--brand-hue`, `--brand-chroma` or
-   * `--brand-lightness` to this block and the dark one; each declaration
-   * takes exactly its channel off the accent. `palette.test.ts` fails on a
-   * dial declared here, which is what makes adding one a decision.
-   */
   /*
    * Focus ring / selection chrome lightness. 0.58, not the mid-grey 0.708 a
    * neutral palette reaches for first: at 0.708 the ring measures 2.56:1 on

@@ -69,18 +69,57 @@ the set is a deliberate multi-file act, listed in `references/lane-roles.md`
 
   | Dial | What it does |
   | --- | --- |
-  | `--brand-hue` | Puts the identity on a different hue from the action colour. |
-  | `--brand-chroma` | Tints the identity without moving its lightness. |
+  | `--brand-hue` | Puts the identity on a different hue from the action colour. Not to be confused with `--brand-hue-reference` in `semantic.css`, one word away: that one is the status-harmony origin, it is declared, and it stays declared. |
+  | `--brand-chroma` | Tints the identity without moving its lightness — up to the sRGB ceiling, which is what the note below is about. |
   | `--brand-lightness` | Moves the fill lighter or darker. |
+
+  **Chroma has a ceiling, and it is lower than it looks.** The most chroma
+  sRGB can hold depends on the lightness it sits at, so a brand chroma
+  declared once for both modes has to clear the ceiling at *both* lightnesses
+  the identity inherits. At the pair this template ships — L 0.205 in light
+  and L 0.922 in dark — that is about **0.047** at hue 159 (the ceilings are
+  0.047 and 0.125, and the lower one governs), and about **0.038** if you also
+  rotate to hue 280. Declare more than that and the browser chroma-reduces it
+  silently, which makes the number in your theme file a lie and freezes the
+  next retune. A strong tint therefore needs `--brand-lightness` as well,
+  moving the fill to a lightness that can carry the chroma you want.
+  `src/lib/palette.test.ts` holds the ceiling on `--brand`'s *resolved*
+  values, so it fails on a dial that overshoots rather than letting it ship
+  clamped.
 
   Declare a dial in **both** theme files, the way every other mode-invariant
   dial is declared — the light file opens on a bare `:root`, so a dial
-  written there alone reaches dark by leak rather than by choice.
-  `src/lib/palette.test.ts` fails on any `--brand-*` dial found in this tree,
-  which is what makes adding one to a fork a decision rather than a drift:
-  update that guard's list when you set one. Why the identity derives from
-  the accent at all is
+  written there alone reaches dark by leak rather than by choice. Which means
+  a fork that sets one has **four** guards to update, not one, and they are
+  deliberately separate rules rather than one list:
+
+  1. the absence guard in `src/lib/palette.test.ts` — it fails on a
+     declaration of `--brand-lightness`, `--brand-chroma` or `--brand-hue`
+     (those three exact names; `--brand-hue-reference` is untouched by it) in
+     any stylesheet **or** in TypeScript, because an inline custom property
+     on the root element outranks every stylesheet selector;
+  2. `is the action fill exactly, while no dial declares otherwise`, in the
+     same file — red by construction once brand and primary differ, which is
+     the whole point of setting a dial;
+  3. the three separate "a dial is declared in both theme files" rosters —
+     the raw-text check in `src/lib/palette.test.ts`, `DIALS` in
+     `src/styles/tokens.test.ts`, and `AUTHORED_IN_BOTH` in
+     `src/lib/themeDials.test.ts`. One claim, three homes, all three needing
+     the new dial's name;
+  4. the gamut assertion above, if the chroma you set overshoots the ceiling.
+
+  Why the identity derives from the accent at all is
   `docs/adr/0025-brand-derives-from-primary-with-one-dial-per-channel.md`.
+
+  **Rotating the identity's hue leaves the rest of the system on the action
+  hue.** The focus ring, the surfaces and the status-harmony pull are all
+  computed from `--primary-hue`: `semantic.css` leans warning, destructive and
+  info a fraction of the way toward it, and pins `--success-hue` precisely
+  because a brand-relative green would collide with the accent. So a
+  `--brand-hue` far from `--primary-hue` gives you an identity the chrome does
+  not follow, and one that can walk toward a status fill instead — two guards
+  bite if it does: the just-noticeable-distance check between each status fill
+  and both accents, and the contrast floor on the identity's own ink.
 
   **Two routes, and they are not the same knob.** `brand.accent` on the
   deployment config (below) is read for its HUE only and written onto the

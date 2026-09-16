@@ -240,11 +240,14 @@
    * light-theme lightness in BOTH theme files, and the `--primary-foreground`
    * flip below will follow it.
    *
-   * `--primary` stays a computed triple rather than aliasing a `--brand-*`
-   * step: the ramp inverts between themes while the on-colour must stay
-   * legible against whatever the fill resolves to, and the flip below is what
-   * buys that. `--hue` is pinned to the ramp's own hue in themes/light.css, so
-   * the fill can never drift off the brand the rest of the app wears.
+   * `--primary` stays a computed triple rather than an alias of a step in a
+   * stepped family: such a family inverts between themes while the on-colour
+   * must stay legible against whatever the fill resolves to, and the flip
+   * below is what buys that. (`--brand-*` is not that alias and never was —
+   * it spells the three optional per-channel dials over this fill now, which
+   * is the opposite direction of travel.) `--hue` is pinned to the neutral
+   * ramp's own hue in themes/light.css, so the fill can never drift off the
+   * brand the rest of the app wears.
    *
    * Derived tokens, both measured after CSS Color 4 gamut mapping:
    *   --primary-border  a flat one-shade-darker hairline. The edge is carried

@@ -31,9 +31,14 @@ wants to move was the one axis it could not. The recipe is
 
 A deployment that had already set the two dials to something of its own keeps
 the fill it authored by renaming them: the same numbers, read per channel over
-the accent rather than as a triple beside it — and it must then add them to the
-absence guard in `src/lib/palette.test.ts`, which fails on a `--brand-*` dial
-found anywhere in the tree. That guard is the point rather than a formality:
-`var(--brand-lightness, l)` reaches its fallback only while nothing declares the
-dial, so a leftover declaration reinstates the old grey with no error and
-nothing on screen naming the line that did it.
+the accent rather than as a triple beside it. Setting a dial then turns four
+guards red on purpose, and `references/customization.md` lists them — the
+absence guard, the byte-identity assertion, the three "declared in both theme
+files" rosters, and the gamut ceiling if the chroma overshoots it. The absence
+guard is the point rather than a formality: `var(--brand-lightness, l)` reaches
+its fallback only while nothing declares the dial, so a leftover declaration
+reinstates the old grey with no error and nothing on screen naming the line that
+did it. It holds the three exact dial names on both sides of the seam — every
+stylesheet under `src/styles`, and every custom property this app writes from
+TypeScript, because an inline property on the root element outranks every
+stylesheet selector there is.

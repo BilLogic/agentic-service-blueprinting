@@ -29,6 +29,7 @@ import {
   consumersOf,
   declarations,
   rulesDeclaring,
+  sourceDeclarations,
   resolvePaletteToken,
   resolveValue,
   stylesheet,
@@ -214,26 +215,50 @@ describe('brand fill', () => {
 
   it('declares no brand dial anywhere, because a stray one wins in silence', () => {
     /*
-     * The inverse of the rule above, and the failure mode of the whole
-     * derivation. `var(--brand-lightness, l)` reaches its fallback only while
-     * NOTHING declares that dial, so one leftover declaration — in a theme
-     * file, in the print override, in a component's own block — takes the
-     * channel back off `--primary` with no error, no failed build and nothing
-     * on screen to say which line did it. The absence is the mechanism, so the
-     * absence is what is held, across every stylesheet rather than the two
-     * files the dials used to live in.
+     * The failure mode of the whole derivation, and the one it has.
+     * `var(--brand-lightness, l)` reaches its fallback only while NOTHING
+     * declares that dial, so one leftover declaration takes the channel back
+     * off `--primary` with no error, no failed build and nothing on screen to
+     * say which line did it. The absence is the mechanism, so the absence is
+     * what is held.
+     *
+     * WHICH declarations can do it is narrower than 'anywhere', and worth
+     * stating because the wrong model here would make this rule feel stricter
+     * than it is. Substitution happens where `--brand` is declared — the
+     * root, and the scopes semantic.css re-derives at — so what reinstates
+     * the grey is a declaration that reaches one of those, or a write onto the
+     * root element. A dial declared on a descendant's own block changes what
+     * that subtree's own `--brand` would resolve to and nothing else, because
+     * a custom property is substituted at the element that declares the one
+     * reading it, not at the element that inherits the result.
+     *
+     * BOTH SIDES OF THE SEAM, and this is the half a stylesheet-only rule
+     * cannot see. An inline custom property on `documentElement` outranks
+     * every stylesheet selector there is, and `lib/brandAccent.ts` writes a
+     * dial by exactly that route for `--hue`, so the same three lines of code
+     * pointed at a brand dial would beat every declaration in `src/styles`
+     * while a CSS-only guard reported nothing. `[--brand-lightness:0.5]` in a
+     * class string is the same fact written in Tailwind. The model already
+     * unions the two — a stylesheet declaration and a TypeScript one are the
+     * same fact to a consumer — so this reads the union and reports each half
+     * in its own terms.
      *
      * A deployment separating its identity from the action fill is exactly who
      * will trip this, and it is meant to: the dial belongs in a fork's own
      * theme block, and a fork that sets one updates this list deliberately.
      */
-    const declared = declarations()
-      .filter((entry) =>
-        ['--brand-lightness', '--brand-chroma', '--brand-hue'].includes(
-          entry.name,
+    const dials = ['--brand-lightness', '--brand-chroma', '--brand-hue']
+    const declared = [
+      ...declarations()
+        .filter((entry) => dials.includes(entry.name))
+        .map(
+          (entry) =>
+            `${entry.file}:${entry.line}: ${entry.selector} { ${entry.name} }`,
         ),
-      )
-      .map((entry) => `${entry.file}: ${entry.selector} { ${entry.name} }`)
+      ...sourceDeclarations()
+        .filter((entry) => dials.includes(entry.name))
+        .map((entry) => `${entry.file}:${entry.line}: ${entry.name} (${entry.via})`),
+    ]
     expect(declared).toEqual([])
   })
 
@@ -295,16 +320,6 @@ describe('brand fill', () => {
       const { l, c, h } = resolveColorValue('--brand', theme)
       expect(c).toBeLessThan(chromaCeiling(l, h) + Number.EPSILON)
       expect(inSrgbGamut(oklchToLinearSrgb(l, c, h))).toBe(true)
-    })
-
-    it('carries its ink at AAA', () => {
-      // --primary-foreground: the hard flip
-      //   oklch(from --primary clamp(0.205, (0.62 - l) * 100, 0.985) c*0.08 h)
-      // — near-white ink on a dark fill, dark ink on a light one, with a trace
-      // of the fill's own chroma so a branded fill's ink is not flat grey.
-      const inkL = Math.min(0.985, Math.max(0.205, (0.62 - L) * 100))
-      const ink = oklch(inkL, C * 0.08, HUE)
-      expect(contrast(fill, ink)).toBeGreaterThanOrEqual(7)
     })
 
     it('keeps the focus ring legible on the canvas', () => {
@@ -1182,23 +1197,25 @@ describe.each(['light', 'dark'] as const)('brand fill: %s', (theme) => {
      * property worth keeping.
      *
      * Of the two claims left, this is the one that holds on the tree as it
-     * ships. Byte-identity is the ADR's headline consequence, it is what the
-     * absence guard higher up protects, and the two together name the failure
-     * precisely: a stray dial declaration makes the absence guard report the
-     * file and makes this one report the colour that moved. The other claim —
-     * that a dial which IS set moves brand off primary — cannot be asked here
-     * without an override seam the token model does not have, and inventing
-     * one would test the invention; it is demonstrated in a browser instead,
-     * which is what the ticket's screenshots are.
+     * ships. Byte-identity is the ADR's headline consequence, and it pairs
+     * with the absence guard higher up: that guard names the declaration, in
+     * a stylesheet or in source, and this one reports that the colour moved.
+     * The pair is only as wide as the guard — a dial arriving from somewhere
+     * neither reader sees, a host page's own inline style, would move the
+     * colour here with nothing naming the line. The other claim — that a dial
+     * which IS set moves brand off primary — cannot be asked here without an
+     * override seam the token model does not have, and inventing one would
+     * test the invention; it is demonstrated in a browser instead, which is
+     * what the ticket's screenshots are.
      *
      * Channel by channel rather than as a distance under a floor, because
      * 'the same colour' has no tolerance to spend: any drift at all means a
-     * channel stopped following the accent.
+     * channel stopped following the accent. A perceptual distance of 0 is the
+     * same assertion arithmetically, so it is not also written here.
      */
     expect(resolveColorValue('--brand', theme)).toEqual(
       resolveColorValue('--primary', theme),
     )
-    expect(perceptualDistance(brand, primary)).toBe(0)
   })
 
   it.each(['warning', 'destructive', 'info', 'success'] as const)(
@@ -1232,21 +1249,32 @@ describe.each(['light', 'dark'] as const)('brand fill: %s', (theme) => {
   )
 
   /*
-   * Ink on a fill, measured on each fill the app paints text on.
+   * Ink on a fill, measured on each fill the app paints text on. This is the
+   * one home for that measurement, and three assertions collapse into it.
    *
-   * Two assertions collapse into this one and both had lost their subject.
-   * One asked that `--brand` be the accent at its two dials, which no longer
-   * exist; the other held the brand ink at 3:1, the floor a fill near L 0.6
-   * can physically hold — a concession to the grey this ticket deleted, and
-   * one that would now pass on any fill at all.
+   * Two had lost their subject: one asked that `--brand` be the accent at its
+   * two dials, which no longer exist, and one held the brand ink at 3:1 — the
+   * floor a fill near L 0.6 can physically hold, a concession to the grey
+   * this ticket deleted, and a floor that would now pass on any fill at all.
+   * The third had not: `--primary` carried its ink at AAA, asserted beside the
+   * primary dials. It is the `floor: 7` row here now, because two floors for
+   * one pair in one file is a rule and a decoration — the weaker can never
+   * fail while the stronger passes, and a reader cannot tell which is meant.
+   * Folding it also retires the TypeScript re-derivation of the flip that
+   * test carried, which is the second-copy shape the token model exists to
+   * end.
    *
-   * BOTH pairs are at 4.5:1, not 3:1, and the reason is per pair rather than
-   * a default. `--primary` carries the default button's `text-sm` label and
-   * `--brand` carries the cover CTA's, which is body size, so the small-text
-   * floor is the one that applies; the brand-coloured switch is UI-only and
+   * The floors differ per pair and the reason is stated per pair rather than
+   * defaulted. `--primary` holds 7:1 because it demonstrably does in both
+   * themes and a filled control is the app's loudest text; `--brand` holds
+   * 4.5:1, the floor for the size of label it carries — the default button's
+   * and the cover CTA's are both `text-sm` — and not 7:1, because a fork that
+   * dials an identity of its own is entitled to the small-text floor rather
+   * than to this template's headroom. The brand-coloured switch is UI-only and
    * would sit at 3:1, but it shares the token with the CTA and a token holds
-   * the strictest ground it is painted on. Nothing measured either pair
-   * before, which is how a 3.89:1 identity fill shipped.
+   * the strictest ground it is painted on, so nothing here is asserted at 3:1.
+   * Nothing measured either pair before, which is how a 3.89:1 identity fill
+   * shipped.
    *
    * Shaped after the role-tint measurements in `styles/tokens.test.ts`: the
    * pair resolves through the cascade under each theme, and the floor is
@@ -1254,7 +1282,7 @@ describe.each(['light', 'dark'] as const)('brand fill: %s', (theme) => {
    */
   const INK_PAIRS = [
     { fill: '--brand', ink: '--brand-foreground', floor: 4.5 },
-    { fill: '--primary', ink: '--primary-foreground', floor: 4.5 },
+    { fill: '--primary', ink: '--primary-foreground', floor: 7 },
   ] as const
 
   it.each(INK_PAIRS)(
@@ -1270,9 +1298,10 @@ describe.each(['light', 'dark'] as const)('brand fill: %s', (theme) => {
 /**
  * WHERE THE BRAND HUE IS ALLOWED TO LAND — four jobs, and no fifth.
  *
- * A deployment turns two dials and its colour appears on the primary CTA, the
- * one prose link the app renders, a switch that is on, and the path selector's
- * selected row. Everything else — selection, focus ring, cell outlines — stays
+ * A deployment turns the accent dials — and, if its identity differs from its
+ * action colour, one `--brand-*` dial as well — and its colour appears on the
+ * primary CTA, the one prose link the app renders, a switch that is on, and
+ * the path selector's selected row. Everything else — selection, focus ring, cell outlines — stays
  * neutral, so the hue reads as identity rather than as emphasis sprayed across
  * the chrome. Until now that rule lived in component comments, which is to say
  * nowhere: a fifth `bg-brand` would have been found by a reader or not at all.

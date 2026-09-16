@@ -12,8 +12,9 @@ import { chromaCeiling, contrast, dial, oklch, type Theme } from '@/lib/tokenMod
  * The reader for `brand.accent`, and the one thing this template needs it to
  * do: nothing.
  *
- * `BRAND` here carries no accent — the template's `--brand-*` ramp is greyscale, so
- * there is no hue for one to name — and `asbDefaultConfig` passes that absence
+ * `BRAND` here carries no accent — the template ships every chroma dial at
+ * zero, so there is no hue for one to name — and `asbDefaultConfig` passes that
+ * absence
  * straight through. The assertion below is what makes that provable rather
  * than argued: the dial the theme files declare is never written, so a
  * standalone build paints exactly what its stylesheet says. It is the guard on
