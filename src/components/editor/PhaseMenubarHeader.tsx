@@ -231,26 +231,31 @@ export function PhaseMenubarHeader({
         summary used to live only inside the title's hover tooltip, which is a
         strange place for the one sentence that says what you are looking at.
 
-        On a scenario the phase crumb sits before the title — the trail's
-        current page is the title itself (`excludeCurrent`), so the crumb
-        is the way back to that phase on the overview.
+        On a scenario the identity line is the TRAIL, handed to the block as
+        its title slot: `Phase › Scenario`, where the last crumb is the title
+        and the phase crumb is the way back to that phase on the overview. The
+        bar prints no second title — the trail is the only owner of the name.
 
         The block itself is `EntityHeader`, shared with the service bar above
         — same shape, same class, one place to change it. Identity is props,
         never a query result: this bar does not print `status` / `message`.
       */}
-      {isScenario ? (
-        <ScenarioMenubarBreadcrumb
-          slide={slide}
-          slides={slides}
-          excludeCurrent
-        />
-      ) : null}
       <EntityHeader
         kind={isScenario ? 'scenario' : 'phase'}
         id={slide.id}
         label={label}
         summary={summary}
+        trail={
+          isScenario
+            ? (current) => (
+                <ScenarioMenubarBreadcrumb
+                  slide={slide}
+                  slides={slides}
+                  current={current}
+                />
+              )
+            : undefined
+        }
       />
       {/* Compare controls moved to the navbar's right cluster
           (CompareControlsCluster) — the title keeps the left edge to

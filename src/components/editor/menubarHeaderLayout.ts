@@ -109,3 +109,15 @@ export const BLUEPRINT_MENUBAR_TITLE_TEXT_CLASS =
 
 export const BLUEPRINT_MENUBAR_SEPARATOR_CLASS =
   'shrink-0 text-xs text-muted-foreground'
+
+/**
+ * The phase crumb in the scenario header's trail.
+ *
+ * Capped, so a long phase name cannot squeeze the name of the thing you are
+ * actually looking at — the current crumb, which fills what this leaves. The
+ * cap clips, so the crumb carries its full label on `title`; that is the
+ * component's job, but the number is a layout rule and lives here with the
+ * bar's other geometry rather than inline in one component.
+ */
+export const BLUEPRINT_MENUBAR_PHASE_CRUMB_CLASS =
+  'max-w-[10rem] truncate font-normal'

@@ -365,6 +365,12 @@ describe('the editor navigation', () => {
 const OPEN_SCENARIO = SAMPLE_NAV.find((item) => item.parentId)!
 const OPEN_PHASE = OPEN_SCENARIO.parentId!
 
+/** A scenario in a different phase, so navigating between the two moves phase. */
+const OTHER_SCENARIO = SAMPLE_NAV.find(
+  (item) => item.parentId && item.parentId !== OPEN_PHASE,
+)!
+const OTHER_PHASE = OTHER_SCENARIO.parentId!
+
 const HAPPY_PATH = 'path-happy'
 const VARIANT_PATH = 'path-variant'
 
@@ -498,5 +504,79 @@ describe('openScenario', () => {
     })
 
     expect(navClosed).toBe(false)
+  })
+
+  it('collapses a phase it expanded itself when the next open is elsewhere', async () => {
+    await mountOpen()
+
+    await act(async () => {
+      openEditor().openScenario(OPEN_SCENARIO.id)
+    })
+    expect([...openEditor().expandedPhaseIds]).toEqual([OPEN_PHASE])
+
+    await act(async () => {
+      openEditor().openScenario(OTHER_SCENARIO.id)
+    })
+
+    // The tree shows where the reader is, not everywhere they have been.
+    expect([...openEditor().expandedPhaseIds]).toEqual([OTHER_PHASE])
+  })
+
+  it('leaves a phase the reader expanded by hand open across navigation', async () => {
+    await mountOpen()
+
+    await act(async () => {
+      openEditor().setPhaseExpanded(OPEN_PHASE, true)
+    })
+
+    await act(async () => {
+      openEditor().openScenario(OTHER_SCENARIO.id)
+    })
+
+    const expanded = openEditor().expandedPhaseIds
+    expect(expanded.has(OPEN_PHASE)).toBe(true)
+    expect(expanded.has(OTHER_PHASE)).toBe(true)
+  })
+
+  it('re-opens the target phase when the reader had collapsed it', async () => {
+    await mountOpen()
+
+    await act(async () => {
+      openEditor().openScenario(OPEN_SCENARIO.id)
+    })
+    await act(async () => {
+      openEditor().setPhaseExpanded(OPEN_PHASE, false)
+    })
+    expect(openEditor().expandedPhaseIds.has(OPEN_PHASE)).toBe(false)
+
+    // The same scenario again: the one-shot auto-expand has already fired for
+    // it, so the seam has to open the phase itself or the reader is sent to a
+    // scenario the tree does not show.
+    await act(async () => {
+      openEditor().openScenario(OPEN_SCENARIO.id)
+    })
+
+    expect(openEditor().expandedPhaseIds.has(OPEN_PHASE)).toBe(true)
+  })
+
+  it('stops owning a phase once the reader has toggled it', async () => {
+    await mountOpen()
+
+    // Navigation opened it; the reader's chevron claims it.
+    await act(async () => {
+      openEditor().openScenario(OPEN_SCENARIO.id)
+    })
+    await act(async () => {
+      openEditor().togglePhaseExpanded(OPEN_PHASE)
+    })
+    await act(async () => {
+      openEditor().togglePhaseExpanded(OPEN_PHASE)
+    })
+
+    await act(async () => {
+      openEditor().openScenario(OTHER_SCENARIO.id)
+    })
+
+    expect(openEditor().expandedPhaseIds.has(OPEN_PHASE)).toBe(true)
   })
 })

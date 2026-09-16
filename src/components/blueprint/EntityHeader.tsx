@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { EntityDefinitionPopover } from '@/components/blueprint/EntityDefinitionPopover'
 import { EntityTitleAffordance } from '@/components/blueprint/EntityTitleAffordance'
 import {
@@ -31,6 +32,18 @@ export type EntityHeaderProps = {
   status?: EntityHeaderStatus
   /** The failure, in the SUMMARY slot. Read only when `status` is `error`. */
   message?: string | null
+  /**
+   * A trail to stand in the title's place, for a surface whose title is the
+   * trail's own last crumb. The scenario bar passes one; the badge and the
+   * summary are unchanged by it.
+   *
+   * A FUNCTION and not a node, because this block stays the only builder of
+   * the title affordance: it hands the trail the very affordance it would
+   * otherwise have rendered alone, and the trail decides where in itself that
+   * goes. A plain node would mean a second site constructing an entity title
+   * from an identity it had to derive again.
+   */
+  trail?: (current: ReactNode) => ReactNode
   className?: string
 }
 
@@ -188,6 +201,7 @@ export function EntityHeader({
   summary,
   status = 'ready',
   message,
+  trail,
   className,
 }: EntityHeaderProps) {
   // A failed query has no summary to print, and printing a stale one under a
@@ -201,6 +215,8 @@ export function EntityHeader({
     and the query is warm (`staleTime: Infinity`).
   */
   const shellBooting = useShellBooting()
+  /** The title alone, or the trail the caller wraps it in. */
+  const renderIdentity = (title: ReactNode) => (trail ? trail(title) : title)
 
   return (
     <div
@@ -230,13 +246,17 @@ export function EntityHeader({
             {/* `-ml-2` cancels the affordance's own `px-2`. The padding
                 is the hover highlight's breathing room and stays; the margin
                 pulls the box out by the same amount, so the name's first
-                letter sits on the summary's left edge instead of 6px in. */}
-            <EntityTitleAffordance
-              kind={kind}
-              id={id}
-              label={label}
-              className={ENTITY_TITLE_OUTDENT_CLASS}
-            />
+                letter sits on the summary's left edge instead of 6px in.
+                A trail needs no outdent: its first crumb is an unpadded link,
+                already on the summary's edge. */}
+            {renderIdentity(
+              <EntityTitleAffordance
+                kind={kind}
+                id={id}
+                label={label}
+                className={trail ? undefined : ENTITY_TITLE_OUTDENT_CLASS}
+              />,
+            )}
             <EntityKindBadge kind={kind} label={label} />
           </div>
         ) : null}

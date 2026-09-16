@@ -15,6 +15,7 @@ import {
 } from '@/lib/pathColorTheme'
 import {
   chromaCeiling,
+  classUsesMatching,
   contrast,
   derivedFillInk,
   dial,
@@ -1030,6 +1031,74 @@ describe.each(['light', 'dark'] as const)('brand fill: %s', (theme) => {
     expect(
       contrast(resolveColor('--brand-foreground', theme), brand),
     ).toBeGreaterThanOrEqual(3)
+  })
+})
+
+/**
+ * WHERE THE BRAND HUE IS ALLOWED TO LAND — four jobs, and no fifth.
+ *
+ * A deployment turns two dials and its colour appears on the primary CTA, the
+ * one prose link the app renders, a switch that is on, and the path selector's
+ * selected row. Everything else — selection, focus ring, cell outlines — stays
+ * neutral, so the hue reads as identity rather than as emphasis sprayed across
+ * the chrome. Until now that rule lived in component comments, which is to say
+ * nowhere: a fifth `bg-brand` would have been found by a reader or not at all.
+ * This is its one home, and those comments point here.
+ *
+ * Measured on the SITE, not on the file. Pinning the utility each job spells
+ * is what makes the rule move when a job moves: the path selector's brand mark
+ * used to be a status dot on the TRIGGER, beside the path-colour dots it had
+ * nothing to do with, and a rule that only asked which FILES may carry the hue
+ * would have read the same before and after — and would go on reading the same
+ * when a fifth mark appears inside one of those four files, which is exactly
+ * where a fifth is likeliest to appear.
+ */
+const BRAND_JOBS = [
+  { job: 'the primary CTA', file: 'components/ui/button.tsx', mark: 'bg-brand' },
+  {
+    job: 'the switch in its on state',
+    file: 'components/ui/switch.tsx',
+    mark: 'data-checked:bg-brand',
+  },
+  {
+    job: "the selected row in the path selector's popover",
+    file: 'components/editor/PathSelectorMenu.tsx',
+    mark: 'text-brand',
+  },
+  {
+    job: 'the prose link',
+    file: 'components/cover/CoverSections.tsx',
+    mark: 'text-text-brand',
+  },
+] as const
+
+/** Every brand-coloured utility written in source, as `file:line: utility`. */
+const brandUses = () =>
+  classUsesMatching(
+    /(?:^|:)(?:bg|text|border|ring|fill|stroke|shadow|outline|decoration)-(?:[a-z-]+-)?brand(?:-foreground)?(?:\/\d{1,3})?$/,
+  )
+
+/** `file:line` — one job draws one mark, however many utilities spell it. */
+const brandSites = () => [
+  ...new Set(brandUses().map((use) => use.slice(0, use.lastIndexOf(': ')))),
+]
+
+describe('the brand hue reaches four jobs', () => {
+  it.each(BRAND_JOBS)('spells $job as $mark in $file', ({ file, mark }) => {
+    expect(
+      brandUses().filter((use) => use.startsWith(`${file}:`)),
+    ).toContainEqual(expect.stringMatching(new RegExp(`: ${mark}(?:/\\d+)?$`)))
+  })
+
+  it('draws one mark per job, and no fifth mark anywhere', () => {
+    // The count is of SITES, so the CTA's four brand utilities on one class
+    // string are the one job they dress, and a second `bg-brand` three lines
+    // below it is a fifth job rather than more of the same one.
+    const sites = brandSites()
+    expect(
+      sites,
+      `The brand hue has ${BRAND_JOBS.length} jobs and these sites draw it:\n${sites.join('\n')}`,
+    ).toHaveLength(BRAND_JOBS.length)
   })
 })
 
