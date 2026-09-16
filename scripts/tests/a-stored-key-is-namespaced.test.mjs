@@ -255,6 +255,24 @@ test('a jar reached through a name is refused where the write is', () => {
   ])
 })
 
+test('the same refusal reaches the computed spelling', () => {
+  // The read pattern takes `document['cookie']`, so the refusal has to take
+  // `jar['cookie']` — a rule narrower than the one beside it is a spelling
+  // somebody finds by accident.
+  assert.deepEqual(reasons('jar["cookie"] = `${COOKIE_NAME}=1`\n'), [
+    'a cookie written through a document this check cannot name',
+  ])
+})
+
+test('compound assignment reaches the jar, so it is judged', () => {
+  // `+=` cannot set a coherent cookie — the name it writes is the whole
+  // serialized jar — but declining to read it on those grounds would be a hole
+  // with an excuse in it.
+  assert.deepEqual(reasons('document.cookie += `sidebar_state=${open}; path=/`\n'), [
+    'a bare literal',
+  ])
+})
+
 test('reading the jar names no cookie, so it is not a write', () => {
   assert.deepEqual(bareKeysIn('const jar = document.cookie\n'), [])
 })
