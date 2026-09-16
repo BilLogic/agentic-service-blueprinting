@@ -11,6 +11,8 @@ const openScenario = vi.hoisted(() => vi.fn())
 const requestScenarioCellFocus = vi.hoisted(() => vi.fn())
 const goLanding = vi.hoisted(() => vi.fn())
 const canvasBlueprintsCalls = vi.hoisted(() => [] as string[][])
+/** Whether the cell rows have landed yet, so a test can stage their arrival. */
+const cellsArrived = vi.hoisted(() => ({ value: true }))
 
 const LONG_CELL_NAME =
   'Welcome the student with a line long enough that no row could hold it'
@@ -36,7 +38,7 @@ vi.mock('@/hooks/useCanvasBlueprints', () => ({
     canvasBlueprintsCalls.push(scenarioIds)
     return {
       blueprintsByScenario:
-        scenarioIds.length > 0
+        scenarioIds.length > 0 && cellsArrived.value
           ? new Map([
               [
                 'scenario-1',
@@ -95,6 +97,7 @@ afterEach(() => {
   requestScenarioCellFocus.mockClear()
   goLanding.mockClear()
   canvasBlueprintsCalls.length = 0
+  cellsArrived.value = true
 })
 
 /**
@@ -149,11 +152,38 @@ describe('JumpToSearch', () => {
     mount()
     const search = await openPalette()
     expect(screen.queryByText(LONG_CELL_NAME)).toBeNull()
+    // The heading too: a group over nothing is still a group on screen.
+    expect(screen.queryByText('Cells')).toBeNull()
+    expect(screen.getByText('Scenarios')).toBeTruthy()
+    expect(screen.getByText('Actions')).toBeTruthy()
     expect(canvasBlueprintsCalls.every((ids) => ids.length === 0)).toBe(true)
 
     fireEvent.change(search, { target: { value: 'W' } })
     expect(await screen.findByText(LONG_CELL_NAME)).toBeTruthy()
+    expect(screen.getByText('Cells')).toBeTruthy()
     expect(canvasBlueprintsCalls.at(-1)).toEqual(['scenario-1'])
+  })
+
+  it('keeps the highlighted row where it was while cells arrive', async () => {
+    cellsArrived.value = false
+    const { rerender } = mount()
+    const search = await openPalette()
+    fireEvent.change(search, { target: { value: 'e' } })
+    const highlighted = () =>
+      document
+        .querySelector('[data-slot="command-item"][aria-selected="true"]')
+        ?.textContent?.trim()
+    const before = highlighted()
+    expect(before).toBeTruthy()
+
+    cellsArrived.value = true
+    rerender(
+      <TooltipProvider>
+        <JumpToSearch />
+      </TooltipProvider>,
+    )
+    expect(await screen.findByText(LONG_CELL_NAME)).toBeTruthy()
+    expect(highlighted()).toBe(before)
   })
 
   it('draws one line per row: the name truncates and the badge does not', async () => {

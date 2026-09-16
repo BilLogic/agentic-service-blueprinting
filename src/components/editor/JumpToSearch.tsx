@@ -64,13 +64,16 @@ export function JumpToSearch() {
    * on an empty query, which is what "opens fresh" means and what the
    * reader who just closed it expects to find next time.
    *
-   * @param next - Whether the palette should be showing.
+   * @param next - Whether the palette should be showing, or a toggle of it.
    */
-  const setPaletteOpen = useCallback((next: boolean) => {
-    setOpen(next)
-    setQuery('')
-    setCellsWanted(false)
-  }, [])
+  const setPaletteOpen = useCallback(
+    (next: boolean | ((current: boolean) => boolean)) => {
+      setOpen(next)
+      setQuery('')
+      setCellsWanted(false)
+    },
+    [],
+  )
 
   /**
    * Take a keystroke into the field, and let the cells in behind it.
@@ -97,13 +100,11 @@ export function JumpToSearch() {
       }
       if (isTextEntry(document.activeElement)) return
       event.preventDefault()
-      setOpen((current) => !current)
-      setQuery('')
-      setCellsWanted(false)
+      setPaletteOpen((current) => !current)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
+  }, [setPaletteOpen])
 
   return (
     <>
@@ -293,28 +294,32 @@ function JumpToDialog({
               </CommandItem>
             ))}
           </CommandGroup>
-          <CommandGroup heading="Cells">
-            {cells.map((cell) => (
-              <CommandItem
-                key={cell.id}
-                value={`${cell.label} ${cell.badge}`}
-                onSelect={() =>
-                  runAndClose(() => {
-                    openScenario(cell.scenarioId, { closeNav: true })
-                    requestScenarioCellFocus(cell.scenarioId, cell.id, {
-                      openDetail: true,
+          {/* No query, no Cells group — not even its heading. A heading over
+              nothing is what this group drew before the reader typed. */}
+          {query.length > 0 && cells.length > 0 ? (
+            <CommandGroup heading="Cells">
+              {cells.map((cell) => (
+                <CommandItem
+                  key={cell.id}
+                  value={`${cell.label} ${cell.badge}`}
+                  onSelect={() =>
+                    runAndClose(() => {
+                      openScenario(cell.scenarioId, { closeNav: true })
+                      requestScenarioCellFocus(cell.scenarioId, cell.id, {
+                        openDetail: true,
+                      })
                     })
-                  })
-                }
-              >
-                <JumpToRow
-                  icon={SquareDashed}
-                  label={cell.label}
-                  badge={cell.badge}
-                />
-              </CommandItem>
-            ))}
-          </CommandGroup>
+                  }
+                >
+                  <JumpToRow
+                    icon={SquareDashed}
+                    label={cell.label}
+                    badge={cell.badge}
+                  />
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ) : null}
           <CommandGroup heading="Actions">
             <CommandItem
               value="Fit scenario to view"
