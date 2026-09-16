@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.44.20
+
+**Five leftovers from the visual-system review, each guarded.** Sidebar
+rows sit on the 4px grid, and every pixel constant the layout module
+exports is checked against it. The scenario-open seam has one registry.
+The canvas's bottom-right corner shares one shape, one shadow and a stated
+stacking rule, and `rounded-2xl` is gone from source. The annotation style
+bar's mode-invariance is named in the canvas guideline and measured by the
+tokens test. Touchpoint tones and the focus-mode dimmed state clear the
+same contrast floors the lane fills already did, with the dim values owned
+in one TypeScript module.
+
+**Upgrading a deployment:**
+
+- Sidebar nav rows are 32px tall, up from 30. A deployment stylesheet that
+  positioned anything against the old row height retunes.
+- `rounded-2xl` is refused by the source lint under the template's tree
+  only; the `--radius-2xl` token stays declared, so a deployment's own
+  components keep rendering. Fold to `xl` when convenient.
+- The inspector drawer over the canvas now wears `rounded-lg`, matching the
+  zoom cluster and the panel error card.
+
 ## 1.44.19
 
 **The render walk waits for the shell before asking about the cover.** It
@@ -7758,8 +7780,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                      ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                      "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                        ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                        "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
