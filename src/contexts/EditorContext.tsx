@@ -18,6 +18,7 @@ import {
   closeOpenScenarioNav,
   registerOpenScenarioCloseNav,
   selectOpenScenarioDefaultPath,
+  unregisterOpenScenarioCloseNav,
 } from '@/lib/openScenarioSeam'
 import { persistScenarioLayout } from '@/lib/scenarioLayout'
 import {
@@ -146,20 +147,11 @@ const EditorContext = createContext<EditorContextValue | null>(null)
 
 const EMPTY_EXPANDED: ReadonlySet<string> = new Set<string>()
 
-/**
- * Register the mobile drawer closer on the scenario-open seam so
- * `openScenario(..., { closeNav: true })` can shut it. Desktop never
- * registers one, so the flag is a no-op there. Thin wrapper — the slot
- * lives in the seam module with the other two providers.
- *
- * @param close - Function that closes the nav drawer.
- */
+/** @see registerOpenScenarioCloseNav */
 export function useEditorNavCloser(close: () => void): void {
   useLayoutEffect(() => {
     registerOpenScenarioCloseNav(close)
-    return () => {
-      registerOpenScenarioCloseNav(null)
-    }
+    return () => unregisterOpenScenarioCloseNav(close)
   }, [close])
 }
 

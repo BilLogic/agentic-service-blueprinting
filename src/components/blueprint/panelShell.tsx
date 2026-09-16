@@ -133,8 +133,8 @@ export class DetailPanelErrorBoundary extends Component<
   }
   render() {
     if (this.state.failed) {
-      // Bottom-right corner stack: above the inspector (z-30), below the zoom
-      // cluster (z-50). `bottom-16` is the zoom height (h-8) plus one gutter.
+      // Spatial clearance, not a z fight: `bottom-16` is the zoom cluster
+      // (`h-8` at `bottom-4`) plus one gutter, so the two never overlap.
       return (
         <div className="fixed right-4 bottom-16 z-40 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground shadow-md">
           {this.props.message}

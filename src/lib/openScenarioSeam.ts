@@ -47,6 +47,16 @@ export function registerOpenScenarioCloseNav(closeNav: CloseNav | null): void {
 }
 
 /**
+ * Drop the closer only if it is still the one that registered. A stale
+ * unmount must not clear a closer a newer mount already put in the slot.
+ *
+ * @param closeNav - The closer this caller registered.
+ */
+export function unregisterOpenScenarioCloseNav(closeNav: CloseNav): void {
+  if (closeNavImpl === closeNav) closeNavImpl = null
+}
+
+/**
  * Leave any slice/present tab so the opened scenario is visible.
  */
 export function activateBaseView(): void {

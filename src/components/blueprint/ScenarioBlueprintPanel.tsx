@@ -23,7 +23,8 @@ import {
   buildCompareModel,
   type CompareBlueprints,
 } from '@/lib/compareSlots'
-import { itemsInSelectionOrder, type PathListItem } from '@/lib/pathSelection'
+import { FOCUS_DIM_CLASS, FOCUS_DIM_STYLE } from '@/lib/canvasFocusDim'
+import { cn } from '@/lib/utils'
 import {
   getComparePanelHeight,
   getComparePanelWidth,
@@ -431,10 +432,13 @@ export const ScenarioBlueprintPanelBody = memo(function ScenarioBlueprintPanelBo
   ) {
     return (
       <div
-        className="flex flex-col gap-2 transition-opacity duration-(--motion-fade) ease-out"
+        className={cn(
+          'flex flex-col gap-2 transition-opacity duration-(--motion-fade) ease-out',
+          dimmed && FOCUS_DIM_CLASS,
+        )}
         data-focus-slide-id={slide.id}
         data-canvas-focus-dimmed={dimmed ? '' : undefined}
-        style={dimmed ? { opacity: 0.8 } : undefined}
+        style={dimmed ? FOCUS_DIM_STYLE : undefined}
         role="status"
         aria-busy="true"
         aria-label="Loading blueprint"
@@ -453,10 +457,13 @@ export const ScenarioBlueprintPanelBody = memo(function ScenarioBlueprintPanelBo
 
     return (
       <div
-        className="flex min-h-[280px] min-w-[320px] items-center justify-center rounded-lg border border-dashed p-8 text-center transition-opacity duration-(--motion-fade) ease-out"
+        className={cn(
+          'flex min-h-[280px] min-w-[320px] items-center justify-center rounded-lg border border-dashed p-8 text-center transition-opacity duration-(--motion-fade) ease-out',
+          dimmed && FOCUS_DIM_CLASS,
+        )}
         data-focus-slide-id={slide.id}
         data-canvas-focus-dimmed={dimmed ? '' : undefined}
-        style={dimmed ? { opacity: 0.8 } : undefined}
+        style={dimmed ? FOCUS_DIM_STYLE : undefined}
       >
         <p className="text-sm text-muted-foreground">
           No blueprint data for this scenario yet.

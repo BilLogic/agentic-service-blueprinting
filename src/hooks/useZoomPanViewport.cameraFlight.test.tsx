@@ -6,6 +6,7 @@ import { useZoomPanViewport } from '@/hooks/useZoomPanViewport'
 import type { CameraTransitionResult } from '@/lib/cameraTransition'
 import { waitForCanvasNavigationOutcome } from '@/lib/canvasNavigationOutcome'
 import type { FocusCellsResult } from '@/lib/canvasFocusCells'
+import { FOCUS_DIM_OPACITY } from '@/lib/canvasFocusDim'
 
 type Rect = { left: number; top: number; width: number; height: number }
 
@@ -985,23 +986,23 @@ describe('viewport camera flights', () => {
         `[data-focus-slide-id="${id}"]`,
       )!
     expect(Number(focus('a').style.opacity)).toBe(1)
-    expect(Number(focus('b').style.opacity)).toBeCloseTo(0.3)
+    expect(Number(focus('b').style.opacity)).toBeCloseTo(FOCUS_DIM_OPACITY)
     act(() => {
       flushFrame(32)
       flushFrame(48)
       flushFrame(64)
     })
     expect(Number(focus('a').style.opacity)).toBe(1)
-    expect(Number(focus('b').style.opacity)).toBeCloseTo(0.3)
+    expect(Number(focus('b').style.opacity)).toBeCloseTo(FOCUS_DIM_OPACITY)
 
     act(() => flushFrame(220))
     const originOpacity = Number(focus('a').style.opacity)
     const destinationOpacity = Number(focus('b').style.opacity)
-    expect(originOpacity).toBeGreaterThan(0.3)
+    expect(originOpacity).toBeGreaterThan(FOCUS_DIM_OPACITY)
     expect(originOpacity).toBeLessThan(1)
-    expect(destinationOpacity).toBeGreaterThan(0.3)
+    expect(destinationOpacity).toBeGreaterThan(FOCUS_DIM_OPACITY)
     expect(destinationOpacity).toBeLessThan(1)
-    expect(originOpacity + destinationOpacity).toBeCloseTo(1.3)
+    expect(originOpacity + destinationOpacity).toBeCloseTo(1 + FOCUS_DIM_OPACITY)
 
     act(() => flushFrame(800))
     expect(cameraState().moving).toBe(false)
@@ -1036,7 +1037,7 @@ describe('viewport camera flights', () => {
         `[data-focus-slide-id="${id}"]`,
       )!
     expect(Number(focus('b').style.opacity)).toBe(1)
-    expect(Number(focus('a').style.opacity)).toBeCloseTo(0.3)
+    expect(Number(focus('a').style.opacity)).toBeCloseTo(FOCUS_DIM_OPACITY)
 
     act(() => flushFrame(900))
     expect(focus('b').style.opacity).toBe('')
@@ -1059,7 +1060,7 @@ describe('viewport camera flights', () => {
     view.rerender(<FocusHarness selected="c" />)
     expect(focus('a').style.opacity).toBe('')
     expect(focus('b').style.opacity).toBe('1')
-    expect(focus('c').style.opacity).toBe('0.3')
+    expect(focus('c').style.opacity).toBe(String(FOCUS_DIM_OPACITY))
 
     act(() => panCamera(12, 0))
     expect(focus('a').style.opacity).toBe('')

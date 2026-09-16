@@ -617,18 +617,31 @@ test('every radius utility names a rung, so the dial reaches all of them', () =>
   assert.deepEqual(
     offenders,
     [],
-    `Bare radius utility — 4px hardcoded by Tailwind, deaf to --radius. Name the rung (rounded-sm / -md / -lg / -xl), or rounded-full / rounded-none:\n${offenders.join('\n')}`,
+    `Bare radius utility — 4px hardcoded by Tailwind, deaf to --radius. Name the rung (rounded-sm / -md / -lg / -xl / -2xl), or rounded-full / rounded-none:\n${offenders.join('\n')}`,
   )
 })
 
 test('retired radius rungs are gone from source', () => {
   const offenders = classUsesMatching(
-    new RegExp(`^${VARIANTS}rounded(?:-(?:${SIDES})-)?(?:2xl|3xl|4xl|panel)$`),
+    new RegExp(`^${VARIANTS}rounded(?:-(?:${SIDES})-)?(?:3xl|4xl|panel)$`),
   )
   assert.deepEqual(
     offenders,
     [],
-    `Retired radius rung — 2xl, 3xl, 4xl and panel are gone. Use md / lg / xl or rounded-full:\n${offenders.join('\n')}`,
+    `Retired radius rung — 3xl, 4xl and panel are gone. Use md / lg / xl / 2xl or rounded-full:\n${offenders.join('\n')}`,
+  )
+})
+
+test('rounded-2xl is gone from source', () => {
+  // `--radius-2xl` stays on the five-rung ladder in theme.css; no call site
+  // may pick it. Fold onto xl (plates) or lg (containment / corner chrome).
+  const offenders = classUsesMatching(
+    new RegExp(`^${VARIANTS}rounded(?:-(?:${SIDES})-)?2xl$`),
+  )
+  assert.deepEqual(
+    offenders,
+    [],
+    `rounded-2xl is banned from source. Use xl or lg:\n${offenders.join('\n')}`,
   )
 })
 
@@ -664,27 +677,37 @@ test('the source tree stays on the 4px spacing grid', () => {
 
 /**
  * Pixel constants in `layoutTokens.ts` feed drag clamps and persistence —
- * the same 4px grid the spacing utilities sit on. A comment forbidding
- * half-steps cannot sit above an off-grid export.
+ * the same 4px grid the spacing utilities sit on. Named explicitly so a
+ * future ratio or duration export is not judged as a pixel.
  */
 test('layout-token pixel exports sit on the 4px grid', async () => {
-  const tokens = await import('@/lib/layoutTokens')
+  const {
+    RAIL_WIDTH,
+    SIDEBAR_DEFAULT_WIDTH,
+    SIDEBAR_MIN_WIDTH,
+    SIDEBAR_MAX_WIDTH,
+    SIDEBAR_ROW_PITCH,
+    AGENT_FLOAT_DEFAULT,
+    AGENT_FLOAT_MIN,
+  } = await import('@/lib/layoutTokens')
 
-  /** Walk exports for every numeric pixel value. */
-  function pixels(value: unknown): number[] {
-    if (typeof value === 'number') return [value]
-    if (value && typeof value === 'object') {
-      return Object.values(value).flatMap(pixels)
-    }
-    return []
-  }
+  const pixels: ReadonlyArray<readonly [string, number]> = [
+    ['RAIL_WIDTH', RAIL_WIDTH],
+    ['SIDEBAR_DEFAULT_WIDTH', SIDEBAR_DEFAULT_WIDTH],
+    ['SIDEBAR_MIN_WIDTH', SIDEBAR_MIN_WIDTH],
+    ['SIDEBAR_MAX_WIDTH', SIDEBAR_MAX_WIDTH],
+    ['SIDEBAR_ROW_PITCH', SIDEBAR_ROW_PITCH],
+    ['AGENT_FLOAT_DEFAULT.x', AGENT_FLOAT_DEFAULT.x],
+    ['AGENT_FLOAT_DEFAULT.y', AGENT_FLOAT_DEFAULT.y],
+    ['AGENT_FLOAT_DEFAULT.width', AGENT_FLOAT_DEFAULT.width],
+    ['AGENT_FLOAT_DEFAULT.height', AGENT_FLOAT_DEFAULT.height],
+    ['AGENT_FLOAT_MIN.width', AGENT_FLOAT_MIN.width],
+    ['AGENT_FLOAT_MIN.height', AGENT_FLOAT_MIN.height],
+  ]
 
-  const offenders: string[] = []
-  for (const [name, value] of Object.entries(tokens)) {
-    for (const n of pixels(value)) {
-      if (n % 4 !== 0) offenders.push(`${name}=${n}`)
-    }
-  }
+  const offenders = pixels
+    .filter(([, n]) => n % 4 !== 0)
+    .map(([name, n]) => `${name}=${n}`)
   assert.deepEqual(
     offenders,
     [],
@@ -693,11 +716,12 @@ test('layout-token pixel exports sit on the 4px grid', async () => {
 })
 
 /**
- * Radius by kind. Controls sit on md; containment (cells, cards, popovers)
- * on lg; dialogs, drawers and plates on xl; rounded-full stays; sm is for
- * kbd, inline code and marks under 12px. A file listed here may not pick up
- * another rung. The list covers every primitive, editor and blueprint file
- * that carries more than one rung or sits on a rung the kind table reserves.
+ * Radius by kind. Controls sit on md; containment (cells, cards, popovers,
+ * canvas corner chrome) on lg; dialogs, modal sheets and plates on xl;
+ * rounded-full stays; sm is for kbd, inline code and marks under 12px.
+ * A file listed here may not pick up another rung. The list covers every
+ * primitive, editor and blueprint file that carries more than one rung or
+ * sits on a rung the kind table reserves.
  */
 const RADIUS_KIND_ALLOWLIST: Record<string, readonly string[]> = {
   'components/ui/button.tsx': ['md', 'none', 'full'],
@@ -722,8 +746,10 @@ const RADIUS_KIND_ALLOWLIST: Record<string, readonly string[]> = {
   'components/editor/CanvasEmptyState.tsx': ['xl'],
   'components/editor/SlideStickyHeader.tsx': ['xl', 'md'],
   'components/editor/EditorLoadingSkeletons.tsx': ['xl', 'lg', 'md', 'full'],
-  // Blueprint surfaces. Drawer, modal, plates on xl; cells, cards, storyboard
-  // frames on lg; controls and badges on md; rounded-full stays.
+  // Blueprint surfaces. Modal sheets, walkthrough and plates on xl; the
+  // canvas inspector and other corner chrome on lg (same family as the
+  // zoom cluster and the panel error card); cells and cards on lg;
+  // controls and badges on md; rounded-full stays.
   'components/blueprint/panelShell.tsx': ['lg', 'md'],
   'components/blueprint/ResizableComparePanel.tsx': ['xl', 'md'],
   'components/blueprint/StoryboardWalkthroughModal.tsx': ['xl', 'full'],

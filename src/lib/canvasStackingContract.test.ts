@@ -80,19 +80,19 @@ describe('canvas stacking contract', () => {
     expect(viewport).toMatch(/cn\('relative isolate /)
   })
 
-  it('stacks the bottom-right corner as zoom above error above drawer', () => {
+  it('keeps the error card one gutter above the zoom cluster, same shape and shadow', () => {
     const overview = source('components/editor/ServiceOverviewView.tsx')
     const shell = source('components/blueprint/panelShell.tsx')
-    const zoom = band(overview, 'absolute bottom-4 z-')
-    const error = band(shell, 'fixed right-4 bottom-16 z-')
-    // Non-modal inspector viewport — modal drawers stay at z-50 in drawer.tsx.
-    const drawer = (() => {
-      const file = source('components/ui/drawer.tsx')
-      const match = /modal === true \? "z-(\d+)" : "z-(\d+)"/.exec(file)
-      if (!match) throw new Error('non-modal drawer z band not found')
-      return Number(match[2])
-    })()
-    expect(zoom).toBeGreaterThan(error)
-    expect(error).toBeGreaterThan(drawer)
+    const zoom = source('components/editor/EditorZoomIndicator.tsx')
+    expect(overview).toMatch(/absolute bottom-4 z-30/)
+    expect(shell).toMatch(/fixed right-4 bottom-16 z-40/)
+    expect(shell).toMatch(
+      /rounded-lg border border-border bg-card[\s\S]*shadow-md/,
+    )
+    expect(zoom).toMatch(/rounded-lg/)
+    expect(zoom).toMatch(/shadow-md/)
+    expect(source('components/blueprint/panelShell.tsx')).toMatch(
+      /rounded-lg border border-border bg-popover shadow-md/,
+    )
   })
 })

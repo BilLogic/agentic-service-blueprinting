@@ -1064,9 +1064,7 @@ function ServiceOverviewViewImpl({
             {floatingChrome ? (
               <div
                 className={cn(
-                  // z-50: top of the bottom-right corner stack (above the
-                  // panel error card at z-40 and the inspector at z-30).
-                  'pointer-events-none absolute bottom-4 z-50 [&>*]:pointer-events-auto',
+                  'pointer-events-none absolute bottom-4 z-30 [&>*]:pointer-events-auto',
                   // Bottom-centered on the phone (thumb reach, and the
                   // corner is where the agent FAB lives); bottom-right on
                   // desktop, beside the cursor's natural resting corner.
@@ -1080,7 +1078,7 @@ function ServiceOverviewViewImpl({
                 lose the canvas): bottom-centered under the thumb. Desktop
                 has no Reset View at all — double-click/Home reframe. */}
             {mobileShell && !renderHeader ? (
-              <div className="pointer-events-none absolute bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center [&>*]:pointer-events-auto">
+              <div className="pointer-events-none absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center [&>*]:pointer-events-auto">
                 <NavbarZoomIndicator />
               </div>
             ) : null}

@@ -151,22 +151,24 @@ fitted to a drawn box, the note that is a textarea all the way through, the
 type that shows its editor until it holds something — stays a real difference
 and is written out, because it is one.
 
-**The annotation chrome is the one surface that does not follow the theme.**
-The shape / text / sticky toolbars stay dark in both light and dark mode on
-purpose: they float over a board whose cells already carry every hue in the
-palette, so a bar that flipped with `.dark` would read as one more coloured
-plane rather than a tool over the board. `--background-annotation-chrome` is
-declared off the designers' literal colour export, not a theme dial; the
-tokens test holds that value identical under both theme files.
+**The floating annotation style bar is the one surface that does not follow
+the theme.** `--background-annotation-chrome` stays dark in both modes on
+purpose: the plate floats over a board whose cells already carry every hue
+in the palette, so a bar that flipped with `.dark` would read as one more
+coloured plane rather than a tool over the board. It is declared off the
+designers' literal colour export, not a theme dial; the tokens test holds
+that value identical under both theme files. The docked pen/eraser toolbar
+(`CanvasAnnotationToolbar`) is ordinary chrome (`bg-card`) and does follow
+the theme.
 
 ## The bottom-right corner stack
 
 Three pieces float over the canvas in the bottom-right corner: the zoom
-cluster, the panel error card, and the (non-modal) inspector drawer. They
-share one shape (`rounded-lg`) and one shadow (`shadow-md`), and they stack
-in that order — zoom above error above drawer above the board — so an error
-never covers the zoom controls. The error card's `bottom` is the zoom
-cluster's height plus one gutter.
+cluster, the panel error card, and the inspector drawer. They share one
+shape (`rounded-lg`) and one shadow (`shadow-md`). The error card sits one
+gutter above the zoom cluster (`bottom-16` vs `bottom-4`) so the two never
+overlap — a spatial rule, not a z-index fight with the drawer primitive.
+The inspector already clears the same band via `CELL_DETAIL_PANEL_BOTTOM_GAP_PX`.
 
 ## Panel as selection
 
