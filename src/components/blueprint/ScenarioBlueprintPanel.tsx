@@ -24,6 +24,7 @@ import {
   type CompareBlueprints,
 } from '@/lib/compareSlots'
 import { FOCUS_DIM_CLASS, FOCUS_DIM_STYLE } from '@/lib/canvasFocusDim'
+import { itemsInSelectionOrder, type PathListItem } from '@/lib/pathSelection'
 import { cn } from '@/lib/utils'
 import {
   getComparePanelHeight,

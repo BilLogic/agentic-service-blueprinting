@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 /**
  * Focus-mode dim: one TypeScript owner, CSS receives the numbers.
  *
@@ -18,10 +20,10 @@ export const FOCUS_DIM_HOVER_OPACITY = 0.7
  * Custom properties the stylesheet and dimmed class strings read, so a
  * call site never restates the number.
  */
-export const FOCUS_DIM_STYLE = {
+export const FOCUS_DIM_STYLE: CSSProperties = {
   '--focus-dim-opacity': String(FOCUS_DIM_OPACITY),
   '--focus-dim-hover-opacity': String(FOCUS_DIM_HOVER_OPACITY),
-} as const
+} as CSSProperties
 
 /** Rest dim — the custom property TypeScript owns. */
 export const FOCUS_DIM_REST_CLASS = '[opacity:var(--focus-dim-opacity)]'
