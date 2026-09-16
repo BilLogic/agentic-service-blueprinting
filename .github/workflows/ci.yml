@@ -105,6 +105,12 @@ jobs:
       # does its cast or one of its scenarios. Content with the name filed off
       # walked straight past the grep until #329.
       - run: npm run check:content-coupling
+      # The namespace seam, measured rather than stated. Every key the app
+      # stores is prefixed per INSTALLATION, so two installations on one origin
+      # do not read each other's settings and sessions — and one key was a bare
+      # literal for three releases, which nothing could see because a literal
+      # key works for the module that writes it.
+      - run: npm run check:storage-keys
       # `--require` is not passed here: the tag for a version is cut after the
       # release commit is on main, not on the pull request that proposes it
       # (docs/engineering/releasing.md). The fetch that makes the tags visible

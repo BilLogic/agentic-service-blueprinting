@@ -69,12 +69,44 @@ type AgentDraft = { text: string; skillId: string | null }
 const STORAGE_KEY = storageKey('agent-sessions')
 const EMPTY_DRAFT = { text: '', skillId: null } as const
 
+/**
+ * Is this entry a session, or JSON some other release left behind?
+ *
+ * The three fields checked are the three the list is READ through — `id`
+ * addresses the session, `title` is what the filter lowercases, `createdAt` is
+ * what the DB merge sorts on — so an entry missing any of them is not a
+ * session this build can show. `updatedAt` and `changeCount` are displayed and
+ * never dereferenced, which is why they are not grounds for dropping an entry
+ * a person can still open.
+ */
+function isSession(entry: unknown): entry is AgentSession {
+  if (entry === null || typeof entry !== 'object') return false
+  const record = entry as Record<string, unknown>
+  return (
+    typeof record.id === 'string' &&
+    typeof record.title === 'string' &&
+    typeof record.createdAt === 'string'
+  )
+}
+
+/**
+ * The stored list, as this build can read it.
+ *
+ * A cast stood here, and a cast is a promise about JSON another release wrote
+ * — the one claim in this module no compiler is in a position to keep. An
+ * entry whose `title` was renamed or dropped survived it and reached the
+ * session filter, which lowercases that title: a TypeError into the editor
+ * boundary on the first character typed, on every attempt, until the reader
+ * cleared their site data. So a malformed entry is dropped HERE, where there
+ * is still a list to hand back, rather than believed and met later by a
+ * surface that can only fail.
+ */
 function read(): AgentSession[] {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? (parsed as AgentSession[]) : []
+    const parsed: unknown = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter(isSession) : []
   } catch {
     return []
   }

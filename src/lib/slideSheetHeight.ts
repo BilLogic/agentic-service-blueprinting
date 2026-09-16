@@ -11,8 +11,19 @@
  * `localStorage` write per frame is a real cost for a value nobody reads
  * until the next boot. The gesture emits; only its end persists.
  */
+import { storageKey } from '@/lib/storageNamespace'
 
-const STORAGE_KEY = 'slide-sheet-height'
+/**
+ * Namespaced with every other key this installation stores, for the reason
+ * `storageNamespace.ts` gives: the prefix names the INSTALLATION, so two of
+ * them served from one origin do not resize each other's sheet. This key was
+ * written as a bare literal, which is invisible from in here — it reads back
+ * exactly what it wrote — and wrong from outside, where an adopter had named a
+ * namespace this one key ignored. Taking the prefix MOVES the key, so a height
+ * saved before this release reads once as no height at all and the sheet opens
+ * at its default.
+ */
+const STORAGE_KEY = storageKey('slide-sheet-height')
 
 /** Two cards' worth, and enough of the third to say the strip continues. */
 export const SLIDE_SHEET_MIN_HEIGHT = 140

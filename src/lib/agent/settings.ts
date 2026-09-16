@@ -81,13 +81,34 @@ const EMPTY: AgentSettings = {
   keys: {},
 }
 
+/**
+ * A provider id this build still has, or the default.
+ *
+ * The stored id is whatever was chosen on the day it was saved, and it sits in
+ * that browser for as long as the browser lasts — so the build reading it is
+ * rarely the build that wrote it. Retiring a provider leaves browsers holding
+ * its id WITH a key saved beside it, which is what makes the id reach the
+ * loop: the no-key hint never fires, and the adapter map is indexed with a
+ * name it has no entry for, so the send dereferences `undefined`. Checked
+ * against `AGENT_PROVIDERS`, the list the settings popover offers, so the two
+ * cannot disagree about what this build supports.
+ */
+function storedProvider(value: unknown): AgentProviderId {
+  return AGENT_PROVIDERS.some((provider) => provider.id === value)
+    ? (value as AgentProviderId)
+    : EMPTY.provider
+}
+
 function read(): AgentSettings {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return EMPTY
     const parsed = JSON.parse(raw) as Partial<AgentSettings>
     return {
-      provider: parsed.provider ?? 'google',
+      provider: storedProvider(parsed.provider),
+      // The models and keys beside it are left as they are on purpose: a
+      // person who saved a key under a provider that comes back should not
+      // lose it because the choice moved.
       models: parsed.models ?? {},
       keys: parsed.keys ?? {},
     }
