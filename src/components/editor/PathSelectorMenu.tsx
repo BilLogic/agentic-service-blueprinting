@@ -134,9 +134,12 @@ export function PathSelectorMenu({ options }: { options: PathOption[] }) {
                           : 'text-muted-foreground',
                       )}
                     >
+                      {/* The same 8px dot the trigger draws. One control, one
+                          dot size: a row that showed a larger dot than the
+                          trigger it fills made the two read as two marks. */}
                       <span
                         aria-hidden
-                        className="size-2.5 shrink-0 rounded-full"
+                        className="size-2 shrink-0 rounded-full"
                         style={{ backgroundColor: getPathColor(option) }}
                       />
                       <span className="min-w-0 flex-1 truncate">
