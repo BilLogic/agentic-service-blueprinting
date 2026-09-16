@@ -1,5 +1,74 @@
 # Changelog
 
+## 1.44.21
+
+**Four surfaces that read wrong after the visual-system batch read right.**
+The Jump to… palette follows the benchmark's own command menu: a borderless
+input on a bottom hairline, mono uppercase group headings, one-line rows
+with an icon, a truncating name and a badge that keeps its place, a dialog
+that has a name and plays its exit, cells that wait for the first keystroke,
+and Escape that empties the field before it closes. The scenario header is
+one breadcrumb trail on one baseline, and the current crumb is the title.
+The path selector is a plain control with one dot. The overview's phase
+container names the elevation ladder: a hairline on a grey ground in light,
+four climbing rungs in dark. Opening a scenario through the seam collapses
+the phases the sidebar opened on the reader's behalf. The `2xl` radius rung
+is retired.
+
+**Upgrading a deployment:**
+
+- The phase frame, scenario panel, panel interior and phase badge now read
+  `--background-blueprint-canvas-ground`, `--background-blueprint-phase-frame`,
+  `--background-blueprint-scenario-panel` and
+  `--background-blueprint-panel-interior`. A deployment stylesheet that pinned
+  any of those to a colour step retunes to the dial or reads as a grey box.
+- The brand hue reaches four jobs, guarded: the cover's action, the cover's
+  guide link, a switch in its on state, and the selected-row mark inside the
+  path selector popover. The path-selector status dot is gone; a deployment
+  that styled `[data-path-selector-status]` drops that rule.
+- `rounded-2xl` no longer resolves; a deployment component that says it
+  should say `rounded-xl`.
+- `CommandItem` takes `size="sm"` for dense menus; the default row is the
+  benchmark's 44px. A deployment composing the command primitive checks its
+  row height.
+- `EntityHeader` takes an optional `trail` slot; `ScenarioMenubarBreadcrumb`
+  no longer accepts `excludeCurrent`.
+
+### Patch Changes
+
+
+- f5c6fe9: The Jump to… palette reads as one search surface. The command primitive now
+  follows the benchmark it names in its divergence header: the popover surface
+  with no inner plate, a borderless input on a bottom hairline, mono uppercase
+  group headings, and rows that are one line — an icon for the kind, a name that
+  truncates, and a badge that keeps its place. The input-group wrapper, the check
+  icon's phantom gutter and seven `!important` overrides that beat nothing are
+  gone. The dialog stays mounted through close so its exit plays, and carries its
+  name and description inside the popup where a screen reader looks for them.
+  Cells wait for the reader's first keystroke rather than issuing a query per
+  scenario on mount, Escape empties the field before it closes the dialog, ⌘K is
+  ignored while a text field has focus, and selecting a result calls the
+  scenario-open seam with `closeNav`, so the phone's drawer shuts behind the move.
+- 61c6f3c: The path selector is a plain control with one dot
+
+  The trigger sits on the md rung with one 8px path-colour dot per selected
+  path, a label that truncates at 10rem, and a chevron. The brand-coloured
+  status dot is gone: it repeated what the label said, in a colour the path
+  dots beside it do not use. The brand hue's fourth job moves to the mark on a
+  selected row inside the popover, and a guard now holds the hue to those four
+  jobs instead of three component comments. The cover's guide link — the one
+  prose link the app renders — now draws the brand's own ink, which is the job
+  that colour was reserved for. The phone's path control joins the desktop one
+  on the md rung.
+
+- 399f81c: The overview's phase container obeys the elevation dial. The four nested surfaces — the viewport ground, the phase frame, a scenario panel on it and the blueprint inside that panel — were each pinned to a step of the slate ramp picked by eye, and the order those steps produced ran backwards in both themes: the frame was the brightest layer and the panel nested inside it the darkest. The four name the semantic surface ladder now — `--canvas`, `--sidebar`, `--card`, `--popover` — so dark climbs with the rest of the app and a retune of an `--elevation-*` ratio moves the board with it. Light does not climb, because light's page leaves nothing above it: its panels are the card white they already are and its GROUND steps a step and a half below the page, so the board still has a floor and the frame's hairline is a hairline on something. The phase badge loses its slate plate in every state and sits in that ground colour, cutting the hairline. Panel and frame hover sit one rung further out instead of jumping to a ramp step.
+
+  A deployment that overrides the phase frame's fill, the scenario panel's surface or the phase badge re-tunes to the dial: read `--background-blueprint-canvas-ground`, `--background-blueprint-phase-frame`, `--background-blueprint-scenario-panel` and `--background-blueprint-panel-interior` rather than naming a colour step, or the override will read as a grey box again.
+
+- ae9216c: The `2xl` radius rung is retired with the others. Nothing in the tree picked it once the corner chrome folded onto `lg`, and the source lint already refused it; the token itself is now gone too, so the ladder is four rungs: sm, md, lg, xl. A deployment component that still says `rounded-2xl` loses its corner radius and should say `rounded-xl`.
+- d61f7e4: The scenario header reads as one breadcrumb trail. The phase used to sit beside the title as a lone 12px grey word while the title was printed separately at 14px semibold, so the same hierarchy was said twice on two rungs and the phase read as a floating label. The header now renders `Phase › Scenario` on one baseline: both crumbs at 13px, a 14px chevron between them, the phase muted and capped at 10rem with its full name on the `title` attribute, and the current crumb in foreground semibold — it IS the title, and it keeps the "View details" affordance that opens the entity panel. The kind badge follows it and the summary line sits beneath, unchanged. `ScenarioMenubarBreadcrumb` is now the only owner of the trail: its `excludeCurrent` flag is gone, and `EntityHeader` stays the only builder of the title affordance and takes an optional `trail` slot that wraps it, in place of rendering it alone. The phase crumb's cap is a layout rule and lives with the bar's other geometry in `menubarHeaderLayout`. The workspace crumb stays out of the trail, so a deployment's header never prints this template's own name. The phase header keeps its current shape.
+- 05b1f07: Opening a scenario through the shared seam expands that scenario's phase and collapses the phases the sidebar had expanded on the reader's behalf. Navigating by palette, breadcrumb or cover action into phase B after phase A now leaves B open and A closed, instead of accumulating every phase visited in a session. A phase the reader expanded by hand keeps their claim and survives navigation elsewhere; a phase they collapsed by hand is expanded again, as navigation's, when they next open a scenario inside it.
+
 ## 1.44.20
 
 **Five leftovers from the visual-system review, each guarded.** Sidebar
@@ -7780,8 +7849,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                        ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                        "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                          ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                          "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
