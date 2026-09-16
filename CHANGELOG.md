@@ -1,5 +1,67 @@
 # Changelog
 
+## 1.44.18
+
+**The visual system tightens, and the chrome does the jobs the audit
+named.** Corners sit on a 0.5rem ladder with five rungs, spacing on a 4px
+grid, and only floating surfaces carry a shadow, drawn in two layers from
+the surface's own lightness. The overview phase frame sits on the page with
+a hairline instead of a darker fill. Cover headings outrank bold body copy.
+A deployment's brand hue reaches four places — the cover's action, prose
+links, a switch in its on state, and the path-selector's status dot — and
+nothing else; selection, focus and cell outlines stay neutral. The scenario
+header carries its phase crumb; the top nav carries a Jump to… palette over
+scenarios, cells and actions; the cover carries the disconnected line; a
+phone opens on the cover and its action lands on the first scenario. The
+render walk gains a 375×812 project so a blank phone canvas fails a check.
+
+**Upgrading a deployment:**
+
+- The radius base is `0.5rem` and the rungs are multiples of it; `3xl`,
+  `4xl` and the panel radius are gone. A deployment stylesheet that names
+  one of those rungs, or that restates `--radius`, retunes to the ladder.
+- `--shadow-md` and `--shadow-lg` are declared in the plain `@theme` block
+  and restated under the dark scope with a lit top edge. A deployment that
+  overrode either token in a `.dark` block keeps working; one that declared
+  them under `@theme inline` moves them.
+- Half-step spacing utilities (`gap-1.5`, `px-2.5`, `py-3.5` and kin) are
+  refused by the source lint across the tree. A deployment's own components
+  under its source root move to whole steps; `px-gutter` and `gap-content`
+  name the two recurring measures.
+- The brand fill is a button variant, `brand`, used by the cover's action;
+  the default button stays on `--primary`. A deployment with a brand hue
+  sets `--hue` and `--brand-chroma` (ceiling about `.135` at the shipped
+  lightness; a gamut test holds it) and nothing else.
+- Opening a scenario goes through one seam, `openScenario`, exported from
+  the editor context; a deployment that reached the tab and path selection
+  directly calls it instead.
+- The sidebar's default width is 288 and its row pitch 30, owned by
+  `lib/layoutTokens`; the vendored sidebar primitive no longer declares a
+  width. A deployment that pinned the old 320 by reading the primitive
+  reads the token.
+- A phone now opens on the cover, and the cover's action lands on the first
+  scenario with the drawer closed. A deployment that deep-links to the
+  drawer-first landing links to the cover.
+- The disconnected line reads "No database connected · read-only. Sample
+  data shown." and sits on the cover, not the scenario header. A
+  deployment's copy override for the old vendor-named string moves to
+  `COVER_DISCONNECTED_STATUS`.
+- The render walk's mobile project runs beside the desktop one; a
+  deployment enrolled in the walk gets both.
+
+### Patch Changes
+
+- 27c124d: The visual system tightens, and the chrome does the jobs the audit named
+
+  Corners sit on a 0.5rem ladder, spacing on a 4px grid, and only floating
+  surfaces carry a shadow. The overview phase frame sits on the page with a
+  hairline. Cover headings outrank bold body copy. A deployment's brand hue
+  reaches the CTA, prose links, the switch, and the path-selector status
+  dot — and nothing else. The cover carries the disconnected status line;
+  the scenario header carries its phase crumb; Jump to… opens a palette;
+  a phone opens on the cover. The render walk gains a 375×812 project so a
+  blank phone canvas fails a check.
+
 ## 1.44.17
 
 **The storyboard shows moments, not logos.** Since a cell's featured image
@@ -7685,8 +7747,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                  ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                  "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                    ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                    "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
