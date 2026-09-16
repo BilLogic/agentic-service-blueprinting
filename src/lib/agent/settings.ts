@@ -81,15 +81,60 @@ const EMPTY: AgentSettings = {
   keys: {},
 }
 
+/**
+ * A provider id this build still has, or the default.
+ *
+ * The stored id is whatever was chosen on the day it was saved, and it sits in
+ * that browser for as long as the browser lasts — so the build reading it is
+ * rarely the build that wrote it. Retiring a provider leaves browsers holding
+ * its id WITH a key saved beside it, which is what makes the id reach the
+ * loop: the no-key hint never fires, and the adapter map is indexed with a
+ * name it has no entry for, so the send dereferences `undefined`. Checked
+ * against `AGENT_PROVIDERS`, the list the settings popover offers, so the two
+ * cannot disagree about what this build supports.
+ */
+function storedProvider(value: unknown): AgentProviderId {
+  return AGENT_PROVIDERS.some((provider) => provider.id === value)
+    ? (value as AgentProviderId)
+    : EMPTY.provider
+}
+
+/**
+ * A stored per-provider map of strings — the model overrides, or the keys.
+ *
+ * TWO QUESTIONS, and they are not the same one. What SHAPE is this (a map of
+ * strings, checked here), and WHOSE entries may it keep (every id it holds,
+ * including one this build does not declare)? The second is deliberate: a
+ * provider can come back, or be reinstated by a host, and a person who saved a
+ * key under it should not lose the key because the CHOICE moved — `provider`
+ * above is the one field a retired id breaks. The first is a fact about JSON
+ * another release wrote, which is the claim no compiler here can keep.
+ */
+function storedStrings(
+  value: unknown,
+): Partial<Record<AgentProviderId, string>> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).filter(
+      (entry): entry is [AgentProviderId, string] =>
+        typeof entry[1] === 'string',
+    ),
+  )
+}
+
 function read(): AgentSettings {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return EMPTY
-    const parsed = JSON.parse(raw) as Partial<AgentSettings>
+    const parsed: unknown = JSON.parse(raw)
+    if (parsed === null || typeof parsed !== 'object') return EMPTY
+    const record = parsed as Record<string, unknown>
     return {
-      provider: parsed.provider ?? 'google',
-      models: parsed.models ?? {},
-      keys: parsed.keys ?? {},
+      provider: storedProvider(record.provider),
+      models: storedStrings(record.models),
+      keys: storedStrings(record.keys),
     }
   } catch {
     return EMPTY

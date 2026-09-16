@@ -11,8 +11,14 @@
  * `localStorage` write per frame is a real cost for a value nobody reads
  * until the next boot. The gesture emits; only its end persists.
  */
+import { storageKey } from '@/lib/storageNamespace'
 
-const STORAGE_KEY = 'slide-sheet-height'
+/**
+ * The key was a bare literal until it took the prefix `storageNamespace.ts`
+ * owns, and taking it MOVES the key: a height saved before that reads once as
+ * no height at all, and the sheet opens at its default.
+ */
+const STORAGE_KEY = storageKey('slide-sheet-height')
 
 /** Two cards' worth, and enough of the third to say the strip continues. */
 export const SLIDE_SHEET_MIN_HEIGHT = 140
@@ -45,7 +51,10 @@ function read(): number {
   }
 }
 
-let height = read()
+// Read while this module evaluates, like the other stores the seam's header
+// lists, and guarded the way they are: `window` is absent in Node, and the
+// idiom says so rather than leaning on `read`'s catch to mean it.
+let height = typeof window === 'undefined' ? SLIDE_SHEET_DEFAULT_HEIGHT : read()
 const listeners = new Set<() => void>()
 
 export function subscribeSlideSheetHeight(listener: () => void): () => void {

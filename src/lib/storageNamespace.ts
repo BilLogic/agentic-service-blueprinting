@@ -14,6 +14,13 @@
  * difference to one value. Do not inline the prefix again: an adopter would
  * then have to find and edit every call site, and would miss one.
  *
+ * `npm run check:storage-keys` is that sentence, measured. It was a rule and
+ * nothing else until one key was found outside the seam — a bare literal no
+ * reader of this header could have noticed, from a module that read back
+ * everything it wrote. The check fails any key reaching `localStorage` or
+ * `sessionStorage` that `storageKey` did not build; the account of what it
+ * catches, what it cannot see, and what went wrong is in its own header.
+ *
  * ── HOW AN ADOPTER SETS IT, AND WHY IT IS NOT A `DeploymentConfig` FIELD ───
  *
  * There are two kinds of adopter and they reach the prefix differently.
@@ -24,11 +31,14 @@
  * A deployment that MOUNTS this package cannot edit a constant inside a module
  * it imports — by design it imports the template rather than overlaying it —
  * so it calls `configureStorageNamespace('acme-')` instead, and it must do so
- * BEFORE it imports the app. That ordering is not a preference. Seven modules
+ * BEFORE it imports the app. That ordering is not a preference. Eight modules
  * compute their key at MODULE SCOPE (`agent/settings.ts`, `agent/sessions.ts`,
  * `agent/placement.ts`, `devPortal.ts`, `mobilePathMemory.ts`,
- * `staleChunkReload.ts`, `components/editor/EditorShell.tsx`), and two of those go further and READ
- * localStorage at module scope to seed a `useSyncExternalStore` snapshot. All
+ * `slideSheetHeight.ts`, `staleChunkReload.ts`,
+ * `components/editor/EditorShell.tsx`), and five of those go further and READ
+ * localStorage at module scope to seed a `useSyncExternalStore` snapshot
+ * (`agent/settings.ts`, `agent/sessions.ts`, `agent/placement.ts`,
+ * `devPortal.ts`, `slideSheetHeight.ts`). All
  * of that happens while the import graph evaluates — before React exists, let
  * alone before `App` renders. A `DeploymentConfig` field would therefore be
  * read one lifecycle too late, and the failure would be silent: the app would
