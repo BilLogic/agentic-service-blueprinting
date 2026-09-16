@@ -120,6 +120,12 @@ async function readInventory(page: Page): Promise<Phase[]> {
   // action — the heading's button, whose LABEL a deployment writes for
   // itself — is the way through, so this reaches for the position rather
   // than the words.
+  // The shell must have drawn before the cover is asked about. `count()`
+  // answers at once, and on a slow first paint it answers zero before the
+  // cover exists: the click is skipped, the cover then lands over the
+  // sidebar, and every click meant for a chevron hits the cover instead.
+  // Either the cover or a sidebar row is proof the shell is up.
+  await page.locator('[data-cover-page], [data-nav-row]').first().waitFor()
   const coverCta = page.locator('[data-cover-page] header button')
   if ((await coverCta.count()) > 0) {
     await coverCta.first().click()
