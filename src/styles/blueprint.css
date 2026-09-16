@@ -39,13 +39,18 @@
 
 @layer utilities {
   /*
-   * THE OVERVIEW'S FOUR SURFACES — a look the owner chose, pinned.
+   * THE OVERVIEW, NAMED — a look the owner chose, pinned, one name per job.
    *
    * The overview nests four layers deep: the viewport ground, the phase frame,
    * a scenario panel on that frame, and the blueprint drawn inside the panel.
-   * The four names below are the seam a deployment retunes — one name per
-   * layer, declared once here, read by the rules further down and by
-   * `blueprintTheme.ts` for the two layers the board composes at runtime.
+   * Every colour those layers and the chrome reading against them are drawn in
+   * is declared once below, and nothing further down this file — nor
+   * `blueprintTheme.ts` — writes a ramp step for them any more. A deployment
+   * retunes a state by setting one name.
+   *
+   * Rest and hover for the same piece sit next to each other so the pair
+   * cannot drift: whoever retunes the rest state sees the armed one in the
+   * same glance.
    *
    * They are NOT rungs of the elevation ladder, and that is a decision rather
    * than an oversight. Deriving them from `--background` and the
@@ -57,39 +62,118 @@
    * every other primitive here does, which is how one declaration covers both
    * themes.
    *
-   * These four ARE declared at the root, unlike every other token this file
-   * mints. The note above about root declarations is about the cell tokens,
-   * whose consumers read a fallback as the default state. These have no
-   * default state to shadow: they are the answer, read directly.
+   * These ARE declared at the root, unlike every other token this file mints.
+   * The note above about root declarations is about the cell tokens, whose
+   * consumers read a fallback as the default state. These have no default
+   * state to shadow: they are the answer, read directly.
+   *
+   * The four `--background-blueprint-panel-*` OVERRIDE SEAMS are deliberately
+   * absent from this block and stay undeclared. They are what the hover rule
+   * pushes a value into, and their fallback arm is the resting state, so a
+   * root declaration would close the seam. The values they carry are named
+   * here instead — `-panel-interior-hover`, `-label-rail-hover`,
+   * `-divider-band-hover` — and the hover rule reads those.
    */
   :root {
+    /* The viewport ground the whole overview is dropped on. */
     --background-blueprint-canvas-ground: var(--color-gray-300);
+
+    /* The phase frame: fill and edge, at rest and under the band's hover. */
     --background-blueprint-phase-frame: var(--color-slate-700);
+    --background-blueprint-phase-frame-hover: var(--color-slate-800);
+    --border-blueprint-phase-frame: var(--color-slate-800);
+    --border-blueprint-phase-frame-hover: var(--color-slate-900);
+
+    /*
+     * The phase's name rides on that frame's edge on a plate of its own, one
+     * slate step darker than the frame it cuts, so the name reads at overview
+     * zoom without the frame's fill running through the letters.
+     */
+    --background-blueprint-phase-badge: var(--color-slate-800);
+    --background-blueprint-phase-badge-hover: var(--color-slate-900);
+    --border-blueprint-phase-badge: var(--color-slate-800);
+    --border-blueprint-phase-badge-hover: var(--color-slate-900);
+    --text-blueprint-phase-badge: var(--color-gray-1200);
+
+    /*
+     * The scenario panel on that frame. Armed, it comes one slate step in from
+     * its resting surface and the edge two steps in from that, so the panel
+     * reads as lifted off the frame rather than merely outlined.
+     */
     --background-blueprint-scenario-panel: var(--color-slate-500);
+    --background-blueprint-scenario-panel-hover: var(--color-slate-600);
+    --border-blueprint-scenario-panel: var(--color-slate-700);
+    --border-blueprint-scenario-panel-hover: var(--color-slate-800);
+
+    /* The scenario's name, on its neutral plate rather than the slate one. */
+    --background-blueprint-scenario-badge: var(--color-gray-800);
+    --background-blueprint-scenario-badge-hover: var(--color-gray-900);
+    --border-blueprint-scenario-badge: var(--color-gray-800);
+    --border-blueprint-scenario-badge-hover: var(--color-gray-900);
+    --text-blueprint-scenario-badge: var(--color-gray-1200);
+
+    /*
+     * The innermost surface — the blueprint's own content ground, and the
+     * sections drawn on it. Armed, both take the hover value through the
+     * `--background-blueprint-panel-canvas` / `-panel-section` seams.
+     */
     --background-blueprint-panel-interior: var(--canvas);
+    --background-blueprint-panel-interior-hover: var(--color-slate-300);
+
+    /* The label column beside that surface, through the rail seam. */
+    --background-blueprint-label-rail: var(--color-slate-500);
+    --background-blueprint-label-rail-hover: var(--color-slate-600);
+
+    /* The interaction / visibility bands, through the divider seam. */
+    --background-blueprint-divider-band: var(--color-slate-500);
+    --background-blueprint-divider-band-hover: var(--color-slate-600);
+
+    /*
+     * The three rules drawn on the interior: its own edge, the hairline
+     * between swim lanes, and the heavier line a phase boundary gets. None of
+     * the three has an armed state — they are drawn inside a panel whose own
+     * surface is what changes under the pointer.
+     */
+    --border-blueprint-panel-interior: var(--color-slate-700);
+    --border-blueprint-lane-divider: var(--color-slate-700);
+    --border-blueprint-phase-divider: var(--color-slate-800);
+
+    /*
+     * The divider band's caption, and the plate it sits on.
+     *
+     * The caption is a TEXT step for a reason. It was step 900 — Radix's
+     * low-contrast *solid* step — on an uppercase caption at the bottom of the
+     * type scale, measuring 2.64:1 in light and 2.74:1 in dark against the
+     * 4.5:1 type this size requires. Step 1100 does not clear it either
+     * (4.11:1 in light). Step 1200 is the smallest rung that clears AA in both
+     * themes (14.65 / 11.61), and `palette.test.ts` measures the pair rather
+     * than trusting the step number.
+     */
+    --text-blueprint-divider-caption: var(--color-gray-1200);
+    --background-blueprint-divider-badge: var(--color-slate-1200);
+
+    /* Board ink: a cell's text, a header's text, and a flow arrow's stroke. */
+    --text-blueprint-cell: var(--color-slate-1200);
+    --text-blueprint-header: var(--color-gray-1200);
+    --stroke-blueprint-arrow: var(--color-gray-900);
   }
 
   /* Interactive overview / phase panels — pure CSS hover avoids stale React hover state. */
   [data-phase-scenario-panel] {
     background-color: var(--background-blueprint-scenario-panel);
-    border-color: var(--color-slate-700);
+    border-color: var(--border-blueprint-scenario-panel);
   }
 
   [data-scenario-panel-title-badge] {
-    background-color: var(--color-gray-800);
-    border-color: var(--color-gray-800);
-    color: var(--color-gray-1200);
+    background-color: var(--background-blueprint-scenario-badge);
+    border-color: var(--border-blueprint-scenario-badge);
+    color: var(--text-blueprint-scenario-badge);
   }
 
-  /*
-   * The phase's name rides on the frame's edge on a plate of its own, one
-   * slate step darker than the frame it cuts, so the name reads at overview
-   * zoom without the frame's fill running through the letters.
-   */
   [data-phase-title-badge] {
-    background-color: var(--color-slate-800);
-    border-color: var(--color-slate-800);
-    color: var(--color-gray-1200);
+    background-color: var(--background-blueprint-phase-badge);
+    border-color: var(--border-blueprint-phase-badge);
+    color: var(--text-blueprint-phase-badge);
   }
 
   /*
@@ -98,7 +182,7 @@
    */
   [data-canvas-phase-interactive] [data-phase-frame] {
     background-color: var(--background-blueprint-phase-frame);
-    border-color: var(--color-slate-800);
+    border-color: var(--border-blueprint-phase-frame);
   }
 
   /*
@@ -162,30 +246,29 @@
     opacity: 1;
   }
 
-  /* One slate step in from the resting surface, and the border two steps in
-     from that, so the hovered panel reads as lifted off the frame rather than
-     merely outlined. The interior bands come with it. */
+  /* The armed panel lifts off the frame, and the interior bands come with it
+     — each seam takes the `-hover` name declared beside its resting one. */
   [data-phase-scenario-panel]:hover:not([data-canvas-focus-active]),
   [data-phase-scenario-panel]:focus-within:not([data-canvas-focus-active]) {
-    background-color: var(--color-slate-600);
-    border-color: var(--color-slate-800);
+    background-color: var(--background-blueprint-scenario-panel-hover);
+    border-color: var(--border-blueprint-scenario-panel-hover);
     /* Tailwind's scale via @apply, not a hand-mixed rgba: this design system
        registers no `--shadow-*` tokens (Supabase registers none either), so
        the scale IS the vocabulary — and a hover rule keyed on data attributes
        has no class list to put `shadow-md` in. */
     @apply shadow-md;
-    --background-blueprint-panel-label-rail: var(--color-slate-600);
-    --background-blueprint-panel-canvas: var(--color-slate-300);
-    --background-blueprint-panel-section: var(--color-slate-300);
-    --background-blueprint-panel-divider: var(--color-slate-600);
+    --background-blueprint-panel-label-rail: var(--background-blueprint-label-rail-hover);
+    --background-blueprint-panel-canvas: var(--background-blueprint-panel-interior-hover);
+    --background-blueprint-panel-section: var(--background-blueprint-panel-interior-hover);
+    --background-blueprint-panel-divider: var(--background-blueprint-divider-band-hover);
   }
 
   [data-phase-scenario-panel]:hover:not([data-canvas-focus-active])
     [data-scenario-panel-title-badge],
   [data-phase-scenario-panel]:focus-within:not([data-canvas-focus-active])
     [data-scenario-panel-title-badge] {
-    background-color: var(--color-gray-900);
-    border-color: var(--color-gray-900);
+    background-color: var(--background-blueprint-scenario-badge-hover);
+    border-color: var(--border-blueprint-scenario-badge-hover);
   }
 
   /* Cell fills stay at their role color when a panel is hovered/focused —
@@ -332,8 +415,8 @@
       :has([data-phase-scenario-panel]:focus-within)
     )
     [data-phase-frame] {
-    background-color: var(--color-slate-800);
-    border-color: var(--color-slate-900);
+    background-color: var(--background-blueprint-phase-frame-hover);
+    border-color: var(--border-blueprint-phase-frame-hover);
     @apply shadow-md;
   }
 
@@ -345,8 +428,8 @@
       :has([data-phase-scenario-panel]:focus-within)
     )
     [data-phase-title-badge] {
-    background-color: var(--color-slate-900);
-    border-color: var(--color-slate-900);
+    background-color: var(--background-blueprint-phase-badge-hover);
+    border-color: var(--border-blueprint-phase-badge-hover);
   }
 }
 

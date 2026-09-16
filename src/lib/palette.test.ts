@@ -26,6 +26,8 @@ import {
   palette,
   resolveColor,
   resolveColorValue,
+  consumersOf,
+  declarations,
   rulesDeclaring,
   resolvePaletteToken,
   resolveValue,
@@ -307,7 +309,7 @@ describe.each(['light', 'dark'] as const)(
 
     /** The one `--name` a declaration's value references. */
     const referenced = (value: string) => {
-      const match = /^var\((--[a-zA-Z0-9-]+)\)$/.exec(value.trim())
+      const match = /^var\(\s*(--[a-zA-Z0-9-]+)\s*\)$/.exec(value.replace(/\s+/g, ' ').trim())
       if (!match) throw new Error(`not a single var(): ${value}`)
       return match[1]
     }
@@ -337,13 +339,49 @@ describe.each(['light', 'dark'] as const)(
     const band = (child: string) =>
       `[data-canvas-phase-interactive]:hover:not([data-canvas-focus-active]):not( :has(${PANEL}:hover) ) ${child}, [data-canvas-phase-interactive]:focus-within:not([data-canvas-focus-active]):not( :has(${PANEL}:focus-within) ) ${child}`
 
-    /* The four layer names, and the primitive each is pinned to. */
-    it.each([
+    /*
+     * THE WHOLE VOCABULARY, AND THE PRIMITIVE EACH NAME IS PINNED TO.
+     *
+     * Every overview colour is a name now — four layers plus the chrome that
+     * reads against them — so this table is the list of what a deployment may
+     * retune, and the list of what may not move while it does not.
+     */
+    const OVERVIEW_NAMES: ReadonlyArray<readonly [string, string, string]> = [
       ['the viewport ground', '--background-blueprint-canvas-ground', '--color-gray-300'],
       ['the phase frame', '--background-blueprint-phase-frame', '--color-slate-700'],
+      ['the phase frame armed', '--background-blueprint-phase-frame-hover', '--color-slate-800'],
+      ['the phase frame edge', '--border-blueprint-phase-frame', '--color-slate-800'],
+      ['the phase frame edge armed', '--border-blueprint-phase-frame-hover', '--color-slate-900'],
+      ['the phase badge', '--background-blueprint-phase-badge', '--color-slate-800'],
+      ['the phase badge armed', '--background-blueprint-phase-badge-hover', '--color-slate-900'],
+      ['the phase badge edge', '--border-blueprint-phase-badge', '--color-slate-800'],
+      ['the phase badge edge armed', '--border-blueprint-phase-badge-hover', '--color-slate-900'],
+      ['the phase badge ink', '--text-blueprint-phase-badge', '--color-gray-1200'],
       ['the scenario panel', '--background-blueprint-scenario-panel', '--color-slate-500'],
+      ['the scenario panel armed', '--background-blueprint-scenario-panel-hover', '--color-slate-600'],
+      ['the scenario panel edge', '--border-blueprint-scenario-panel', '--color-slate-700'],
+      ['the scenario panel edge armed', '--border-blueprint-scenario-panel-hover', '--color-slate-800'],
+      ['the scenario badge', '--background-blueprint-scenario-badge', '--color-gray-800'],
+      ['the scenario badge armed', '--background-blueprint-scenario-badge-hover', '--color-gray-900'],
+      ['the scenario badge edge', '--border-blueprint-scenario-badge', '--color-gray-800'],
+      ['the scenario badge edge armed', '--border-blueprint-scenario-badge-hover', '--color-gray-900'],
+      ['the scenario badge ink', '--text-blueprint-scenario-badge', '--color-gray-1200'],
       ['the panel interior', '--background-blueprint-panel-interior', '--canvas'],
-    ])('pins %s', (_layer, name, pin) => {
+      ['the panel interior armed', '--background-blueprint-panel-interior-hover', '--color-slate-300'],
+      ['the label rail', '--background-blueprint-label-rail', '--color-slate-500'],
+      ['the label rail armed', '--background-blueprint-label-rail-hover', '--color-slate-600'],
+      ['the divider band', '--background-blueprint-divider-band', '--color-slate-500'],
+      ['the divider band armed', '--background-blueprint-divider-band-hover', '--color-slate-600'],
+      ['the panel interior edge', '--border-blueprint-panel-interior', '--color-slate-700'],
+      ['the lane divider', '--border-blueprint-lane-divider', '--color-slate-700'],
+      ['the phase divider', '--border-blueprint-phase-divider', '--color-slate-800'],
+      ['the divider caption ink', '--text-blueprint-divider-caption', '--color-gray-1200'],
+      ['the divider badge plate', '--background-blueprint-divider-badge', '--color-slate-1200'],
+      ['the cell ink', '--text-blueprint-cell', '--color-slate-1200'],
+      ['the header ink', '--text-blueprint-header', '--color-gray-1200'],
+      ['the arrow stroke', '--stroke-blueprint-arrow', '--color-gray-900'],    ]
+
+    it.each(OVERVIEW_NAMES)('pins %s', (_piece, name, pin) => {
       expect(resolveColor(name, theme)).toEqual(resolveColor(pin, theme))
     })
 
@@ -378,12 +416,109 @@ describe.each(['light', 'dark'] as const)(
       expect(painted(property, selector)).toEqual(resolveColor(pin, theme))
     })
 
-    it('draws the resting rail in the colour the board composes', () => {
-      // The rail is composed in TypeScript, not by a selector, so it is the
-      // one piece of this container a stylesheet rule cannot reach.
-      expect(resolveColor(referenced(BLUEPRINT_THEME.labelRail), theme)).toEqual(
-        resolveColor('--color-slate-500', theme),
+    /*
+     * The pieces the board composes in TypeScript rather than in a selector —
+     * a gradient stop, an SVG attribute, an inline style. `blueprintTheme.ts`
+     * used to spell a ramp step for each; it names the same pieces now, and
+     * this resolves the name it holds back to the step the look was built on.
+     */
+    it.each([
+      ['the label rail', 'labelRail', '--color-slate-500'],
+      ['the interior edge', 'canvasBorder', '--color-slate-700'],
+      ['the phase divider', 'divider', '--color-slate-800'],
+      ['the divider caption', 'dividerLabel', '--color-gray-1200'],
+      ['the divider badge plate', 'dividerBadgeBg', '--color-slate-1200'],
+      ['the divider band', 'dividerBg', '--color-slate-500'],
+      ['the cell ink', 'cellText', '--color-slate-1200'],
+      ['the header ink', 'headerText', '--color-gray-1200'],
+      ['the lane divider', 'laneDivider', '--color-slate-700'],
+      ['the arrow stroke', 'arrow', '--color-gray-900'],
+      ['the panel interior', 'canvas', '--canvas'],
+      ['the compare section fill', 'sectionFill', '--canvas'],
+      ['the viewport ground', 'viewportPad', '--color-gray-300'],
+    ] as const)('composes %s in the colour it always was', (_what, key, pin) => {
+      expect(resolveColor(referenced(BLUEPRINT_THEME[key]), theme)).toEqual(
+        resolveColor(pin, theme),
       )
+    })
+
+    /*
+     * ONE DECLARATION EACH, AT THE ROOT, WITH THE PAIRS TOGETHER.
+     *
+     * This is what makes an override work. A custom property inherits, so a
+     * deployment retunes a piece by declaring its name on a wrapper around the
+     * board — and that declaration only wins if the app's own is at `:root`
+     * and nowhere nearer the element. A second declaration further in would
+     * sit BELOW the wrapper in the tree and beat it, silently, on exactly the
+     * pieces someone was trying to change.
+     *
+     * The four `--background-blueprint-panel-*` seams are the deliberate
+     * exception and are not in this table: the hover rule declaring one on the
+     * panel is the mechanism, not a leak.
+     */
+    it('lets an override on a wrapper win for every piece', () => {
+      const elsewhere = OVERVIEW_NAMES
+        .map(([, name]) => [
+          name,
+          declarations().filter((entry) => entry.name === name),
+        ] as const)
+        .filter(
+          ([, found]) =>
+            found.length !== 1 ||
+            found[0].selector !== ':root' ||
+            found[0].file !== 'blueprint.css',
+        )
+        .map(([name, found]) => `${name}: ${found.length} in ${found.map((e) => `${e.file} ${e.selector}`).join(', ')}`)
+      expect(elsewhere).toEqual([])
+
+      // And the other half of an override reaching a piece: whoever paints it
+      // names the token, so the inherited value is the one that lands. A rule
+      // that had kept its ramp step would satisfy the root check above and
+      // ignore the wrapper entirely.
+      for (const [piece, name] of OVERVIEW_NAMES)
+        expect(consumersOf(name).length, `${piece} (${name})`).toBeGreaterThan(0)
+    })
+
+    it('keeps a rest name and its hover next to each other', () => {
+      // A pair that drifts apart in the file drifts apart in fact: the next
+      // person retunes the one they can see.
+      const order = declarations()
+        .filter((entry) => entry.file === 'blueprint.css' && entry.selector === ':root')
+        .map((entry) => entry.name)
+      const hovers = order.filter((name) => name.endsWith('-hover'))
+      // A vocabulary with no pairs in it would pass the check below vacuously.
+      expect(hovers.length).toBeGreaterThan(10)
+      expect(
+        hovers.filter(
+          (name) =>
+            order[order.indexOf(name) - 1] !== name.slice(0, -'-hover'.length),
+        ),
+      ).toEqual([])
+    })
+
+    /*
+     * AND NO RAMP STEP LEFT IN A RULE.
+     *
+     * The table above pins what the names resolve to; this is the half that
+     * says the names are what the board reads. A rule or a composed value that
+     * still spelled `--color-slate-800` would render the right colour today
+     * and ignore every override tomorrow, which is the failure this ticket
+     * exists to remove — and it would pass every assertion above.
+     */
+    it('leaves no ramp step in an overview rule or in the theme module', () => {
+      const OVERVIEW = /data-(?:phase-frame|phase-title-badge|phase-scenario-panel|scenario-panel-title-badge|canvas-phase-interactive)/
+      const RAMP = /--color-(?:slate|gray)-\d+/g
+      const rules = [
+        ...stylesheet('blueprint.css').text.matchAll(/([^{}]+)\{([^{}]*)\}/g),
+      ].filter(([, selector]) => OVERVIEW.test(selector))
+      // An empty match set would make the loop below vacuously green.
+      expect(rules.length).toBeGreaterThan(5)
+      expect(
+        rules
+          .filter(([, , body]) => RAMP.test(body))
+          .map(([, selector]) => selector.replace(/\s+/g, ' ').trim()),
+      ).toEqual([])
+      expect(source('lib/blueprintTheme.ts').match(RAMP) ?? []).toEqual([])
     })
 
     it('leaves every colour above untouched under the focus dim', () => {
@@ -708,9 +843,17 @@ describe.each(['light', 'dark'] as const)('board chrome: %s', (theme) => {
     ['label rail header', BLUEPRINT_THEME.headerText, BLUEPRINT_THEME.labelRail],
   ]
 
+  /*
+   * Resolved through the cascade rather than read off a step, because both
+   * halves are blueprint component names now: the pair is measured where it
+   * renders, so a retune of either name is measured too.
+   */
+  const rendered = (value: string) =>
+    resolveColor(/^var\((--[a-zA-Z0-9-]+)\)$/.exec(value.trim())![1], theme)
+
   it.each(pairs)('%s clears AA on its own row', (_name, ink, ground) => {
     expect(
-      contrast(resolve(ink, theme), resolve(ground, theme)),
+      contrast(rendered(ink), rendered(ground)),
     ).toBeGreaterThanOrEqual(4.5)
   })
 })

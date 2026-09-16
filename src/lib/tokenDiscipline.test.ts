@@ -358,7 +358,7 @@ const VAR_PRIMITIVE_EXEMPT_FILES: ReadonlyArray<{
   {
     file: 'lib/blueprintTheme.ts',
     because:
-      'eleven board-chrome values plus three lane label inks. The chrome is a slate-tinted grey ladder with no equivalent in the neutral semantic set — the file records the measurement, `divider` misses its nearest semantic match by Δ97 — and the label inks are the step-1200 text of the lane family each section names, which is lane identity',
+      'three lane label inks, and nothing else. The board chrome that used to sit here alongside them reads the blueprint component names `blueprint.css` declares now; what is left is the step-1200 text of the lane family each section names, which is lane identity',
   },
   {
     file: 'lib/canvasAnnotations.ts',
@@ -373,7 +373,7 @@ const VAR_PRIMITIVE_EXEMPT_FILES: ReadonlyArray<{
   {
     file: 'styles/blueprint.css',
     because:
-      'both halves of the board. The bulk are the lane-family identity steps — surface, hover, pressed, ring and ink per `[data-blueprint-lane]` — which is categorical exactly as a lane fill should be. The rest are the phase and scenario panel chrome, and those are DEFERRED, not categorical: the same slate ladder `blueprintTheme.ts` carries, moved here when the hover states became CSS rules, and waiting on the decision that gives the board chrome semantic rungs',
+      'the lane-family identity steps — surface, hover, pressed, ring and ink per `[data-blueprint-lane]` — which is categorical exactly as a lane fill should be, plus the one declaration block at the top of the file that mints the overview vocabulary. That block is where the deferral this entry used to record was paid off: the overview chrome is a component name per piece now, and the block is the single place those names are pinned to the steps the owner chose',
   },
   {
     file: 'styles/semantic.css',

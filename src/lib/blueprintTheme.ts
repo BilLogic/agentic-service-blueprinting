@@ -11,10 +11,12 @@ import {
 /**
  * Board chrome — the frame the blueprint is drawn in.
  *
- * Every value references a step in colors.css. `slate` is the cool grey and
- * `gray` the pure neutral, chosen per token by which one the previous literal
- * sat closest to; relative ordering is preserved where it carries meaning, so a
- * hover is still darker than its base.
+ * Every value names a JOB, not a step. `blueprint.css` declares the whole
+ * overview vocabulary once at its root — one name per piece, rest and hover
+ * adjacent — and pins each name to the primitive the owner's chosen look was
+ * built from. Nothing here reaches past a name into the ramp any more, so a
+ * deployment retunes a piece by setting its name rather than by editing this
+ * file.
  *
  * These are inlined through `style` rather than applied as classes because the
  * board composes them into gradients and SVG attributes, but they are `var()`
@@ -37,52 +39,46 @@ import {
  * composes at runtime into a gradient stop or an SVG attribute, where there is
  * no selector to write.
  *
- * Three of the thirteen name one of the overview's four surface tokens rather
- * than a primitive, because those three are LAYERS: the workspace the board is
- * dropped on, and the board's own content surface, which is the innermost of
- * the overview's four nested surfaces. `blueprint.css` declares those four
- * names once and pins each to the primitive the owner's chosen look was built
- * from — they are deliberately not on the elevation ladder, and the note at
- * the top of its utilities layer says why. Naming them here is what lets a
- * deployment retune a layer without touching this file.
- *
- * The other ten stay on primitives on purpose — they are a slate-tinted grey
- * ladder with no equivalent in the neutral semantic set (the nearest match to
- * `divider` is off by Δ97), and minting ten semantic names to describe one
- * board's chrome would grow the token vocabulary to fit a single consumer.
+ * All thirteen name one of the overview's component tokens. Three are LAYERS —
+ * the workspace the board is dropped on, and the board's own content surface,
+ * the innermost of the four nested ones. The other ten are the chrome that
+ * reads against those layers: the rail, the rules, the divider band and its
+ * caption, the cell and header ink, and the flow arrow's stroke. They used to
+ * be primitives here, on the argument that a slate-tinted grey ladder has no
+ * equivalent in the neutral semantic set (the nearest match to `divider` is
+ * off by Δ97). That argument was for a SEMANTIC name; the names they read now
+ * are component names in the blueprint's own namespace, which is exactly the
+ * tier a board's chrome belongs in — so the ladder keeps its measured colours
+ * and gains a seam a deployment can reach.
  */
 export const BLUEPRINT_THEME = {
   /** Blueprint content surface — path sections, cells, swim lanes. */
   canvas: 'var(--background-blueprint-panel-interior)',
   /** Blueprint shell — label column, panel padding, compare chrome. */
-  labelRail: 'var(--color-slate-500)',
-  canvasBorder: 'var(--color-slate-700)',
-  divider: 'var(--color-slate-800)',
+  labelRail: 'var(--background-blueprint-label-rail)',
+  canvasBorder: 'var(--border-blueprint-panel-interior)',
+  divider: 'var(--border-blueprint-phase-divider)',
   /*
-   * The divider caption's ink, and it is a TEXT step for that reason.
-   *
-   * This was step 900 — Radix's low-contrast *solid* step, not a text step —
-   * set on an uppercase badge at the bottom of the type scale, rendered
-   * directly on the `dividerBg` row. It measured 2.64:1 in light and 2.74:1 in
-   * dark against the 4.5:1 that type this size requires. Step 1100, the
-   * obvious next rung, does not clear it either: 4.11:1 in light. Step 1200 is
-   * the smallest rung that clears AA in both themes (14.65 / 11.61), and
-   * `palette.test.ts` measures the pair rather than trusting the step number.
+   * The divider caption's ink, and it is a TEXT step for that reason —
+   * `blueprint.css` declares the name and carries the measurement that forced
+   * it there. Step 900 and step 1100 both miss AA on an uppercase caption at
+   * the bottom of the type scale, and `palette.test.ts` measures the pair
+   * rather than trusting the step number.
    *
    * It survived because every contrast assertion in this system used to
    * compare two halves of the SAME primitive family, and this pair is a gray
    * ink on a slate ground. A guard samples the region where its property
    * already holds unless something makes it look elsewhere.
    */
-  dividerLabel: 'var(--color-gray-1200)',
+  dividerLabel: 'var(--text-blueprint-divider-caption)',
   /** Figma-style interaction / visibility line badge. */
-  dividerBadgeBg: 'var(--color-slate-1200)',
-  dividerBg: 'var(--color-slate-500)',
-  cellText: 'var(--color-slate-1200)',
-  headerText: 'var(--color-gray-1200)',
+  dividerBadgeBg: 'var(--background-blueprint-divider-badge)',
+  dividerBg: 'var(--background-blueprint-divider-band)',
+  cellText: 'var(--text-blueprint-cell)',
+  headerText: 'var(--text-blueprint-header)',
   /** Thin rules between swim lanes — light grey, visible on canvas and label rail. */
-  laneDivider: 'var(--color-slate-700)',
-  arrow: 'var(--color-gray-900)',
+  laneDivider: 'var(--border-blueprint-lane-divider)',
+  arrow: 'var(--stroke-blueprint-arrow)',
   /** Side-by-side compare path sections (Figma-style grouping). */
   sectionFill: 'var(--background-blueprint-panel-interior)',
   /** Outermost slide/canvas workspace — sits behind blueprint panels. */
