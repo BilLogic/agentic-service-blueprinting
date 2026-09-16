@@ -42,12 +42,19 @@ import { useStaleChunkReload } from '@/lib/staleChunkReload'
  *   - `PathSelectionProvider` above `ScenarioPathSelectionReset`, which throws
  *     outside it, and `EditorProvider` above it too — that read is null-safe,
  *     so out of place it would not throw, it would simply never fire.
- *   - `EditorErrorBoundary` NOT above `WriteFailureNotices`. See its comment
- *     below; this is the one edge in the tree that is a behaviour rather than
- *     a wiring requirement.
+ *   - `EditorErrorBoundary` in its `app` scope ABOVE everything, the
+ *     deployment seam included. A provider that throws unmounts the tree, so
+ *     a boundary underneath one it may throw from catches nothing — and
+ *     `DeploymentConfigProvider` rethrows a failed registry loader by design.
+ *   - The editor's `EditorErrorBoundary` NOT above `WriteFailureNotices`. See
+ *     its comment below; this is the one edge in the tree that is a behaviour
+ *     rather than a wiring requirement. The app-scoped boundary at the top is
+ *     above both, which is not the same edge: it catches what takes the whole
+ *     tree with it, and a notice about a write has nothing left to sit beside.
  *
  * Everything else is settled by band, outermost to innermost:
  *
+ *   0. THE BOUNDARY, outside the bands because it is about all of them.
  *   1. The DEPLOYMENT SEAM. `DeploymentConfigProvider` is outermost because
  *      every band below may be skinned by it and none of it may be skinned
  *      half way down.
@@ -76,75 +83,89 @@ export function App({ config }: { config?: DeploymentConfig | null }) {
    * carries why the reload is spent only once.
    */
   useStaleChunkReload()
+  /*
+   * The boundary below is above EVERYTHING, and that is the point: a provider
+   * that throws unmounts the whole tree, so the editor's own boundary —
+   * eleven providers further down — catches nothing the deployment seam, the
+   * database client or the two address-bar components do.
+   * `DeploymentConfigProvider` rethrows a failed registry loader on purpose,
+   * and that throw used to reach nothing at all.
+   *
+   * It ships with the package for the same reason the stale-chunk reload
+   * does: the root is what a deployment mounts, so a boundary a host has to
+   * remember to install is a boundary that is eventually not installed.
+   */
   return (
-    <DeploymentConfigProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        {/*
-         * `attribute="class"` matches the token setup: themes/light.css targets
-         * `:root, .light`, themes/dark.css targets `.dark`, and the `dark:`
-         * variant is `&:where(.dark, .dark *)`. `enableColorScheme` (on by
-         * default) also sets `color-scheme` on the root, which is what makes
-         * scrollbars and native form controls follow the theme.
-         */}
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-          <SupabaseProvider>
-            {/*
-             * Resolves the URL slug to the active service and canonicalises
-             * the slug into the address bar. Above everything that reads a
-             * service, so no reader below it can see a stale one.
-             */}
-            <ActiveServiceProvider>
+    <EditorErrorBoundary scope="app">
+      <DeploymentConfigProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          {/*
+           * `attribute="class"` matches the token setup: themes/light.css targets
+           * `:root, .light`, themes/dark.css targets `.dark`, and the `dark:`
+           * variant is `&:where(.dark, .dark *)`. `enableColorScheme` (on by
+           * default) also sets `color-scheme` on the root, which is what makes
+           * scrollbars and native form controls follow the theme.
+           */}
+          <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+            <SupabaseProvider>
               {/*
-               * Above the editor so both the menubar identity headers and the
-               * canvas read one cached service query; the definition popovers
-               * on the board pick their per-kind example out of it by kind.
+               * Resolves the URL slug to the active service and canonicalises
+               * the slug into the address bar. Above everything that reads a
+               * service, so no reader below it can see a stale one.
                */}
-              <EntityExamplesProvider>
+              <ActiveServiceProvider>
                 {/*
-                 * One unscoped read of `touchpoints.tone` and `.aliases` for
-                 * the whole session, published to the module store every
-                 * touchpoint face resolves its colour through.
+                 * Above the editor so both the menubar identity headers and the
+                 * canvas read one cached service query; the definition popovers
+                 * on the board pick their per-kind example out of it by kind.
                  */}
-                <TouchpointRegistryProvider>
-                  <EditorProvider>
-                    <ViewStateProvider>
-                      <PathSelectionProvider>
-                        {/*
-                         * A comparison is a statement about the scenario it
-                         * was built in, so moving to another one collapses it.
-                         * Inside the provider it drives, under the editor
-                         * whose navigation it watches.
-                         */}
-                        <ScenarioPathSelectionReset />
-                        {/*
-                         * The board reaches the address bar here, beside the
-                         * reset, and for the same reason: it joins navigation,
-                         * the path selection and the tab state, and none of
-                         * those three providers may learn about the other two.
-                         */}
-                        <BoardAddressSync />
-                        <TooltipProvider delay={200}>
-                          <EditorErrorBoundary>
-                            <EditorShell />
-                          </EditorErrorBoundary>
+                <EntityExamplesProvider>
+                  {/*
+                   * One unscoped read of `touchpoints.tone` and `.aliases` for
+                   * the whole session, published to the module store every
+                   * touchpoint face resolves its colour through.
+                   */}
+                  <TouchpointRegistryProvider>
+                    <EditorProvider>
+                      <ViewStateProvider>
+                        <PathSelectionProvider>
                           {/*
-                           * Outside the boundary, on purpose: a write can fail
-                           * as the shell falls over, and the notice is what
-                           * says so. Inside it, the one message explaining the
-                           * blank screen would be caught by the blank screen.
+                           * A comparison is a statement about the scenario it
+                           * was built in, so moving to another one collapses it.
+                           * Inside the provider it drives, under the editor
+                           * whose navigation it watches.
                            */}
-                          <WriteFailureNotices />
-                        </TooltipProvider>
-                      </PathSelectionProvider>
-                    </ViewStateProvider>
-                  </EditorProvider>
-                </TouchpointRegistryProvider>
-              </EntityExamplesProvider>
-            </ActiveServiceProvider>
-          </SupabaseProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </DeploymentConfigProvider>
+                          <ScenarioPathSelectionReset />
+                          {/*
+                           * The board reaches the address bar here, beside the
+                           * reset, and for the same reason: it joins navigation,
+                           * the path selection and the tab state, and none of
+                           * those three providers may learn about the other two.
+                           */}
+                          <BoardAddressSync />
+                          <TooltipProvider delay={200}>
+                            <EditorErrorBoundary>
+                              <EditorShell />
+                            </EditorErrorBoundary>
+                            {/*
+                             * Outside the boundary, on purpose: a write can fail
+                             * as the shell falls over, and the notice is what
+                             * says so. Inside it, the one message explaining the
+                             * blank screen would be caught by the blank screen.
+                             */}
+                            <WriteFailureNotices />
+                          </TooltipProvider>
+                        </PathSelectionProvider>
+                      </ViewStateProvider>
+                    </EditorProvider>
+                  </TouchpointRegistryProvider>
+                </EntityExamplesProvider>
+              </ActiveServiceProvider>
+            </SupabaseProvider>
+          </ThemeProvider>
+        </QueryClientProvider>
+      </DeploymentConfigProvider>
+    </EditorErrorBoundary>
   )
 }
 
