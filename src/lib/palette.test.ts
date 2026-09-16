@@ -98,6 +98,21 @@ describe('brand fill', () => {
   })
 
   /*
+   * The identity seam, held as a shape for the same reason and against a
+   * sharper failure. Every brand measurement below reads a colour that is
+   * currently identical to `--primary`, so a literal pasted over this
+   * derivation — the resolved value of the day, frozen — would satisfy all of
+   * them and stop tracking the accent, which is the one thing the derivation
+   * is for. The three `var(--brand-*, …)` fallbacks are what make a dial
+   * optional, so they are part of the shape rather than detail.
+   */
+  it('derives the identity fill from the resolved accent, one dial per channel', () => {
+    expect(semantic).toMatch(
+      /--brand:\s*oklch\(\s*from\s+var\(--primary\)\s+var\(--brand-lightness,\s*l\)\s+var\(--brand-chroma,\s*c\)\s+var\(--brand-hue,\s*h\)\s*\)/,
+    )
+  })
+
+  /*
    * Every number below comes through the cascade, not off a page.
    *
    * `dial()` asks what wins at the root under a theme, which is a different
@@ -148,9 +163,23 @@ describe('brand fill', () => {
      * directly above. Held as a relation, it is true of the neutral template
      * (0 and 0) and of a branded deployment (0.135 and 0.135) alike, and it
      * fails for the thing either of them would get wrong.
+     *
+     * The brand half is now asked of the RESOLVED colour, because brand has no
+     * dials of its own to compare: it reads whatever `--primary` computed to,
+     * through three fallbacks. Same claim, one level down — a saturation or a
+     * hue that moves when the lights go out is two brands either way, and a
+     * fork that sets `--brand-chroma` in one theme file and forgets the other
+     * lands here. LIGHTNESS is deliberately absent from this pair: a neutral
+     * accent has to invert between modes, the identity inherits that by
+     * following it, and the assertion above holds the inversion.
      */
     expect(THEME_DIALS.dark.C).toBe(THEME_DIALS.light.C)
-    expect(dial('--brand-chroma', 'dark')).toBe(dial('--brand-chroma', 'light'))
+    const brand = {
+      light: resolveColorValue('--brand', 'light'),
+      dark: resolveColorValue('--brand', 'dark'),
+    }
+    expect(brand.dark.c).toBeCloseTo(brand.light.c, 6)
+    expect(brand.dark.h).toBeCloseTo(brand.light.h, 6)
   })
 
   it('declares every chroma dial in both theme files, so none arrives by leak', () => {
@@ -172,7 +201,7 @@ describe('brand fill', () => {
       light: stylesheet('themes/light.css').text,
       dark: stylesheet('themes/dark.css').text,
     }
-    for (const name of ['--chroma', '--primary-chroma', '--brand-chroma']) {
+    for (const name of ['--chroma', '--primary-chroma']) {
       for (const [theme, text] of Object.entries(themes)) {
         expect(`${theme} declares ${name}`).toBe(
           new RegExp(`^\\s*${name}:`, 'm').test(text)
@@ -181,6 +210,31 @@ describe('brand fill', () => {
         )
       }
     }
+  })
+
+  it('declares no brand dial anywhere, because a stray one wins in silence', () => {
+    /*
+     * The inverse of the rule above, and the failure mode of the whole
+     * derivation. `var(--brand-lightness, l)` reaches its fallback only while
+     * NOTHING declares that dial, so one leftover declaration — in a theme
+     * file, in the print override, in a component's own block — takes the
+     * channel back off `--primary` with no error, no failed build and nothing
+     * on screen to say which line did it. The absence is the mechanism, so the
+     * absence is what is held, across every stylesheet rather than the two
+     * files the dials used to live in.
+     *
+     * A deployment separating its identity from the action fill is exactly who
+     * will trip this, and it is meant to: the dial belongs in a fork's own
+     * theme block, and a fork that sets one updates this list deliberately.
+     */
+    const declared = declarations()
+      .filter((entry) =>
+        ['--brand-lightness', '--brand-chroma', '--brand-hue'].includes(
+          entry.name,
+        ),
+      )
+      .map((entry) => `${entry.file}: ${entry.selector} { ${entry.name} }`)
+    expect(declared).toEqual([])
   })
 
   it('inverts the fill between themes, since a neutral one has to', () => {
@@ -228,11 +282,19 @@ describe('brand fill', () => {
       expect(inSrgbGamut(oklchToLinearSrgb(L, C, HUE))).toBe(true)
     })
 
-    it('keeps brand chroma inside sRGB at the brand lightness', () => {
-      const brandL = dial('--brand-lightness', theme)
-      const brandC = dial('--brand-chroma', theme)
-      expect(brandC).toBeLessThan(chromaCeiling(brandL, HUE) + Number.EPSILON)
-      expect(inSrgbGamut(oklchToLinearSrgb(brandL, brandC, HUE))).toBe(true)
+    it('keeps the identity fill inside sRGB at its own lightness', () => {
+      /*
+       * The same headroom claim as the fill above, moved off the two deleted
+       * dials and onto what `--brand` resolves to. That is where it has to
+       * live now — and it is where it bites hardest, because the numbers it
+       * reads are exactly the ones a fork changes: set `--brand-chroma` past
+       * the ceiling for the lightness brand inherits and the browser
+       * chroma-reduces it silently, which makes the declared dial a lie.
+       * Unbranded this measures `--primary` twice over, which costs nothing.
+       */
+      const { l, c, h } = resolveColorValue('--brand', theme)
+      expect(c).toBeLessThan(chromaCeiling(l, h) + Number.EPSILON)
+      expect(inSrgbGamut(oklchToLinearSrgb(l, c, h))).toBe(true)
     })
 
     it('carries its ink at AAA', () => {
@@ -1084,20 +1146,23 @@ const perceptualDistance = (a: Rgb, b: Rgb) => {
  * One just-noticeable difference, and the floor for 'these are two colours'.
  *
  * A fact about eyes rather than about this palette, which is what lets it
- * travel — no brand is named by it and none can be tuned around it. The
- * neutral template clears it by an order of magnitude, a deployment that
- * gives both fills one accent and separates them by lightness alone clears it
- * comfortably, and a palette that dials one fill onto the other lands at zero
- * and fails.
+ * travel — no brand is named by it and none can be tuned around it. It is the
+ * floor the four status fills are held off both accents by: the neutral
+ * template clears it seven times over, and a rebrand that walks a status fill
+ * onto the accent lands at zero and fails.
  */
 const JUST_NOTICEABLE = 0.02
 
 /**
- * Identity and action are two fills.
+ * Identity and action are two JOBS, and one colour until a deployment says
+ * otherwise.
  *
- * `--brand` and `--primary` share the accent hue and nothing else. If they
- * resolve to one colour the split is decoration, and every component that
- * reaches for one of them is really reaching for the other.
+ * They were two fills, separated by a pair of dials each, and this block
+ * measured the separation. The dials are gone, by the decision that an
+ * identity with no colour of its own should say so: `--brand` derives from
+ * `--primary` per channel, so an unbranded template resolves them to the same
+ * colour on purpose, and the split that survives is which SURFACES each word
+ * dresses — pinned by the four-jobs guard below.
  *
  * Measured off the cascade rather than recomputed from the dials, so a change
  * to the derivation is visible here rather than mirrored here.
@@ -1106,25 +1171,34 @@ describe.each(['light', 'dark'] as const)('brand fill: %s', (theme) => {
   const brand = resolveColor('--brand', theme)
   const primary = resolveColor('--primary', theme)
 
-  it('is a different colour from the action fill', () => {
+  it('is the action fill exactly, while no dial declares otherwise', () => {
     /*
-     * A perceptual distance, not a contrast ratio.
+     * The inverse of what stood here, and deliberately so.
      *
-     * This used to ask `contrast(brand, primary) > 1.5`, and both halves of
-     * that were the template's greyscale talking. Contrast is a function of
-     * lightness alone, so it cannot see either of the ways a branded palette
-     * separates these two fills — a hue apart and a chroma apart both measure
-     * 1:1 — and 1.5 was read off a neutral seam that stands a near-black
-     * control beside a mid-grey identity. A deployment that gives both fills
-     * its accent and separates them by lightness alone measures 1.27 and
-     * fails a floor it has not violated.
+     * This asked `perceptualDistance(brand, primary) > JUST_NOTICEABLE` — that
+     * the two fills must look DIFFERENT — and that is false by design now: the
+     * separation it measured was a mid grey standing beside a near-black
+     * control, which is the defect the derivation removed rather than a
+     * property worth keeping.
      *
-     * The claim underneath was never a legibility one; it is that identity
-     * and action are TWO fills. Held as a distance in OKLab it is the same
-     * claim for every brand, and it is the claim that actually bites: a pair
-     * no viewer can tell apart is one fill however it was dialled.
+     * Of the two claims left, this is the one that holds on the tree as it
+     * ships. Byte-identity is the ADR's headline consequence, it is what the
+     * absence guard higher up protects, and the two together name the failure
+     * precisely: a stray dial declaration makes the absence guard report the
+     * file and makes this one report the colour that moved. The other claim —
+     * that a dial which IS set moves brand off primary — cannot be asked here
+     * without an override seam the token model does not have, and inventing
+     * one would test the invention; it is demonstrated in a browser instead,
+     * which is what the ticket's screenshots are.
+     *
+     * Channel by channel rather than as a distance under a floor, because
+     * 'the same colour' has no tolerance to spend: any drift at all means a
+     * channel stopped following the accent.
      */
-    expect(perceptualDistance(brand, primary)).toBeGreaterThan(JUST_NOTICEABLE)
+    expect(resolveColorValue('--brand', theme)).toEqual(
+      resolveColorValue('--primary', theme),
+    )
+    expect(perceptualDistance(brand, primary)).toBe(0)
   })
 
   it.each(['warning', 'destructive', 'info', 'success'] as const)(
@@ -1157,30 +1231,40 @@ describe.each(['light', 'dark'] as const)('brand fill: %s', (theme) => {
     },
   )
 
-  it('is the accent at the lightness the dials authorise, and nothing else', () => {
-    // `bg-brand` repointed from a ramp step, `hsl(var(--brand-default))`, to
-    // this derivation, and then the ramp was deleted — so the step it used to
-    // read is no longer there to compare against. What replaces that
-    // comparison is the derivation itself: the fill is the accent at the two
-    // brand dials, and a theme that wants a different identity turns those
-    // two numbers rather than re-typing seven.
-    const value = resolveColorValue('--brand', theme)
-    expect(value.l).toBeCloseTo(dial('--brand-lightness', theme), 6)
-    expect(value.c).toBeCloseTo(dial('--brand-chroma', theme), 6)
-    expect(value.h).toBeCloseTo(dial('--hue', theme), 6)
-    expect(value.alpha).toBe(1)
-  })
+  /*
+   * Ink on a fill, measured on each fill the app paints text on.
+   *
+   * Two assertions collapse into this one and both had lost their subject.
+   * One asked that `--brand` be the accent at its two dials, which no longer
+   * exist; the other held the brand ink at 3:1, the floor a fill near L 0.6
+   * can physically hold — a concession to the grey this ticket deleted, and
+   * one that would now pass on any fill at all.
+   *
+   * BOTH pairs are at 4.5:1, not 3:1, and the reason is per pair rather than
+   * a default. `--primary` carries the default button's `text-sm` label and
+   * `--brand` carries the cover CTA's, which is body size, so the small-text
+   * floor is the one that applies; the brand-coloured switch is UI-only and
+   * would sit at 3:1, but it shares the token with the CTA and a token holds
+   * the strictest ground it is painted on. Nothing measured either pair
+   * before, which is how a 3.89:1 identity fill shipped.
+   *
+   * Shaped after the role-tint measurements in `styles/tokens.test.ts`: the
+   * pair resolves through the cascade under each theme, and the floor is
+   * stated beside the pair it applies to.
+   */
+  const INK_PAIRS = [
+    { fill: '--brand', ink: '--brand-foreground', floor: 4.5 },
+    { fill: '--primary', ink: '--primary-foreground', floor: 4.5 },
+  ] as const
 
-  it('carries ink at the floor a mid-lightness fill can hold', () => {
-    // 3:1, not the 7:1 `--primary` clears. The on-colour flip is shared by
-    // every role so the roles stay interchangeable, and its worst ground is a
-    // fill near L 0.6 — which is exactly where a neutral identity sits. No ink
-    // of any lightness clears 4.5:1 on a mid grey; a deployment that authors a
-    // real accent moves off the trough by moving the dials.
-    expect(
-      contrast(resolveColor('--brand-foreground', theme), brand),
-    ).toBeGreaterThanOrEqual(3)
-  })
+  it.each(INK_PAIRS)(
+    'carries $ink on $fill at $floor:1',
+    ({ fill, ink, floor }) => {
+      expect(
+        contrast(resolveColor(ink, theme), resolveColor(fill, theme)),
+      ).toBeGreaterThanOrEqual(floor)
+    },
+  )
 })
 
 /**

@@ -25,13 +25,16 @@
    * status-hue harmony pull is exactly zero and warning / destructive /
    * info / success sit on their category anchors.
    *
-   * To rebrand: set `--hue` to your brand's OKLCH hue and raise the three
+   * To rebrand: set `--hue` to your brand's OKLCH hue and raise the two
    * chroma dials — `--chroma` for surfaces, `--primary-chroma` for the filled
-   * control, `--brand-chroma` for the identity fill — turning the lightness
-   * beside each if that fill wants to sit higher or lower. Every role in the
-   * semantic layer follows. There is no ramp to re-type here: a stepped family
-   * is named for its hue and lives in colors.css, and the app chrome derives
-   * from these dials rather than from steps.
+   * control — turning the lightness beside each if that fill wants to sit
+   * higher or lower. Every role in the semantic layer follows, the identity
+   * fill included: `--brand` derives from `--primary`, so an app with one
+   * accent has nothing more to set here. Giving the identity a colour of its
+   * own is one dial per channel, added to this block and to the dark one —
+   * `references/customization.md` is the recipe. There is no ramp to re-type
+   * here: a stepped family is named for its hue and lives in colors.css, and
+   * the app chrome derives from these dials rather than from steps.
    * ---------------------------------------------------------------------- */
   --hue: 159;
   /* Warm grey canvas, decoupled from the brand hue — running the neutral ramp
@@ -64,25 +67,14 @@
   --primary-lightness: 0.205;
   --primary-chroma: 0;
   /*
-   * Brand identity, at its authored vividness (BRAND SEAM). Its own pair
-   * rather than a reuse of the primary dials: primary is the accent tuned
-   * until the filled control clears its contrast floor, and brand is the
-   * accent as the identity wears it. Share one pair and the two roles resolve
-   * to one colour, and the distinction becomes decoration.
-   *
-   * 0.594 is the OKLCH lightness of the grey the ramp's anchor step carried
-   * before the ramp went, so the identity fill keeps the colour it had.
-   * Chroma 0 for the same reason the primary pair is 0: the template ships
-   * neutral. Mode-invariant here, and written in both files rather than left
-   * to leak.
+   * No brand dial here, and that is the seam rather than an omission
+   * (BRAND SEAM). The identity fill derives from the pair above, so this
+   * template has one accent and says so. A fork gives the identity a colour
+   * of its own by adding `--brand-hue`, `--brand-chroma` or
+   * `--brand-lightness` to this block and the dark one; each declaration
+   * takes exactly its channel off the accent. `palette.test.ts` fails on a
+   * dial declared here, which is what makes adding one a decision.
    */
-  --brand-lightness: 0.594;
-  /*
-   * Chroma ceiling is about .135 at this lightness (sRGB gamut at hue 159).
-   * A deployment that turns the dial past that gets a colour no browser
-   * draws — `palette.test.ts` rejects it. The template stays at 0.
-   */
-  --brand-chroma: 0;
   /*
    * Focus ring / selection chrome lightness. 0.58, not the mid-grey 0.708 a
    * neutral palette reaches for first: at 0.708 the ring measures 2.56:1 on

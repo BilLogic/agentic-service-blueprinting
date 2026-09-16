@@ -44,13 +44,54 @@ the set is a deliberate multi-file act, listed in `references/lane-roles.md`
   adopter edits are marked **BRAND SEAM**, and there are two of them:
   `src/styles/themes/light.css` and `src/styles/themes/dark.css`. The
   template ships hue-neutral — every chroma dial is 0, so the whole semantic
-  layer renders greyscale. To rebrand: set `--hue` to your brand's OKLCH hue,
-  raise `--chroma` (surfaces) and `--primary-chroma` (the filled control),
-  and replace the greyscale `--brand-*` ramp with your tint family, keeping
-  its light → dark ordering. Everything else derives — the border, the
-  foreground flip and the focus ring follow from `src/styles/semantic.css`
-  on their own. Restyle by editing tokens, not components; the shadcn
-  components read the tokens.
+  layer renders greyscale. **To rebrand:** set `--hue` to your brand's OKLCH
+  hue, then raise `--chroma` (surfaces) and `--primary-chroma` (the filled
+  control), moving `--primary-lightness` beside it if the fill wants to sit
+  higher or lower. Everything else derives — the border, the foreground flip
+  and the focus ring follow from `src/styles/semantic.css` on their own.
+  Restyle by editing tokens, not components; the shadcn components read the
+  tokens.
+
+  There is no ramp to re-type: a stepped family is named for its hue and
+  lives in `src/styles/colors.css`, and the app chrome derives from these
+  dials rather than from steps.
+
+  **The identity fill follows the accent.** `--brand` is `--primary`'s
+  resolved colour, so with no brand dial declared the two are *the same
+  colour* — the four identity surfaces (the cover CTA, the prose link, a
+  switch that is on, the path selector's mark) look exactly like the filled
+  control until you say otherwise. An unbranded template has one accent, not
+  two.
+
+  Giving the identity a colour of its own is **one dial per channel**, added
+  to both theme blocks. Declare only the channel you want to move; the other
+  two keep following the accent.
+
+  | Dial | What it does |
+  | --- | --- |
+  | `--brand-hue` | Puts the identity on a different hue from the action colour. |
+  | `--brand-chroma` | Tints the identity without moving its lightness. |
+  | `--brand-lightness` | Moves the fill lighter or darker. |
+
+  Declare a dial in **both** theme files, the way every other mode-invariant
+  dial is declared — the light file opens on a bare `:root`, so a dial
+  written there alone reaches dark by leak rather than by choice.
+  `src/lib/palette.test.ts` fails on any `--brand-*` dial found in this tree,
+  which is what makes adding one to a fork a decision rather than a drift:
+  update that guard's list when you set one. Why the identity derives from
+  the accent at all is
+  `docs/adr/0025-brand-derives-from-primary-with-one-dial-per-channel.md`.
+
+  **Two routes, and they are not the same knob.** `brand.accent` on the
+  deployment config (below) is read for its HUE only and written onto the
+  root as `--hue` — the dial *both* fills and the surfaces run on — so it
+  moves the whole semantic layer together. A `--brand-*` dial moves the
+  identity *away* from the action colour on one channel. An org whose
+  identity IS the app's accent sets `brand.accent`; an org whose identity
+  differs from its action colour sets a `--brand-*` dial. Note that
+  `brand.accent` alone repaints nothing while the chroma dials are 0 — a hue
+  multiplied by zero chroma is still grey — so it is the dials in the theme
+  blocks that make an accent visible.
 - Touchpoint cells use a neutral palette by default; a `cell_touchpoints` row
   carries the copy, screenshots and design link for one touchpoint at one moment.
 
@@ -94,7 +135,7 @@ already and are listed so the table is the whole answer.
 | Config field | What it replaced | How it is read |
 | --- | --- | --- |
 | `brand.name` | `src/config.ts` — `ORG_NAME`, the org's copy of the wordmark | The workspace title resolves `content.workspaceTitle ?? cover.title ?? brand.name ?? ORG_NAME`, and every surface a person sees reads that chain. One read does not: the workspace breadcrumb label in `src/types/nav.ts` is built from `ORG_NAME` at module scope, for a breadcrumb component nothing renders yet — the owned-content test holds it unrendered until it is carried in from the config. |
-| `brand.accent` | `src/config.ts` — the org's accent | Written onto the root as a layout effect by the config provider; the template leaves it unset. |
+| `brand.accent` | `src/config.ts` — the org's accent | Read for its hue and written onto the root as `--hue` — the dial both fills share — as a layout effect by the config provider; the template leaves it unset. § Theming & branding says what that moves and what it does not. |
 | `cover` (and `content.workspaceTitle`, `content.coverTitle`) | `src/content/coverContent.ts` — the org's landing page copy | Rendered by reference: the cover page shows the deployment's own object, and the template's content module stands in only when none is supplied. |
 | `agent.doctrine` | `src/lib/agent/role.md` — the deployment's own copy of the agent's role document | Laid after the template's role and the canvas adapter on every send. The template's role stays the template's; the doctrine is what one deployment adds: its house rules, its posture, its account of itself. |
 | `agent.references` | Reference documents under `src/lib/agent/` — the deployment's own account, house style, whatever it authored for `get_reference` | A map of bare name to document text; the host holds the `?raw` imports. A name the template already serves is replaced, a new name is listed to the agent right after the canvas adapter. |
