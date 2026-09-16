@@ -1,0 +1,5 @@
+---
+"agentic-service-blueprinting": patch
+---
+
+The scenario header reads as one breadcrumb trail. The phase used to sit beside the title as a lone 12px grey word while the title was printed separately at 14px semibold, so the same hierarchy was said twice on two rungs and the phase read as a floating label. The header now renders `Phase › Scenario` on one baseline: both crumbs at 13px, a 14px chevron between them, the phase muted and capped at 10rem with its full name on the `title` attribute, and the current crumb in foreground semibold — it IS the title, and it keeps the "View details" affordance that opens the entity panel. The kind badge follows it and the summary line sits beneath, unchanged. `ScenarioMenubarBreadcrumb` is now the only owner of the trail: its `excludeCurrent` flag is gone, and `EntityHeader` takes an optional `trail` slot in place of the title it no longer renders for scenarios. The workspace crumb stays out of the trail, so a deployment's header never prints this template's own name. The phase header keeps its current shape.
