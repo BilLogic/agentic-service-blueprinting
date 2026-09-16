@@ -52,8 +52,10 @@ function RawTurn({ text, className }: { text: string; className?: string }) {
  * A tab that outlived a deploy asks for a chunk the new build no longer
  * ships and the import REJECTS — which Suspense does not cover: its fallback
  * is for a promise still pending, so the rejection travels up as a render
- * throw and, with no boundary, takes the whole agent surface with it. React
- * error boundaries are still class-only.
+ * throw. The nearest boundary is the editor-wide `EditorErrorBoundary`, so
+ * one missing markdown chunk used to cost the whole editor — and its "Try
+ * again" re-renders into the same permanently rejected import. React error
+ * boundaries are still class-only.
  */
 class MarkdownChunkBoundary extends Component<
   { children: ReactNode; fallback: ReactNode },

@@ -18,12 +18,14 @@ The credit is never refunded on a later boot, because the error fires when a
 reader opens a transcript — possibly an hour after the boot that would have
 refunded it.
 
-The one lazily loaded surface, the agent's markdown renderer, now keeps its
-raw-text rendering when the chunk fails as well as while it loads: Suspense
-only covers a pending import, so the rejection used to travel up as a render
-throw. A reader whose tab has already spent its reload still reads the
+The template's one lazily loaded surface, the agent's markdown renderer, now
+keeps its raw-text rendering when the chunk fails as well as while it loads:
+Suspense only covers a pending import, so the rejection used to reach the
+editor-wide boundary and replace the whole editor. A reader whose tab has already spent its reload still reads the
 transcript, in plain text, until they refresh.
 
-A deployment needs no change for this: the listener hangs off `App`, which is
+A deployment needs no change to get the listener: it hangs off `App`, which is
 what a deployment mounts, so it arrives with the pin. Nothing in a host's
-`main.tsx`, its headers or its redirects has to move.
+`main.tsx`, its headers or its redirects has to move. A host that supplies its
+blueprint registry as a lazy loader still owns that second import's failure,
+which is a throw rather than a fallback.

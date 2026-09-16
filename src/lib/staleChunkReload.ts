@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { storageKey } from '@/lib/storageNamespace'
+import { useEffect } from "react";
+import { storageKey } from "@/lib/storageNamespace";
 
 /**
  * How a tab that outlived a deploy gets itself back.
@@ -29,10 +29,14 @@ import { storageKey } from '@/lib/storageNamespace'
  * hour after the boot that would have refunded it, so a refund on boot is a
  * refund in time for the next failure — the loop again, only slower.
  *
- * NOTHING BREAKS WHEN THE CREDIT IS GONE. The one lazy surface (the agent's
+ * WHAT THE CREDIT COVERS. The template's one lazy surface (the agent's
  * markdown renderer) keeps rendering its raw text when the chunk never
  * arrives, so a tab that has already spent its reload still shows the reader
- * the transcript, in plain text, until they refresh.
+ * the transcript, in plain text, until they refresh. A HOST CAN ADD A SECOND
+ * lazy boundary — a blueprint registry supplied as a loader is the documented
+ * one — and a loader that rejects is a throw this module does not soften. A
+ * host whose registry is lazy wants a boundary above the app for it; the
+ * credit is one per tab, not one per import.
  */
 
 /**
@@ -40,7 +44,7 @@ import { storageKey } from '@/lib/storageNamespace'
  * `storageNamespace.ts` gives: two installations served from one origin share
  * a storage area, and nothing about a key may be left to collide.
  */
-export const STALE_CHUNK_RELOAD_KEY = storageKey('chunk-reload')
+const STORAGE_KEY = storageKey("chunk-reload");
 
 /**
  * Claims this session's one reload, or reports that it is already spent.
@@ -52,13 +56,13 @@ export const STALE_CHUNK_RELOAD_KEY = storageKey('chunk-reload')
  */
 function claimTheReload(): boolean {
   try {
-    if (window.sessionStorage.getItem(STALE_CHUNK_RELOAD_KEY) !== null) {
-      return false
+    if (window.sessionStorage.getItem(STORAGE_KEY) !== null) {
+      return false;
     }
-    window.sessionStorage.setItem(STALE_CHUNK_RELOAD_KEY, String(Date.now()))
-    return true
+    window.sessionStorage.setItem(STORAGE_KEY, String(Date.now()));
+    return true;
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -69,15 +73,15 @@ function claimTheReload(): boolean {
  */
 export function installStaleChunkReload(): () => void {
   const onPreloadError = (event: Event) => {
-    if (!claimTheReload()) return
+    if (!claimTheReload()) return;
     // Vite's default is to rethrow onto the window. Taken only when the
     // reload replaces it; an error nobody is acting on is left to surface,
     // because that one is a report about a build rather than a stale tab.
-    event.preventDefault()
-    window.location.reload()
-  }
-  window.addEventListener('vite:preloadError', onPreloadError)
-  return () => window.removeEventListener('vite:preloadError', onPreloadError)
+    event.preventDefault();
+    window.location.reload();
+  };
+  window.addEventListener("vite:preloadError", onPreloadError);
+  return () => window.removeEventListener("vite:preloadError", onPreloadError);
 }
 
 /**
@@ -89,5 +93,5 @@ export function installStaleChunkReload(): () => void {
  * host has to remember to install it.
  */
 export function useStaleChunkReload(): void {
-  useEffect(() => installStaleChunkReload(), [])
+  useEffect(() => installStaleChunkReload(), []);
 }
