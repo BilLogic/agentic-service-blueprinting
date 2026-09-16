@@ -10,11 +10,16 @@
 # on disk falls through to the fallback below and is answered with the app
 # shell — a 200, and text/html, where a script was asked for. The browser
 # reports that as a module it could not import, naming the import site and not
-# the missing file. `:splat` keeps the real path, so an asset that IS there is
-# still served from it; only the ones that are not answer 404.
+# the missing file.
 #
-# ORDER IS THE RULE: below the fallback this block is never reached, and the
-# defect is back wearing the fix. `npm run check:hosting` holds it.
+# An asset that IS there is still served because a host does not shadow
+# existing content with a NON-FORCED rule: the file wins, and this rule is
+# consulted only where there is no file. `:splat` is not what does that — it
+# keeps the target honest — so `force` must never be added here. Forced, this
+# rule answers 404 for every asset the site has.
+#
+# ORDER IS THE RULE TOO: below the fallback this block is never reached, and
+# the defect is back wearing the fix. `npm run check:hosting` holds both.
 [[redirects]]
   from = "/assets/*"
   to = "/assets/:splat"

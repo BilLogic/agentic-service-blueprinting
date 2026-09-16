@@ -2,8 +2,9 @@
 
 Hosting a static Vite app is generic agent competence; this file deliberately
 contains **only what's specific to blueprint deployments**. The template
-ships a ready `netlify.toml` (build command, `dist/` publish dir, SPA
-redirect, node version) as the worked example; hosts are interchangeable.
+ships a ready `netlify.toml` (build command, `dist/` publish dir, an
+`/assets/*` 404 above the SPA redirect, node version) as the worked example;
+hosts are interchangeable.
 
 ## ⚠ REQUIRED — public-exposure warning, BEFORE anything goes live
 
@@ -42,6 +43,12 @@ to `/index.html` (Netlify: `/* /index.html 200`, already in the template's
 `netlify.toml`; other hosts have equivalents). The app "works" from the root
 and breaks on every shared link — check a deep link after every first
 deploy on a new host.
+
+The rewrite goes BELOW an `/assets/*` → 404 rule, never above it: a catch-all
+that is reached first answers a missing hashed chunk with the app shell, and
+the browser reports that as a module it could not import rather than as a
+missing file. Building the equivalent pair on another host means building the
+order too.
 
 ## One site per locale
 
