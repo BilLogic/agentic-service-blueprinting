@@ -357,6 +357,38 @@ export function TabStrip({
             tabIndex={activeKey === null ? 0 : -1}
             onActivate={onBase}
           />
+          {/* The workspace's state, next to the workspace. Every badge in this
+              row qualifies the name to its left — which of the two worlds this
+              is, whether writes land, whether they will be refused — and they
+              used to sit under `ml-auto` with every open tab in between, where
+              a state and its subject were the two ends of the strip.
+
+              Inside the tablist rather than beside it, because the name is a
+              PERMANENT TAB and not a heading: a position after that tab is the
+              only place "beside the workspace" exists. They are spans, so the
+              roving-tabindex handler above — which walks `[role="tab"]` — does
+              not see them, and the index it maps onto `[base, ...tabs]` is
+              unchanged. `presentation` on the wrapper keeps the container out
+              of the tablist's owned children, whose only permitted role is
+              `tab`.
+
+              They scroll with the strip, and being the tab's next sibling they
+              trail it: a strip scrolled right loses the name before the state,
+              never the other way round.
+
+              `empty:hidden` because the row is rendered unconditionally and a
+              connected session has no badges in it. An empty div is still a
+              flex item, so the tablist's `gap-1` would space it on both sides
+              and leave a permanent gap between the workspace tab and the first
+              slice tab for every reader with a database. Same reason as
+              `PanelFooterHost`. */}
+          <div
+            data-workspace-badges=""
+            role="presentation"
+            className="flex shrink-0 items-center gap-2 empty:hidden"
+          >
+            <WorkspaceBadges />
+          </div>
       {tabs.map((tab) => {
         const key = tabKey(tab)
         const active = key === activeKey
@@ -424,11 +456,8 @@ export function TabStrip({
         )
       })}
         </div>
-        {/* Environment badges (authoring / edit preview) keep their home in
-            the top nav, at the quiet end of the strip. */}
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <JumpToSearch />
-          <WorkspaceBadges />
         </div>
         <DeleteSliceDialog
           slice={deleteTarget}
