@@ -1,12 +1,16 @@
 /**
- * The localStorage namespace this installation owns.
+ * The storage namespace this installation owns.
  *
  * A CONFIGURATION SEAM. Every key written to `window.localStorage` or
- * `window.sessionStorage` is prefixed, and the prefix names the INSTALLATION rather than the code: this
- * template ships as `sb-`, and an adopter gives its own installation a prefix of
- * its own. Two installations served from one origin would otherwise read each
- * other's settings, sessions and chat placement, so the prefix is the one
- * thing about a stored key that must differ per install.
+ * `window.sessionStorage`, and the NAME of every cookie set on
+ * `document.cookie`, is prefixed, and the prefix names the INSTALLATION rather
+ * than the code: this template ships as `sb-`, and an adopter gives its own
+ * installation a prefix of its own. Two installations served from one origin
+ * would otherwise read each other's settings, sessions, chat placement and
+ * remembered sidebar state, so the prefix is the one thing about a stored name
+ * that must differ per install. Three stores, one rule: a cookie jar is shared
+ * per origin exactly as a storage area is, and nothing about the argument
+ * changes for it.
  *
  * That is why this module exists instead of a string literal at each call
  * site. Every module that stores anything imports `storageKey` from here,
@@ -18,8 +22,10 @@
  * nothing else until one key was found outside the seam — a bare literal no
  * reader of this header could have noticed, from a module that read back
  * everything it wrote. The check fails any key reaching `localStorage` or
- * `sessionStorage` that `storageKey` did not build; the account of what it
- * catches, what it cannot see, and what went wrong is in its own header.
+ * `sessionStorage`, and any cookie name reaching `document.cookie`, that
+ * `storageKey` did not build; the account of what it catches, what it cannot
+ * see, and what went wrong — twice, the second time one store over — is in its
+ * own header.
  *
  * ── HOW AN ADOPTER SETS IT, AND WHY IT IS NOT A `DeploymentConfig` FIELD ───
  *
@@ -31,11 +37,13 @@
  * A deployment that MOUNTS this package cannot edit a constant inside a module
  * it imports — by design it imports the template rather than overlaying it —
  * so it calls `configureStorageNamespace('acme-')` instead, and it must do so
- * BEFORE it imports the app. That ordering is not a preference. Eight modules
+ * BEFORE it imports the app. That ordering is not a preference. Nine modules
  * compute their key at MODULE SCOPE (`agent/settings.ts`, `agent/sessions.ts`,
  * `agent/placement.ts`, `devPortal.ts`, `mobilePathMemory.ts`,
  * `slideSheetHeight.ts`, `staleChunkReload.ts`,
- * `components/editor/EditorShell.tsx`), and five of those go further and READ
+ * `components/editor/EditorShell.tsx`, `components/ui/sidebar.tsx` — the last
+ * of those a vendored primitive, whose own divergence comment says why the
+ * seam reaches into a generated file — and five of those go further and READ
  * localStorage at module scope to seed a `useSyncExternalStore` snapshot
  * (`agent/settings.ts`, `agent/sessions.ts`, `agent/placement.ts`,
  * `devPortal.ts`, `slideSheetHeight.ts`). All
@@ -104,7 +112,7 @@ export function configureStorageNamespace(next: string): void {
   prefix = next
 }
 
-/** A namespaced localStorage key — `storageKey('agent-settings')`. */
+/** A namespaced key or cookie name — `storageKey('agent-settings')`. */
 export function storageKey(name: string): string {
   observed = true
   return `${prefix}${name}`

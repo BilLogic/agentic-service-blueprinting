@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Every key the application stores is built by the namespace seam.
+ * Every name the application stores under is built by the namespace seam.
  *
  * `src/lib/storageNamespace.ts` opens with the rule and the reason: the prefix
  * on a stored key names the INSTALLATION rather than the code, so two
@@ -20,6 +20,13 @@
  * literal key WORKS — the module that writes it reads it back — and only a
  * second installation on the origin ever finds out. That is the class of
  * defect a guard is for: a wrong key that throws is found in an afternoon.
+ *
+ * IT HAPPENED A SECOND TIME, one store over, and for the same reason: the
+ * check's subject was the two web-storage APIs, so `sidebar_state` — the
+ * cookie the vendored sidebar writes — was outside both the seam and this
+ * script while every stated rule read as if it were covered. A cookie jar is
+ * shared per ORIGIN exactly as a storage area is, so cookies are a third store
+ * here rather than a separate rule somewhere else.
  *
  * ── The subject ────────────────────────────────────────────────────────────
  *
@@ -44,9 +51,20 @@
  * defect's own account of itself names the literal it used to write, and a
  * sentence about a key is not a key.
  *
+ * A cookie's key is its NAME — everything before the first `=` in what
+ * `document.cookie` is assigned — and not the whole expression. One write
+ * carries a value and then a path and a max-age, and those attributes are not
+ * keys: an installation's prefix has exactly one thing to reach, so that is
+ * what is judged. The name may be written into the assignment
+ * (`` `sidebar_state=${open}` ``, `'sidebar_state=true; path=/'`) or
+ * interpolated at its head (`` `${SIDEBAR_COOKIE_NAME}=${open}` ``), which are
+ * the two shapes a reader writes; a name assembled any other way is refused
+ * below rather than guessed at. Reading the jar is not a write and names no
+ * cookie, so `document.cookie` as a value is not read.
+ *
  * Two spellings pass, and they are the two the tree uses: `storageKey('…')` at
  * the call site, and an identifier declared ONCE in the file as
- * `storageKey('…')` — the module-scope idiom eight modules share. Every other
+ * `storageKey('…')` — the module-scope idiom nine modules share. Every other
  * key expression at a store call fails, including one assembled some third way
  * and one this check simply cannot follow, and that strictness is deliberate: a
  * guard that accepted what it could not read would accept the next literal
@@ -68,6 +86,12 @@
  * they name the store and the method where a reader of the line expects them.
  * A store handed to a function as an argument remains out of reach, and would
  * be a reason to reach for a parser rather than to widen these patterns.
+ *
+ * The jar is blind the same way and refused the same way: `document.cookie`
+ * and `document['cookie']` are read, and a `.cookie` write through anything
+ * else — `const jar = document` — is DENIED where the write is, because a name
+ * this script cannot resolve to `document` is a write whose cookie name it
+ * cannot judge.
  */
 import { sweep } from './sweep.mjs'
 import { whenRun } from './verdict.mjs'
@@ -141,10 +165,21 @@ const STORE_CALL =
   /\b(?:local|session)Storage\b(?:['"]\s*\])?\s*(?:\.\s*(?:get|set|remove)Item|\[\s*['"](?:get|set|remove)Item['"]\s*\])\s*\(\s*([^,)]+)/g
 
 /**
+ * A write to the cookie jar, and the expression it is handed.
+ *
+ * The jar is `document.cookie`, named plainly or through a computed member for
+ * the reason the stores above are. `=` is looked past but `==` is not: a
+ * comparison against the jar reads it rather than setting anything.
+ */
+const COOKIE_WRITE =
+  /\bdocument\s*(?:\.\s*cookie|\[\s*['"]cookie['"]\s*\])\s*=(?!=)\s*([^\n]+)/g
+
+/**
  * A store taken as a VALUE rather than called: bound to a name, or picked
- * apart. The call that follows is beyond every pattern here, so it is refused
- * where it is created instead — coarse on purpose, and a refusal rather than a
- * silence.
+ * apart — and the cookie jar reached through a name rather than through
+ * `document`. The write or call that follows is beyond every pattern here, so
+ * it is refused where it appears instead — coarse on purpose, and a refusal
+ * rather than a silence.
  */
 const ESCAPED_STORE = [
   // The narrower rule first: a destructuring is also an assignment, and one
@@ -156,6 +191,10 @@ const ESCAPED_STORE = [
   {
     label: 'a store bound to a name, whose keys nothing here can follow',
     test: /=\s*(?:(?:window|globalThis)\s*(?:\.\s*|\[\s*['"]))?(?:local|session)Storage\b(?:['"]\s*\])?\s*(?![.[(])/,
+  },
+  {
+    label: 'a cookie written through a document this check cannot name',
+    test: /(?<!\bdocument\s*)\.\s*cookie\s*=(?!=)/,
   },
 ]
 
@@ -177,6 +216,25 @@ export function balanced(expression) {
   const opened = (expression.match(/\(/g) ?? []).length
   const closed = (expression.match(/\)/g) ?? []).length
   return expression + ')'.repeat(Math.max(0, opened - closed))
+}
+
+/**
+ * The cookie NAME inside what `document.cookie` was assigned, or `null` where
+ * this check cannot see one.
+ *
+ * A name written into the assignment comes back QUOTED, whether or not the
+ * quotes were around it in the source: the judgement below distinguishes a
+ * literal from an expression by its first character, and `'sidebar_state'` is
+ * also how the name reads back at a reader — as a key to route through the
+ * seam. A name interpolated at the head of the template comes back as the
+ * expression it is, to be resolved like any other.
+ */
+export function cookieNameIn(assignment) {
+  const interpolated = assignment.match(/^`\$\{([^}]*)\}=/)
+  if (interpolated) return interpolated[1].trim()
+  const written = assignment.match(/^`([^`$=]*)=/) ?? assignment.match(/^['"]([^'"=]*)=/)
+  if (written) return `'${written[1]}'`
+  return null
 }
 
 /**
@@ -202,21 +260,37 @@ export function bareKeysIn(source) {
   const lineOf = (index) => code.slice(0, index).split('\n').length
 
   const found = []
-  for (const match of code.matchAll(STORE_CALL)) {
-    const expression = balanced(match[1].trim())
+
+  /**
+   * Why `expression` is not a name the seam built, or `null` where it is. One
+   * judgement for all three stores: what makes a key bare is the same fact
+   * whether a store call or a cookie write received it.
+   */
+  const judgeName = (expression) => {
     const resolved =
       IDENTIFIER.test(expression) && declared.has(expression)
         ? declared.get(expression)
         : expression
-    if (resolved !== null && NAMESPACED.test(resolved)) continue
-    found.push({
-      line: lineOf(match.index),
-      expression,
-      reason:
-        resolved !== null && LITERAL.test(resolved)
-          ? 'a bare literal'
-          : 'not built by storageKey()',
-    })
+    if (resolved !== null && NAMESPACED.test(resolved)) return null
+    return resolved !== null && LITERAL.test(resolved)
+      ? 'a bare literal'
+      : 'not built by storageKey()'
+  }
+
+  for (const match of code.matchAll(STORE_CALL)) {
+    const expression = balanced(match[1].trim())
+    const reason = judgeName(expression)
+    if (reason) found.push({ line: lineOf(match.index), expression, reason })
+  }
+
+  // The cookie jar, whose key is the name at the head of the assignment. An
+  // assignment with no name this check can find is refused rather than read
+  // past, for the reason an unfollowable key expression is.
+  for (const match of code.matchAll(COOKIE_WRITE)) {
+    const assignment = match[1].trim()
+    const name = cookieNameIn(assignment)
+    const reason = name === null ? 'not built by storageKey()' : judgeName(name)
+    if (reason) found.push({ line: lineOf(match.index), expression: name ?? assignment, reason })
   }
 
   // The stores taken as values, line by line — a line is the unit here because
@@ -232,8 +306,8 @@ export function bareKeysIn(source) {
 }
 
 /**
- * Every key the application stores that the seam does not build, and how many
- * modules were read to find them.
+ * Every name the application stores under that the seam does not build, and
+ * how many modules were read to find them.
  *
  * `read` is the count handed to the verdict: a file listed and then gone
  * between the listing and the read is skipped, and a sweep where every read
@@ -245,7 +319,7 @@ export function judgeKeys(root = REPO_ROOT) {
     subject: 'app',
     root,
     where: isScanned,
-    what: 'application module that could store a key',
+    what: 'application module that could store a key or set a cookie',
   })
   const keys = []
   let read = 0
@@ -266,21 +340,21 @@ export function findings(root = REPO_ROOT) {
 export function judge() {
   const { keys, read } = judgeKeys()
   const judgement = {
-    what: 'application module that could store a key',
+    what: 'application module that could store a key or set a cookie',
     count: read,
     line:
-      `check-storage-keys: every key stored by ${read} application modules is` +
-      ' built by storageKey().',
+      `check-storage-keys: every key and cookie name written by ${read}` +
+      ' application modules is built by storageKey().',
   }
   if (keys.length === 0) return judgement
   return {
     ...judgement,
-    opening: `${keys.length} stored key${keys.length === 1 ? '' : 's'} that an installation's own prefix does not reach:\n`,
+    opening: `${keys.length} stored name${keys.length === 1 ? '' : 's'} that an installation's own prefix does not reach:\n`,
     findings: keys.map(({ path, line, expression, reason }) => `  ${path}:${line}  ${expression} — ${reason}`),
     closing:
-      "\nBuild the key with storageKey('…') from src/lib/storageNamespace.ts, whose" +
+      "\nBuild the name with storageKey('…') from src/lib/storageNamespace.ts, whose" +
       '\nheader says why the prefix names the installation rather than the code. A' +
-      '\nkey that moves this way is read once as absent, so say so in the changeset.' +
+      '\nname that moves this way is read once as absent, so say so in the changeset.' +
       '\n\n  npm run check:storage-keys\n',
   }
 }

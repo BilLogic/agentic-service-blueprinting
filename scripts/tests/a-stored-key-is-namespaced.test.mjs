@@ -190,3 +190,71 @@ test('a truncated key expression is printed with its parentheses closed', () => 
     ["namespacedKey('third')"],
   )
 })
+
+/* --------------------------------------------------------------- cookies */
+
+test('a bare cookie name is caught, and the name is the subject rather than the write', () => {
+  // The write carries a path and a max-age, which are attributes rather than
+  // keys: everything before the first `=` is the one thing a prefix reaches.
+  const found = bareKeysIn(
+    'function remember(open) {\n' +
+      '  document.cookie = `sidebar_state=${open}; path=/; max-age=604800`\n' +
+      '}\n',
+  )
+  assert.deepEqual(
+    found.map(({ line, expression, reason }) => ({ line, expression, reason })),
+    [{ line: 2, expression: "'sidebar_state'", reason: 'a bare literal' }],
+  )
+})
+
+test('a cookie written as one quoted string is read the same way', () => {
+  assert.deepEqual(reasons(`document.cookie = 'sidebar_state=true; path=/'\n`), [
+    'a bare literal',
+  ])
+})
+
+test('a cookie name held in a module constant is caught too', () => {
+  const source =
+    'const COOKIE_NAME = "sidebar_state"\n' +
+    'document.cookie = `${COOKIE_NAME}=${open}; path=/`\n'
+  assert.deepEqual(expressions(source), ['COOKIE_NAME'])
+  assert.deepEqual(reasons(source), ['a bare literal'])
+})
+
+test('a cookie name off the seam passes, at the call site and through a constant', () => {
+  assert.deepEqual(
+    bareKeysIn("document.cookie = `${storageKey('sidebar_state')}=${open}; path=/`\n"),
+    [],
+  )
+  assert.deepEqual(
+    bareKeysIn(
+      "const COOKIE_NAME = storageKey('sidebar_state')\n" +
+        'document.cookie = `${COOKIE_NAME}=${open}; path=/; max-age=${AGE}`\n',
+    ),
+    [],
+  )
+})
+
+test('a computed jar is a cookie write', () => {
+  assert.deepEqual(reasons('document["cookie"] = `sidebar_state=${open}`\n'), [
+    'a bare literal',
+  ])
+})
+
+test('a cookie name assembled some third way is refused rather than missed', () => {
+  assert.deepEqual(reasons('document.cookie = name + "=" + String(open)\n'), [
+    'not built by storageKey()',
+  ])
+})
+
+test('a jar reached through a name is refused where the write is', () => {
+  // `const jar = document` puts the write beyond the pattern that reads one,
+  // so the write itself says what it wants instead of passing unread.
+  assert.deepEqual(reasons('const jar = document\njar.cookie = `${COOKIE_NAME}=1`\n'), [
+    'a cookie written through a document this check cannot name',
+  ])
+})
+
+test('reading the jar names no cookie, so it is not a write', () => {
+  assert.deepEqual(bareKeysIn('const jar = document.cookie\n'), [])
+})

@@ -23,17 +23,34 @@ import {
 } from "@/components/ui/tooltip"
 import { PanelLeftIcon } from "lucide-react"
 import { ground } from "@/lib/ground"
+import { storageKey } from "@/lib/storageNamespace"
 
-const SIDEBAR_COOKIE_NAME = "sidebar_state"
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 /*
  * DIVERGENCE from the vendored source, allowed only with a stated reason.
- * Widths are rem literals here so this file does not import `@/lib/layoutTokens`
- * — vendored primitives stay pristine of product imports. The pixel owners are
+ *
+ * The cookie name is built by `storageKey`, so the state this provider
+ * remembers lands in the namespace this installation owns. Upstream writes
+ * `sidebar_state` bare, and a cookie jar is shared per ORIGIN exactly as a
+ * storage area is: two installations served from one origin wrote that single
+ * name, so collapsing the sidebar in one collapsed it in the other. The prefix
+ * is the one value this file cannot keep a copy of — a prefix written down
+ * twice is the defect `src/lib/storageNamespace.ts` exists to prevent — so
+ * unlike the widths below there is no literal that would do, and the write
+ * lives inside this provider's own `setOpen`, where no prop or wrapper one
+ * layer up can rename it. `npm run check:storage-keys` reads cookies as a
+ * third store, which is what makes this divergence survive a re-vendor:
+ * `npx shadcn add sidebar` restores the bare name and the guard goes red
+ * naming this line, rather than the sharing coming back unnoticed.
+ *
+ * Widths are rem literals here so this file does not import
+ * `@/lib/layoutTokens` — vendored primitives stay pristine of product imports
+ * wherever a literal can carry the value. The pixel owners are
  * `SIDEBAR_DEFAULT_WIDTH` (288 → 18rem) and `RAIL_WIDTH` (48 → 3rem) in that
  * module; EditorShell reads those for the drag clamp. Keep the rem strings in
  * lockstep when those pixels move.
  */
+const SIDEBAR_COOKIE_NAME = storageKey("sidebar_state")
+const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "18rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
