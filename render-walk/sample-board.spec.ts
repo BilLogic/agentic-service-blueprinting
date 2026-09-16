@@ -383,6 +383,27 @@ test.describe('the bundled sample board', () => {
     ).toBeVisible()
     assertNoProblems()
 
+    // The palette, opened by its chord and driven by the keyboard alone.
+    // With an empty query its first row is a scenario, so Enter has to land
+    // the board's address on one — which is the whole claim the surface
+    // makes and the one thing no render test of it can see.
+    await test.step('the Jump to… palette opens on ⌘K and Enter opens its first row', async () => {
+      const addressBefore = page.url()
+      await page.keyboard.press('ControlOrMeta+k')
+      const palette = page.getByRole('dialog', { name: 'Jump to…' })
+      await expect(palette, 'the palette opened, and it is named').toBeVisible()
+      await page.keyboard.press('Enter')
+      await expect(palette).toBeHidden()
+      await expect
+        .poll(
+          () => new URLSearchParams(new URL(page.url()).search).get(PARAM.scenario),
+          { message: 'Enter on the first row opened a scenario' },
+        )
+        .not.toBeNull()
+      expect(page.url(), 'the address moved').not.toBe(addressBefore)
+      assertNoProblems()
+    })
+
     const views: View[] = []
     for (const phase of phases) {
       for (const scenario of phase.scenarios) {

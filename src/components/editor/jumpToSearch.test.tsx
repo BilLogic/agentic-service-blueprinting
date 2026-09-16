@@ -10,6 +10,10 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 const openScenario = vi.hoisted(() => vi.fn())
 const requestScenarioCellFocus = vi.hoisted(() => vi.fn())
 const goLanding = vi.hoisted(() => vi.fn())
+const canvasBlueprintsCalls = vi.hoisted(() => [] as string[][])
+
+const LONG_CELL_NAME =
+  'Welcome the student with a line long enough that no row could hold it'
 
 vi.mock('@/contexts/EditorContext', () => ({
   useEditor: () => ({
@@ -28,29 +32,35 @@ vi.mock('@/contexts/EditorContext', () => ({
 }))
 
 vi.mock('@/hooks/useCanvasBlueprints', () => ({
-  useCanvasBlueprints: () => ({
-    blueprintsByScenario: new Map([
-      [
-        'scenario-1',
-        {
-          path: { id: 'p1', name: 'Happy Path', kind: 'happy' },
-          lanes: [{ id: 'lane-1', name: 'Frontstage', position: 0 }],
-          steps: [{ id: 'step-1', name: 'Arrive', position: 0 }],
-          cells: [
-            {
-              id: 'cell-1',
-              lane_id: 'lane-1',
-              step_id: 'step-1',
-              content: 'Welcome the student',
-              frame: null,
-              summary: null,
-            },
-          ],
-          dependencies: [],
-        },
-      ],
-    ]),
-  }),
+  useCanvasBlueprints: (scenarioIds: string[]) => {
+    canvasBlueprintsCalls.push(scenarioIds)
+    return {
+      blueprintsByScenario:
+        scenarioIds.length > 0
+          ? new Map([
+              [
+                'scenario-1',
+                {
+                  path: { id: 'p1', name: 'Happy Path', kind: 'happy' },
+                  lanes: [{ id: 'lane-1', name: 'Frontstage', position: 0 }],
+                  steps: [{ id: 'step-1', name: 'Arrive', position: 0 }],
+                  cells: [
+                    {
+                      id: 'cell-1',
+                      lane_id: 'lane-1',
+                      step_id: 'step-1',
+                      content: LONG_CELL_NAME,
+                      frame: null,
+                      summary: null,
+                    },
+                  ],
+                  dependencies: [],
+                },
+              ],
+            ])
+          : new Map(),
+    }
+  },
 }))
 
 vi.mock('@/lib/canvasFocusCells', () => ({
@@ -84,6 +94,7 @@ afterEach(() => {
   openScenario.mockClear()
   requestScenarioCellFocus.mockClear()
   goLanding.mockClear()
+  canvasBlueprintsCalls.length = 0
 })
 
 /**
@@ -97,28 +108,90 @@ function mount() {
   )
 }
 
+/**
+ * Open the palette from the top-nav field and hand back its search input.
+ */
+async function openPalette(): Promise<HTMLElement> {
+  fireEvent.click(screen.getAllByRole('button', { name: 'Jump to…' })[0]!)
+  return await screen.findByPlaceholderText('Jump to…')
+}
+
 describe('JumpToSearch', () => {
-  it('opens from the field, searches, and selects a scenario', async () => {
+  it('opens from the field, searches, and selects a scenario through the seam', async () => {
     mount()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Jump to…' })[0]!)
-    const search = await screen.findByPlaceholderText('Jump to…')
+    const search = await openPalette()
     fireEvent.change(search, { target: { value: 'Before Students' } })
     fireEvent.click(await screen.findByText('Before Students Join'))
-    expect(openScenario).toHaveBeenCalledWith('scenario-1')
+    expect(openScenario).toHaveBeenCalledWith('scenario-1', { closeNav: true })
     expect(requestScenarioCellFocus).not.toHaveBeenCalled()
   })
 
   it('selects a cell through the scenario seam and the cell-focus pipeline', async () => {
     mount()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Jump to…' })[0]!)
-    const search = await screen.findByPlaceholderText('Jump to…')
+    const search = await openPalette()
     fireEvent.change(search, { target: { value: 'Welcome the student' } })
-    fireEvent.click(await screen.findByText('Welcome the student'))
-    expect(openScenario).toHaveBeenCalledWith('scenario-1')
+    fireEvent.click(await screen.findByText(LONG_CELL_NAME))
+    expect(openScenario).toHaveBeenCalledWith('scenario-1', { closeNav: true })
     expect(requestScenarioCellFocus).toHaveBeenCalledWith(
       'scenario-1',
       'cell-1',
       { openDetail: true },
     )
+  })
+
+  it('names its dialog for a screen reader', async () => {
+    mount()
+    await openPalette()
+    expect(screen.getByRole('dialog', { name: 'Jump to…' })).toBeTruthy()
+  })
+
+  it('holds no cells until a query is typed, and asks for none either', async () => {
+    mount()
+    const search = await openPalette()
+    expect(screen.queryByText(LONG_CELL_NAME)).toBeNull()
+    expect(canvasBlueprintsCalls.every((ids) => ids.length === 0)).toBe(true)
+
+    fireEvent.change(search, { target: { value: 'W' } })
+    expect(await screen.findByText(LONG_CELL_NAME)).toBeTruthy()
+    expect(canvasBlueprintsCalls.at(-1)).toEqual(['scenario-1'])
+  })
+
+  it('draws one line per row: the name truncates and the badge does not', async () => {
+    mount()
+    const search = await openPalette()
+    fireEvent.change(search, { target: { value: 'W' } })
+    const name = await screen.findByText(LONG_CELL_NAME)
+    expect(name.className).toContain('truncate')
+    expect(name.className).toContain('min-w-0')
+    const badge = screen.getByText('Setup › Before Students Join')
+    expect(badge.className).toContain('shrink-0')
+  })
+
+  it('clears the query on the first Escape and closes on the second', async () => {
+    mount()
+    const search = await openPalette()
+    fireEvent.change(search, { target: { value: 'Before' } })
+    expect((search as HTMLInputElement).value).toBe('Before')
+
+    fireEvent.keyDown(search, { key: 'Escape' })
+    expect((search as HTMLInputElement).value).toBe('')
+    expect(screen.queryByRole('dialog', { name: 'Jump to…' })).toBeTruthy()
+
+    fireEvent.keyDown(search, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Jump to…' })).toBeNull()
+  })
+
+  it('leaves ⌘K alone while a text field has focus', async () => {
+    mount()
+    const field = document.createElement('input')
+    document.body.append(field)
+    field.focus()
+    fireEvent.keyDown(window, { key: 'k', metaKey: true })
+    expect(screen.queryByPlaceholderText('Jump to…')).toBeNull()
+
+    field.blur()
+    field.remove()
+    fireEvent.keyDown(window, { key: 'k', metaKey: true })
+    expect(await screen.findByPlaceholderText('Jump to…')).toBeTruthy()
   })
 })

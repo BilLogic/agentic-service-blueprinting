@@ -87,8 +87,16 @@ that renders a blueprint. What a *phone* does with the same canvas is
 The top nav's right cluster includes **Jump to…** (`JumpToSearch`): a labelled
 field with a ⌘K hint at desktop widths, collapsing to an icon below `md`. It
 opens a command dialog grouped as Scenarios, Cells and Actions. Selecting a
-scenario goes through the editor's `openScenario` seam; selecting a cell opens
-that cell's panel after the same seam.
+scenario goes through the editor's `openScenario` seam with `closeNav`, so the
+phone's drawer shuts behind the move; selecting a cell opens that cell's panel
+after the same seam.
+
+The dialog follows Supabase's command menu — the structure is stated in
+`ui/command.tsx`'s divergence header. Three behaviours are worth knowing:
+the Cells group is empty until the reader has typed, because those rows are a
+query per scenario and an unopened palette should cost nothing; Escape empties
+the field before it closes the dialog; and ⌘K is ignored while a text field has
+focus, so the chord never eats a character.
 
 ## The click grammar
 
