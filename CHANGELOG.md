@@ -1,5 +1,261 @@
 # Changelog
 
+## 1.44.24
+
+**A tab that outlived a deploy recovers itself, a missing chunk says so, and the
+identity fill is the accent rather than a grey of its own.** The failure that
+started this release was one error message — "Failed to fetch dynamically
+imported module" — which named an import and not the missing file. Three things
+were behind it: the app had nothing that acted on a chunk that never arrived,
+the template's host configuration answered a missing hashed asset with the app
+shell at a 200, and the only error boundary sat below eleven providers, so the
+throw that a rejected blueprint registry raises by design went to a blank
+document. All three are closed. Alongside them, every key the browser stores is
+built by the namespace seam and every stored value is read as what an older
+release might have written, the workspace's state sits beside the workspace's
+name as a badge rather than as loose words at the far end of the strip, and
+`--brand` derives from `--primary` with one optional dial per channel.
+
+**Upgrading a deployment:**
+
+- **Four identity surfaces change colour.** The cover CTA, the one prose link, a
+  switch that is on and the path selector's mark were a mid grey at 3.89:1 and
+  now wear whatever `--primary` resolves to. A deployment that had authored the
+  two `--brand-*` dials keeps its fill by declaring the same numbers per channel;
+  `references/customization.md` § Theming & branding is the recipe and
+  `docs/adr/0025-…` is the decision. A leftover `--brand-lightness` or
+  `--brand-chroma` declaration silently reinstates the old grey, so the absence
+  guard holds all three dial names on both sides of the seam — every stylesheet
+  under `src/styles`, and every custom property the app writes from TypeScript.
+- **The host configuration now ships the rules.** `netlify.toml` answers a
+  missing `/assets/*` name with a 404 above the single-page catch-all, and
+  `public/_headers` caches the hashed output for a year and nothing else. A
+  deployment that already added both to its own copy needs no change. `force`
+  must never be added to either rule: a forced rule answers 404 for every asset
+  the site has.
+- **Nothing in a host's entry file has to move.** The stale-tab listener and the
+  app-scoped boundary both hang off `App`, so they arrive with the pin. A host
+  that had been told to install its own boundary above `App` no longer needs one.
+- **Two stored values reset once, both harmless.** A slide-sheet height saved
+  before this release reads as absent, so the sheet opens at its default until
+  the next drag. The sidebar's `sidebar_state` cookie is deleted rather than
+  namespaced — nothing read it, so nothing resets.
+- **Three guards a fork will meet.** `npm run check:storage-keys` (keys and
+  cookie names), `npm run check:hosting` (rule order, no forced rule, the long
+  cache over hashed output alone), and the brand dials' absence. Setting a brand
+  dial deliberately turns four assertions red; the recipe lists them.
+
+### Patch Changes
+
+- a7ee0d9: A throw above the editor is a message a reader can act on, not a white page.
+  The app's only error boundary sat below eleven providers, so anything that
+  failed outside it — the deployment seam, the database client, the active
+  service, the components that reach the address bar, the notice strip — took the
+  document to blank with the error somewhere only a developer with the console
+  open would find it. `App` now opens with the same boundary in an `app` scope,
+  above everything it renders.
+
+  One of those throws is deliberate and is the one this closes. A blueprint
+  registry supplied as a lazy loader is a second chunk boundary that resolves at
+  boot, and a loader that rejects is rethrown rather than falling back to the
+  package's own board — a deployment's chrome around a canvas its identifiers
+  cannot fill is the silent version of the failure. That throw now lands on a
+  card naming the failure and offering a reload, with the error still logged.
+
+  It is one class and one design, not a second surface: `EditorErrorBoundary`
+  takes a `scope`, and the two placements differ only in the sentence they show a
+  reader, because a view inside a working app can be navigated away from and a
+  start-up failure cannot. A deployment gets this by upgrading its pin; nothing
+  in a host's entry file has to change, and a host that had been told to install
+  a boundary of its own above `App` no longer needs one.
+
+- 2a960d0: A hashed chunk the deploy no longer ships answers 404, and the ones it does
+  ship are cached for a year.
+
+  `netlify.toml` held one redirect, the single-page catch-all, and a host takes
+  the first rule that matches — so a name under `/assets/` this deploy does not
+  have was answered with `index.html`: a 200, and `text/html`, where a script was
+  asked for. What the browser reports for that is a module it could not import,
+  naming the import site and not the missing file, which is why it reads as a
+  bundling problem for as long as anyone believes it. A `/assets/*` rule with a
+  404 sits above the catch-all now. An asset that IS there is still served
+  because a host does not shadow existing content with a non-forced rule — the
+  file wins, and the rule is consulted only where there is no file. `:splat` is
+  not what does that; it keeps the target honest, and `force` must never be added,
+  because a forced rule answers 404 for every asset the site has.
+
+  `public/_headers` gains `Cache-Control: public, max-age=31536000, immutable`
+  for `/assets/*`, and for nothing else. The content hash in the name is what
+  makes a year safe, and the shell is what delivers the new hashes — a shell
+  served from an old cache asks for chunks the site no longer has, which is the
+  same failure from the other side. The CSP block is untouched.
+
+  `npm run check:hosting` holds all of it: that the 404 precedes the catch-all, an
+  order a diff reads as correct either way; that neither rule is forced; that the
+  long cache covers the hashed output alone, in whichever of the two header
+  sources it was written and under whichever `*-Cache-Control` name; and that a
+  `public/_redirects` a repository started from this template adds — a file a host
+  reads BEFORE the configuration file — carries the same order.
+
+  A deployment that already added these two rules to its own copy of the host's
+  configuration needs no change — this is the template catching up with it.
+
+- 4836fac: A tab left open across a deploy recovers itself. The app is served as
+  content-hashed chunks, so a deploy renames them, and the first lazy import an
+  old tab asks for afterwards requests a file the new build never shipped. Until
+  now that surfaced as "Failed to fetch dynamically imported module" — an
+  uncaught error naming nothing a reader could do. The app root now listens for
+  Vite's `vite:preloadError` and reloads, which is the refresh the reader would
+  have done by hand.
+
+  The reload is spent once per browsing session, recorded in `sessionStorage`
+  before it navigates. A chunk can also be missing because the deployed build is
+  broken, and reloading into a broken build would fetch the same missing file and
+  reload again; one credit per tab is what keeps a recovery from becoming a loop.
+  The credit is never refunded on a later boot, because the error fires when a
+  reader opens a transcript — possibly an hour after the boot that would have
+  refunded it.
+
+  The template's one lazily loaded surface, the agent's markdown renderer, now
+  keeps its raw-text rendering when the chunk fails as well as while it loads:
+  Suspense only covers a pending import, so the rejection used to reach the
+  editor-wide boundary and replace the whole editor. A reader whose tab has already spent its reload still reads the
+  transcript, in plain text, until they refresh.
+
+  A deployment needs no change to get the listener: it hangs off `App`, which is
+  what a deployment mounts, so it arrives with the pin. Nothing in a host's
+  `main.tsx`, its headers or its redirects has to move. A host that supplies its
+  blueprint registry as a lazy loader still owns that second import's failure,
+  which is a throw rather than a fallback.
+
+- 369c344: Every key the browser stores now goes through the namespace seam, and every
+  stored value is read as what it might actually be rather than as what this
+  release would have written.
+
+  **Saved slide-sheet heights reset once.** The sheet's remembered height was the
+  one key written as a bare literal instead of being built by `storageKey()`, so
+  an installation that named its own storage prefix did not cover it and two
+  installations served from one origin resized each other's sheet. It takes the
+  prefix now, which MOVES the key: a height saved before this release is read
+  once as no height at all, and the sheet opens at its default until the next
+  drag. Nothing else is affected, and nothing has to be migrated.
+
+  **A malformed session no longer breaks the session filter.** The stored session
+  list was cast to its type with no check on the entries, so an entry written by
+  an older version with a renamed or dropped `title` survived the read — and the
+  filter lowercases that title on the first keystroke, which threw into the
+  editor boundary on every attempt until site data was cleared. The reader now
+  keeps the entries that carry an `id`, a `title` and a `createdAt` — the three
+  fields nothing can substitute for — so a list holding one without them reads as
+  if that entry were absent. A field that HAS an honest stand-in gets it instead
+  of costing the session: an entry that lost its `updatedAt` takes its
+  `createdAt`, the oldest date it can truthfully claim, which keeps the agent's
+  `list_sessions` from throwing on it while leaving the conversation openable.
+
+  The stored model overrides and API keys beside it are now taken only when they
+  are what they claim to be — a map of strings — and an entry saved under a
+  provider this build does not declare is kept, because a provider can come back
+  and the key under it should not go with the choice.
+
+  **A retired provider id reads as the default.** The stored agent provider was
+  read with a default but never checked against the ids this build declares. A
+  release that drops a provider leaves browsers holding its id — with a key saved
+  beside it, so the no-key gate passes — and the loop then indexes its adapter
+  map with a name it has no entry for and sends on `undefined`. The id is
+  validated where it is read, and the adapter map is keyed by the provider type
+  rather than by `string`, so the other end of the same defect — a provider
+  offered with no adapter behind it — is now a compile error.
+
+  A new guard, `npm run check:storage-keys`, holds the first of those for good:
+  no key reaching `localStorage` or `sessionStorage` from the application is a
+  bare literal. A deployment needs no change for any of this — the readers are
+  the app's own, and they arrive with the pin.
+
+- 92fd2e5: The identity fill derives from the action fill, with one optional dial per
+  channel.
+
+  `--brand` was its own pair of dials, and the only values that pair ever shipped
+  were `--brand-lightness: 0.594` at `--brand-chroma: 0` in both theme files — a
+  mid grey, worn by the cover CTA under a `text-sm` label at 3.89:1, on the
+  lightness `semantic.css` itself names as the worst ground either polarity of ink
+  has. It is now `oklch(from var(--primary) var(--brand-lightness, l)
+var(--brand-chroma, c) var(--brand-hue, h))`, and neither deleted dial is
+  declared anywhere.
+
+  **The four identity surfaces change appearance.** The cover CTA, the one prose
+  link, a switch that is on and the path selector's mark were a mid grey and are
+  now whatever `--primary` resolves to — near-black in light, near-white in dark,
+  the same colour the filled control wears. An unbranded template has one accent
+  rather than two set to different greys, and the identity fill now inverts with
+  the theme because it inherits an accent that has to.
+
+  **Customising brand is one dial per channel.** `--brand-hue` for a different
+  hue, `--brand-chroma` to tint, `--brand-lightness` to move the fill, declared in
+  both theme blocks; each takes exactly its channel off the accent and the other
+  two keep following it. Brand also gains a hue dial it never had — the pair it
+  replaces interpolated `var(--primary-hue)`, so the axis an identity most often
+  wants to move was the one axis it could not. The recipe is
+  `references/customization.md` § Theming & branding, and the decision is
+  `docs/adr/0025-brand-derives-from-primary-with-one-dial-per-channel.md`.
+
+  A deployment that had already set the two dials to something of its own keeps
+  the fill it authored by renaming them: the same numbers, read per channel over
+  the accent rather than as a triple beside it. Setting a dial then turns four
+  guards red on purpose, and `references/customization.md` lists them — the
+  absence guard, the byte-identity assertion, the three "declared in both theme
+  files" rosters, and the gamut ceiling if the chroma overshoots it. The absence
+  guard is the point rather than a formality: `var(--brand-lightness, l)` reaches
+  its fallback only while nothing declares the dial, so a leftover declaration
+  reinstates the old grey with no error and nothing on screen naming the line that
+  did it. It holds the three exact dial names on both sides of the seam — every
+  stylesheet under `src/styles`, and every custom property this app writes from
+  TypeScript, because an inline property on the root element outranks every
+  stylesheet selector there is.
+
+- 3653d27: The vendored sidebar no longer writes an un-namespaced cookie that nothing
+  reads, and `npm run check:storage-keys` now covers cookie names as a third
+  store beside `localStorage` and `sessionStorage`.
+
+  The sidebar primitive set `sidebar_state` on every toggle, which is how
+  upstream tells a SERVER rendering the next request what to pass `defaultOpen`.
+  Nothing in this package is that server: it renders in the browser, no module
+  reads the cookie, and the sidebar's collapse is the editor shell's own state.
+  So the write left a bare name in a cookie jar every installation on an origin
+  shares, for no reader — and it was the one name in the app that the namespace
+  seam did not build. It is deleted rather than namespaced, and the guard now
+  sweeps the generated primitives directory for cookie names, so a re-vendor that
+  restores the write goes red.
+
+  Nothing an installation can see changes: no state was remembered before this
+  release, so none resets, and a deployment needs no change.
+
+- 75a25a3: The workspace indicator is a badge, and it sits beside the name it qualifies.
+
+  "sample data" was a hand-rolled span carrying badge geometry — `rounded-md
+px-2 py-1 text-xs text-muted-foreground` — and no badge. Tailwind's `border`
+  utility was not among those classes, so the element computed to
+  `border-width: 0` over a transparent fill and the words read as loose text in
+  the chrome rather than as a piece of state. It is now `Badge` on the `default`
+  variant, which is written for exactly this job: page-adjacent fill, caption
+  ink, the control edge. Not `outline` — that variant draws `--border`, the token
+  every quiet edge in the app shares, and it measures weaker than `--input`
+  against a card in both themes by construction, so the only way to make it
+  carry a badge would be to strengthen every quiet edge in the app.
+
+  The row also moved. Every badge in it qualifies the workspace — which of the
+  two worlds this board is, whether writes land, whether they will be refused —
+  and all of them sat under `ml-auto` at the far end of the tab strip, with every
+  open tab between a state and its subject. They now sit immediately after the
+  workspace tab. The workspace is a permanent tab rather than a heading, so a
+  position inside the tablist is the only place "beside the workspace" exists;
+  the badges are spans, so the strip's roving-tabindex handler, which walks
+  `[role="tab"]`, does not see them.
+
+  `authoring` keeps its amber and `edit preview` keeps its slate. Amber already
+  means "careful, this is live" on that row and the bundled sample carries no
+  risk at all — it is read-only by construction — so the descriptive state gets
+  the descriptive variant rather than a third alarm.
+
 ## 1.44.23
 
 **Every overview surface answers to a name, and a definition says its term
@@ -23,7 +279,6 @@ definition module.
 - The definition card's term attribute is `data-definition-term`.
 
 ### Patch Changes
-
 
 - e364a50: A definition popover prints its term in sentence case, and no definition
   repeats the word above it.
@@ -7964,8 +8219,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                              ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                              "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                                ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                                "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
