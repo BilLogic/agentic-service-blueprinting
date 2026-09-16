@@ -39,7 +39,7 @@
 
 @layer utilities {
   /*
-   * THE OVERVIEW'S FOUR SURFACES, as four rungs of one dial.
+   * THE OVERVIEW'S FOUR SURFACES, named off the one ladder there is.
    *
    * The overview nests four layers deep — the viewport ground, the phase
    * frame, a scenario panel on that frame, and the blueprint drawn inside the
@@ -50,31 +50,49 @@
    * inside it darker (.932 / .300) and the panel's own interior darker again
    * (.998 / .190 — brightest of the three in light, darkest in dark).
    *
-   * So they are `--background` plus N elevation steps, N counting outward-in.
-   * `--elevation-step` is signed per theme, which is what makes one set of
-   * declarations serve both: in dark each rung is 0.025 lighter than the layer
-   * it sits on, and in light every rung above the 0.995 canvas clips against
-   * white, so the layers flatten and their edges carry the nesting — light's
-   * own model, stated in `themes/light.css` and Supabase's before it.
+   * So the four are the semantic surface ladder, under names that say which
+   * layer of THIS board each one is. They mint no colour and no new ratio:
+   * `semantic.css` already derives `--canvas`, `--sidebar`, `--card` and
+   * `--popover` as the background plus `--elevation-step` times
+   * `--elevation-1/2/3`, so turning one of those ratio dials moves the board
+   * with the rest of the app. A second copy of that arithmetic here, with 1, 2
+   * and 3 typed in by hand, is a ladder that would drift off the app's.
+   *
+   * LIGHT DOES NOT CLIMB, so light does not pretend to. Its page sits at 0.995
+   * and `themes/light.css` says what that means: elevation there is carried by
+   * overlays and hairlines, not by a surface ladder. Arithmetic above the page
+   * would resolve past L 1 and render as the page — three no-ops written as
+   * three rungs. So light says its own arrangement outright: the panels are
+   * the card white they already are, and the GROUND is what steps, a step and
+   * a half below the page, landing on the .96 the `gray-300` pin it replaces
+   * measured. That is the ground the board needs and the frame's hairline is
+   * then a hairline on something.
    *
    * These four ARE declared at the root, unlike every other token this file
    * mints. The note above about root declarations is about the cell tokens,
    * whose consumers read a fallback as the default state. These have no
    * default state to shadow: they are the theme's answer, read directly, by
-   * the two rules below and by `blueprintTheme.ts` for the two layers the
-   * board composes at runtime.
+   * the rules below and by `blueprintTheme.ts` for the two layers the board
+   * composes at runtime.
    */
   :root {
-    --background-blueprint-canvas-ground: var(--background);
-    --background-blueprint-phase-frame: oklch(
-      from var(--background) calc(l + var(--elevation-step)) c h
+    --background-blueprint-canvas-ground: oklch(
+      from var(--background)
+        calc(l - var(--elevation-step) * var(--elevation-2)) c h
     );
-    --background-blueprint-scenario-panel: oklch(
-      from var(--background) calc(l + var(--elevation-step) * 2) c h
-    );
-    --background-blueprint-panel-interior: oklch(
-      from var(--background) calc(l + var(--elevation-step) * 3) c h
-    );
+    --background-blueprint-phase-frame: var(--background);
+    --background-blueprint-scenario-panel: var(--card);
+    --background-blueprint-panel-interior: var(--card);
+  }
+
+  /* Dark climbs, so dark takes the rungs: the page, then the three surfaces
+     `semantic.css` derives above it. Declared after the block above, which it
+     ties with on specificity. */
+  .dark {
+    --background-blueprint-canvas-ground: var(--canvas);
+    --background-blueprint-phase-frame: var(--sidebar);
+    --background-blueprint-scenario-panel: var(--card);
+    --background-blueprint-panel-interior: var(--popover);
   }
 
   /* Interactive overview / phase panels — pure CSS hover avoids stale React hover state. */
@@ -173,18 +191,34 @@
     opacity: 1;
   }
 
+  /* One rung further out, on the ladder the resting state sits on: a hover
+     that jumped to a ramp step switched colour systems under the pointer.
+     Light's rungs are already at the top of the range, so there the shadow
+     and the hairline carry the hover on their own. */
   [data-phase-scenario-panel]:hover:not([data-canvas-focus-active]),
   [data-phase-scenario-panel]:focus-within:not([data-canvas-focus-active]) {
-    background-color: var(--color-slate-600);
-    border-color: var(--color-slate-800);
+    background-color: oklch(
+      from var(--background-blueprint-scenario-panel)
+        min(1, l + var(--elevation-step)) c h
+    );
+    border-color: var(--border);
     /* Tailwind's scale via @apply, not a hand-mixed rgba: this design system
        registers no `--shadow-*` tokens (Supabase registers none either), so
        the scale IS the vocabulary — and a hover rule keyed on data attributes
        has no class list to put `shadow-md` in. */
     @apply shadow-md;
+    /* The interior follows its panel out by the same rung. The label rail and
+       the divider bands stay on the slate ladder for now — they are the
+       board's chrome rather than one of the four nested surfaces. */
     --background-blueprint-panel-label-rail: var(--color-slate-600);
-    --background-blueprint-panel-canvas: var(--color-slate-300);
-    --background-blueprint-panel-section: var(--color-slate-300);
+    --background-blueprint-panel-canvas: oklch(
+      from var(--background-blueprint-panel-interior)
+        min(1, l + var(--elevation-step)) c h
+    );
+    --background-blueprint-panel-section: oklch(
+      from var(--background-blueprint-panel-interior)
+        min(1, l + var(--elevation-step)) c h
+    );
     --background-blueprint-panel-divider: var(--color-slate-600);
   }
 
@@ -340,22 +374,14 @@
       :has([data-phase-scenario-panel]:focus-within)
     )
     [data-phase-frame] {
-    background-color: var(--color-slate-800);
-    border-color: var(--color-slate-900);
+    background-color: oklch(
+      from var(--background-blueprint-phase-frame)
+        min(1, l + var(--elevation-step)) c h
+    );
+    border-color: var(--border);
     @apply shadow-md;
   }
 
-  [data-canvas-phase-interactive]:hover:not([data-canvas-focus-active]):not(
-      :has([data-phase-scenario-panel]:hover)
-    )
-    [data-phase-title-badge],
-  [data-canvas-phase-interactive]:focus-within:not([data-canvas-focus-active]):not(
-      :has([data-phase-scenario-panel]:focus-within)
-    )
-    [data-phase-title-badge] {
-    background-color: var(--color-slate-900);
-    border-color: var(--color-slate-900);
-  }
 }
 
 @layer utilities {

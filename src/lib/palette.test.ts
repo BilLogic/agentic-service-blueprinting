@@ -29,6 +29,7 @@ import {
   resolvePaletteToken,
   resolveValue,
   stylesheet,
+  winningDeclaration,
   type Rgb,
 } from '@/lib/tokenModel'
 
@@ -311,12 +312,25 @@ describe('the overview canvas layers climb the elevation dial', () => {
 
   const FRAME = '[data-canvas-phase-interactive] [data-phase-frame]'
 
-  it('dark: each layer sits one elevation step above the one it sits on', () => {
+  it('dark: the four layers are the semantic ladder, in its own ratios', () => {
     const lightness = LAYERS.map((name) => resolveColorValue(name, 'dark').l)
     expect(lightness).toEqual([...lightness].sort((a, b) => a - b))
+    // The ratios come from `semantic.css`, not from this file: the rungs ARE
+    // `--canvas` / `--sidebar` / `--card` / `--popover`, so turning
+    // `--elevation-2` moves the board with the app, and this rule follows it
+    // instead of pinning the gap it happens to produce today.
     const step = dial('--elevation-step', 'dark')
+    const ratios = [
+      0,
+      dial('--elevation-1', 'dark'),
+      dial('--elevation-2', 'dark'),
+      dial('--elevation-3', 'dark'),
+    ]
     for (let i = 1; i < lightness.length; i += 1) {
-      expect(lightness[i] - lightness[i - 1], LAYERS[i]).toBeCloseTo(step, 6)
+      expect(lightness[i] - lightness[i - 1], LAYERS[i]).toBeCloseTo(
+        step * (ratios[i] - ratios[i - 1]),
+        6,
+      )
     }
   })
 
@@ -327,6 +341,31 @@ describe('the overview canvas layers climb the elevation dial', () => {
     expect(resting('border-color', FRAME).map((rule) => rule.value)).toEqual([
       'var(--border)',
     ])
+    // And the dark arm IS there: every assertion here is about one rule, so
+    // a renamed selector has to fail rather than pass by finding nothing.
+    expect(
+      resting('background-color', `.dark ${FRAME}`).map((rule) => rule.value),
+    ).toEqual(['var(--background-blueprint-phase-frame)'])
+  })
+
+  it('light: the ground stays visible, and nothing above it computes a climb', () => {
+    // The frame losing its fill is not the canvas becoming the page. Without a
+    // ground below them, white panels sit on a white page and the overview has
+    // no floor at all. Rendered lightness, clamped the way a display clamps
+    // it: a rung that resolves past L 1 is the page, whatever it says.
+    const rendered = (name: string) =>
+      Math.min(1, resolveColorValue(name, 'light').l)
+    const step = dial('--elevation-step', 'light')
+    expect(rendered(LAYERS[2]) - rendered(LAYERS[0])).toBeGreaterThanOrEqual(step)
+    expect(rendered(LAYERS[0])).toBeLessThan(1)
+
+    // And the three layers above the ground NAME a surface rather than
+    // computing a climb light cannot render: arithmetic there is three no-ops
+    // written as three rungs.
+    for (const name of LAYERS.slice(1)) {
+      const declared = winningDeclaration(name, 'light')
+      expect(declared?.value, name).toMatch(/^var\(--[a-z-]+\)$/)
+    }
   })
 
   it('pins none of the four layers to a colour family', () => {
@@ -339,22 +378,32 @@ describe('the overview canvas layers climb the elevation dial', () => {
         /--color-[a-z]+-\d+/,
       )
     }
-    for (const selector of [FRAME, `.dark ${FRAME}`, '[data-phase-scenario-panel]'])
-      for (const property of ['background-color', 'border-color'])
-        expect(
-          resting(property, selector).map((rule) => rule.value).join(' '),
-          `${selector} ${property}`,
-        ).not.toMatch(/--color-[a-z]+-\d+/)
+    // Resting AND hovered, on the two elements themselves — a descendant of a
+    // panel is its own subject. A hover that jumps to a ramp step switches
+    // colour systems under the pointer, which is this defect one state along.
+    const paints = (selector: string) =>
+      selector
+        .split(',')
+        .some((part) => /\[data-phase-(?:frame|scenario-panel)\]$/.test(part.trim()))
+    const painted = rulesDeclaring('background-color')
+      .concat(rulesDeclaring('border-color'))
+      .filter((rule) => paints(rule.selector))
+    expect(painted.length).toBeGreaterThanOrEqual(4)
+    for (const rule of painted)
+      expect(rule.value, rule.selector).not.toMatch(/--color-[a-z]+-\d+/)
   })
 
   it('leaves no fill from a colour family on the phase badge', () => {
     // The badge sits in the canvas colour and cuts the frame's hairline; a
     // slate plate behind it is the third grey in a three-grey stack.
-    expect(
-      resting('background-color', '[data-phase-title-badge]')
-        .map((rule) => rule.value)
-        .join(' '),
-    ).not.toMatch(/--color-[a-z]+-\d+/)
+    // Every arm that paints it, resting or hovered, and the resting one has to
+    // be found: an assertion about no rule is an assertion about nothing.
+    const arms = rulesDeclaring('background-color').filter((rule) =>
+      rule.selector.includes('[data-phase-title-badge]'),
+    )
+    expect(arms.map((rule) => rule.value)).toEqual([
+      'var(--background-blueprint-canvas-ground)',
+    ])
   })
 })
 
