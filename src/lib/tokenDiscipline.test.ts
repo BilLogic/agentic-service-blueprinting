@@ -358,7 +358,7 @@ const VAR_PRIMITIVE_EXEMPT_FILES: ReadonlyArray<{
   {
     file: 'lib/blueprintTheme.ts',
     because:
-      'eleven board-chrome values plus three lane label inks. The chrome is a slate-tinted grey ladder with no equivalent in the neutral semantic set — the file records the measurement, `divider` misses its nearest semantic match by Δ97 — and the label inks are the step-1200 text of the lane family each section names, which is lane identity',
+      'six board-chrome values plus three lane label inks. The chrome that is left is the divider band and the inks drawn on it, measured as ink-on-ground pairs off the ramp both halves come from, plus the arrow; the label inks are the step-1200 text of the lane family each section names, which is lane identity. The board\'s layers and its hairlines have moved to the dial — the file says which, and why the Δ97 measurement that used to justify the whole ladder was measuring solid steps against a job that wants an alpha',
   },
   {
     file: 'lib/canvasAnnotations.ts',
@@ -373,7 +373,7 @@ const VAR_PRIMITIVE_EXEMPT_FILES: ReadonlyArray<{
   {
     file: 'styles/blueprint.css',
     because:
-      'both halves of the board. The bulk are the lane-family identity steps — surface, hover, pressed, ring and ink per `[data-blueprint-lane]` — which is categorical exactly as a lane fill should be. The rest are the phase and scenario panel chrome, and those are DEFERRED, not categorical: the same slate ladder `blueprintTheme.ts` carries, moved here when the hover states became CSS rules, and waiting on the decision that gives the board chrome semantic rungs',
+      'the lane-family identity steps — surface, hover, pressed, ring and ink per `[data-blueprint-lane]` — which is categorical exactly as a lane fill should be, plus the divider band\'s hover, which follows the resting band `blueprintTheme.ts` still holds on the ramp. The phase and scenario panel chrome that used to be listed here as DEFERRED is gone: those layers and the board\'s hairlines read the dial now',
   },
   {
     file: 'styles/semantic.css',

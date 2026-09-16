@@ -37,24 +37,40 @@ import {
  * composes at runtime into a gradient stop or an SVG attribute, where there is
  * no selector to write.
  *
- * Three of the thirteen name a token from the elevation dial rather than a
- * primitive, because those three are LAYERS: the workspace the board is
- * dropped on, and the board's own content surface, which is the innermost of
- * the overview's four nested surfaces. What colour a layer takes follows from
- * how deep it is nested, and `blueprint.css` derives all four rungs of that
- * from `--background` — see the dial note at the top of its utilities layer.
- * The other ten stay on primitives on purpose — they are a slate-tinted grey
- * ladder with no equivalent in the neutral semantic set (the nearest match to
- * `divider` is off by Δ97), and minting ten semantic names to describe one
- * board's chrome would grow the token vocabulary to fit a single consumer.
+ * Seven of the thirteen name a token from the dial rather than a primitive,
+ * and they divide into two jobs.
+ *
+ * FOUR ARE LAYERS: the workspace the board is dropped on, the board's own
+ * content surface, and the rail down its left side. What colour a layer takes
+ * follows from how deep it is nested, and `blueprint.css` derives every rung
+ * of that from `--background` — see the dial note at the top of its utilities
+ * layer.
+ *
+ * THREE ARE THE HAIRLINE: the panel's interior border, the rules between swim
+ * lanes and the phase divider. They read `--border` straight, with no name of
+ * their own in between, because unlike a layer they take the same value in
+ * both themes — a per-board alias would be one more word to chase for a token
+ * that never diverges. The earlier note here said the nearest semantic match
+ * to `divider` was off by Δ97; that measurement was taken against the SOLID
+ * ramp steps, and it was measuring the wrong thing. A rule between two rows is
+ * a hairline, and the hairline is an alpha on the foreground — which is what
+ * `--border` is, what the phase frame already draws its edge in, and what
+ * takes a deployment's hue and chroma instead of pinning three greys to slate.
+ *
+ * The other six stay on primitives on purpose: the divider band with the
+ * caption ink and the badge it carries, which `palette.test.ts` measures as
+ * ink-on-ground pairs rather than as single values; the cell and header inks,
+ * which are the type steps of the ramp those grounds come from; and the arrow.
+ * The lane label inks below stay on primitives for a different reason again —
+ * they are lane identity, which is categorical and has no semantic name.
  */
 export const BLUEPRINT_THEME = {
   /** Blueprint content surface — path sections, cells, swim lanes. */
   canvas: 'var(--background-blueprint-panel-interior)',
   /** Blueprint shell — label column, panel padding, compare chrome. */
-  labelRail: 'var(--color-slate-500)',
-  canvasBorder: 'var(--color-slate-700)',
-  divider: 'var(--color-slate-800)',
+  labelRail: 'var(--background-blueprint-label-rail)',
+  canvasBorder: 'var(--border)',
+  divider: 'var(--border)',
   /*
    * The divider caption's ink, and it is a TEXT step for that reason.
    *
@@ -77,8 +93,8 @@ export const BLUEPRINT_THEME = {
   dividerBg: 'var(--color-slate-500)',
   cellText: 'var(--color-slate-1200)',
   headerText: 'var(--color-gray-1200)',
-  /** Thin rules between swim lanes — light grey, visible on canvas and label rail. */
-  laneDivider: 'var(--color-slate-700)',
+  /** Thin rules between swim lanes — the app's hairline, on canvas and rail alike. */
+  laneDivider: 'var(--border)',
   arrow: 'var(--color-gray-900)',
   /** Side-by-side compare path sections (Figma-style grouping). */
   sectionFill: 'var(--background-blueprint-panel-interior)',

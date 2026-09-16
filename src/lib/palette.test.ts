@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { BLUEPRINT_THEME } from '@/lib/blueprintTheme'
+import {
+  BLUEPRINT_PANEL_LABEL_RAIL_VAR,
+  BLUEPRINT_THEME,
+  blueprintPanelLabelRailColor,
+} from '@/lib/blueprintTheme'
 import {
   BLUEPRINT_LANE_ROLES,
   CELL_STEP,
@@ -58,6 +62,27 @@ const THEMES = { light: palette('light'), dark: palette('dark') }
 
 /** Resolve a `var(--color-family-step)` string against one theme. */
 const resolve = resolvePaletteToken
+
+/**
+ * A `var(--token)` string from `BLUEPRINT_THEME`, as sRGB under one theme.
+ *
+ * The board's values are no longer all ramp steps, so a reader that only knows
+ * the ramp reports "not a palette token" for the ones that moved — which is a
+ * guard going quiet at exactly the moment the thing it measures changed. This
+ * takes either kind and hands the rest to the cascade, so a pair keeps being
+ * measured after one half of it is renamed.
+ */
+const resolveChrome = (
+  token: string,
+  theme: 'light' | 'dark',
+  over?: Rgb,
+): Rgb => {
+  const name = /var\((--[a-z0-9-]+)\)/.exec(token)?.[1]
+  if (!name) throw new Error(`not a token reference: ${token}`)
+  return /^--color-[a-z]+-\d+$/.test(name)
+    ? resolvePaletteToken(token, theme)
+    : resolveColor(name, theme, over ? { over } : {})
+}
 
 describe('palette', () => {
   it.each(['light', 'dark'] as const)('%s scale parsed', (theme) => {
@@ -278,16 +303,17 @@ describe('brand fill', () => {
 })
 
 /**
- * The overview's four nested surfaces, and the dial they climb.
+ * The overview's nested surfaces, and the dial they climb.
  *
- * Depth on the overview is four layers deep — the viewport ground, the phase
- * frame, a scenario panel sitting on it, and the blueprint drawn inside that
- * panel — and the only thing those four have to say is which one is nested in
- * which. Each was pinned to a step of the slate ramp chosen by eye, and the
- * order that produced ran backwards in both themes: the frame was the
- * brightest layer and the panel inside it the darkest.
+ * Depth on the overview is five layers deep — the viewport ground, the phase
+ * frame, a scenario panel sitting on it, the blueprint drawn inside that
+ * panel, and the label rail down the blueprint's left side — and the only
+ * thing those five have to say is which one is nested in which. Each was
+ * pinned to a step of the slate ramp chosen by eye, and the order that
+ * produced ran backwards in both themes: the frame was the brightest layer
+ * and the panel inside it the darkest.
  *
- * So the four are rungs of the elevation dial now, and this is the rule that
+ * So the five are rungs of the elevation dial now, and this is the rule that
  * says the ladder climbs. Resolved through the cascade rather than compared as
  * strings: a rung is arithmetic on two per-theme dials, and what the
  * arithmetic PRODUCES is the half a string cannot show.
@@ -305,6 +331,7 @@ describe('the overview canvas layers climb the elevation dial', () => {
     '--background-blueprint-phase-frame',
     '--background-blueprint-scenario-panel',
     '--background-blueprint-panel-interior',
+    '--background-blueprint-label-rail',
   ] as const
 
   /** The resting rule for one selector, exactly — no hover, no focus arm. */
@@ -313,7 +340,7 @@ describe('the overview canvas layers climb the elevation dial', () => {
 
   const FRAME = '[data-canvas-phase-interactive] [data-phase-frame]'
 
-  it('dark: the four layers are the semantic ladder, in its own ratios', () => {
+  it('dark: the layers are the semantic ladder, in its own ratios', () => {
     const lightness = LAYERS.map((name) => resolveColorValue(name, 'dark').l)
     expect(lightness).toEqual([...lightness].sort((a, b) => a - b))
     // The ratios come from `semantic.css`, not from this file: the rungs ARE
@@ -326,6 +353,10 @@ describe('the overview canvas layers climb the elevation dial', () => {
       dial('--elevation-1', 'dark'),
       dial('--elevation-2', 'dark'),
       dial('--elevation-3', 'dark'),
+      // The rail is the one rung the semantic set has no surface name for —
+      // it sits inside the innermost surface there is — so it names the ratio
+      // instead. `--elevation-4` is declared beside the other three.
+      dial('--elevation-4', 'dark'),
     ]
     for (let i = 1; i < lightness.length; i += 1) {
       expect(lightness[i] - lightness[i - 1], LAYERS[i]).toBeCloseTo(
@@ -360,6 +391,16 @@ describe('the overview canvas layers climb the elevation dial', () => {
     expect(rendered(LAYERS[2]) - rendered(LAYERS[0])).toBeGreaterThanOrEqual(step)
     expect(rendered(LAYERS[0])).toBeLessThan(1)
 
+    // And the rail, which light cannot raise above the card white it sits in:
+    // a rung up from there IS the card white, so the rail would disappear into
+    // the blueprint beside it. It takes the floor instead — the same plate the
+    // phase badge sits in — and this is the rule that says it never climbs
+    // past the white it is drawn on.
+    expect(rendered('--background-blueprint-label-rail')).toBeLessThanOrEqual(
+      rendered(LAYERS[3]),
+    )
+    expect(rendered('--background-blueprint-label-rail')).toBeLessThanOrEqual(1)
+
     // And the three layers above the ground NAME a surface rather than
     // computing a climb light cannot render: arithmetic there is three no-ops
     // written as three rungs.
@@ -369,7 +410,7 @@ describe('the overview canvas layers climb the elevation dial', () => {
     }
   })
 
-  it('pins none of the four layers to a colour family', () => {
+  it('pins none of the layers to a colour family', () => {
     // A slate step here is a colour chosen outside the neutral theme, which
     // therefore cannot follow it.
     for (const name of LAYERS) {
@@ -405,6 +446,145 @@ describe('the overview canvas layers climb the elevation dial', () => {
     expect(arms.map((rule) => rule.value)).toEqual([
       'var(--background-blueprint-canvas-ground)',
     ])
+  })
+})
+
+/**
+ * The board's three hairlines, and what a hairline is allowed to be.
+ *
+ * The panel's interior border, the rules between swim lanes and the phase
+ * divider were three slate steps — 700, 700 and 800 — which is a colour family
+ * doing the job of an edge. An edge in this system is an alpha on the
+ * foreground, so all three read `--border`: neutral in the template, tinted by
+ * whatever hue and chroma a deployment turns, and flipped by the theme without
+ * a second declaration.
+ *
+ * THE 3:1 SWEEP, and what it measured. SC 1.4.11 asks 3:1 of a graphical
+ * object a reader needs to understand the content, and the sweep below runs
+ * every lane fill past the lane rule to find out whether the rule clears it.
+ * Nothing in the hairline family does, and neither did the slate pin: against
+ * the worst lane the measurements are 1.02 (`--border`), 1.04
+ * (`--border-overlay`), 1.04 (the `--color-slate-700` this replaces) and 1.55
+ * (`--border-control-hover`, the strongest edge token the system has) in
+ * light, and 1.01 / 1.06 / 1.01 / 1.51 in dark. Clearing 3:1 against a mid
+ * lane fill takes roughly 55% of the foreground, which is not a hairline — it
+ * is an ink stroke ruled across the board, and it would contradict the same
+ * ticket's other half.
+ *
+ * The reason the numbers come out that way is geometric, and it is the reason
+ * the floor below is not 3. The lane rule is a 1px row drawn at the bottom
+ * edge of a lane row, across the canvas, from the second grid column out; a
+ * lane FILL is a cell inside that row. The two are adjacent only where a cell
+ * reaches the row's edge, and what the rule actually separates — what it is
+ * read against, everywhere along its length — is the panel interior. So the
+ * sweep holds the pair it is named for at "visible at all", and the pair the
+ * rule is really drawn on at the floor this file already uses for an edge that
+ * must not disappear.
+ */
+describe('the board hairlines read the edge token', () => {
+  /** Lane → family, off the `[data-blueprint-lane]` rules, not a typed list. */
+  const laneFills: ReadonlyArray<readonly [string, string]> = [
+    ...stylesheet('blueprint.css').text.matchAll(
+      /\[data-blueprint-lane='([a-z-]+)'\] \{[^}]*--background-blueprint-cell:\s*var\((--color-[a-z]+-\d+)\)/g,
+    ),
+  ].map(([, lane, token]) => [lane, token] as const)
+
+  const HAIRLINES: ReadonlyArray<readonly [string, string]> = [
+    ['canvasBorder', BLUEPRINT_THEME.canvasBorder],
+    ['laneDivider', BLUEPRINT_THEME.laneDivider],
+    ['divider', BLUEPRINT_THEME.divider],
+  ]
+
+  it('reads the lane rules rather than a list that can go stale', () => {
+    expect(laneFills.length).toBe(BLUEPRINT_LANE_ROLES.length)
+  })
+
+  it.each(HAIRLINES)('%s is the edge token, not a colour family', (_job, value) => {
+    expect(value).toBe('var(--border)')
+  })
+
+  describe.each(['light', 'dark'] as const)('%s', (theme) => {
+    /** The rule as painted: the hairline is translucent, so composite it. */
+    const interior = resolveColor('--background-blueprint-panel-interior', theme)
+    const rule = resolveChrome(BLUEPRINT_THEME.laneDivider, theme, interior)
+
+    it('the lane rule reads against the canvas it is drawn on', () => {
+      // 1.1, the floor this file already sets for an edge that must not
+      // vanish into what it edges — see the button hairline above. Measured
+      // 1.20 light / 1.22 dark, against 1.39 / 1.54 for the slate pin.
+      expect(contrast(rule, interior)).toBeGreaterThan(1.1)
+    })
+
+    it.each(laneFills)(
+      '%s: the lane rule stays distinguishable from the fill',
+      (_lane, token) => {
+        expect(contrast(rule, resolve(token, theme))).toBeGreaterThan(1)
+      },
+    )
+  })
+})
+
+/**
+ * The rail's deployment override, and the shape that makes it win.
+ *
+ * `blueprintPanelLabelRailColor()` is the seam: a deployment declares
+ * `--background-blueprint-panel-label-rail` in a stylesheet of its own and the
+ * rail takes it, with the template's theme value as the fallback arm. That is
+ * CSS's own precedence and not a lookup this code performs, so what has to be
+ * guarded is the SHAPE — the override named first, the theme value only as the
+ * fallback. Inline the theme value instead and the property stops being
+ * consulted at all, which is the one way this seam can break silently.
+ */
+describe('the label rail override', () => {
+  const OVERRIDE = /^var\((--[a-z-]+),\s*(.+)\)$/.exec(
+    blueprintPanelLabelRailColor(),
+  )
+
+  it('names the override property first and the theme value as fallback', () => {
+    expect(OVERRIDE).not.toBeNull()
+    const [, property, fallback] = OVERRIDE!
+    expect(property).toBe(BLUEPRINT_PANEL_LABEL_RAIL_VAR)
+    expect(fallback).toBe(BLUEPRINT_THEME.labelRail)
+  })
+
+  it.each(['light', 'dark'] as const)(
+    '%s: the override arm is empty, so the fallback is what paints',
+    (theme) => {
+      // Nothing declares the override at the root — a deployment does, and a
+      // hover rule does. If the template ever declared it, the fallback would
+      // be unreachable and the theme value below would be dead code.
+      expect(() =>
+        resolveColorValue(BLUEPRINT_PANEL_LABEL_RAIL_VAR, theme),
+      ).toThrow(/not declared/)
+      expect(resolveColorValue('--background-blueprint-label-rail', theme).alpha).toBe(1)
+    },
+  )
+})
+
+/**
+ * No ramp step left on the four jobs this ticket moved.
+ *
+ * Read off the source text, the way `tokenDiscipline.test.ts` reads it: the
+ * claim is about what the files SAY, and a resolved colour cannot tell a slate
+ * step apart from the semantic token that happens to land beside it.
+ */
+describe('the rail and the rules name no slate step', () => {
+  const MOVED = ['labelRail', 'canvasBorder', 'divider', 'laneDivider'] as const
+
+  it.each(MOVED)('%s declares no ramp step in the theme module', (key) => {
+    const declaration = new RegExp(`\\b${key}:\\s*'([^']+)'`).exec(
+      source('lib/blueprintTheme.ts'),
+    )
+    expect(declaration, key).not.toBeNull()
+    expect(declaration![1]).not.toMatch(/--color-[a-z]+-\d+/)
+  })
+
+  it('sets no ramp step on the rail in the stylesheet either', () => {
+    // The hover arm is the one that used to restate the rail as `slate-600`.
+    const arms = rulesDeclaring(BLUEPRINT_PANEL_LABEL_RAIL_VAR)
+    expect(arms.length).toBeGreaterThan(0)
+    for (const arm of arms)
+      expect(arm.value, arm.selector).not.toMatch(/--color-[a-z]+-\d+/)
   })
 })
 
@@ -711,7 +891,7 @@ describe.each(['light', 'dark'] as const)('board chrome: %s', (theme) => {
 
   it.each(pairs)('%s clears AA on its own row', (_name, ink, ground) => {
     expect(
-      contrast(resolve(ink, theme), resolve(ground, theme)),
+      contrast(resolveChrome(ink, theme), resolveChrome(ground, theme)),
     ).toBeGreaterThanOrEqual(4.5)
   })
 })
