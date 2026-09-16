@@ -162,7 +162,9 @@ Its hardening is by omission: `remark-gfm` only, **no raw-HTML plugin**, so
 model-authored HTML is not rendered; links get `rel="noreferrer"` and a new tab.
 It is lazy-loaded, because it is the only importer of the markdown toolchain and
 there is no reason for the landing page to pay for a parser — and the fallback is
-the raw text, so a slow chunk shows content rather than a spinner. Only assistant
+the raw text, so a slow chunk shows content rather than a spinner and a chunk
+that never arrives — a tab that outlived a deploy — shows the turn as raw text
+rather than taking the editor down with it. Only assistant
 turns get markdown; user turns are plain pre-wrapped text.
 
 The modules behind all of this live in `src/components/editor/agent/`:
