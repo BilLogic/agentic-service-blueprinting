@@ -189,6 +189,18 @@ jobs:
       # document is not what its sources render.
       - run: npm run check:interface-map
 
+      # The files a host reads before any of this code runs, and the only
+      # rules in the repository nothing else can see: a build does not read
+      # them, a test does not serve them, and a page load only shows what they
+      # did months later, as a browser error naming an import site rather than
+      # the missing chunk. Two of the claims are the ones a diff reads as
+      # correct either way — the ORDER, a 404 for a hashed chunk the deploy no
+      # longer ships ABOVE the single-page fallback that would otherwise answer
+      # it with the app shell, and the absence of FORCING, without which that
+      # same 404 answers for every asset the site has. The third is the cache,
+      # which the content hash makes safe for /assets/* and for nothing else.
+      - run: npm run check:hosting
+
   # The application, opened in a browser.
   #
   # Every check in the job above reads a file, a schema or a module graph. None

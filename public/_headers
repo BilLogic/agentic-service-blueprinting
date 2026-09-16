@@ -10,3 +10,11 @@
 # any provider you do not enable.
 /*
   Content-Security-Policy: default-src 'self'; img-src 'self' data: https://YOUR_PROJECT_REF.supabase.co; connect-src 'self' https://YOUR_PROJECT_REF.supabase.co https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'
+
+# The hashed build output, cached for a year and never revalidated. Safe only
+# because Vite puts the content hash in the file name, so a name can never mean
+# two things. Nothing unhashed may be cached this long — the shell is what
+# delivers the new hashes, and a year-old shell asks for chunks the site no
+# longer has. `npm run check:hosting` holds both halves.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
