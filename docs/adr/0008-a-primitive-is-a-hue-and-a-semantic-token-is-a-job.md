@@ -67,8 +67,9 @@ and it is not ours to run.
 
 ### Two brand vocabularies, divided by a different thing
 
-*Superseded 2026-09-16 — the pair of dials each gives way to the per-channel
-dials of [ADR 0025](./0025-brand-derives-from-primary-with-one-dial-per-channel.md),
+*Superseded 2026-09-16 (#888) — the pair of dials each gives way to the
+per-channel dials of
+[ADR 0025](./0025-brand-derives-from-primary-with-one-dial-per-channel.md),
 which derives `--brand` from `--primary`'s resolved colour; the `--brand`
 derivation under "The stepped scales" above and the "A retune is dials, not a
 curve" consequence below fall with it. The division by job argued here is what
