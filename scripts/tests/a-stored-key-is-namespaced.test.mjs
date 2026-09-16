@@ -1,22 +1,24 @@
 /**
  * The guard that keeps every stored key on the namespace seam.
  *
- * `src/lib/storageNamespace.ts` opens by forbidding an inlined prefix, and for
- * three releases one key ignored it: `slide-sheet-height`, written as a bare
- * literal, read back perfectly by the module that wrote it and invisible to
- * every other one. That is the shape this class of defect comes in — a key
- * that works is a key nobody looks at — so the rule is measured rather than
- * stated, and this file is what holds the measurement honest: a planted
- * literal has to fail, and every way the tree legitimately builds a key has to
- * pass. A guard that fires on `storageKey('agent-settings')` is a guard
- * somebody switches off.
+ * `src/lib/storageNamespace.ts` opens by forbidding an inlined prefix, and one
+ * key ignored it for every release since the slide sheet landed — the incident
+ * is in `scripts/check-storage-keys.mjs`'s header, which is its one home. That
+ * is the shape this class of defect comes in: a key that works is a key nobody
+ * looks at. So the rule is measured rather than stated, and this file is what
+ * holds the measurement honest — a planted literal has to fail, every way the
+ * tree legitimately builds a key has to pass, and the spellings that put a
+ * store beyond the patterns here have to be refused rather than missed. A guard
+ * that fires on `storageKey('agent-settings')` is a guard somebody switches
+ * off; a guard that passes a store bound to a local name is one that reports
+ * nothing.
  *
  * Run: npm test
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
 
-import { bareKeysIn, findings, isScanned } from '../check-storage-keys.mjs'
+import { balanced, bareKeysIn, findings, isScanned } from '../check-storage-keys.mjs'
 
 const reasons = (source) => bareKeysIn(source).map((hit) => hit.reason)
 const expressions = (source) => bareKeysIn(source).map((hit) => hit.expression)
@@ -120,6 +122,71 @@ test('the application is in subject; its tests are not', () => {
   assert.equal(isScanned('src/styles/tailwind.config.css'), false)
 })
 
-test('the vendored rulebook is out of subject — it is a copy, not a module', () => {
-  assert.equal(isScanned('src/lib/agent/skill/map/SKILL.md'), false)
+/* ----------------------------------------------- the spellings it now reads */
+
+test('a computed method name is a store call', () => {
+  assert.deepEqual(reasons("window.localStorage['setItem']('bare', '1')\n"), ['a bare literal'])
+})
+
+test('a computed store name is a store call', () => {
+  assert.deepEqual(reasons("window['localStorage'].setItem('bare', '1')\n"), ['a bare literal'])
+})
+
+test('a store bound to a name is refused where it is bound', () => {
+  // The call after it names no store, so no pattern here could read its key.
+  // Refusing the binding turns a blind spot into a failure that says what it
+  // wants instead.
+  const found = bareKeysIn(
+    'const store = window.localStorage\n' + "store.setItem('bare', '1')\n",
+  )
+  assert.deepEqual(
+    found.map(({ line, reason }) => ({ line, reason })),
+    [{ line: 1, reason: 'a store bound to a name, whose keys nothing here can follow' }],
+  )
+})
+
+test('a destructured store method is refused the same way', () => {
+  assert.deepEqual(reasons('const { setItem } = window.localStorage\n'), [
+    'a store method destructured, so the call names no store at all',
+  ])
+})
+
+test('reading through the store in one expression is not a binding', () => {
+  // The whole tree does this, and a deny rule that fired on it would be off
+  // within a week.
+  assert.deepEqual(
+    bareKeysIn("const raw = window.localStorage.getItem(storageKey('agent-settings'))\n"),
+    [],
+  )
+})
+
+/* ------------------------------------------------------------- shadowing */
+
+test('a name declared twice fails, whichever declaration looks innocent', () => {
+  // The module-scope constant is namespaced and the local one is not, and which
+  // of them reaches the call is exactly what a regex cannot answer. Taking the
+  // first would pass the literal on the namespaced key's authority.
+  const found = bareKeysIn(
+    "const K = storageKey('agent-settings')\n" +
+      'export function oops() {\n' +
+      "  const K = 'bare'\n" +
+      '  window.localStorage.setItem(K, "1")\n' +
+      '}\n',
+  )
+  assert.deepEqual(
+    found.map(({ line, expression, reason }) => ({ line, expression, reason })),
+    [{ line: 4, expression: 'K', reason: 'not built by storageKey()' }],
+  )
+})
+
+/* ----------------------------------------------------------- the message */
+
+test('a truncated key expression is printed with its parentheses closed', () => {
+  // The capture stops at the first `)`, which is enough to judge and not enough
+  // to print: `namespacedKey('third'` reads as a typo in the reader's own code.
+  assert.equal(balanced("namespacedKey('third'"), "namespacedKey('third')")
+  assert.deepEqual(
+    expressions("window.localStorage.getItem(namespacedKey('third'))\n"),
+    ["namespacedKey('third')"],
+  )
 })

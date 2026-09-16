@@ -108,8 +108,8 @@ jobs:
       # The namespace seam, measured rather than stated. Every key the app
       # stores is prefixed per INSTALLATION, so two installations on one origin
       # do not read each other's settings and sessions — and one key was a bare
-      # literal for three releases, which nothing could see because a literal
-      # key works for the module that writes it.
+      # literal, which nothing could see because a literal key works for the
+      # module that writes it. The account is the script's header.
       - run: npm run check:storage-keys
       # `--require` is not passed here: the tag for a version is cut after the
       # release commit is on main, not on the pull request that proposes it

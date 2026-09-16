@@ -53,6 +53,35 @@ describe('the stored provider', () => {
     expect((await bootedSettings()).provider).toBe('google')
   })
 
+  it('keeps an entry saved under a provider this build does not declare', async () => {
+    // WHOSE entries a map may keep is a different question from what shape it
+    // is: a provider can come back, and the key saved under it should survive
+    // the choice moving away from it.
+    await store({ provider: 'google', models: {}, keys: { retired: 'k' } })
+
+    const settings = await bootedSettings()
+    expect(settings.provider).toBe('google')
+    expect(settings.keys).toEqual({ retired: 'k' })
+  })
+
+  it('reads a models or keys map that is not one as empty', async () => {
+    await store({ provider: 'google', models: ['gemini-3.8-flash'], keys: 'nope' })
+
+    const settings = await bootedSettings()
+    expect(settings.models).toEqual({})
+    expect(settings.keys).toEqual({})
+  })
+
+  it('drops an entry whose value is not a string, and keeps the ones that are', async () => {
+    await store({
+      provider: 'google',
+      models: { google: 'gemini-3.7-flash', anthropic: { id: 'claude-opus-5' } },
+      keys: {},
+    })
+
+    expect((await bootedSettings()).models).toEqual({ google: 'gemini-3.7-flash' })
+  })
+
   it('leaves the models and keys beside it alone', async () => {
     // The provider is the only field validated here, and a person who saved a
     // key under a provider that came back should not lose the rest with it.

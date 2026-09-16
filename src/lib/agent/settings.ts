@@ -99,18 +99,42 @@ function storedProvider(value: unknown): AgentProviderId {
     : EMPTY.provider
 }
 
+/**
+ * A stored per-provider map of strings — the model overrides, or the keys.
+ *
+ * TWO QUESTIONS, and they are not the same one. What SHAPE is this (a map of
+ * strings, checked here), and WHOSE entries may it keep (every id it holds,
+ * including one this build does not declare)? The second is deliberate: a
+ * provider can come back, or be reinstated by a host, and a person who saved a
+ * key under it should not lose the key because the CHOICE moved — `provider`
+ * above is the one field a retired id breaks. The first is a fact about JSON
+ * another release wrote, which is the claim no compiler here can keep.
+ */
+function storedStrings(
+  value: unknown,
+): Partial<Record<AgentProviderId, string>> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).filter(
+      (entry): entry is [AgentProviderId, string] =>
+        typeof entry[1] === 'string',
+    ),
+  )
+}
+
 function read(): AgentSettings {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return EMPTY
-    const parsed = JSON.parse(raw) as Partial<AgentSettings>
+    const parsed: unknown = JSON.parse(raw)
+    if (parsed === null || typeof parsed !== 'object') return EMPTY
+    const record = parsed as Record<string, unknown>
     return {
-      provider: storedProvider(parsed.provider),
-      // The models and keys beside it are left as they are on purpose: a
-      // person who saved a key under a provider that comes back should not
-      // lose it because the choice moved.
-      models: parsed.models ?? {},
-      keys: parsed.keys ?? {},
+      provider: storedProvider(record.provider),
+      models: storedStrings(record.models),
+      keys: storedStrings(record.keys),
     }
   } catch {
     return EMPTY

@@ -274,6 +274,26 @@ describe('a session list written by an older build', () => {
     expect(freshSnapshot().map((session) => session.id)).toEqual(['kept'])
   })
 
+  /**
+   * The same failure one surface over, and the reason the missing field is
+   * substituted rather than dropped: `list_sessions` sorts on `updatedAt` and
+   * prints it, over this very snapshot.
+   */
+  it('renders an entry that lost its updatedAt, rather than throwing on it', async () => {
+    const stamp = '2026-01-01T00:00:00.000Z'
+    window.localStorage.setItem(
+      storageKey('agent-sessions'),
+      JSON.stringify([{ id: 'legacy', title: 'Lost a field', createdAt: stamp }]),
+    )
+    vi.resetModules()
+
+    const { listSessions } = await import('@/lib/agent/tools/read')
+
+    // The date it can honestly claim is the one it was created on.
+    expect(listSessions('other')).toContain('updated 2026-01-01')
+    expect(listSessions('other')).toContain('Lost a field')
+  })
+
   it('reads a list that is not a list as an empty one', async () => {
     window.localStorage.setItem(storageKey('agent-sessions'), '{"sessions":[]}')
     vi.resetModules()

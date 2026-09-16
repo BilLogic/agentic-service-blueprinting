@@ -37,6 +37,7 @@ import roleDoc from '@/lib/agent/role.md?raw'
 import {
   hasKey,
   modelFor,
+  type AgentProviderId,
   type AgentSettings,
 } from '@/lib/agent/settings'
 import {
@@ -52,7 +53,15 @@ import {
 
 type Client = SupabaseClient<Database>
 
-const ADAPTERS: Record<string, AgentProviderAdapter> = {
+/**
+ * Keyed by `AgentProviderId` rather than by `string`, so the map and the list a
+ * person chooses from cannot disagree. Keyed by `string` this was typed
+ * non-`undefined` for every id — a provider added to `AGENT_PROVIDERS` with no
+ * adapter compiled, and the send below dereferenced nothing. The stored id is
+ * validated against the same list where it is read (`settings.ts`); this is the
+ * other end of that.
+ */
+const ADAPTERS: Record<AgentProviderId, AgentProviderAdapter> = {
   google: googleAdapter,
   anthropic: anthropicAdapter,
   openai: openaiAdapter,

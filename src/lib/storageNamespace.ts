@@ -15,11 +15,11 @@
  * then have to find and edit every call site, and would miss one.
  *
  * `npm run check:storage-keys` is that sentence, measured. It was a rule and
- * nothing else for three releases, and one key spent them outside the seam:
- * `slide-sheet-height`, a bare literal, which no reader of this header could
- * have noticed from a module that read back everything it wrote. The check
- * fails any key reaching `localStorage` or `sessionStorage` that `storageKey`
- * did not build.
+ * nothing else until one key was found outside the seam — a bare literal no
+ * reader of this header could have noticed, from a module that read back
+ * everything it wrote. The check fails any key reaching `localStorage` or
+ * `sessionStorage` that `storageKey` did not build; the account of what it
+ * catches, what it cannot see, and what went wrong is in its own header.
  *
  * ── HOW AN ADOPTER SETS IT, AND WHY IT IS NOT A `DeploymentConfig` FIELD ───
  *
@@ -34,9 +34,11 @@
  * BEFORE it imports the app. That ordering is not a preference. Eight modules
  * compute their key at MODULE SCOPE (`agent/settings.ts`, `agent/sessions.ts`,
  * `agent/placement.ts`, `devPortal.ts`, `mobilePathMemory.ts`,
- * `slideSheetHeight.ts`,
- * `staleChunkReload.ts`, `components/editor/EditorShell.tsx`), and two of those go further and READ
- * localStorage at module scope to seed a `useSyncExternalStore` snapshot. All
+ * `slideSheetHeight.ts`, `staleChunkReload.ts`,
+ * `components/editor/EditorShell.tsx`), and five of those go further and READ
+ * localStorage at module scope to seed a `useSyncExternalStore` snapshot
+ * (`agent/settings.ts`, `agent/sessions.ts`, `agent/placement.ts`,
+ * `devPortal.ts`, `slideSheetHeight.ts`). All
  * of that happens while the import graph evaluates — before React exists, let
  * alone before `App` renders. A `DeploymentConfig` field would therefore be
  * read one lifecycle too late, and the failure would be silent: the app would

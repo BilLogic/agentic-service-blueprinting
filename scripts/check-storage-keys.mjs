@@ -11,13 +11,15 @@
  *
  *   node scripts/check-storage-keys.mjs   (also: npm run check:storage-keys)
  *
- * The rule was stated and unmeasured, and for three releases one key ignored
- * it. `slide-sheet-height` was a bare literal in `src/lib/slideSheetHeight.ts`,
- * so an installation that named its own namespace covered every key but that
- * one — and nothing could say so, because a literal key works: the module that
- * writes it reads it back. This is the class of defect a guard is for. A wrong
- * key that throws is found in an afternoon; a wrong key that resolves is found
- * by two installations quietly sharing a value.
+ * THE INCIDENT, and this is its one home — every other statement of it points
+ * here rather than restating it. The rule was stated and unmeasured from the
+ * day the seam existed, and one key ignored it for every release since the
+ * slide sheet landed: `slide-sheet-height`, a bare literal in
+ * `src/lib/slideSheetHeight.ts`, so an installation that named its own
+ * namespace covered every key but that one. Nothing could say so, because a
+ * literal key WORKS — the module that writes it reads it back — and only a
+ * second installation on the origin ever finds out. That is the class of
+ * defect a guard is for: a wrong key that throws is found in an afternoon.
  *
  * ── The subject ────────────────────────────────────────────────────────────
  *
@@ -32,8 +34,7 @@
  * plants a legacy key. That is the same rule `check-database-names.mjs` states
  * for a dead relation: a fixture has to be able to write down what the code
  * under test receives, and a check that flagged its neighbour's evidence would
- * be pressure to weaken one of the two. The vendored rulebook under
- * `src/lib/agent/skill/` is out for the reason every sweep gives: it is a copy.
+ * be pressure to weaken one of the two.
  *
  * ── What counts as a key, and what the check will accept ───────────────────
  *
@@ -44,13 +45,29 @@
  * sentence about a key is not a key.
  *
  * Two spellings pass, and they are the two the tree uses: `storageKey('…')` at
- * the call site, and an identifier whose `const` in the same file is
- * `storageKey('…')` — the module-scope idiom seven modules share. EVERYTHING
- * ELSE FAILS, including a key assembled some third way, and that strictness is
- * deliberate: a guard that accepted any expression it could not read would
- * accept the next literal that arrives behind a helper. A new spelling that is
- * genuinely namespaced is a reason to teach this check the spelling, in one
- * place, with the reason beside it.
+ * the call site, and an identifier declared ONCE in the file as
+ * `storageKey('…')` — the module-scope idiom eight modules share. Every other
+ * key expression at a store call fails, including one assembled some third way
+ * and one this check simply cannot follow, and that strictness is deliberate: a
+ * guard that accepted what it could not read would accept the next literal
+ * arriving behind a helper. A name declared twice in a file fails too, because
+ * the declaration reaching the call is the one a regex cannot pick — and taking
+ * the first would be exactly the permissive branch this paragraph refuses. A
+ * new spelling that is genuinely namespaced is a reason to teach the check that
+ * spelling, in one place, with the reason beside it.
+ *
+ * WHAT IT IS BLIND TO, so the claim above is not read wider than it is. This
+ * reads text, not a syntax tree, so a store reached other than by naming it at
+ * the call site is out of reach: `const store = window.localStorage` and
+ * `const { setItem } = window.localStorage` put the call beyond any pattern
+ * here. Neither is silently allowed — both are DENIED coarsely, by the store
+ * appearing as a bound value rather than as the receiver of a call — which
+ * turns a blind spot into a failure that says what it wants instead. The
+ * spellings that ARE read include computed member access
+ * (`localStorage['setItem'](…)`, `window['localStorage'].setItem(…)`), because
+ * they name the store and the method where a reader of the line expects them.
+ * A store handed to a function as an argument remains out of reach, and would
+ * be a reason to reach for a parser rather than to widen these patterns.
  */
 import { sweep } from './sweep.mjs'
 import { whenRun } from './verdict.mjs'
@@ -61,17 +78,13 @@ const REPO_ROOT = process.cwd()
 /** Where a key could be reached at all. */
 const SOURCE = /\.tsx?$/
 
-/** A test file, by either of the two spellings this tree uses. */
-const TEST_FILE = /\.(?:test|slice\.test)\.tsx?$/
-
-/** The vendored copy of `skills/` + `references/`; held identical by its own guard. */
-const VENDORED = 'src/lib/agent/skill/'
+/** A test file, spelled as the rest of this repository's checks spell it. */
+const TEST_FILE = /\.test\.tsx?$/
 
 /** Whether a path in the application is one this check reads. */
 export function isScanned(path) {
   if (!SOURCE.test(path)) return false
-  if (TEST_FILE.test(path)) return false
-  return !path.startsWith(VENDORED)
+  return !TEST_FILE.test(path)
 }
 
 /**
@@ -117,9 +130,34 @@ export function withoutComments(code) {
   return out
 }
 
-/** A store call and the expression it is handed as a key. */
+/**
+ * A store call and the expression it is handed as a key.
+ *
+ * The store may be named plainly or through a computed member
+ * (`window['localStorage']`), and so may the method — both spellings name the
+ * two things a reader of the line is looking for, so both are read.
+ */
 const STORE_CALL =
-  /\b(?:local|session)Storage\s*\.\s*(?:get|set|remove)Item\s*\(\s*([^,)]+)/g
+  /\b(?:local|session)Storage\b(?:['"]\s*\])?\s*(?:\.\s*(?:get|set|remove)Item|\[\s*['"](?:get|set|remove)Item['"]\s*\])\s*\(\s*([^,)]+)/g
+
+/**
+ * A store taken as a VALUE rather than called: bound to a name, or picked
+ * apart. The call that follows is beyond every pattern here, so it is refused
+ * where it is created instead — coarse on purpose, and a refusal rather than a
+ * silence.
+ */
+const ESCAPED_STORE = [
+  // The narrower rule first: a destructuring is also an assignment, and one
+  // line deserves the finding that names what is actually on it.
+  {
+    label: 'a store method destructured, so the call names no store at all',
+    test: /\{[^}]*\}\s*=\s*(?:(?:window|globalThis)\s*(?:\.\s*|\[\s*['"]))?(?:local|session)Storage\b/,
+  },
+  {
+    label: 'a store bound to a name, whose keys nothing here can follow',
+    test: /=\s*(?:(?:window|globalThis)\s*(?:\.\s*|\[\s*['"]))?(?:local|session)Storage\b(?:['"]\s*\])?\s*(?![.[(])/,
+  },
+]
 
 /** `const NAME = <initialiser>` at any depth, for the identifier lookup below. */
 const DECLARATION = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=]+)?=\s*([^\n]+)/g
@@ -127,6 +165,19 @@ const DECLARATION = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=]+)?=\s*(
 const NAMESPACED = /^storageKey\s*\(/
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/
 const LITERAL = /^['"`]/
+
+/**
+ * `expression` with the parentheses the capture truncated closed again.
+ *
+ * The key is captured up to the first `)` — enough to judge it, and enough to
+ * print `namespacedKey('third'` at a reader, which reads as a typo in their
+ * code rather than as this check's cut.
+ */
+export function balanced(expression) {
+  const opened = (expression.match(/\(/g) ?? []).length
+  const closed = (expression.match(/\)/g) ?? []).length
+  return expression + ')'.repeat(Math.max(0, opened - closed))
+}
 
 /**
  * Every key in `source` that is not built by the seam, with the line it is on.
@@ -138,29 +189,46 @@ const LITERAL = /^['"`]/
  */
 export function bareKeysIn(source) {
   const code = withoutComments(source)
+
+  // A name declared twice is a name whose declaration at the call site cannot
+  // be picked from here, so it resolves to nothing and fails as unfollowable.
+  // Taking the first would pass a module-scope `storageKey` call on behalf of a
+  // function-local literal, which is the one branch this check refuses to take.
   const declared = new Map()
   for (const [, name, initialiser] of code.matchAll(DECLARATION)) {
-    // The first declaration wins: a name rebound later is a name this check
-    // cannot follow, and the initialiser it was given is what it is measured on.
-    if (!declared.has(name)) declared.set(name, initialiser.trim())
+    declared.set(name, declared.has(name) ? null : initialiser.trim())
   }
+
+  const lineOf = (index) => code.slice(0, index).split('\n').length
 
   const found = []
   for (const match of code.matchAll(STORE_CALL)) {
-    const expression = match[1].trim()
-    const line = code.slice(0, match.index).split('\n').length
+    const expression = balanced(match[1].trim())
     const resolved =
       IDENTIFIER.test(expression) && declared.has(expression)
         ? declared.get(expression)
         : expression
-    if (NAMESPACED.test(resolved)) continue
+    if (resolved !== null && NAMESPACED.test(resolved)) continue
     found.push({
-      line,
+      line: lineOf(match.index),
       expression,
-      reason: LITERAL.test(resolved) ? 'a bare literal' : 'not built by storageKey()',
+      reason:
+        resolved !== null && LITERAL.test(resolved)
+          ? 'a bare literal'
+          : 'not built by storageKey()',
     })
   }
-  return found
+
+  // The stores taken as values, line by line — a line is the unit here because
+  // these patterns are coarse and a line is what a reader is sent to.
+  code.split('\n').forEach((text, index) => {
+    // One finding per line: the rules overlap by construction, and a reader
+    // sent twice to one line learns nothing the second time.
+    const escaped = ESCAPED_STORE.find(({ test }) => test.test(text))
+    if (escaped) found.push({ line: index + 1, expression: text.trim(), reason: escaped.label })
+  })
+
+  return found.sort((a, b) => a.line - b.line)
 }
 
 /**
