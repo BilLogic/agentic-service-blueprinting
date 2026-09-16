@@ -95,7 +95,7 @@ export function StatusBadge({
     <DefinitionPopover
       sections={[
         {
-          eyebrow: ENTITY_STATUS_SHORT[status],
+          term: ENTITY_STATUS_SHORT[status],
           body: ENTITY_STATUS_MEANING[status],
         },
       ]}

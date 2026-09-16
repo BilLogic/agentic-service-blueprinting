@@ -25,8 +25,10 @@
  * is a label — so all three lost theirs together rather than one of them being
  * singled out for a definition its neighbours could not have.
  *
- * Each entry is a card SECTION's body, under an eyebrow that already prints
- * the term, so neither opens by naming the term again.
+ * Each entry is a card SECTION's body, under a heading that already prints the
+ * term. The rule and the reason are "A definition never repeats its term" in
+ * the entity-panels composition guideline; `src/lib/definitionsSayItOnce.test.ts`
+ * holds it for every definition module.
  */
 export const PANEL_TERMS = {
   touchpoint:

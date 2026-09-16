@@ -50,7 +50,7 @@ export function StakeholderBadge({
       label={name}
       title={name}
       category={{
-        eyebrow: STAKEHOLDER_KIND_LABELS[kind],
+        term: STAKEHOLDER_KIND_LABELS[kind],
         body: STAKEHOLDER_KIND_MEANING[kind],
       }}
       description={summary}

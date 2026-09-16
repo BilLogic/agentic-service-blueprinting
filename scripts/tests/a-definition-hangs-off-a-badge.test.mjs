@@ -183,7 +183,7 @@ test('a form field explains its input, and is not judged either', () => {
     'export function Field({ label, hint, children }: Props) {',
     '  return (',
     '    <div>',
-    '      <DefinitionPopover sections={[{ eyebrow: label, body: hint }]}>',
+    '      <DefinitionPopover sections={[{ term: label, body: hint }]}>',
     '        {labelText}',
     '      </DefinitionPopover>',
     '      {children}',
@@ -198,7 +198,7 @@ test('a label with a definition is named, with the component that drew it', () =
   const source = [
     'export function PanelTermLabel({ term, definition }: Props) {',
     '  return (',
-    '    <DefinitionPopover sections={[{ eyebrow: term, body: definition }]}>',
+    '    <DefinitionPopover sections={[{ term: term, body: definition }]}>',
     '      <span>{term}</span>',
     '    </DefinitionPopover>',
     '  )',
@@ -213,7 +213,7 @@ test('the same component with a badge instead is not a finding', () => {
   const source = [
     'export function PanelTermLabel({ term, definition }: Props) {',
     '  return (',
-    '    <DefinitionPopover sections={[{ eyebrow: term, body: definition }]}>',
+    '    <DefinitionPopover sections={[{ term: term, body: definition }]}>',
     '      <Badge variant="outline">{term}</Badge>',
     '    </DefinitionPopover>',
     '  )',
@@ -229,7 +229,7 @@ test('one badge in a file does not pardon a label in the next component', () => 
   const source = [
     'function Field({ label, hint }: Props) {',
     '  return (',
-    '    <DefinitionPopover sections={[{ eyebrow: label, body: hint }]}>',
+    '    <DefinitionPopover sections={[{ term: label, body: hint }]}>',
     '      <span>{label}</span>',
     '    </DefinitionPopover>',
     '  )',
