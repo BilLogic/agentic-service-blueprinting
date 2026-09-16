@@ -15,9 +15,9 @@ import { cn } from "@/lib/utils"
  *  - the thumb's hairline is `ring-border` rather than `black/5`, for the same
  *    reason.
  *
- * On stays `bg-brand`: a switch that is on is one of the four jobs the
- * brand token drives (CTA, prose links, the on track, the path-selector
- * status dot). Selection and focus rings stay on `--primary` / `--ring`.
+ * On stays `bg-brand`: a switch that is on is one of the four jobs the brand
+ * token drives, which are pinned in `palette.test.ts` rather than restated
+ * here. Selection and focus rings stay on `--primary` / `--ring`.
  */
 /**
  * The on/off track. Sized for the compact settings rows (`h-4`), which is

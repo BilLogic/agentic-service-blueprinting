@@ -24,6 +24,12 @@ import { useShellBooting } from '@/contexts/shellBootStore'
  * The trigger is deliberately compact: overlapping path-color dots plus a
  * count, never the full names; a single selection may show its (truncated)
  * name.
+ * It is a PLAIN bordered control on the md rung. It carried a second,
+ * brand-coloured dot after the label, which said what the label already said
+ * and said it in a colour the path dots on its left do not use — two dot
+ * vocabularies in one control. The brand hue's fourth job moved inside, onto
+ * the mark on a selected row, where it marks a choice instead of restating
+ * one.
  */
 export function PathSelectorMenu({ options }: { options: PathOption[] }) {
   const { activePathKeys, togglePathKey } = usePathSelectionContext()
@@ -48,7 +54,7 @@ export function PathSelectorMenu({ options }: { options: PathOption[] }) {
       skeleton={
         <Skeleton
           data-path-selector-skeleton=""
-          className="h-7 w-16 rounded-full"
+          className="h-7 w-16 rounded-md"
         />
       }
     >
@@ -67,7 +73,7 @@ export function PathSelectorMenu({ options }: { options: PathOption[] }) {
                       : 'none'
                   }`}
                   className={cn(
-                    'pointer-events-auto flex h-7 items-center gap-2 rounded-full border border-border bg-card',
+                    'pointer-events-auto flex h-7 items-center gap-2 rounded-md border border-border bg-card',
                     'px-2 text-sm text-muted-foreground transition-colors hover:text-foreground',
                   )}
                 >
@@ -75,26 +81,26 @@ export function PathSelectorMenu({ options }: { options: PathOption[] }) {
                     {dots.map((option, index) => (
                       <span
                         key={option.id}
+                        data-path-selector-dot=""
                         className={cn(
-                          'size-2.5 rounded-full ring-1 ring-card',
-                          index > 0 && '-ml-1',
+                          'size-2 rounded-full',
+                          // The ring is what keeps two overlapping dots two
+                          // dots; one dot has nothing to separate itself from
+                          // and wears a hairline of the plate for nothing.
+                          index > 0 && '-ml-1 ring-1 ring-card',
                         )}
                         style={{ backgroundColor: getPathColor(option) }}
                       />
                     ))}
                   </span>
-                  <span className="max-w-24 truncate">
+                  <span
+                    data-path-selector-label=""
+                    className="max-w-[10rem] truncate"
+                  >
                     {selected.length === 1
                       ? selected[0].name
                       : `${selected.length} paths`}
                   </span>
-                  {selected.length > 0 ? (
-                    <span
-                      data-path-selector-status=""
-                      className="size-2 shrink-0 rounded-full bg-brand"
-                      aria-hidden
-                    />
-                  ) : null}
                   <ChevronDown className="size-3 shrink-0" aria-hidden />
                 </button>
               }
@@ -128,9 +134,12 @@ export function PathSelectorMenu({ options }: { options: PathOption[] }) {
                           : 'text-muted-foreground',
                       )}
                     >
+                      {/* The same 8px dot the trigger draws. One control, one
+                          dot size: a row that showed a larger dot than the
+                          trigger it fills made the two read as two marks. */}
                       <span
                         aria-hidden
-                        className="size-2.5 shrink-0 rounded-full"
+                        className="size-2 shrink-0 rounded-full"
                         style={{ backgroundColor: getPathColor(option) }}
                       />
                       <span className="min-w-0 flex-1 truncate">
@@ -140,9 +149,14 @@ export function PathSelectorMenu({ options }: { options: PathOption[] }) {
                           panel shows, in the same order. Text in this row's
                           one control, not a second control inside it. */}
                       <StatusBadge status={option.status} definition={false} />
+                      {/* The brand hue's fourth job. A row's mark is the one
+                          place in this control where the identity colour says
+                          which path the reader chose; the dots beside it are
+                          path colours and cannot carry that. */}
                       <Check
+                        data-path-selector-mark=""
                         className={cn(
-                          'size-3.5 shrink-0',
+                          'size-3.5 shrink-0 text-brand',
                           !checked && 'invisible',
                         )}
                         aria-hidden

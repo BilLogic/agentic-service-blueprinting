@@ -25,8 +25,8 @@ const buttonVariants = cva(
         // resting token; no `--*-hover` state token exists.
         default:
           "rounded-md border-primary-border bg-primary text-primary-foreground shadow-none hover:bg-primary/90",
-        // Identity fill. The four brand jobs are CTA, prose links, switch-on,
-        // and the path-selector status dot. Filled controls stay on primary.
+        // Identity fill, and one of the four brand jobs pinned in
+        // `palette.test.ts`. Filled controls stay on primary.
         brand:
           "rounded-md border-border-brand bg-brand text-brand-foreground shadow-none hover:bg-brand/90",
         // Page-coloured in BOTH themes. The dark-mode `input/30` wash this
