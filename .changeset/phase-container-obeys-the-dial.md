@@ -1,0 +1,7 @@
+---
+"agentic-service-blueprinting": patch
+---
+
+The overview's phase container obeys the elevation dial. The four nested surfaces — the viewport ground, the phase frame, a scenario panel on it and the blueprint inside that panel — were each pinned to a step of the slate ramp picked by eye, and the order those steps produced ran backwards in both themes: the frame was the brightest layer and the panel nested inside it the darkest. The four name the semantic surface ladder now — `--canvas`, `--sidebar`, `--card`, `--popover` — so dark climbs with the rest of the app and a retune of an `--elevation-*` ratio moves the board with it. Light does not climb, because light's page leaves nothing above it: its panels are the card white they already are and its GROUND steps a step and a half below the page, so the board still has a floor and the frame's hairline is a hairline on something. The phase badge loses its slate plate in every state and sits in that ground colour, cutting the hairline. Panel and frame hover sit one rung further out instead of jumping to a ramp step.
+
+A deployment that overrides the phase frame's fill, the scenario panel's surface or the phase badge re-tunes to the dial: read `--background-blueprint-canvas-ground`, `--background-blueprint-phase-frame`, `--background-blueprint-scenario-panel` and `--background-blueprint-panel-interior` rather than naming a colour step, or the override will read as a grey box again.

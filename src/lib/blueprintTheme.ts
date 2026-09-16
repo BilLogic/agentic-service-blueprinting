@@ -37,17 +37,20 @@ import {
  * composes at runtime into a gradient stop or an SVG attribute, where there is
  * no selector to write.
  *
- * Two of the thirteen name a semantic token rather than a primitive, because a
- * semantic one says the same thing: the board's content surface *is* the app's
- * canvas, measured at Δ4/255 from `--canvas` in both themes. The other eleven
- * stay on primitives on purpose — they are a slate-tinted grey ladder with no
- * equivalent in the neutral semantic set (the nearest match to `divider` is off
- * by Δ97), and minting eleven semantic names to describe one board's chrome
- * would grow the token vocabulary to fit a single consumer.
+ * Three of the thirteen name a token from the elevation dial rather than a
+ * primitive, because those three are LAYERS: the workspace the board is
+ * dropped on, and the board's own content surface, which is the innermost of
+ * the overview's four nested surfaces. What colour a layer takes follows from
+ * how deep it is nested, and `blueprint.css` derives all four rungs of that
+ * from `--background` — see the dial note at the top of its utilities layer.
+ * The other ten stay on primitives on purpose — they are a slate-tinted grey
+ * ladder with no equivalent in the neutral semantic set (the nearest match to
+ * `divider` is off by Δ97), and minting ten semantic names to describe one
+ * board's chrome would grow the token vocabulary to fit a single consumer.
  */
 export const BLUEPRINT_THEME = {
   /** Blueprint content surface — path sections, cells, swim lanes. */
-  canvas: 'var(--canvas)',
+  canvas: 'var(--background-blueprint-panel-interior)',
   /** Blueprint shell — label column, panel padding, compare chrome. */
   labelRail: 'var(--color-slate-500)',
   canvasBorder: 'var(--color-slate-700)',
@@ -78,9 +81,9 @@ export const BLUEPRINT_THEME = {
   laneDivider: 'var(--color-slate-700)',
   arrow: 'var(--color-gray-900)',
   /** Side-by-side compare path sections (Figma-style grouping). */
-  sectionFill: 'var(--canvas)',
+  sectionFill: 'var(--background-blueprint-panel-interior)',
   /** Outermost slide/canvas workspace — sits behind blueprint panels. */
-  viewportPad: 'var(--color-gray-300)',
+  viewportPad: 'var(--background-blueprint-canvas-ground)',
 } as const
 
 /** Set on interactive compare panels; children inherit label-rail hover. */
