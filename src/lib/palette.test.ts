@@ -15,10 +15,12 @@ import {
 } from '@/lib/pathColorTheme'
 import {
   chromaCeiling,
+  classUsesMatching,
   contrast,
   derivedFillInk,
   dial,
   inSrgbGamut,
+  namesIn,
   oklch,
   oklchFromSrgb,
   oklchToLinearSrgb,
@@ -897,6 +899,81 @@ describe.each(['light', 'dark'] as const)('brand fill: %s', (theme) => {
     expect(
       contrast(resolveColor('--brand-foreground', theme), brand),
     ).toBeGreaterThanOrEqual(3)
+  })
+})
+
+/**
+ * WHERE THE BRAND HUE IS ALLOWED TO LAND — four jobs, and no fifth.
+ *
+ * A deployment turns two dials and its colour appears on the primary CTA,
+ * prose links, a switch that is on, and the path selector's selected row.
+ * Everything else — selection, focus ring, cell outlines — stays neutral, so
+ * the hue reads as identity rather than as emphasis sprayed across the
+ * chrome. Until now that rule lived in three component comments, which is to
+ * say nowhere: a fifth `bg-brand` would have been found by a reader or not at
+ * all.
+ *
+ * Measured on the SITE, not on the count. Pinning the utility each job spells
+ * is what makes the rule move when a job moves: the path selector's brand
+ * mark used to be a status dot on the TRIGGER, beside the path-colour dots it
+ * had nothing to do with, and a rule that only counted consumers would have
+ * read four before and four after without noticing that one of them said
+ * nothing.
+ *
+ * The link job is a token registration rather than a call site — `--text-brand`
+ * is role ink on a neutral ground, which is what a link wants — so it is
+ * checked where it lives.
+ */
+const BRAND_JOBS = [
+  { job: 'the primary CTA', file: 'components/ui/button.tsx', mark: 'bg-brand' },
+  {
+    job: 'the switch in its on state',
+    file: 'components/ui/switch.tsx',
+    mark: 'data-checked:bg-brand',
+  },
+  {
+    job: "the selected row in the path selector's popover",
+    file: 'components/editor/PathSelectorMenu.tsx',
+    mark: 'text-brand',
+  },
+  { job: 'prose links', file: 'theme.css', mark: '--color-text-brand' },
+] as const
+
+/** Every brand-coloured utility written in source, as `file:line: utility`. */
+const brandUses = () =>
+  classUsesMatching(
+    /(?:^|:)(?:bg|text|border|ring|fill|stroke|shadow|outline|decoration)-(?:[a-z-]+-)?brand(?:-foreground)?(?:\/\d{1,3})?$/,
+  )
+
+describe('the brand hue reaches four jobs', () => {
+  it('is four, because a fifth is emphasis rather than identity', () => {
+    expect(BRAND_JOBS).toHaveLength(4)
+  })
+
+  it.each(BRAND_JOBS.filter((entry) => entry.file.endsWith('.tsx')))(
+    'spells $job as $mark in $file',
+    ({ file, mark }) => {
+      expect(
+        brandUses().filter((use) => use.startsWith(`${file}:`)),
+      ).toContainEqual(expect.stringMatching(new RegExp(`: ${mark}(?:/\\d+)?$`)))
+    },
+  )
+
+  it('registers the link ink rather than spelling it at a call site', () => {
+    // A link is prose, so its colour is a token the prose reads — and a
+    // registration nothing declares would make the fourth job a claim.
+    expect([...namesIn('theme.css')]).toContain('--color-text-brand')
+  })
+
+  it('lands nowhere else in source', () => {
+    const allowed = BRAND_JOBS.map((entry) => entry.file)
+    const strays = brandUses().filter(
+      (use) => !allowed.some((file) => use.startsWith(`${file}:`)),
+    )
+    expect(
+      strays,
+      `The brand hue has four jobs; these are a fifth:\n${strays.join('\n')}`,
+    ).toEqual([])
   })
 })
 

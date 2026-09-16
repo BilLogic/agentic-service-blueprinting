@@ -16,8 +16,8 @@ import { cn } from "@/lib/utils"
  *    reason.
  *
  * On stays `bg-brand`: a switch that is on is one of the four jobs the
- * brand token drives (CTA, prose links, the on track, the path-selector
- * status dot). Selection and focus rings stay on `--primary` / `--ring`.
+ * brand token drives (CTA, prose links, the on track, the selected row in the
+ * path selector). Selection and focus rings stay on `--primary` / `--ring`.
  */
 /**
  * The on/off track. Sized for the compact settings rows (`h-4`), which is
