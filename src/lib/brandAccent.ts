@@ -21,8 +21,8 @@ import { hexToRgb, oklchFromSrgb } from '@/lib/oklch'
  *
  * Every one of those except the last is multiplied by a CHROMA, and THIS TEMPLATE
  * SHIPS EVERY CHROMA AT ZERO. `themes/light.css` and `themes/dark.css` set
- * `--chroma: 0` and `--primary-chroma: 0`, and the `--brand-*` ramp beside them
- * is greyscale HSL literals that no hue dial touches. So against the template's
+ * `--chroma: 0` and `--primary-chroma: 0`, and `--brand` derives from
+ * `--primary`, so the identity fill is that same zero. So against the template's
  * own stylesheet, unchanged, setting an accent repaints NOTHING on the brand
  * surfaces. What it does move is `--expressive-chroma: 0.14`: warning,
  * destructive and info rotate 15% of the distance from `--brand-hue-reference`
@@ -33,8 +33,9 @@ import { hexToRgb, oklchFromSrgb } from '@/lib/oklch'
  * DIAL ON A RAMP, not a paint job, and rebranding is this field plus the ramp
  * beside it. A deployment that mounts this package imports the template's
  * `styles.css` and then layers its own theme file over it — its `--chroma`,
- * its `--primary-chroma`, its `--brand-*` steps — and `brand.accent` is the
- * hue those steps are drawn at. Set the field alone and the only visible effect
+ * its `--primary-chroma`, and a `--brand-*` dial if its identity differs from
+ * its action colour — and `brand.accent` is the hue all of that is drawn at.
+ * Set the field alone and the only visible effect
  * is the status drift above, which is why this is said here and in
  * `deploymentConfig.ts` rather than left to be discovered.
  *

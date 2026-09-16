@@ -469,7 +469,7 @@ const hexIsExempt = (match: string): boolean =>
  * THE ONE PLACE A HEX BELONGS, and why the rule has to know about it.
  *
  * `config.ts` is the brand seam. A deployment built on this template writes
- * its own accent there and layers a theme whose `--brand-*` ramp is drawn at
+ * its own accent there and layers a theme whose chroma dials are raised at
  * that hue. The accent cannot itself be a token, because it is the input the
  * tokens are derived FROM — so a rule that forbids every hex in source forbids
  * the one hex the architecture requires, and a deployment adopting this guard

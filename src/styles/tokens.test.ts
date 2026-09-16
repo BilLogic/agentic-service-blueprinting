@@ -477,12 +477,11 @@ const DIALS = [
   '--tertiary-foreground-level',
   '--primary-lightness',
   '--primary-chroma',
-  // Brand's own pair. Not in MODE_INVARIANT_DIALS even though both themes
-  // carry one value here: what the rule below asserts is that a dial is
-  // written in both files, and a deployment whose identity fill wants a
-  // different lightness per mode is still declaring the same dial.
-  '--brand-lightness',
-  '--brand-chroma',
+  // No brand dial on this list, and none anywhere: the identity fill derives
+  // from the pair above per channel, so there is no input here to declare
+  // twice. `palette.test.ts` holds the absence — a dial declared in a theme
+  // file takes its channel back off the accent in silence, which is the one
+  // failure this derivation has.
   '--ring-lightness',
   // How far a role's edge sits off that role's own tint. A dial and not a
   // derivation — the two modes carry different fractions, for the reasons

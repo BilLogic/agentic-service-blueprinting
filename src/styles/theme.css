@@ -180,9 +180,9 @@
   --text-color-on-surface-success: var(--text-on-surface-success);
   --text-color-on-surface-secondary: var(--text-on-surface-secondary);
 
-  /* `bg-brand` reads the derived identity fill. Same colour the ramp's anchor
-     step carried — the brand lightness dial is that step's OKLCH lightness —
-     and the ramp itself is gone, because a primitive family is named for a
+  /* `bg-brand` reads the identity fill: `--primary`'s resolved colour, with
+     one optional dial per channel over it (semantic.css). The stepped `brand`
+     family it used to read is gone, because a primitive family is named for a
      hue and never for a role. `brand-link` went with it: role ink on a
      neutral ground is `--text-brand` now, which is what a link wanted. The
      warning and destructive ramps followed for the same reason, and their
