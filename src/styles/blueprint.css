@@ -162,7 +162,7 @@
     opacity: 1;
   }
 
-  /* One slate step in from the resting surface, and the border one step in
+  /* One slate step in from the resting surface, and the border two steps in
      from that, so the hovered panel reads as lifted off the frame rather than
      merely outlined. The interior bands come with it. */
   [data-phase-scenario-panel]:hover:not([data-canvas-focus-active]),
