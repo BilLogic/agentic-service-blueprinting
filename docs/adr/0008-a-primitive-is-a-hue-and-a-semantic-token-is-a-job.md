@@ -67,6 +67,13 @@ and it is not ours to run.
 
 ### Two brand vocabularies, divided by a different thing
 
+*Superseded 2026-09-16 — the pair of dials each gives way to the per-channel
+dials of [ADR 0025](./0025-brand-derives-from-primary-with-one-dial-per-channel.md),
+which derives `--brand` from `--primary`'s resolved colour; the `--brand`
+derivation under "The stepped scales" above and the "A retune is dials, not a
+curve" consequence below fall with it. The division by job argued here is what
+that record's own split is drawn from, so it stands as it was written.*
+
 Upstream also carries two words for the identity accent, and theirs divide by
 **code provenance** — one arrived with vendored shadcn, the other is their own —
 which they are resolving by editing the vendored files. That route is closed

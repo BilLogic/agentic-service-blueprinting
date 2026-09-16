@@ -4,11 +4,12 @@ summary: The identity fill derives from the resolved action fill through three o
 
 # 25. Brand derives from primary, with one dial per channel
 
-**Status** Accepted — 2026-09-16. Supersedes the brand-dial half of
-[ADR 0008](./0008-a-primitive-is-a-hue-and-a-semantic-token-is-a-job.md);
-everything else in that record stands.
+**Status** Accepted — 2026-09-16. Supersedes the brand-dial mechanism of
+[ADR 0008](./0008-a-primitive-is-a-hue-and-a-semantic-token-is-a-job.md) —
+marked in place there, and named passage by passage under "What falls in 0008"
+below. That record's division of the two words by job stands.
 **Context** `src/styles/semantic.css`, `src/styles/themes/light.css`,
-`src/styles/themes/dark.css`,
+`src/styles/themes/dark.css`, `src/lib/palette.test.ts`,
 [ADR 0008](./0008-a-primitive-is-a-hue-and-a-semantic-token-is-a-job.md)
 
 ## Context
@@ -27,9 +28,9 @@ is what did not survive contact.
 What the second pair actually shipped, in both theme files, was
 `--brand-lightness: 0.594` at `--brand-chroma: 0`. That is a mid grey, and the
 identity fill wears it under the `text-sm` label the cover CTA carries, at
-3.89:1 — below the 4.5:1 that label's size asks for, and sitting on the exact
-lightness `semantic.css` itself names as "the worst ground either polarity of
-ink has". The dial pair existed so the identity could hold its vividness while
+3.89:1 — below the 4.5:1 that label's size asks for, and sitting in the trough
+`semantic.css` itself names, where "a fill near L 0.6 is the worst ground
+either polarity of ink has". The dial pair existed so the identity could hold its vividness while
 the action fill inverted, and the only value it was ever exercised at is a
 contrast trough. A knob whose sole shipped setting is the defect is a knob that
 costs more than it returns.
@@ -39,7 +40,9 @@ written, because the reason is verifiably wrong and it shaped the decision.
 `semantic.css` argues that an alias "inherits a colour with no lightness the
 ink can read, which is the same defect a fixed on-colour has". Under relative
 colour syntax that is false: the on-colour flip resolves against whatever the
-aliased colour resolves to.
+aliased colour resolves to. Take `--color-scale-1200` from `colors.css`, which
+is `hsl(206 24% 9%)` in light and `hsl(0 0% 93%)` in dark — the kind of step an
+aliased `--brand` would name. Then
 `oklch(from hsl(206 24% 9%) clamp(0.205, calc((0.62 - l) * 100), 0.985) calc(c * 0.08) h)`
 resolves to `oklch(0.985 …)`, and the dark half of the same step resolves to
 `oklch(0.205 …)`. Verified in a browser. The flip, the derived hairline and the
@@ -66,13 +69,30 @@ With no dial declared, every channel falls through to primary's own and
 `--brand` resolves byte-identically to `--primary`. Declare one dial and only
 that channel diverges; the other two keep following the accent.
 
-**The job split stands, and so does everything else 0008 decided.** The seven
-brand tokens keep their names, their derivations and the four sites the palette
-test pins them to. A primitive is still named for its hue and never for its
-role: there is no `brand` family in `colors.css` and this record does not add
-one. 0008's escape hatch is intact and is now one line — a deployment that
-wants its identity as steps adds the hue those steps are made of, under the
-hue's own name, and sets `--brand` from a rung of it.
+**One declaration is a complete seam, because the rest of the set chains off
+it.** `--brand-foreground`, `--surface-brand`, `--text-brand` and
+`--text-on-surface-brand` each derive `oklch(from var(--brand) …)`;
+`--border-brand` derives from `--surface-brand` and `--wash-brand` from
+`--text-brand`. Only `--brand`'s own derivation changes here — the six below it
+keep theirs, and nothing downstream is retyped.
+
+**What falls in 0008, and what does not.** Three passages go with the
+mechanism: the "a pair of dials each" sentence that closes "Two brand
+vocabularies, divided by a different thing"; the `--brand` derivation under
+"The stepped scales", with its "a rebrand is two numbers in the theme files";
+and the "A retune is dials, not a curve" consequence, which names
+`--brand-lightness` and `--brand-chroma` as the edit. The division by **job**
+that the first of those sits inside is untouched, and so is the rest of the
+record — the five divergences, the derive-versus-take method, and the rule that
+a primitive is named for its hue and never for its role. There is still no
+`brand` family in `colors.css` and this record does not add one. 0008's escape
+hatch is intact and is now one line: a deployment that wants its identity as
+steps adds the hue those steps are made of, under the hue's own name, and sets
+`--brand` from a rung of it.
+
+Which sites wear the brand hue is not 0008's to keep or lose. That inventory
+lives in `BRAND_JOBS` in `lib/palette.test.ts`, whose header says it is its one
+home, and this decision does not move it.
 
 **Brand gains a hue dial it never had.** The pair it replaces was lightness and
 chroma over `var(--primary-hue)`, so under 0008 brand could not differ from
@@ -85,7 +105,7 @@ not a like-for-like swap.
 should itself become a ramp-step alias rather than three dials is a separate
 decision, and it is separable precisely because brand reads primary's
 *resolved colour* rather than its dials. Primary can change shape later and
-brand follows with no second record. Verified.
+brand follows with no second record.
 
 ## What this rejects
 
@@ -111,6 +131,17 @@ should say so, rather than encode a placeholder as a decision.
 surfaces look exactly like the action fill until a deployment says otherwise.
 That is the honest meaning of an unbranded template: it has one accent, not two
 that happen to be set to different greys.
+
+**Two guards in `lib/palette.test.ts` are invalidated and have to be
+rewritten.** One asserts `--brand`'s resolved lightness and chroma equal the
+`--brand-lightness` and `--brand-chroma` dials to six places; the other asserts
+that brand and primary are more than a just-noticeable perceptual distance
+apart. Both are impossible the moment no dial is declared, and the second was
+the assertion that "`--brand` and `--primary` share the accent hue and nothing
+else" — a claim this decision retires rather than breaks. They are the price of
+the decision, not an oversight of it, and whoever lands the mechanism owes them
+replacements that assert the new contract: brand equals primary when unset, and
+diverges in exactly the channel a dial is set on.
 
 **The identity fill now inverts with the theme.** It inherits primary's dial
 pair, and a neutral primary must invert — near-black ink in light, near-white in
