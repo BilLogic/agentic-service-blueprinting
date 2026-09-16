@@ -730,6 +730,11 @@ const RADIUS_KIND_ALLOWLIST: Record<string, readonly string[]> = {
   'components/editor/CanvasAnnotationBarChrome.tsx': ['xl', 'md'],
   'components/editor/EditorZoomIndicator.tsx': ['lg', 'md'],
   'components/editor/JumpToSearch.tsx': ['md'],
+  // The path selector is a plain control on md — trigger, skeleton and
+  // popover rows. `full` is the colour DOTS and only them: a dot that says
+  // which path is drawn is a circle, so the rung stays for the mark while
+  // the control itself cannot drift back onto it.
+  'components/editor/PathSelectorMenu.tsx': ['md', 'full'],
   'components/editor/CanvasEmptyState.tsx': ['xl'],
   'components/editor/SlideStickyHeader.tsx': ['xl', 'md'],
   'components/editor/EditorLoadingSkeletons.tsx': ['xl', 'lg', 'md', 'full'],

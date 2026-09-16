@@ -210,7 +210,15 @@ function DefsTable({
   )
 }
 
-/** The guide link — quiet inline text, never a button row. */
+/**
+ * The guide link — inline text, never a button row.
+ *
+ * It reads the brand's own ink, because a link IS one of the four jobs the
+ * brand hue has (they are pinned in `palette.test.ts`) and this is the only
+ * prose link the app renders. `--text-brand` is role ink on a neutral ground,
+ * measured against the page at 4.5:1, so a deployment's hue arrives here
+ * legible and the template — whose brand chroma is zero — still draws grey.
+ */
 function GuideLink({ link, repoUrl }: { link: CoverGuideLink; repoUrl: string }) {
   const href = `${repoUrl.replace(/\/+$/, '')}/blob/main/${link.docPath}`
   return (
@@ -218,7 +226,7 @@ function GuideLink({ link, repoUrl }: { link: CoverGuideLink; repoUrl: string })
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="text-sm text-muted-foreground underline underline-offset-4 transition-colors duration-(--motion-structural) ease-structural hover:text-foreground sm:text-base"
+      className="text-sm text-text-brand underline underline-offset-4 transition-colors duration-(--motion-structural) ease-structural hover:text-foreground sm:text-base"
     >
       {link.label}
     </a>
