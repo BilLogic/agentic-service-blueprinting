@@ -27,6 +27,5 @@ transcript, in plain text, until they refresh.
 A deployment needs no change to get the listener: it hangs off `App`, which is
 what a deployment mounts, so it arrives with the pin. Nothing in a host's
 `main.tsx`, its headers or its redirects has to move. A host that supplies its
-blueprint registry as a lazy loader has a second import whose failure is a
-throw rather than a fallback; the boundary above the providers is what renders
-it.
+blueprint registry as a lazy loader still owns that second import's failure,
+which is a throw rather than a fallback.

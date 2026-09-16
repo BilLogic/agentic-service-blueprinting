@@ -11,17 +11,16 @@
  *
  * Two throws are asserted here because they fail for different reasons. A
  * provider that throws is the general case, and is driven by replacing one;
- * the rejected registry loader is the case this package creates on purpose —
- * `DeploymentConfigContext` rethrows it rather than drawing a deployment's
- * chrome around a board its identifiers cannot fill — so it is the one that
- * would be a regression to lose.
+ * the rejected registry loader is the case this package creates on purpose,
+ * so it is the one that would be a regression to lose. Why the boundary is
+ * where it is: `EditorErrorBoundary`'s class comment.
  *
  * `App` is rendered whole rather than through a stand-in tree: what is under
  * test is where the boundary is wired, and a stand-in would assert the
  * arrangement the test itself wrote. Neither throw mounts the shell, so the
  * cost of the real root is its imports.
  */
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '@/App'
 import type { DeploymentConfig } from '@/deploymentConfig'
@@ -71,9 +70,13 @@ describe('a throw above the editor shell', () => {
 
     render(<App />)
 
-    expect(screen.getByText('Something went wrong')).toBeDefined()
+    const card = screen.getByText('Something went wrong').parentElement!
     expect(screen.getByText('no client anywhere')).toBeDefined()
-    expect(screen.getByRole('button', { name: 'Reload' })).toBeDefined()
+    // The app sentence, not the view one. `scope="app"` is a prop a refactor
+    // can drop in silence otherwise: everything else the card renders is the
+    // same in both scopes.
+    expect(within(card).getByText(/nothing below this point came up/)).toBeDefined()
+    expect(within(card).getByRole('button', { name: 'Reload' })).toBeDefined()
   })
 
   it('renders a message when the blueprint registry loader rejects', async () => {
@@ -90,7 +93,8 @@ describe('a throw above the editor shell', () => {
     await waitFor(() =>
       expect(screen.getByText('the chunk never arrived')).toBeDefined(),
     )
-    expect(screen.getByText('Something went wrong')).toBeDefined()
-    expect(screen.getByRole('button', { name: 'Reload' })).toBeDefined()
+    const card = screen.getByText('Something went wrong').parentElement!
+    expect(within(card).getByText(/Reload the page/)).toBeDefined()
+    expect(within(card).getByRole('button', { name: 'Reload' })).toBeDefined()
   })
 })

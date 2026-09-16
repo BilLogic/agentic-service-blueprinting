@@ -318,10 +318,8 @@ export function DeploymentConfigProvider({
    * own. The package's board is keyed by this template's identifiers and
    * answers a deployment nothing, so the fallback would be a deployment's
    * chrome around a blank canvas with no error anywhere — the silent version
-   * of the failure. WHERE THE THROW LANDS: `App` wraps this provider in the
-   * app-scoped `EditorErrorBoundary`, so the failure is a card saying what to
-   * do about it with the error still in the console, rather than the blank
-   * page it used to be. A host installs nothing.
+   * of the failure. It lands on `App`'s app-scoped `EditorErrorBoundary`,
+   * which is above this provider — see that class's comment.
    */
   if (failure) throw failure
   if (awaiting) return null

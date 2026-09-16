@@ -43,20 +43,18 @@ import { useStaleChunkReload } from '@/lib/staleChunkReload'
  *     outside it, and `EditorProvider` above it too — that read is null-safe,
  *     so out of place it would not throw, it would simply never fire.
  *   - `EditorErrorBoundary` in its `app` scope ABOVE everything, the
- *     deployment seam included. A provider that throws unmounts the tree, so
- *     a boundary underneath one it may throw from catches nothing — and
- *     `DeploymentConfigProvider` rethrows a failed registry loader by design.
+ *     deployment seam included. Its class comment carries why.
  *   - The editor's `EditorErrorBoundary` NOT above `WriteFailureNotices`. See
  *     its comment below; this is the one edge in the tree that is a behaviour
- *     rather than a wiring requirement. The app-scoped boundary at the top is
- *     above both, which is not the same edge: it catches what takes the whole
- *     tree with it, and a notice about a write has nothing left to sit beside.
+ *     rather than a wiring requirement. The app-scoped boundary is above both,
+ *     which is not the same edge: a write notice has nothing left to sit
+ *     beside once the tree it reported on has gone.
  *
  * Everything else is settled by band, outermost to innermost:
  *
  *   0. THE BOUNDARY, outside the bands because it is about all of them.
- *   1. The DEPLOYMENT SEAM. `DeploymentConfigProvider` is outermost because
- *      every band below may be skinned by it and none of it may be skinned
+ *   1. The DEPLOYMENT SEAM. `DeploymentConfigProvider` is the outermost
+ *      provider because every band below may be skinned by it and none of it may be skinned
  *      half way down.
  *   2. INFRASTRUCTURE — the query cache, the theme, the database client.
  *      Nothing here renders anything the reader sees.
@@ -83,18 +81,8 @@ export function App({ config }: { config?: DeploymentConfig | null }) {
    * carries why the reload is spent only once.
    */
   useStaleChunkReload()
-  /*
-   * The boundary below is above EVERYTHING, and that is the point: a provider
-   * that throws unmounts the whole tree, so the editor's own boundary —
-   * eleven providers further down — catches nothing the deployment seam, the
-   * database client or the two address-bar components do.
-   * `DeploymentConfigProvider` rethrows a failed registry loader on purpose,
-   * and that throw used to reach nothing at all.
-   *
-   * It ships with the package for the same reason the stale-chunk reload
-   * does: the root is what a deployment mounts, so a boundary a host has to
-   * remember to install is a boundary that is eventually not installed.
-   */
+  // The boundary below covers everything, start-up included; the rule and its
+  // reasons live in `EditorErrorBoundary`'s class comment.
   return (
     <EditorErrorBoundary scope="app">
       <DeploymentConfigProvider config={config}>

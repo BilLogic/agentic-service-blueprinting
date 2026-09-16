@@ -35,10 +35,8 @@ import { storageKey } from "@/lib/storageNamespace";
  * the transcript, in plain text, until they refresh. A HOST CAN ADD A SECOND
  * lazy boundary — a blueprint registry supplied as a loader is the documented
  * one — and a loader that rejects is a throw this module does not soften: the
- * credit is one per tab, not one per import, so the second import's rejection
- * has to be caught rather than reloaded away. `App`'s app-scoped
- * `EditorErrorBoundary` is what catches it, and it ships with the package for
- * the same reason this listener does.
+ * credit is one per tab, not one per import. That rejection is caught by
+ * `App`'s app-scoped `EditorErrorBoundary` instead.
  */
 
 /**

@@ -9,27 +9,22 @@ type Props = {
    * navigating away from a broken view is enough to recover.
    */
   resetKey?: string
-  /**
-   * How much of the app went with the throw, which is the only thing the two
-   * placements differ on. `'view'` is a canvas or a shell inside a working
-   * app, so the message can send the reader somewhere else; `'app'` is the
-   * boundary above the providers, where there is no somewhere else and the
-   * honest instruction is a reload.
-   *
-   * A prop rather than a second component because the surface — the card, the
-   * error line, the two ways back — is one design, and two copies of it is
-   * two designs the moment one of them is touched.
-   */
-  scope?: 'view' | 'app'
+  /** How much of the app went with the throw. See the class comment. */
+  scope?: BoundaryScope
 }
 type State = { error: Error | null }
 
+/** How much of the app went with the throw. Defaults to `'view'`. */
+type BoundaryScope = 'view' | 'app'
+
 /**
- * What the reader is told, per scope. Apart, and not inline in the JSX,
- * because the difference between the two placements is exactly this sentence
- * and putting it where it can be read side by side is what keeps it so.
+ * What the reader is told, per scope — one of the two things the scope
+ * varies, the other being which button is emphasised. Apart, and not inline
+ * in the JSX, because the difference between the two placements is exactly
+ * these two sentences and putting them where they can be read side by side is
+ * what keeps it so.
  */
-const MESSAGE: Record<'view' | 'app', string> = {
+const MESSAGE: Record<BoundaryScope, string> = {
   view:
     'This view hit an error and stopped rendering. Try again, or move to ' +
     'another scenario — the rest of the app is still working. If it keeps ' +
@@ -59,13 +54,35 @@ const MESSAGE: Record<'view' | 'app', string> = {
  * user navigates, and "Try again" re-renders in place, which keeps the agent
  * session and view state that a reload would discard.
  *
- * TWO PLACEMENTS, ONE CLASS. Inside the shells it guards a view, with the
- * chrome beside it still working. At the top of `App`, above the deployment
- * seam and the ten providers under it, it guards the start-up — a provider
- * that throws unmounts everything, so a boundary below one is a boundary that
- * catches nothing. Only the sentence differs (`scope`); the card, the error
- * line and the two ways back are the same surface, and "Try again" at the top
- * remounts the tree, which is a real retry of whatever failed to start.
+ * ── TWO PLACEMENTS, ONE CLASS ─────────────────────────────────────────────
+ *
+ * This paragraph is the home of the rule; everywhere else points here.
+ *
+ * Inside the shells (`scope="view"`, the default) it guards a view, with the
+ * chrome beside it still working. At the top of `App` (`scope="app"`) it
+ * guards the start-up: a provider that throws unmounts everything, so a
+ * boundary below one catches nothing that the deployment seam, the database
+ * client or the address-bar components do — and `DeploymentConfigProvider`
+ * rethrows a failed blueprint-registry loader on purpose. It ships inside
+ * `App` rather than being left to a host, because a boundary a host has to
+ * remember to install is a boundary that is eventually not installed.
+ *
+ * `scope` varies two things and nothing else: the sentence, and which of the
+ * two buttons is emphasised. A view inside a working app can be navigated
+ * away from, so "Try again" leads; a start-up failure cannot, so "Reload"
+ * leads and the copy names it. Both buttons are on both, the card and the
+ * error line are one design, and a second fallback component would be a
+ * second design the moment one of them was touched.
+ *
+ * "Try again" at the app scope remounts the tree, which does re-run whatever
+ * failed to start — but a missing chunk is not among the things it recovers:
+ * the browser records the failed module, so re-importing the same specifier
+ * rejects again without a refetch, and only the reload fetches anything.
+ *
+ * ABOVE EVERYTHING is true of the TREE, not of the module graph. A throw
+ * while `App`'s own imports evaluate, or anything in `main.tsx` before React
+ * renders, is still a blank page: there is no React on the stack yet to catch
+ * it.
  */
 export class EditorErrorBoundary extends Component<Props, State> {
   state: State = { error: null }
@@ -75,7 +92,11 @@ export class EditorErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error('[editor] uncaught error:', error, info.componentStack)
+    // Prefixed with what actually fell over: a start-up failure has no editor
+    // in it, and a console line that says otherwise sends the reader looking
+    // in the wrong half of the tree.
+    const where = this.props.scope === 'app' ? 'app' : 'editor'
+    console.error(`[${where}] uncaught error:`, error, info.componentStack)
   }
 
   componentDidUpdate(prev: Props): void {
@@ -87,6 +108,9 @@ export class EditorErrorBoundary extends Component<Props, State> {
   render(): ReactNode {
     const { error } = this.state
     if (!error) return this.props.children
+    const scope = this.props.scope ?? 'view'
+    // The emphasised control is the one the sentence above it names.
+    const leads = scope === 'app' ? 'reload' : 'retry'
     return (
       <div className="flex h-full min-h-0 w-full items-center justify-center bg-background p-8">
         <div className="flex max-w-md flex-col items-start gap-3 rounded-lg border border-border bg-card p-6 shadow-sm">
@@ -94,18 +118,22 @@ export class EditorErrorBoundary extends Component<Props, State> {
             Something went wrong
           </h1>
           <p className="text-sm text-muted-foreground">
-            {MESSAGE[this.props.scope ?? 'view']}
+            {MESSAGE[scope]}
           </p>
           <p className="w-full truncate rounded-md bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">
             {error.message}
           </p>
           <div className="flex items-center gap-2">
-            <Button size="sm" onClick={() => this.setState({ error: null })}>
+            <Button
+              size="sm"
+              variant={leads === 'retry' ? 'default' : 'ghost'}
+              onClick={() => this.setState({ error: null })}
+            >
               Try again
             </Button>
             <Button
               size="sm"
-              variant="ghost"
+              variant={leads === 'reload' ? 'default' : 'ghost'}
               onClick={() => window.location.reload()}
             >
               Reload
