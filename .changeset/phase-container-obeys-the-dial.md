@@ -1,0 +1,5 @@
+---
+"agentic-service-blueprinting": patch
+---
+
+The overview's phase container obeys the elevation dial. The four nested surfaces — the viewport ground, the phase frame, a scenario panel on it and the blueprint inside that panel — were each pinned to a step of the slate ramp picked by eye, and the order those steps produced ran backwards in both themes: the frame was the brightest layer and the panel nested inside it the darkest. They are rungs of `--background` plus N elevation steps now, so dark climbs one step per layer outward-in and light flattens to near-white with the hairline carrying the nesting, which is what light's dial already says elevation is. The phase badge loses its slate plate and sits in the canvas colour, cutting the frame's hairline. A deployment that overrides the phase frame's fill or the scenario panel's surface re-tunes to the dial: read `--background-blueprint-phase-frame` and `--background-blueprint-scenario-panel` (with `--background-blueprint-canvas-ground` and `--background-blueprint-panel-interior` for the layers either side of them) rather than naming a colour step, or the override will read as a grey box again.

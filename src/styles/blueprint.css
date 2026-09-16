@@ -38,10 +38,49 @@
  */
 
 @layer utilities {
+  /*
+   * THE OVERVIEW'S FOUR SURFACES, as four rungs of one dial.
+   *
+   * The overview nests four layers deep — the viewport ground, the phase
+   * frame, a scenario panel on that frame, and the blueprint drawn inside the
+   * panel — and all the reader needs from their colour is which one contains
+   * which. Each used to be pinned to a step of the slate ramp picked by eye,
+   * and the order those four steps produced ran backwards in both themes: the
+   * frame measured brightest (light .998, dark .364) with the panel nested
+   * inside it darker (.932 / .300) and the panel's own interior darker again
+   * (.998 / .190 — brightest of the three in light, darkest in dark).
+   *
+   * So they are `--background` plus N elevation steps, N counting outward-in.
+   * `--elevation-step` is signed per theme, which is what makes one set of
+   * declarations serve both: in dark each rung is 0.025 lighter than the layer
+   * it sits on, and in light every rung above the 0.995 canvas clips against
+   * white, so the layers flatten and their edges carry the nesting — light's
+   * own model, stated in `themes/light.css` and Supabase's before it.
+   *
+   * These four ARE declared at the root, unlike every other token this file
+   * mints. The note above about root declarations is about the cell tokens,
+   * whose consumers read a fallback as the default state. These have no
+   * default state to shadow: they are the theme's answer, read directly, by
+   * the two rules below and by `blueprintTheme.ts` for the two layers the
+   * board composes at runtime.
+   */
+  :root {
+    --background-blueprint-canvas-ground: var(--background);
+    --background-blueprint-phase-frame: oklch(
+      from var(--background) calc(l + var(--elevation-step)) c h
+    );
+    --background-blueprint-scenario-panel: oklch(
+      from var(--background) calc(l + var(--elevation-step) * 2) c h
+    );
+    --background-blueprint-panel-interior: oklch(
+      from var(--background) calc(l + var(--elevation-step) * 3) c h
+    );
+  }
+
   /* Interactive overview / phase panels — pure CSS hover avoids stale React hover state. */
   [data-phase-scenario-panel] {
-    background-color: var(--color-slate-500);
-    border-color: var(--color-slate-700);
+    background-color: var(--background-blueprint-scenario-panel);
+    border-color: var(--border);
   }
 
   [data-scenario-panel-title-badge] {
@@ -50,21 +89,27 @@
     color: var(--color-gray-1200);
   }
 
+  /*
+   * The phase's name sits ON the frame's edge, so it is painted in the ground
+   * the frame is drawn on and cuts the hairline where it crosses it. A plate
+   * of its own would be a third grey in a stack whose whole subject is depth.
+   */
   [data-phase-title-badge] {
-    background-color: var(--color-slate-800);
-    border-color: var(--color-slate-800);
-    color: var(--color-gray-1200);
+    background-color: var(--background-blueprint-canvas-ground);
+    border-color: transparent;
+    color: var(--foreground);
   }
 
+  /*
+   * Light: no fill. The frame is its hairline — see the dial note above.
+   */
   [data-canvas-phase-interactive] [data-phase-frame] {
-    background-color: var(--background);
     border-color: var(--border);
     border-width: 1px;
   }
 
   .dark [data-canvas-phase-interactive] [data-phase-frame] {
-    background-color: var(--color-slate-700);
-    border-color: var(--color-slate-800);
+    background-color: var(--background-blueprint-phase-frame);
   }
 
   /*
