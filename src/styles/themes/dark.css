@@ -48,14 +48,12 @@
   --tertiary-foreground-level: 0.65;
 
   /* BRAND SEAM, dark half. The neutral filled control inverts: near-white
-     fill, dark ink on it (semantic.css derives the flip). */
+     fill, dark ink on it (semantic.css derives the flip). No brand dial here
+     either — see the note beside the pair in themes/light.css. The identity
+     follows this fill, so it inverts with it, and a fork that wants an
+     identity which does not sets a dial in BOTH theme files. */
   --primary-lightness: 0.922;
   --primary-chroma: 0;
-  /* Brand identity keeps one lightness across both modes — see the note in
-     themes/light.css. The filled control inverts because a neutral one must;
-     the identity does not, because 0.594 reads on both canvases. */
-  --brand-lightness: 0.594;
-  --brand-chroma: 0;
   /*
    * Two-layer shadows restated so dark actually applies: higher alpha plus
    * a 1px inset highlight along the top edge. These win over the light

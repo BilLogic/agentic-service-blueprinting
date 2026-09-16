@@ -19,9 +19,11 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Supabase's button treatment: flat matcha fill, one shade-darker
-        // 1px edge, tighter radius, no drop shadow — the border carries the
-        // weight the muted fill gave up. Hover still rides alpha on the
+        // Supabase's button treatment: a flat `--primary` fill, one
+        // shade-darker 1px edge, tighter radius, no drop shadow — the border
+        // carries the weight the muted fill gave up. The fill is whatever the
+        // accent dials resolve to, which in this template is a neutral at
+        // chroma 0 rather than a colour. Hover still rides alpha on the
         // resting token; no `--*-hover` state token exists.
         default:
           "rounded-md border-primary-border bg-primary text-primary-foreground shadow-none hover:bg-primary/90",

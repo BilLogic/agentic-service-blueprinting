@@ -489,7 +489,7 @@ export type ResolvedDeploymentConfig = {
  * Both of those resolve to `undefined` in this repository, and that is the
  * template's honest state rather than an oversight: `coverContent.ts` omits
  * `title` on purpose so the cover heading falls back to `ORG_NAME`, and
- * `BRAND` ships no accent because this template's `--brand-*` ramp is greyscale.
+ * `BRAND` ships no accent because this template's chroma dials are all zero.
  * `present()` drops an undefined field, so the resolved brand is unchanged and
  * the wordmark still falls through to `ORG_NAME`; `applyBrandAccent` writes
  * nothing for an absent accent, so the theme files' own dial stands. The one
