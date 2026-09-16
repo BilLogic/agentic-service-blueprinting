@@ -26,9 +26,11 @@ import {
   palette,
   resolveColor,
   resolveColorValue,
+  rulesDeclaring,
   resolvePaletteToken,
   resolveValue,
   stylesheet,
+  winningDeclaration,
   type Rgb,
 } from '@/lib/tokenModel'
 
@@ -272,6 +274,137 @@ describe('brand fill', () => {
       // a separation the neutral seam cannot physically produce.
       expect(contrast(border, fill)).toBeGreaterThan(1.1)
     })
+  })
+})
+
+/**
+ * The overview's four nested surfaces, and the dial they climb.
+ *
+ * Depth on the overview is four layers deep — the viewport ground, the phase
+ * frame, a scenario panel sitting on it, and the blueprint drawn inside that
+ * panel — and the only thing those four have to say is which one is nested in
+ * which. Each was pinned to a step of the slate ramp chosen by eye, and the
+ * order that produced ran backwards in both themes: the frame was the
+ * brightest layer and the panel inside it the darkest.
+ *
+ * So the four are rungs of the elevation dial now, and this is the rule that
+ * says the ladder climbs. Resolved through the cascade rather than compared as
+ * strings: a rung is arithmetic on two per-theme dials, and what the
+ * arithmetic PRODUCES is the half a string cannot show.
+ *
+ * Dark carries the ordering. Light's canvas sits at 0.995, so every rung above
+ * it clips against white — which is light's own model and not a defect,
+ * `themes/light.css` says so in as many words: elevation there is carried by
+ * hairlines, the way Supabase carries it. The light half of the contract is
+ * therefore the ABSENCE of a fill on the frame, which is the second rule here.
+ */
+describe('the overview canvas layers climb the elevation dial', () => {
+  /** The ground first, then each layer nested in the one before it. */
+  const LAYERS = [
+    '--background-blueprint-canvas-ground',
+    '--background-blueprint-phase-frame',
+    '--background-blueprint-scenario-panel',
+    '--background-blueprint-panel-interior',
+  ] as const
+
+  /** The resting rule for one selector, exactly — no hover, no focus arm. */
+  const resting = (property: string, selector: string) =>
+    rulesDeclaring(property).filter((rule) => rule.selector === selector)
+
+  const FRAME = '[data-canvas-phase-interactive] [data-phase-frame]'
+
+  it('dark: the four layers are the semantic ladder, in its own ratios', () => {
+    const lightness = LAYERS.map((name) => resolveColorValue(name, 'dark').l)
+    expect(lightness).toEqual([...lightness].sort((a, b) => a - b))
+    // The ratios come from `semantic.css`, not from this file: the rungs ARE
+    // `--canvas` / `--sidebar` / `--card` / `--popover`, so turning
+    // `--elevation-2` moves the board with the app, and this rule follows it
+    // instead of pinning the gap it happens to produce today.
+    const step = dial('--elevation-step', 'dark')
+    const ratios = [
+      0,
+      dial('--elevation-1', 'dark'),
+      dial('--elevation-2', 'dark'),
+      dial('--elevation-3', 'dark'),
+    ]
+    for (let i = 1; i < lightness.length; i += 1) {
+      expect(lightness[i] - lightness[i - 1], LAYERS[i]).toBeCloseTo(
+        step * (ratios[i] - ratios[i - 1]),
+        6,
+      )
+    }
+  })
+
+  it('light: the phase frame declares no background-color', () => {
+    // The light frame IS its hairline. A fill here is the grey box in a grey
+    // box that this rule exists to keep out.
+    expect(resting('background-color', FRAME)).toEqual([])
+    expect(resting('border-color', FRAME).map((rule) => rule.value)).toEqual([
+      'var(--border)',
+    ])
+    // And the dark arm IS there: every assertion here is about one rule, so
+    // a renamed selector has to fail rather than pass by finding nothing.
+    expect(
+      resting('background-color', `.dark ${FRAME}`).map((rule) => rule.value),
+    ).toEqual(['var(--background-blueprint-phase-frame)'])
+  })
+
+  it('light: the ground stays visible, and nothing above it computes a climb', () => {
+    // The frame losing its fill is not the canvas becoming the page. Without a
+    // ground below them, white panels sit on a white page and the overview has
+    // no floor at all. Rendered lightness, clamped the way a display clamps
+    // it: a rung that resolves past L 1 is the page, whatever it says.
+    const rendered = (name: string) =>
+      Math.min(1, resolveColorValue(name, 'light').l)
+    const step = dial('--elevation-step', 'light')
+    expect(rendered(LAYERS[2]) - rendered(LAYERS[0])).toBeGreaterThanOrEqual(step)
+    expect(rendered(LAYERS[0])).toBeLessThan(1)
+
+    // And the three layers above the ground NAME a surface rather than
+    // computing a climb light cannot render: arithmetic there is three no-ops
+    // written as three rungs.
+    for (const name of LAYERS.slice(1)) {
+      const declared = winningDeclaration(name, 'light')
+      expect(declared?.value, name).toMatch(/^var\(--[a-z-]+\)$/)
+    }
+  })
+
+  it('pins none of the four layers to a colour family', () => {
+    // A slate step here is a colour chosen outside the neutral theme, which
+    // therefore cannot follow it.
+    for (const name of LAYERS) {
+      const declared = rulesDeclaring(name)
+      expect(declared.length, name).toBeGreaterThan(0)
+      expect(declared.map((rule) => rule.value).join(' '), name).not.toMatch(
+        /--color-[a-z]+-\d+/,
+      )
+    }
+    // Resting AND hovered, on the two elements themselves — a descendant of a
+    // panel is its own subject. A hover that jumps to a ramp step switches
+    // colour systems under the pointer, which is this defect one state along.
+    const paints = (selector: string) =>
+      selector
+        .split(',')
+        .some((part) => /\[data-phase-(?:frame|scenario-panel)\]$/.test(part.trim()))
+    const painted = rulesDeclaring('background-color')
+      .concat(rulesDeclaring('border-color'))
+      .filter((rule) => paints(rule.selector))
+    expect(painted.length).toBeGreaterThanOrEqual(4)
+    for (const rule of painted)
+      expect(rule.value, rule.selector).not.toMatch(/--color-[a-z]+-\d+/)
+  })
+
+  it('leaves no fill from a colour family on the phase badge', () => {
+    // The badge sits in the canvas colour and cuts the frame's hairline; a
+    // slate plate behind it is the third grey in a three-grey stack.
+    // Every arm that paints it, resting or hovered, and the resting one has to
+    // be found: an assertion about no rule is an assertion about nothing.
+    const arms = rulesDeclaring('background-color').filter((rule) =>
+      rule.selector.includes('[data-phase-title-badge]'),
+    )
+    expect(arms.map((rule) => rule.value)).toEqual([
+      'var(--background-blueprint-canvas-ground)',
+    ])
   })
 })
 
