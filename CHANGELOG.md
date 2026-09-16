@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.44.22
+
+**The overview container wears the states its owner chose.** The viewport
+ground, the phase frame and its edge, the scenario panel and its edge, the
+panel interior, the label rail and both title badges are back to their
+v1.44.17 colours in every state and both themes. The four
+`--background-blueprint-*` names and the rail override seam stay, so a
+deployment retunes one name; they now resolve to the pinned look and a
+guard holds every piece to it.
+
+**Upgrading a deployment:** nothing to do. A deployment that retuned
+`--background-blueprint-canvas-ground`, `-phase-frame`, `-scenario-panel`
+or `-panel-interior` after v1.44.21 keeps its override; the defaults
+beneath it are the v1.44.17 colours again.
+
+### Patch Changes
+
+
+- 26b406a: The overview's phase container looks as it did at v1.44.17 again: the viewport
+  ground, the phase frame and its edge, the scenario panel and its edge, the
+  panel interior, the label rail and both title badges are back to the colours
+  the owner chose, in every state — at rest, on hover, on focus-within and under
+  the focus dim, in light and in dark. The two rounds since moved those states
+  onto the elevation ladder; the ladder is coherent and the board was worse, so
+  the look is pinned rather than derived.
+
+  A deployment retunes a layer through `--background-blueprint-canvas-ground`,
+  `--background-blueprint-phase-frame`, `--background-blueprint-scenario-panel`
+  and `--background-blueprint-panel-interior`, declared once in
+  `blueprint.css`, plus `--background-blueprint-panel-label-rail` for the rail.
+
 ## 1.44.21
 
 **Four surfaces that read wrong after the visual-system batch read right.**
@@ -35,7 +66,6 @@ is retired.
   no longer accepts `excludeCurrent`.
 
 ### Patch Changes
-
 
 - f5c6fe9: The Jump to… palette reads as one search surface. The command primitive now
   follows the benchmark it names in its divergence header: the popover surface
@@ -7849,8 +7879,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                          ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                          "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                            ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                            "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
