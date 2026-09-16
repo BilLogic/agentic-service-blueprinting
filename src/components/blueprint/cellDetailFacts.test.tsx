@@ -20,6 +20,7 @@ import {
   useCellTabsFacts,
   useSelectedCell,
 } from '@/components/blueprint/cellDetailFacts'
+import { LANE_ROLES } from '@/lib/laneRoles'
 import type { DraftCellTarget } from '@/components/blueprint/CellPanelEditor'
 import type { BlueprintData } from '@/types/blueprint'
 import type { BlueprintCellSelection } from '@/types/blueprintCellDetail'
@@ -191,7 +192,11 @@ describe('the selected cell, resolved once', () => {
       name: 'Tools',
       role: 'frontstage_touchpoints',
     })
-    expect(resolved.lane?.description).toContain('Frontstage touchpoints')
+    // The description is the DEFINITION, not the role's name: the badge above
+    // it already prints "Frontstage touchpoints".
+    expect(resolved.lane?.description).toBe(
+      LANE_ROLES.frontstage_touchpoints.body,
+    )
   })
 
   it('stands in for a lane the board has no row for, and says the role is none', () => {

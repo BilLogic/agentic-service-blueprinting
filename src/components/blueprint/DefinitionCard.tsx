@@ -1,5 +1,4 @@
 import type { ReactElement, RefObject } from 'react'
-import { Eyebrow } from '@/components/blueprint/Eyebrow'
 import {
   Popover,
   PopoverContent,
@@ -29,11 +28,12 @@ export type DefinitionSection = {
  * identically typeset and hairline-separated.
  *
  * One section is a term and its meaning. Two is a category then an instance —
- * PATH over what a path is, then this path's name over its own description.
+ * Path over what a path is, then this path's name over its own description.
  *
- * The card heads every section the same way: a small-caps eyebrow over a body.
- * One heading treatment, so the card reads as a pattern rather than as a
- * one-off — the category half and the instance half are typeset identically.
+ * The card heads every section the same way: the term in sentence case over
+ * its body. One heading treatment, so the card reads as a pattern rather than
+ * as a one-off — the category half and the instance half are typeset
+ * identically.
  *
  * The `data-definition-*` attributes are the seam `definitionCard.test.tsx`
  * reads: "every section is typeset the same" is a claim about the rendered
@@ -52,11 +52,30 @@ export function DefinitionCard({ sections }: { sections: DefinitionSection[] }) 
             index > 0 && 'border-t border-border',
           )}
         >
-          {/* Small caps, so the word reads as a label on the sentence under it
-              and not as another sentence competing with it. */}
-          <Eyebrow className="block" data-definition-eyebrow="">
+          {/*
+            The TERM, in the case the thing it names is written in everywhere
+            else.
+
+            Not the shared `Eyebrow`. An eyebrow labels a REGION of chrome —
+            a menu group, a comparison column — where the label is furniture
+            and the content beside it is the subject. Here the word IS the
+            subject: the reader hovered a badge that says `Frontstage` and the
+            card's job is to answer for that word. Setting it in caps with
+            letterspacing printed a third spelling of a term the badge, the
+            panel and the board all write in sentence case, so the card read
+            as a different vocabulary from the one it was explaining.
+
+            Weight separates the term from its sentence, not ink — 500, the
+            one emphasis the weight doctrine gives a label. Both are
+            `text-foreground`: a muted term would sit quieter than the prose
+            underneath it, which is backwards for the thing being defined.
+          */}
+          <span
+            data-definition-eyebrow=""
+            className="block text-xs font-medium text-foreground"
+          >
             {section.eyebrow}
-          </Eyebrow>
+          </span>
           <span
             data-definition-body=""
             className={cn(
