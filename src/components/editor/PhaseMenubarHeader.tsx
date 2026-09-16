@@ -246,9 +246,15 @@ export function PhaseMenubarHeader({
         label={label}
         summary={summary}
         trail={
-          isScenario ? (
-            <ScenarioMenubarBreadcrumb slide={slide} slides={slides} />
-          ) : undefined
+          isScenario
+            ? (current) => (
+                <ScenarioMenubarBreadcrumb
+                  slide={slide}
+                  slides={slides}
+                  current={current}
+                />
+              )
+            : undefined
         }
       />
       {/* Compare controls moved to the navbar's right cluster

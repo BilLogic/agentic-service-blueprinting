@@ -11,6 +11,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PhaseMenubarHeader } from '@/components/editor/PhaseMenubarHeader'
+import { BLUEPRINT_MENUBAR_PHASE_CRUMB_CLASS } from '@/components/editor/menubarHeaderLayout'
 import { COVER_DISCONNECTED_STATUS } from '@/components/cover/CoverPage'
 import { EntityDetailProvider } from '@/contexts/EntityDetailContext'
 import { WORKSPACE_BREADCRUMB_LABEL, type NavItem } from '@/types/nav'
@@ -90,17 +91,30 @@ describe('the scenario header', () => {
     expect(trail.contains(title!)).toBe(true)
   })
 
-  it('sizes both crumbs alike and truncates the phase at 10rem', () => {
+  it('sizes both crumbs alike and caps the phase at the shared width', () => {
     const { container } = mountHeader(SCENARIO)
 
+    // One rung for both crumbs, and it is the vendored list's `sm` — 13px on
+    // this ladder. The `text-xs` override here is what made the phase a 12px
+    // word beside a 14px title.
     const list = container.querySelector('[data-slot="breadcrumb-list"]')
-    expect(list?.className.split(/\s+/)).toContain('text-sm')
+    const sizes = list?.className.split(/\s+/) ?? []
+    expect(sizes).toContain('text-sm')
+    expect(sizes).not.toContain('text-xs')
 
     const phase = screen.getByRole('button', { name: 'Onboarding' })
     expect(phase.className.split(/\s+/)).toEqual(
-      expect.arrayContaining(['max-w-[10rem]', 'truncate']),
+      expect.arrayContaining(BLUEPRINT_MENUBAR_PHASE_CRUMB_CLASS.split(' ')),
     )
     expect(phase.getAttribute('title')).toBe('Onboarding')
+  })
+
+  it('marks the current crumb as the current page', () => {
+    const { container } = mountHeader(SCENARIO)
+
+    const current = container.querySelector('[aria-current="page"]')
+    expect(current).toBeTruthy()
+    expect(current?.textContent).toBe('Employment & Access')
   })
 
   it('opens that phase from the phase crumb', () => {

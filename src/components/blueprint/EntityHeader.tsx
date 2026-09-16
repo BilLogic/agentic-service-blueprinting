@@ -35,10 +35,15 @@ export type EntityHeaderProps = {
   /**
    * A trail to stand in the title's place, for a surface whose title is the
    * trail's own last crumb. The scenario bar passes one; the badge and the
-   * summary are unchanged by it. Given, the block prints no title of its own —
-   * which is the point: one name, once.
+   * summary are unchanged by it.
+   *
+   * A FUNCTION and not a node, because this block stays the only builder of
+   * the title affordance: it hands the trail the very affordance it would
+   * otherwise have rendered alone, and the trail decides where in itself that
+   * goes. A plain node would mean a second site constructing an entity title
+   * from an identity it had to derive again.
    */
-  trail?: ReactNode
+  trail?: (current: ReactNode) => ReactNode
   className?: string
 }
 
@@ -210,6 +215,8 @@ export function EntityHeader({
     and the query is warm (`staleTime: Infinity`).
   */
   const shellBooting = useShellBooting()
+  /** The title alone, or the trail the caller wraps it in. */
+  const renderIdentity = (title: ReactNode) => (trail ? trail(title) : title)
 
   return (
     <div
@@ -223,7 +230,7 @@ export function EntityHeader({
         skeleton={<EntityHeaderSkeleton />}
         className="flex w-full min-w-0 flex-col items-start gap-1"
       >
-        {trail || (id && label) ? (
+        {id && label ? (
           /*
             One ROW: the name, then the kind to its right. The row exists so
             the badge is a SIBLING of the opener rather than a child of it.
@@ -242,19 +249,15 @@ export function EntityHeader({
                 letter sits on the summary's left edge instead of 6px in.
                 A trail needs no outdent: its first crumb is an unpadded link,
                 already on the summary's edge. */}
-            {trail
-              ? trail
-              : id && label
-                ? (
-                    <EntityTitleAffordance
-                      kind={kind}
-                      id={id}
-                      label={label}
-                      className={ENTITY_TITLE_OUTDENT_CLASS}
-                    />
-                  )
-                : null}
-            {label ? <EntityKindBadge kind={kind} label={label} /> : null}
+            {renderIdentity(
+              <EntityTitleAffordance
+                kind={kind}
+                id={id}
+                label={label}
+                className={trail ? undefined : ENTITY_TITLE_OUTDENT_CLASS}
+              />,
+            )}
+            <EntityKindBadge kind={kind} label={label} />
           </div>
         ) : null}
         {caption ? (
