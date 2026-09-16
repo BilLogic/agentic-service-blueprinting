@@ -12,7 +12,12 @@ piece side by side, and the rules and the theme module read the names. The
 block says what it is: a look the owner chose, pinned, deliberately off the
 elevation ladder.
 
-A deployment retunes a piece by setting one name on a wrapper around the board:
+Two kinds of name, and they are used differently. The list below is DEFAULTS —
+each is declared once at the root, and a deployment retunes a piece by setting
+that name on a wrapper around the board. The four
+`--background-blueprint-panel-*` names are SEAMS, which the app declares only
+on an armed panel: a deployment sets one to paint that part of a panel's
+interior, and its absence is what leaves the resting state in place.
 
 - ground — `--background-blueprint-canvas-ground`
 - phase frame — `--background-blueprint-phase-frame`, `-hover`,
@@ -34,5 +39,6 @@ A deployment retunes a piece by setting one name on a wrapper around the board:
 - board ink — `--text-blueprint-cell`, `--text-blueprint-header`,
   `--stroke-blueprint-arrow`
 
-The four `--background-blueprint-panel-*` override seams are unchanged and stay
-undeclared at the root, because their fallback arm is the resting state.
+The seams — `--background-blueprint-panel-label-rail`, `-panel-canvas`,
+`-panel-section` and `-panel-divider` — are unchanged, and stay undeclared at
+the root because their fallback arm is the resting state.

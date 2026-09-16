@@ -114,14 +114,20 @@ import {
  *
  * A COLOUR NAMESPACE THAT DOES NOT CONTAIN THE WORD `color` is outside the
  * pattern — Tailwind's `--fill-*` and `--stroke-*` are colour and would not be
- * matched. This file registers none today. One arriving would be outside this
- * rule until the pattern is widened, and widening it is a one-line edit.
+ * matched. This file registers none today. `--stroke-blueprint-arrow` is the
+ * first `--stroke-*` name in the tree and does not change that: it is a
+ * component token declared at `:root` in `blueprint.css`, not an `@theme`
+ * registration, so it mints no utility and this file never sees it. A
+ * `--stroke-*` arriving in the REGISTRY would be outside this rule until the
+ * pattern is widened, and widening it is a one-line edit.
  *
  * A REGISTRATION POINTING AT `blueprint.css` FAILS, and that is intended
- * rather than overlooked. The board's own vocabulary is declared unreachable
- * at the root so that each consumer's fallback arm stays the resting state;
- * minting a utility from one would be a decision worth arguing about, and
- * failing here is how the argument starts.
+ * rather than overlooked. Some of the board's vocabulary is declared
+ * unreachable at the root so that each consumer's fallback arm stays the
+ * resting state, and the rest — the overview's own names — is pinned to a
+ * look its owner chose rather than derived; minting a utility from either
+ * would be a decision worth arguing about, and failing here is how the
+ * argument starts.
  */
 
 /** Registry keys in a colour namespace: `--color-*`, `--border-color-*`, … */
