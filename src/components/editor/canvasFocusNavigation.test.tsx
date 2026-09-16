@@ -34,7 +34,7 @@ describe('dimmed canvas navigation', () => {
       name: 'Open another scenario',
     })
     expect(scenario.closest('[inert]')).toBeNull()
-    expect(scenario.parentElement?.className).toContain('hover:opacity-70')
+    expect(scenario.parentElement?.className).toContain('hover:opacity-100')
 
     scenario.click()
     expect(onNavigate).toHaveBeenCalledTimes(1)

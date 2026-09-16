@@ -617,18 +617,18 @@ test('every radius utility names a rung, so the dial reaches all of them', () =>
   assert.deepEqual(
     offenders,
     [],
-    `Bare radius utility — 4px hardcoded by Tailwind, deaf to --radius. Name the rung (rounded-sm / -md / -lg / -xl / -2xl), or rounded-full / rounded-none:\n${offenders.join('\n')}`,
+    `Bare radius utility — 4px hardcoded by Tailwind, deaf to --radius. Name the rung (rounded-sm / -md / -lg / -xl), or rounded-full / rounded-none:\n${offenders.join('\n')}`,
   )
 })
 
 test('retired radius rungs are gone from source', () => {
   const offenders = classUsesMatching(
-    new RegExp(`^${VARIANTS}rounded(?:-(?:${SIDES})-)?(?:3xl|4xl|panel)$`),
+    new RegExp(`^${VARIANTS}rounded(?:-(?:${SIDES})-)?(?:2xl|3xl|4xl|panel)$`),
   )
   assert.deepEqual(
     offenders,
     [],
-    `Retired radius rung — 3xl, 4xl and panel are gone. Use md / lg / xl / 2xl or rounded-full:\n${offenders.join('\n')}`,
+    `Retired radius rung — 2xl, 3xl, 4xl and panel are gone. Use md / lg / xl or rounded-full:\n${offenders.join('\n')}`,
   )
 })
 
@@ -663,12 +663,41 @@ test('the source tree stays on the 4px spacing grid', () => {
 })
 
 /**
+ * Pixel constants in `layoutTokens.ts` feed drag clamps and persistence —
+ * the same 4px grid the spacing utilities sit on. A comment forbidding
+ * half-steps cannot sit above an off-grid export.
+ */
+test('layout-token pixel exports sit on the 4px grid', async () => {
+  const tokens = await import('@/lib/layoutTokens')
+
+  /** Walk exports for every numeric pixel value. */
+  function pixels(value: unknown): number[] {
+    if (typeof value === 'number') return [value]
+    if (value && typeof value === 'object') {
+      return Object.values(value).flatMap(pixels)
+    }
+    return []
+  }
+
+  const offenders: string[] = []
+  for (const [name, value] of Object.entries(tokens)) {
+    for (const n of pixels(value)) {
+      if (n % 4 !== 0) offenders.push(`${name}=${n}`)
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    `layoutTokens export off the 4px grid:\n${offenders.join('\n')}`,
+  )
+})
+
+/**
  * Radius by kind. Controls sit on md; containment (cells, cards, popovers)
- * on lg; dialogs, drawers and plates on xl; the floating toolbar capsule on
- * 2xl; rounded-full stays; sm is for kbd, inline code and marks under 12px.
- * A file listed here may not pick up another rung. The list covers every
- * primitive, editor and blueprint file that carries more than one rung or
- * sits on a rung the kind table reserves.
+ * on lg; dialogs, drawers and plates on xl; rounded-full stays; sm is for
+ * kbd, inline code and marks under 12px. A file listed here may not pick up
+ * another rung. The list covers every primitive, editor and blueprint file
+ * that carries more than one rung or sits on a rung the kind table reserves.
  */
 const RADIUS_KIND_ALLOWLIST: Record<string, readonly string[]> = {
   'components/ui/button.tsx': ['md', 'none', 'full'],
@@ -686,8 +715,8 @@ const RADIUS_KIND_ALLOWLIST: Record<string, readonly string[]> = {
   'components/ui/switch.tsx': ['full'],
   // The menu arrow is an 8px rotated square, the kind of mark sm is for.
   'components/ui/navigation-menu.tsx': ['lg', 'md', 'sm'],
-  'components/editor/CanvasAnnotationToolbar.tsx': ['2xl', 'md', 'full'],
-  'components/editor/CanvasAnnotationBarChrome.tsx': ['2xl', 'md'],
+  'components/editor/CanvasAnnotationToolbar.tsx': ['xl', 'md', 'full'],
+  'components/editor/CanvasAnnotationBarChrome.tsx': ['xl', 'md'],
   'components/editor/EditorZoomIndicator.tsx': ['lg', 'md'],
   'components/editor/JumpToSearch.tsx': ['md'],
   'components/editor/CanvasEmptyState.tsx': ['xl'],
@@ -695,7 +724,7 @@ const RADIUS_KIND_ALLOWLIST: Record<string, readonly string[]> = {
   'components/editor/EditorLoadingSkeletons.tsx': ['xl', 'lg', 'md', 'full'],
   // Blueprint surfaces. Drawer, modal, plates on xl; cells, cards, storyboard
   // frames on lg; controls and badges on md; rounded-full stays.
-  'components/blueprint/panelShell.tsx': ['xl', 'lg', 'md'],
+  'components/blueprint/panelShell.tsx': ['lg', 'md'],
   'components/blueprint/ResizableComparePanel.tsx': ['xl', 'md'],
   'components/blueprint/StoryboardWalkthroughModal.tsx': ['xl', 'full'],
   'components/blueprint/ZoomableImage.tsx': ['xl', 'full'],
@@ -721,12 +750,12 @@ const RADIUS_KIND_ALLOWLIST: Record<string, readonly string[]> = {
 
 test('a component kind stays on its assigned radius rung', () => {
   const uses = classUsesMatching(
-    new RegExp(`^${VARIANTS}rounded-(?:(?:${SIDES})-)?(sm|md|lg|xl|2xl|full|none)$`),
+    new RegExp(`^${VARIANTS}rounded-(?:(?:${SIDES})-)?(sm|md|lg|xl|full|none)$`),
   )
   const offenders: string[] = []
   for (const use of uses) {
     const match = use.match(
-      /^(components\/(?:ui|editor|blueprint)\/[^:]+\.tsx):(\d+): .*rounded-(?:(?:l|r|t|b|tl|tr|bl|br|s|e|ss|se|es|ee)-)?(sm|md|lg|xl|2xl|full|none)$/,
+      /^(components\/(?:ui|editor|blueprint)\/[^:]+\.tsx):(\d+): .*rounded-(?:(?:l|r|t|b|tl|tr|bl|br|s|e|ss|se|es|ee)-)?(sm|md|lg|xl|full|none)$/,
     )
     if (!match) continue
     const [, file, , rung] = match

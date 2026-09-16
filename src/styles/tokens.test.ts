@@ -662,6 +662,23 @@ describe('theme dials and semantic layer', () => {
     expect(keys['--spacing-content']).toBe('1.25rem')
   })
 
+  it('keeps the annotation chrome background mode-invariant and off a dial', () => {
+    // The bar floats over a board of coloured cells and must not flip with
+    // the theme. Declared off the designers' literal `--colors-*` export —
+    // a dial would pull it into the theme the next time someone retunes
+    // surface lightness.
+    const light = resolveValue('--background-annotation-chrome', 'light')
+    const dark = resolveValue('--background-annotation-chrome', 'dark')
+    expect(dark).toBe(light)
+    const decl = declarationsIn('semantic.css').find(
+      (entry) => entry.name === '--background-annotation-chrome',
+    )
+    expect(decl?.value).toMatch(/var\(--colors-[a-z0-9-]+\)/)
+    expect(decl?.value).not.toMatch(
+      /var\(--(?:hue|surface|primary|brand|background|foreground)\)/,
+    )
+  })
+
   it('derives every semantic token in semantic.css', () => {
     const semantic = namesIn('semantic.css')
     expect(SEMANTIC_TOKENS.filter((name) => !semantic.has(name))).toEqual([])

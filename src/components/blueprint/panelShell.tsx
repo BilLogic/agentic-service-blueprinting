@@ -133,6 +133,8 @@ export class DetailPanelErrorBoundary extends Component<
   }
   render() {
     if (this.state.failed) {
+      // Bottom-right corner stack: above the inspector (z-30), below the zoom
+      // cluster (z-50). `bottom-16` is the zoom height (h-8) plus one gutter.
       return (
         <div className="fixed right-4 bottom-16 z-40 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground shadow-md">
           {this.props.message}
@@ -239,7 +241,7 @@ export function PanelDrawerShell({
             : cn(
                 CELL_DETAIL_PANEL_TOP_CLASS,
                 CELL_DETAIL_PANEL_BOTTOM_CLASS,
-                '!right-4 !left-auto !m-0 !h-auto !max-h-none rounded-xl border border-border bg-popover shadow-md after:hidden [--drawer-inset:1rem] md:!right-8 md:[--drawer-inset:2rem]',
+                '!right-4 !left-auto !m-0 !h-auto !max-h-none rounded-lg border border-border bg-popover shadow-md after:hidden [--drawer-inset:1rem] md:!right-8 md:[--drawer-inset:2rem]',
                 expanded
                   ? 'w-(--width-cell-panel-expanded)'
                   : 'w-(--width-cell-panel)',

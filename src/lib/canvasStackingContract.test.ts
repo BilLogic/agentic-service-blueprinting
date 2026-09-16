@@ -79,4 +79,20 @@ describe('canvas stacking contract', () => {
     // than with the other things on the board.
     expect(viewport).toMatch(/cn\('relative isolate /)
   })
+
+  it('stacks the bottom-right corner as zoom above error above drawer', () => {
+    const overview = source('components/editor/ServiceOverviewView.tsx')
+    const shell = source('components/blueprint/panelShell.tsx')
+    const zoom = band(overview, 'absolute bottom-4 z-')
+    const error = band(shell, 'fixed right-4 bottom-16 z-')
+    // Non-modal inspector viewport — modal drawers stay at z-50 in drawer.tsx.
+    const drawer = (() => {
+      const file = source('components/ui/drawer.tsx')
+      const match = /modal === true \? "z-(\d+)" : "z-(\d+)"/.exec(file)
+      if (!match) throw new Error('non-modal drawer z band not found')
+      return Number(match[2])
+    })()
+    expect(zoom).toBeGreaterThan(error)
+    expect(error).toBeGreaterThan(drawer)
+  })
 })

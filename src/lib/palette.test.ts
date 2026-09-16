@@ -291,6 +291,36 @@ describe('blueprint cells', () => {
     ),
   ].map(([, role, family]) => [role, family] as const)
 
+  /**
+   * tone → { family, surface, ring, text }, read off the
+   * `[data-blueprint-tone]` rules. Steps differ from lanes (400/500/600 vs
+   * 500/600/700), so the surface step comes from the rule rather than
+   * `CELL_STEP`.
+   */
+  const tones: ReadonlyArray<{
+    tone: string
+    family: string
+    surface: string
+    ring: string
+    text: string
+  }> = [
+    ...stylesheet('blueprint.css').text.matchAll(
+      /\[data-blueprint-tone='([a-z]+)'\] \{([^}]+)\}/g,
+    ),
+  ].map(([, tone, block]) => {
+    const surface =
+      /--background-blueprint-cell:\s*var\((--color-[a-z]+-\d+)\)/.exec(block)?.[1]
+    const ring =
+      /--ring-blueprint-cell:\s*var\((--color-[a-z]+-\d+)\)/.exec(block)?.[1]
+    const text =
+      /--foreground-blueprint-cell:\s*var\((--color-[a-z]+-\d+)\)/.exec(block)?.[1]
+    const family = /--color-([a-z]+)-/.exec(surface ?? '')?.[1]
+    if (!surface || !ring || !text || !family) {
+      throw new Error(`tone rule incomplete: ${tone}`)
+    }
+    return { tone, family, surface, ring, text }
+  })
+
   describe.each(['light', 'dark'] as const)('%s', (theme) => {
     it.each(lanes)('%s: ring reads against its own surface', (_lane, family) => {
       // SC 1.4.11 — the ring is the focus affordance and the slice-member
@@ -311,6 +341,71 @@ describe('blueprint cells', () => {
       const hover = resolve(`--color-${family}-${CELL_STEP.hover}`, theme)
       expect(contrast(rest, hover)).toBeGreaterThan(1.03)
     })
+
+    it.each(tones)('$tone: ring reads against its own surface', ({ ring, surface }) => {
+      expect(contrast(resolve(ring, theme), resolve(surface, theme))).toBeGreaterThanOrEqual(
+        3,
+      )
+    })
+
+    it.each(tones)('$tone: text reads against its own surface', ({ text, surface }) => {
+      expect(contrast(resolve(text, theme), resolve(surface, theme))).toBeGreaterThanOrEqual(
+        4.5,
+      )
+    })
+  })
+
+  /*
+   * Focus-mode dimming is parent opacity over the canvas. Text and ring at
+   * that alpha must still clear SC 1.4.3 / 1.4.11 against the canvas in both
+   * themes. The opacity is read from the stylesheet so a silent retune is
+   * what the measurement sees.
+   */
+  const dimmedOpacity = (() => {
+    const match =
+      /\[data-canvas-phase-section\]\[data-canvas-focus-dimmed\][\s\S]*?\{[^}]*opacity:\s*([\d.]+)/.exec(
+        stylesheet('blueprint.css').text,
+      )
+    if (!match) throw new Error('dimmed opacity not declared in blueprint.css')
+    return Number(match[1])
+  })()
+
+  /** `fg` at `alpha` composited over `bg`. */
+  const over = (fg: Rgb, bg: Rgb, alpha: number): Rgb =>
+    bg.map((channel, i) => alpha * fg[i]! + (1 - alpha) * channel) as unknown as Rgb
+
+  const dimmedSubjects: ReadonlyArray<readonly [string, string, string]> = [
+    ...lanes.map(
+      ([role, family]) =>
+        [
+          `lane:${role}`,
+          `--color-${family}-${CELL_STEP.text}`,
+          `--color-${family}-${CELL_STEP.ring}`,
+        ] as const,
+    ),
+    ...tones.map(
+      (t) => [`tone:${t.tone}`, t.text, t.ring] as const,
+    ),
+  ]
+
+  describe.each(['light', 'dark'] as const)(`%s dimmed @ ${dimmedOpacity}`, (theme) => {
+    const canvas = resolveColor('--canvas', theme)
+
+    it.each(dimmedSubjects)(
+      '%s: text clears the floor on the canvas',
+      (_label, textToken) => {
+        const painted = over(resolve(textToken, theme), canvas, dimmedOpacity)
+        expect(contrast(painted, canvas)).toBeGreaterThanOrEqual(4.5)
+      },
+    )
+
+    it.each(dimmedSubjects)(
+      '%s: ring clears the floor on the canvas',
+      (_label, _textToken, ringToken) => {
+        const painted = over(resolve(ringToken, theme), canvas, dimmedOpacity)
+        expect(contrast(painted, canvas)).toBeGreaterThanOrEqual(3)
+      },
+    )
   })
 })
 

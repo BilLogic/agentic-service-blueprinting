@@ -15,6 +15,8 @@ import { useServicePhases } from '@/hooks/useServicePhases'
 import { isBundledSampleActive } from '@/lib/bundledSample'
 import {
   activateBaseView,
+  closeOpenScenarioNav,
+  registerOpenScenarioCloseNav,
   selectOpenScenarioDefaultPath,
 } from '@/lib/openScenarioSeam'
 import { persistScenarioLayout } from '@/lib/scenarioLayout'
@@ -144,27 +146,26 @@ const EditorContext = createContext<EditorContextValue | null>(null)
 
 const EMPTY_EXPANDED: ReadonlySet<string> = new Set<string>()
 
-/** Mobile drawer closer registered by the shell that owns the drawer. */
-let editorNavCloser: (() => void) | null = null
-
 /**
- * Register the mobile drawer closer so `openScenario(..., { closeNav: true })`
- * can shut it. Desktop never registers one, so the flag is a no-op there.
+ * Register the mobile drawer closer on the scenario-open seam so
+ * `openScenario(..., { closeNav: true })` can shut it. Desktop never
+ * registers one, so the flag is a no-op there. Thin wrapper — the slot
+ * lives in the seam module with the other two providers.
  *
  * @param close - Function that closes the nav drawer.
  */
 export function useEditorNavCloser(close: () => void): void {
   useLayoutEffect(() => {
-    editorNavCloser = close
+    registerOpenScenarioCloseNav(close)
     return () => {
-      if (editorNavCloser === close) editorNavCloser = null
+      registerOpenScenarioCloseNav(null)
     }
   }, [close])
 }
 
 /**
  * Compose the scenario-open seam from the editor primitives plus the path
- * store and tab store, when those are mounted.
+ * store, the tab store and the drawer closer, when those are mounted.
  *
  * @param selectScenario - Narrow scenario selection (phase + camera).
  * @returns The shared `openScenario` action.
@@ -177,7 +178,7 @@ function useOpenScenarioAction(
       activateBaseView()
       selectScenario(scenarioId)
       selectOpenScenarioDefaultPath(scenarioId)
-      if (opts?.closeNav) editorNavCloser?.()
+      if (opts?.closeNav) closeOpenScenarioNav()
     },
     [selectScenario],
   )

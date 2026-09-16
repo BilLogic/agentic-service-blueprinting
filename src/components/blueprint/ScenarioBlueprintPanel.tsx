@@ -434,7 +434,7 @@ export const ScenarioBlueprintPanelBody = memo(function ScenarioBlueprintPanelBo
         className="flex flex-col gap-2 transition-opacity duration-(--motion-fade) ease-out"
         data-focus-slide-id={slide.id}
         data-canvas-focus-dimmed={dimmed ? '' : undefined}
-        style={dimmed ? { opacity: 0.3 } : undefined}
+        style={dimmed ? { opacity: 0.8 } : undefined}
         role="status"
         aria-busy="true"
         aria-label="Loading blueprint"
@@ -456,7 +456,7 @@ export const ScenarioBlueprintPanelBody = memo(function ScenarioBlueprintPanelBo
         className="flex min-h-[280px] min-w-[320px] items-center justify-center rounded-lg border border-dashed p-8 text-center transition-opacity duration-(--motion-fade) ease-out"
         data-focus-slide-id={slide.id}
         data-canvas-focus-dimmed={dimmed ? '' : undefined}
-        style={dimmed ? { opacity: 0.3 } : undefined}
+        style={dimmed ? { opacity: 0.8 } : undefined}
       >
         <p className="text-sm text-muted-foreground">
           No blueprint data for this scenario yet.
