@@ -4,7 +4,7 @@
  * and status lines are Markers — the chat vocabulary shadcn ships, not a
  * hand-rolled lookalike.
  */
-import { lazy, Suspense, useState } from 'react'
+import { Component, lazy, Suspense, useState, type ReactNode } from 'react'
 import { CheckCircle2, ChevronRight, Pencil, XCircle } from 'lucide-react'
 import { Eyebrow } from '@/components/blueprint/Eyebrow'
 import { Badge } from '@/components/ui/badge'
@@ -36,17 +36,51 @@ const AgentMarkdownLazy = lazy(() =>
   })),
 )
 
+/**
+ * The turn as the agent wrote it, unparsed. One element, used twice: it is
+ * what a reader sees while the chunk is in flight and what they see if it
+ * never lands, and the two must be the same thing or the second would be a
+ * second design nobody looks at.
+ */
+function RawTurn({ text, className }: { text: string; className?: string }) {
+  return <p className={cn('whitespace-pre-wrap', className)}>{text}</p>
+}
+
+/**
+ * A missing chunk costs the markdown, not the transcript.
+ *
+ * A tab that outlived a deploy asks for a chunk the new build no longer
+ * ships and the import REJECTS — which Suspense does not cover: its fallback
+ * is for a promise still pending, so the rejection travels up as a render
+ * throw. The nearest boundary is the editor-wide `EditorErrorBoundary`, so
+ * one missing markdown chunk used to cost the whole editor — and its "Try
+ * again" re-renders into the same permanently rejected import. React error
+ * boundaries are still class-only.
+ */
+class MarkdownChunkBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false }
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+  componentDidCatch(error: unknown) {
+    console.error('[agent] markdown renderer unavailable:', error)
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children
+  }
+}
+
 function AgentMarkdown(props: { text: string; className?: string }) {
+  const raw = <RawTurn {...props} />
   return (
-    <Suspense
-      fallback={
-        <p className={cn('whitespace-pre-wrap', props.className)}>
-          {props.text}
-        </p>
-      }
-    >
-      <AgentMarkdownLazy {...props} />
-    </Suspense>
+    <MarkdownChunkBoundary fallback={raw}>
+      <Suspense fallback={raw}>
+        <AgentMarkdownLazy {...props} />
+      </Suspense>
+    </MarkdownChunkBoundary>
   )
 }
 

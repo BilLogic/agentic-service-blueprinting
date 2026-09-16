@@ -238,3 +238,68 @@ describe('a deleted session takes its draft with it', () => {
     expect(result.current).toEqual({ text: '', skillId: null })
   })
 })
+
+/**
+ * WHAT AN OLDER BUILD LEFT IN STORAGE.
+ *
+ * The list is JSON somebody else's release wrote, so its entries are a claim
+ * rather than a type: a renamed or dropped `title` survived the cast the
+ * reader used to make, and the session filter lowercases that title on the
+ * first keystroke — a TypeError into the editor boundary, on every attempt
+ * until the reader cleared their site data. So the shape is checked where the
+ * value enters, which is the only place that can still answer with a list.
+ *
+ * The module reads storage while it evaluates, so each case seeds the key and
+ * then loads a fresh graph.
+ */
+describe('a session list written by an older build', () => {
+  it('reads as if a malformed entry were absent', async () => {
+    const stamp = '2026-01-01T00:00:00.000Z'
+    window.localStorage.setItem(
+      storageKey('agent-sessions'),
+      JSON.stringify([
+        { id: 'kept', title: 'Kept', createdAt: stamp, updatedAt: stamp, changeCount: 0 },
+        // The renamed field, which is the shape that shipped the crash.
+        { id: 'renamed', name: 'Titled once', createdAt: stamp },
+        // And the entries no version of this app ever wrote.
+        { id: 'numbered', title: 7, createdAt: stamp },
+        'not an object at all',
+        null,
+      ]),
+    )
+    vi.resetModules()
+
+    const { agentSessionsSnapshot: freshSnapshot } = await import('@/lib/agent/sessions')
+
+    expect(freshSnapshot().map((session) => session.id)).toEqual(['kept'])
+  })
+
+  /**
+   * The same failure one surface over, and the reason the missing field is
+   * substituted rather than dropped: `list_sessions` sorts on `updatedAt` and
+   * prints it, over this very snapshot.
+   */
+  it('renders an entry that lost its updatedAt, rather than throwing on it', async () => {
+    const stamp = '2026-01-01T00:00:00.000Z'
+    window.localStorage.setItem(
+      storageKey('agent-sessions'),
+      JSON.stringify([{ id: 'legacy', title: 'Lost a field', createdAt: stamp }]),
+    )
+    vi.resetModules()
+
+    const { listSessions } = await import('@/lib/agent/tools/read')
+
+    // The date it can honestly claim is the one it was created on.
+    expect(listSessions('other')).toContain('updated 2026-01-01')
+    expect(listSessions('other')).toContain('Lost a field')
+  })
+
+  it('reads a list that is not a list as an empty one', async () => {
+    window.localStorage.setItem(storageKey('agent-sessions'), '{"sessions":[]}')
+    vi.resetModules()
+
+    const { agentSessionsSnapshot: freshSnapshot } = await import('@/lib/agent/sessions')
+
+    expect(freshSnapshot()).toEqual([])
+  })
+})

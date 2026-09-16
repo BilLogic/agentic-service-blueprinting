@@ -69,12 +69,79 @@ type AgentDraft = { text: string; skillId: string | null }
 const STORAGE_KEY = storageKey('agent-sessions')
 const EMPTY_DRAFT = { text: '', skillId: null } as const
 
+/** A stored entry that carries the three fields nothing can substitute for. */
+type StoredSession = Record<string, unknown> & {
+  id: string
+  title: string
+  createdAt: string
+}
+
+/**
+ * Is this entry a session at all, or JSON some other release left behind?
+ *
+ * The three fields checked are the three NOTHING CAN SUBSTITUTE FOR: `id`
+ * addresses the session, `title` is the only name it has, and `createdAt` is
+ * what the DB merge sorts on. An entry missing one of them is not a session
+ * this build can show, so it is dropped.
+ *
+ * The rest are normalised rather than checked here — see `asSession`.
+ */
+function isSession(entry: unknown): entry is StoredSession {
+  if (entry === null || typeof entry !== 'object') return false
+  const record = entry as Record<string, unknown>
+  return (
+    typeof record.id === 'string' &&
+    typeof record.title === 'string' &&
+    typeof record.createdAt === 'string'
+  )
+}
+
+/**
+ * A stored entry as this build's type: the fields it must have, and a stand-in
+ * for each field it can do without.
+ *
+ * NORMALISING BEATS DROPPING wherever a field has an honest substitute, and
+ * `updatedAt` has one. It is dereferenced — `listSessions`, the agent's
+ * `list_sessions` tool, sorts on `updatedAt.localeCompare` and prints
+ * `updatedAt.slice(0, 10)` over this very snapshot — so an entry that lost it
+ * is as fatal there as a lost `title` is in the session filter. But the
+ * session is still a session a person can open, and `createdAt` is a true
+ * statement about it: the oldest moment it can honestly claim. Dropping it
+ * would take a conversation away to protect a date.
+ *
+ * `changeCount` is only ever compared with `>`, so it was never a crash — but
+ * it is typed `number`, and this function is where the type is made true
+ * rather than asserted, so it gets its zero here beside the rest.
+ */
+function asSession(entry: StoredSession): AgentSession {
+  return {
+    id: entry.id,
+    title: entry.title,
+    createdAt: entry.createdAt,
+    updatedAt:
+      typeof entry.updatedAt === 'string' ? entry.updatedAt : entry.createdAt,
+    changeCount: typeof entry.changeCount === 'number' ? entry.changeCount : 0,
+  }
+}
+
+/**
+ * The stored list, as this build can read it.
+ *
+ * A cast stood here, and a cast is a promise about JSON another release wrote
+ * — the one claim in this module no compiler is in a position to keep. An
+ * entry whose `title` was renamed or dropped survived it and reached the
+ * session filter, which lowercases that title: a TypeError into the editor
+ * boundary on the first character typed, on every attempt, until the reader
+ * cleared their site data. So the shape is settled HERE, where there is still
+ * a list to hand back, rather than believed and met later by a surface that
+ * can only fail.
+ */
 function read(): AgentSession[] {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? (parsed as AgentSession[]) : []
+    const parsed: unknown = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter(isSession).map(asSession) : []
   } catch {
     return []
   }
