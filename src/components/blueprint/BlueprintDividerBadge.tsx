@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { DefinitionPopover } from '@/components/blueprint/DefinitionCard'
 import { BLUEPRINT_THEME } from '@/lib/blueprintTheme'
+import { DIVIDER_MEANINGS } from '@/lib/dividerLines'
 import { getBlueprintFillStyle } from '@/lib/pathColorTheme'
 import { cn } from '@/lib/utils'
 import type { CSSProperties } from 'react'
@@ -9,24 +10,6 @@ type BlueprintDividerBadgeProps = {
   label: string
   /** Flat right edge so the rule can meet the badge flush (Figma-style). */
   connected?: boolean
-}
-
-/**
- * What each divider line means, in the words a service designer would use.
- *
- * These three lines are the whole grammar of a service blueprint and the
- * canvas states them as three unexplained captions. A reader who does not
- * already know the convention has nowhere to find out. The label names the
- * line and the definition says what it separates — one term, one meaning,
- * which is one section of a `DefinitionCard`.
- */
-const DIVIDER_MEANINGS: Record<string, string> = {
-  'line of interaction':
-    'Above it, what the customer does. Below it, the staff and systems they interact with directly.',
-  'line of visibility':
-    'Everything below this line happens out of the customer\'s sight.',
-  'line of internal interaction':
-    'Below it, the support work that never touches the customer — the teams and systems the backstage relies on.',
 }
 
 /** Light label-rail divider caption — reference blueprint interaction/visibility rows. */
@@ -73,7 +56,7 @@ export function BlueprintDividerRailLabel({
      tooltip is `mouseOnly` — so on the phone posture this app has, the reader
      least likely to know the convention was the one who could not read it. */
   return (
-    <DefinitionPopover sections={[{ eyebrow: label, body: meaning }]}>
+    <DefinitionPopover sections={[{ term: label, body: meaning }]}>
       {caption}
     </DefinitionPopover>
   )

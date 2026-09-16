@@ -17,7 +17,7 @@ type EntityDefinitionPopoverProps = {
   kind: EntityKindTerm
   /** This instance's own description, if it has one. The second section's body. */
   description?: string | null
-  /** This instance's name. It is the second section's eyebrow. */
+  /** This instance's name. It is the second section's term. */
   name?: string
   /**
    * Whether to print this instance's description under the hairline.
@@ -52,11 +52,11 @@ type EntityDefinitionPopoverProps = {
   delay?: number
 }
 
-/** The eyebrow an aside wears, so it is a section like every other one. */
-const NOTE_EYEBROW = 'Note'
+/** The term an aside wears, so it is a section like every other one. */
+const NOTE_TERM = 'Note'
 
-/** The eyebrow the deployment's own example wears, under the generic rule. */
-const EXAMPLE_EYEBROW = 'Example'
+/** The term the deployment's own example wears, under the generic rule. */
+const EXAMPLE_TERM = 'Example'
 
 /**
  * What this kind of thing IS, hung off the label that names one of them.
@@ -96,17 +96,17 @@ export function EntityDefinitionPopover({
   const editing = useCanvasModeValue() === 'design'
 
   const sections: DefinitionSection[] = [
-    { eyebrow: term.label, body: term.definition },
+    { term: term.label, body: term.definition },
   ]
 
   /*
-    The instance section needs a NAME, because its eyebrow IS the name. A
+    The instance section needs a NAME, because its term IS the name. A
     caller asking for a description with nothing to head it would get a
     headless section, so it draws nothing instead.
   */
   if (showDescription && trimmedName) {
     sections.push({
-      eyebrow: trimmedName,
+      term: trimmedName,
       body: instanceDescriptionText(description),
       unwritten: !description?.trim(),
     })
@@ -120,17 +120,17 @@ export function EntityDefinitionPopover({
     a viewer who cannot.
   */
   if (exampleText) {
-    sections.push({ eyebrow: EXAMPLE_EYEBROW, body: exampleText })
+    sections.push({ term: EXAMPLE_TERM, body: exampleText })
   } else if (editing) {
     sections.push({
-      eyebrow: EXAMPLE_EYEBROW,
+      term: EXAMPLE_TERM,
       body: ENTITY_EXAMPLE_PLACEHOLDER,
       unwritten: true,
     })
   }
 
   if (noteText) {
-    sections.push({ eyebrow: NOTE_EYEBROW, body: noteText })
+    sections.push({ term: NOTE_TERM, body: noteText })
   }
 
   return (

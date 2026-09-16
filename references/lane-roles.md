@@ -35,6 +35,24 @@ the role.
 | `partner_actions` | Text cells | A party outside the service, acting where the customer can see them |
 | `storyboard` | Storyboard frame row (image cells, no text) | Journey frames |
 
+### How each role is named and defined in the UI
+
+`LANE_ROLES` in `src/lib/laneRoles.ts` holds exactly this table. A role's
+**label** is the word the lane badge prints; its **definition** is the sentence
+the badge's hover shows underneath. The definition never opens by naming the
+label again: the badge above it has already said the word.
+
+| Role | Label | Definition |
+| --- | --- | --- |
+| `customer_actions` | Customer actions | The spine of the journey. The interaction line draws below it. |
+| `frontstage_actions` | Frontstage | Staff actions the customer can see. |
+| `frontstage_touchpoints` | Frontstage touchpoints | What the customer meets: apps, documents, places and channels. |
+| `backstage_actions` | Backstage | Staff actions out of sight. |
+| `backstage_touchpoints` | Backstage touchpoints | The tools and artifacts staff use out of sight. |
+| `support_actions` | Support | Teams, vendors and infrastructure behind the work. |
+| `partner_actions` | Partner | A party outside the service, acting where the customer can see them. |
+| `storyboard` | Storyboard | The frames for each step, not text. A step's frames across the lanes are its strip. |
+
 ## Line-anchoring semantics
 
 The three classic blueprint divider lines are **anchored by roles**, not row
@@ -121,8 +139,9 @@ In order:
    and its step in `scripts/migrate_ir.py` — the hard rule of
    `references/customization.md` § The versioning rule.
 3. **The validator.** `CANONICAL_ROLES` in `scripts/validate_ir.py`.
-4. **The renderer.** `CANONICAL_LANE_ROLES` and `LANE_ROLE_DESCRIPTIONS` in
-   `src/lib/laneRoles.ts`, and a fill in `src/lib/blueprintTheme.ts`.
+4. **The renderer.** `CANONICAL_LANE_ROLES` and `LANE_ROLES` (label and
+   definition both) in `src/lib/laneRoles.ts`, the label/definition table
+   above, and a fill in `src/lib/blueprintTheme.ts`.
 5. **The documents.** The table above, `docs/erd.mmd` (held to the constraint
    by `scripts/tests/erd-enums.test.mjs`) and `README.md`.
 

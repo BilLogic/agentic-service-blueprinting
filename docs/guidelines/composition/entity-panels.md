@@ -323,8 +323,42 @@ form English, so a definition may hang off these two labels where it may not off
 
 **One card everywhere.** `Field`'s `hint`, `PanelKindBadge`'s description,
 `StatusBadge`, `EntityDefinitionPopover` and the divider rail labels all render
-`DefinitionCard`: sections, each an eyebrow above a body, identically set. One
+`DefinitionCard`: sections, each a term above its body, identically set. One
 definition card, wherever a definition is shown.
+
+**The term is sentence case, and it is not an `Eyebrow`.** An eyebrow labels a
+region of chrome — a menu group, a comparison column — where the label is
+furniture and the content beside it is the subject. In a definition card the
+word IS the subject: the reader hovered a badge reading `Frontstage` and came
+for an answer about that word. Caps and letterspacing there printed a third
+spelling of a term the badge, the panel and the board all write in sentence
+case. Weight, not ink, separates the term from its sentence — a muted term
+would sit quieter than the prose defining it. The section eyebrows elsewhere —
+the sidebar, the path selector, the compare columns, the annotation bar — are
+untouched: those are labels on regions, which is what `Eyebrow` is for.
+
+## A definition never repeats its term
+
+The card prints the term already. A body that opens `Storyboard — the frames
+for each step` says the word twice at two sizes in one popover, and the reader
+spends the first three words of every definition confirming what they just
+hovered rather than learning anything. The same goes for `This is…`, `These
+are…` and `The storyboard is…`: all three are a run-up to a sentence that
+could have started at the sentence.
+
+So a definition body starts with its meaning. `Storyboard` above, `The frames
+for each step, not text.` below. A module that holds definitions holds the
+label and the body as two fields — never one string a reader splits on an em
+dash, which makes the badge's word a parsing result and renames it the day
+somebody writes a dash into a sentence.
+
+`src/lib/definitionsSayItOnce.test.ts` holds every module that feeds a
+definition — lane roles, entity status, panel terms, entity kinds, touchpoint
+roles, stakeholder kinds, the divider meanings and the cover's definition
+tables — and fails when a body opens with its own label, with `<label> —` or
+`<label>:`, with `This is` or `These are`, or with `The <label> is/are`. A new
+definition module joins that roster the day it is written; a module that is not
+in it is a module where this rule is a hope.
 
 `PanelTextareaField` is a bare `<textarea>` with the cell panel's treatment,
 deliberately not `input-group` (which the inventory reserves for the composer).
