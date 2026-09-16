@@ -1,12 +1,18 @@
 /**
- * The localStorage namespace this installation owns.
+ * The storage namespace this installation owns.
  *
  * A CONFIGURATION SEAM. Every key written to `window.localStorage` or
- * `window.sessionStorage` is prefixed, and the prefix names the INSTALLATION rather than the code: this
- * template ships as `sb-`, and an adopter gives its own installation a prefix of
- * its own. Two installations served from one origin would otherwise read each
- * other's settings, sessions and chat placement, so the prefix is the one
- * thing about a stored key that must differ per install.
+ * `window.sessionStorage`, and the NAME of every cookie set on
+ * `document.cookie`, is prefixed, and the prefix names the INSTALLATION rather
+ * than the code: this template ships as `sb-`, and an adopter gives its own
+ * installation a prefix of its own. Two installations served from one origin
+ * would otherwise read each other's settings, sessions and chat placement, so
+ * the prefix is the one thing about a stored name that must differ per
+ * install. Three stores, one rule: a cookie jar is shared per origin exactly
+ * as a storage area is, and nothing about the argument changes for it. The
+ * application sets no cookie today — the one it used to set, the vendored
+ * sidebar's, was deleted because nothing read it — so the cookie half of this
+ * rule is what the next one is held to, and `check:storage-keys` holds it.
  *
  * That is why this module exists instead of a string literal at each call
  * site. Every module that stores anything imports `storageKey` from here,
@@ -18,8 +24,9 @@
  * nothing else until one key was found outside the seam — a bare literal no
  * reader of this header could have noticed, from a module that read back
  * everything it wrote. The check fails any key reaching `localStorage` or
- * `sessionStorage` that `storageKey` did not build; the account of what it
- * catches, what it cannot see, and what went wrong is in its own header.
+ * `sessionStorage`, and any cookie name reaching `document.cookie`, that
+ * `storageKey` did not build; the account of what it catches, what it cannot
+ * see, and what went wrong is in its own header.
  *
  * ── HOW AN ADOPTER SETS IT, AND WHY IT IS NOT A `DeploymentConfig` FIELD ───
  *
@@ -104,7 +111,7 @@ export function configureStorageNamespace(next: string): void {
   prefix = next
 }
 
-/** A namespaced localStorage key — `storageKey('agent-settings')`. */
+/** A namespaced key or cookie name — `storageKey('agent-settings')`. */
 export function storageKey(name: string): string {
   observed = true
   return `${prefix}${name}`
