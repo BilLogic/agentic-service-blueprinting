@@ -16,6 +16,7 @@ import { TouchpointRegistryProvider } from '@/contexts/TouchpointRegistryProvide
 import { ViewStateProvider } from '@/contexts/ViewStateContext'
 import type { DeploymentConfig } from '@/deploymentConfig'
 import { queryClient } from '@/lib/queryClient'
+import { useStaleChunkReload } from '@/lib/staleChunkReload'
 
 /**
  * The app root. Standalone it takes no props and runs on the template
@@ -67,6 +68,14 @@ import { queryClient } from '@/lib/queryClient'
  * belongs to two, it is doing two things.
  */
 export function App({ config }: { config?: DeploymentConfig | null }) {
+  /*
+   * Above the tree and rendering nothing: a tab left open across a deploy asks
+   * for a chunk the new build no longer ships, and this is what turns that
+   * into one reload rather than an error a reader cannot act on. It hangs off
+   * the root because the root is what a deployment mounts — `staleChunkReload.ts`
+   * carries why the reload is spent only once.
+   */
+  useStaleChunkReload()
   return (
     <DeploymentConfigProvider config={config}>
       <QueryClientProvider client={queryClient}>
