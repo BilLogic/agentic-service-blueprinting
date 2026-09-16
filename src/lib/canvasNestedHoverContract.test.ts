@@ -18,8 +18,9 @@ const DIMMED_PHASE = '[data-canvas-phase-section][data-canvas-focus-dimmed]'
  * Opacity on the section composites its whole subtree into a single
  * translucent surface, and nothing inside a translucent ancestor can become
  * clearer than it. A hovered scenario in a dimmed phase could change fill and
- * shadow and still sit at 0.3. So the dim lands on the section's children —
- * its frame, its badge, each scenario — and a scenario can lift on its own.
+ * shadow and still sit at the dimmed opacity. So the dim lands on the section's
+ * children — its frame, its badge, each scenario — and a scenario can lift on
+ * its own.
  */
 describe('a dimmed phase dims its children, not itself', () => {
   it('puts no opacity on the section element', () => {

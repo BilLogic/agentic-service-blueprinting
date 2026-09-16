@@ -79,4 +79,20 @@ describe('canvas stacking contract', () => {
     // than with the other things on the board.
     expect(viewport).toMatch(/cn\('relative isolate /)
   })
+
+  it('keeps the error card one gutter above the zoom cluster, same shape and shadow', () => {
+    const overview = source('components/editor/ServiceOverviewView.tsx')
+    const shell = source('components/blueprint/panelShell.tsx')
+    const zoom = source('components/editor/EditorZoomIndicator.tsx')
+    expect(overview).toMatch(/absolute bottom-4 z-30/)
+    expect(shell).toMatch(/fixed right-4 bottom-16 z-40/)
+    expect(shell).toMatch(
+      /rounded-lg border border-border bg-card[\s\S]*shadow-md/,
+    )
+    expect(zoom).toMatch(/rounded-lg/)
+    expect(zoom).toMatch(/shadow-md/)
+    expect(source('components/blueprint/panelShell.tsx')).toMatch(
+      /rounded-lg border border-border bg-popover shadow-md/,
+    )
+  })
 })

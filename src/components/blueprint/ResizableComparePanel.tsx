@@ -21,6 +21,7 @@ import {
   getComparePanelScrollInsetY,
   getComparePanelScrollPaddingY,
 } from '@/lib/sideBySideCompareLayout'
+import { FOCUS_DIM_LIFT_CLASS, FOCUS_DIM_REST_CLASS, FOCUS_DIM_STYLE } from '@/lib/canvasFocusDim'
 import { cn } from '@/lib/utils'
 
 type ResizableComparePanelProps = {
@@ -353,10 +354,11 @@ export function ResizableComparePanel({
     <div
       className={cn(
         'relative shrink-0 transition-opacity duration-(--motion-camera) ease-camera',
-        dimmed && 'opacity-30',
-        dimmed && navigable && 'hover:opacity-70 focus-within:opacity-70',
+        dimmed && FOCUS_DIM_REST_CLASS,
+        dimmed && navigable && FOCUS_DIM_LIFT_CLASS,
         className,
       )}
+      style={dimmed ? FOCUS_DIM_STYLE : undefined}
       data-focus-slide-id={focusSlideId}
       data-canvas-focus-dimmed={dimmed ? '' : undefined}
     >

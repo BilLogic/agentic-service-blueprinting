@@ -5,6 +5,8 @@ import {
   CELL_STEP,
   TOUCHPOINT_TONES,
 } from '@/lib/blueprintCellStyle'
+import { FOCUS_DIM_HOVER_OPACITY, FOCUS_DIM_OPACITY } from '@/lib/canvasFocusDim'
+import { sourceOf as source } from '@/lib/sourceTree'
 import {
   PATH_IDENTITY_PERIOD,
   PATH_KIND_COLORS,
@@ -291,6 +293,36 @@ describe('blueprint cells', () => {
     ),
   ].map(([, role, family]) => [role, family] as const)
 
+  /**
+   * tone → { family, surface, ring, text }, read off the
+   * `[data-blueprint-tone]` rules. Steps differ from lanes (400/500/600 vs
+   * 500/600/700), so the surface step comes from the rule rather than
+   * `CELL_STEP`.
+   */
+  const tones: ReadonlyArray<{
+    tone: string
+    family: string
+    surface: string
+    ring: string
+    text: string
+  }> = [
+    ...stylesheet('blueprint.css').text.matchAll(
+      /\[data-blueprint-tone='([a-z]+)'\] \{([^}]+)\}/g,
+    ),
+  ].map(([, tone, block]) => {
+    const surface =
+      /--background-blueprint-cell:\s*var\((--color-[a-z]+-\d+)\)/.exec(block)?.[1]
+    const ring =
+      /--ring-blueprint-cell:\s*var\((--color-[a-z]+-\d+)\)/.exec(block)?.[1]
+    const text =
+      /--foreground-blueprint-cell:\s*var\((--color-[a-z]+-\d+)\)/.exec(block)?.[1]
+    const family = /--color-([a-z]+)-/.exec(surface ?? '')?.[1]
+    if (!surface || !ring || !text || !family) {
+      throw new Error(`tone rule incomplete: ${tone}`)
+    }
+    return { tone, family, surface, ring, text }
+  })
+
   describe.each(['light', 'dark'] as const)('%s', (theme) => {
     it.each(lanes)('%s: ring reads against its own surface', (_lane, family) => {
       // SC 1.4.11 — the ring is the focus affordance and the slice-member
@@ -311,7 +343,76 @@ describe('blueprint cells', () => {
       const hover = resolve(`--color-${family}-${CELL_STEP.hover}`, theme)
       expect(contrast(rest, hover)).toBeGreaterThan(1.03)
     })
+
+    it.each(tones)('$tone: ring reads against its own surface', ({ ring, surface }) => {
+      expect(contrast(resolve(ring, theme), resolve(surface, theme))).toBeGreaterThanOrEqual(
+        3,
+      )
+    })
+
+    it.each(tones)('$tone: text reads against its own surface', ({ text, surface }) => {
+      expect(contrast(resolve(text, theme), resolve(surface, theme))).toBeGreaterThanOrEqual(
+        4.5,
+      )
+    })
   })
+
+  /*
+   * Focus-mode dimming is parent opacity over the canvas. The number lives
+   * in TypeScript (`canvasFocusDim.ts`); CSS and class strings only read
+   * the custom properties. 0.3 over the canvas cannot physically clear
+   * SC 1.4.3 — that is why the slice dim raised opacity and compensated
+   * with desaturate, and why this surface does not. The canvas contract
+   * is 30% rest / 70% hover; we measure that the dimmed card stays
+   * distinguishable from the canvas, and that the stylesheet is not a
+   * second owner of the number.
+   */
+  it('takes the dim opacity from TypeScript, not a stylesheet literal', () => {
+    expect(FOCUS_DIM_HOVER_OPACITY).toBeGreaterThan(FOCUS_DIM_OPACITY)
+    expect(stylesheet('blueprint.css').text).toMatch(
+      /opacity:\s*var\(--focus-dim-opacity\)/,
+    )
+    expect(stylesheet('blueprint.css').text).toMatch(
+      /opacity:\s*var\(--focus-dim-hover-opacity\)/,
+    )
+    expect(source('components/blueprint/ResizableComparePanel.tsx')).toMatch(
+      'FOCUS_DIM_REST_CLASS',
+    )
+    expect(source('components/blueprint/ScenarioBlueprintPanel.tsx')).toMatch(
+      'FOCUS_DIM_CLASS',
+    )
+  })
+
+  /** `fg` at `alpha` composited over `bg`. */
+  const over = (fg: Rgb, bg: Rgb, alpha: number): Rgb =>
+    bg.map((channel, i) => alpha * fg[i]! + (1 - alpha) * channel) as unknown as Rgb
+
+  const dimmedFills: ReadonlyArray<readonly [string, string]> = [
+    ...lanes.map(
+      ([role, family]) =>
+        [`lane:${role}`, `--color-${family}-${CELL_STEP.surface}`] as const,
+    ),
+    ...tones.map((t) => [`tone:${t.tone}`, t.surface] as const),
+  ]
+
+  describe.each(['light', 'dark'] as const)(
+    `%s dimmed @ ${FOCUS_DIM_OPACITY}`,
+    (theme) => {
+      const canvas = resolveColor('--canvas', theme)
+
+      it.each(dimmedFills)(
+        '%s: the dimmed card remains distinguishable from the canvas',
+        (_label, surfaceToken) => {
+          const painted = over(
+            resolve(surfaceToken, theme),
+            canvas,
+            FOCUS_DIM_OPACITY,
+          )
+          expect(contrast(painted, canvas)).toBeGreaterThan(1)
+        },
+      )
+    },
+  )
 })
 
 /*

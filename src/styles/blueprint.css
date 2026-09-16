@@ -87,7 +87,7 @@
     > [data-phase-title-badge],
   [data-canvas-phase-section][data-canvas-focus-dimmed]
     [data-focus-slide-id] {
-    opacity: 0.3;
+    opacity: var(--focus-dim-opacity);
     transition-property: opacity;
     transition-duration: var(--motion-camera);
     transition-timing-function: var(--ease-camera);
@@ -117,7 +117,7 @@
       :has([data-phase-scenario-panel]:is(:hover, :focus-within))
     )
     [data-focus-slide-id] {
-    opacity: 0.7;
+    opacity: var(--focus-dim-hover-opacity);
   }
 
   /* The scenario under the pointer, or holding focus, comes up to full ink. */

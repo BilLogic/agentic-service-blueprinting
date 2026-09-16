@@ -38,7 +38,7 @@ export function MobileAgentSheet({
         // variant prefix), so a bare h-[60svh] loses to it — content-hungry
         // panels grew past it, and a fresh empty chat SHRANK below it. The
         // sheet is a fixed room the conversation lives in, not a balloon.
-        className="flex min-h-[60svh] max-h-[60svh] flex-col gap-0 rounded-t-2xl p-0"
+        className="flex min-h-[60svh] max-h-[60svh] flex-col gap-0 rounded-t-xl p-0"
       >
         <SheetHeader className="flex-row items-center justify-between border-b border-border py-1 pl-2 pr-1">
           <SheetTitle className="text-sm">Agent</SheetTitle>

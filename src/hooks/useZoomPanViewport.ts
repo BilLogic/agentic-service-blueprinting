@@ -19,6 +19,7 @@ import {
   type CameraTransitionResult,
   type CameraVelocity,
 } from '@/lib/cameraTransition'
+import { FOCUS_DIM_OPACITY } from '@/lib/canvasFocusDim'
 import { isCanvasResizeRefitSuppressed } from '@/lib/canvasChromeResize'
 import { publishCanvasNavigationOutcome } from '@/lib/canvasNavigationOutcome'
 import {
@@ -361,8 +362,8 @@ function restoreFocusPaint(transfer: CameraFocusTransfer | null) {
 
 function applyFocusPaint(transfer: CameraFocusTransfer | null, progress: number) {
   if (!transfer) return
-  const originOpacity = 1 - progress * 0.7
-  const destinationOpacity = 0.3 + progress * 0.7
+  const originOpacity = 1 - progress * (1 - FOCUS_DIM_OPACITY)
+  const destinationOpacity = FOCUS_DIM_OPACITY + progress * (1 - FOCUS_DIM_OPACITY)
   for (const snapshot of transfer.origin) {
     snapshot.element.style.transition = 'none'
     snapshot.element.style.opacity = String(originOpacity)

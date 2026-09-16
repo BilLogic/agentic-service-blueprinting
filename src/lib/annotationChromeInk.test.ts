@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { sourceOf as source } from '@/lib/sourceTree'
 import {
   contrast,
   hslToRgb,
@@ -94,6 +95,24 @@ describe('the annotation chrome ink ladder', () => {
   it.each(RUNGS)('%s holds one value across both themes', (rung) => {
     const [light, dark] = THEMES.map((theme) => resolve(rung, theme))
     expect(dark).toBe(light)
+  })
+
+  it('--background-annotation-chrome holds one value across both themes', () => {
+    expect(resolve('--background-annotation-chrome', 'dark')).toBe(
+      resolve('--background-annotation-chrome', 'light'),
+    )
+  })
+
+  it('paints only the floating style bar with the chrome token', () => {
+    expect(source('components/editor/CanvasAnnotationBarChrome.tsx')).toMatch(
+      /bg-annotation-chrome/,
+    )
+    expect(source('components/editor/CanvasAnnotationToolbar.tsx')).toMatch(
+      /bg-card/,
+    )
+    expect(source('components/editor/CanvasAnnotationToolbar.tsx')).not.toMatch(
+      /bg-annotation-chrome/,
+    )
   })
 
   it.each(RUNGS)('%s is opaque white dialled by alpha alone', (rung) => {

@@ -16,6 +16,7 @@ import {
   registerFocusCells,
 } from '@/lib/canvasFocusCells'
 import { registerAgentUiContext } from '@/lib/agent/uiBridge'
+import { FOCUS_DIM_STYLE } from '@/lib/canvasFocusDim'
 import { CanvasAnnotationProvider } from '@/contexts/CanvasAnnotationProvider'
 import { usePublishCanvasZoomChrome } from '@/contexts/CanvasZoomChromeContext'
 import { useCanvasAnnotationTool } from '@/contexts/canvasAnnotationContext'
@@ -250,6 +251,7 @@ function ZoomPanViewportInner({
       // world, screen-space chrome, and annotation tools keep their internal
       // order without competing with the editor shell or portalled dialogs.
       className={cn('relative isolate min-h-0 flex-1', className)}
+      style={{ ...FOCUS_DIM_STYLE }}
       data-zoom-pan-root
       // Cell-corner overlays (slice sequence badges) scale with the canvas;
       // below this zoom they are illegible specks, so CSS hides them. Same

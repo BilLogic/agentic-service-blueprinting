@@ -19,10 +19,10 @@ export const SIDEBAR_MIN_WIDTH = 240
 export const SIDEBAR_MAX_WIDTH = 640
 
 /**
- * Vertical pitch of one sidebar nav row (`NavRow`). Half-steps such as
- * `py-1.5` are not this grid.
+ * Vertical pitch of one sidebar nav row (`NavRow`). Whole steps on the
+ * shell's 4px grid — half-steps such as `py-1.5` are not this grid.
  */
-export const SIDEBAR_ROW_PITCH = 30
+export const SIDEBAR_ROW_PITCH = 32
 
 /** The agent's floating window: birth position/size, and how small the
  * corner drag may make it before the chat inside stops being usable.
