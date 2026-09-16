@@ -610,7 +610,7 @@ describe('theme dials and semantic layer', () => {
     expect(resolveValue('--radius', 'light')).toBe('0.5rem')
   })
 
-  it('derives the five radius rungs as multiples of the base, and retires the rest', () => {
+  it('derives the four radius rungs as multiples of the base, and retires the rest', () => {
     const rungs = Object.fromEntries(
       declarationsIn('theme.css')
         .filter((entry) => entry.name.startsWith('--radius-'))
@@ -620,7 +620,7 @@ describe('theme dials and semantic layer', () => {
     expect(rungs['--radius-md']).toBe('calc(var(--radius) * 0.75)')
     expect(rungs['--radius-lg']).toBe('var(--radius)')
     expect(rungs['--radius-xl']).toBe('calc(var(--radius) * 1.5)')
-    expect(rungs['--radius-2xl']).toBe('calc(var(--radius) * 2)')
+    expect(rungs['--radius-2xl']).toBeUndefined()
     expect(rungs['--radius-3xl']).toBeUndefined()
     expect(rungs['--radius-4xl']).toBeUndefined()
     expect(rungs['--radius-panel']).toBeUndefined()

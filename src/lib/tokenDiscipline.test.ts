@@ -617,31 +617,18 @@ test('every radius utility names a rung, so the dial reaches all of them', () =>
   assert.deepEqual(
     offenders,
     [],
-    `Bare radius utility — 4px hardcoded by Tailwind, deaf to --radius. Name the rung (rounded-sm / -md / -lg / -xl / -2xl), or rounded-full / rounded-none:\n${offenders.join('\n')}`,
+    `Bare radius utility — 4px hardcoded by Tailwind, deaf to --radius. Name the rung (rounded-sm / -md / -lg / -xl), or rounded-full / rounded-none:\n${offenders.join('\n')}`,
   )
 })
 
 test('retired radius rungs are gone from source', () => {
   const offenders = classUsesMatching(
-    new RegExp(`^${VARIANTS}rounded(?:-(?:${SIDES})-)?(?:3xl|4xl|panel)$`),
+    new RegExp(`^${VARIANTS}rounded(?:-(?:${SIDES})-)?(?:2xl|3xl|4xl|panel)$`),
   )
   assert.deepEqual(
     offenders,
     [],
-    `Retired radius rung — 3xl, 4xl and panel are gone. Use md / lg / xl / 2xl or rounded-full:\n${offenders.join('\n')}`,
-  )
-})
-
-test('rounded-2xl is gone from source', () => {
-  // `--radius-2xl` stays on the five-rung ladder in theme.css; no call site
-  // may pick it. Fold onto xl (plates) or lg (containment / corner chrome).
-  const offenders = classUsesMatching(
-    new RegExp(`^${VARIANTS}rounded(?:-(?:${SIDES})-)?2xl$`),
-  )
-  assert.deepEqual(
-    offenders,
-    [],
-    `rounded-2xl is banned from source. Use xl or lg:\n${offenders.join('\n')}`,
+    `Retired radius rung — 2xl, 3xl, 4xl and panel are gone. Use md / lg / xl or rounded-full:\n${offenders.join('\n')}`,
   )
 })
 

@@ -33,15 +33,16 @@
 @theme inline {
   /*
    * Multiplicative, so a deployment that turns `--radius` keeps the same
-   * five-rung proportions. sm ×0.5, md ×0.75, lg ×1, xl ×1.5, 2xl ×2.
-   * 3xl / 4xl and the standalone panel radius are retired. All five live
-   * in this inline block so a utility compiles to the calc, not a second name.
+   * four-rung proportions. sm ×0.5, md ×0.75, lg ×1, xl ×1.5. 2xl, 3xl,
+   * 4xl and the standalone panel radius are retired: nothing in the tree
+   * picked 2xl once the corner chrome folded onto lg, and a rung nobody
+   * uses is a rung a deployment reaches for by accident. All four live in
+   * this inline block so a utility compiles to the calc, not a second name.
    */
   --radius-sm: calc(var(--radius) * 0.5);
   --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.5);
-  --radius-2xl: calc(var(--radius) * 2);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-canvas: var(--canvas);
