@@ -310,6 +310,23 @@ describe('the modules that still read the template’s own name', () => {
 
     expect(importers).toEqual([SCENARIO_HEADER_BREADCRUMB_HOST])
   })
+
+  it('keeps the workspace crumb out of the trail it renders', () => {
+    /*
+      The trail is Phase › Scenario and nothing above it. The exclusion used
+      to ride on `excludeCurrent`, a flag that also dropped the current page;
+      that flag is gone, so the filter has to stand on its own, and this is
+      what says so. A workspace crumb here would print this template's name on
+      a deployment's header — the one read no config reaches.
+    */
+    const trail = sourcesOn().find(({ file }) =>
+      file.endsWith(`${SCENARIO_HEADER_BREADCRUMB}.tsx`),
+    )
+
+    expect(trail).toBeDefined()
+    expect(trail?.text).toContain('WORKSPACE_BREADCRUMB_ID')
+    expect(trail?.text).toMatch(/crumb\.id !== WORKSPACE_BREADCRUMB_ID/)
+  })
 })
 
 describe('the bundled sample', () => {
