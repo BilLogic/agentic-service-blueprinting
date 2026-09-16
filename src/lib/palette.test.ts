@@ -279,6 +279,51 @@ describe('brand fill', () => {
 })
 
 /**
+ * THE TWO NEUTRAL EDGE TOKENS, HELD APART.
+ *
+ * `--border` and `--input` are the same formula off `--foreground` at two
+ * strengths — 2% + 20% of the contrast dial against 3% + 38% — and the whole
+ * value of having two is that a component can ask for the louder one. A badge
+ * is where that shows: a tag at 20px carries its edge over its own fill with
+ * nothing else to separate it from the chrome, and in light the card it paints
+ * and the nav behind it resolve to the same colour, so the edge is the only
+ * boundary there is.
+ *
+ * Which is why the resting `Badge` variant draws `--input` and not the
+ * `outline` variant's `--border`. Stated as a COMPARISON rather than two
+ * floors, because the failure worth catching is the pair converging: raising
+ * `--border` to make a quiet edge visible somewhere would move every quiet
+ * edge in the app and silently take the badge's distinctness with it.
+ *
+ * Measured against `--card`, the surface a badge on this variant paints, and
+ * composited because both tokens are translucent — an alpha measured against
+ * nothing is a number with no ground under it.
+ */
+describe('neutral control edges', () => {
+  it.each(['light', 'dark'] as const)(
+    'draws the control edge louder than the quiet edge in %s',
+    (theme) => {
+      const card = resolveColor('--card', theme, {
+        over: resolveColor('--sidebar', theme),
+      })
+      const control = contrast(
+        resolveColor('--input', theme, { over: card }),
+        card,
+      )
+      const quiet = contrast(
+        resolveColor('--border', theme, { over: card }),
+        card,
+      )
+
+      // A floor as well as the comparison: the comparison alone would still
+      // hold if both edges faded together.
+      expect(control).toBeGreaterThan(1.3)
+      expect(control).toBeGreaterThan(quiet)
+    },
+  )
+})
+
+/**
  * THE OVERVIEW CONTAINER, PINNED TO THE LOOK ITS OWNER CHOSE.
  *
  * The overview nests four layers deep — the viewport ground, the phase frame,

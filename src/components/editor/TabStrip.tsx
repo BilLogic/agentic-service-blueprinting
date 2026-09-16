@@ -368,12 +368,24 @@ export function TabStrip({
               only place "beside the workspace" exists. They are spans, so the
               roving-tabindex handler above — which walks `[role="tab"]` — does
               not see them, and the index it maps onto `[base, ...tabs]` is
-              unchanged. They scroll with the tab they qualify, which is the
-              behaviour worth having: the name going out of view takes its
-              state with it. */}
+              unchanged. `presentation` on the wrapper keeps the container out
+              of the tablist's owned children, whose only permitted role is
+              `tab`.
+
+              They scroll with the strip, and being the tab's next sibling they
+              trail it: a strip scrolled right loses the name before the state,
+              never the other way round.
+
+              `empty:hidden` because the row is rendered unconditionally and a
+              connected session has no badges in it. An empty div is still a
+              flex item, so the tablist's `gap-1` would space it on both sides
+              and leave a permanent gap between the workspace tab and the first
+              slice tab for every reader with a database. Same reason as
+              `PanelFooterHost`. */}
           <div
             data-workspace-badges=""
-            className="flex shrink-0 items-center gap-2"
+            role="presentation"
+            className="flex shrink-0 items-center gap-2 empty:hidden"
           >
             <WorkspaceBadges />
           </div>

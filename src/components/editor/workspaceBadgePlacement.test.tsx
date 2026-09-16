@@ -11,10 +11,11 @@
  *
  * Asserted as an ORDER over the tablist's own children rather than as a
  * presence somewhere on the row, because presence is what a layout change
- * cannot break. Moving the row back into the right cluster takes it out of
- * this container entirely, and every index below goes to -1.
+ * cannot break. The row is looked up against the whole document and its slot
+ * computed against the tablist, so moving it back into the right cluster is a
+ * row that still renders and still has a name — and an index of -1.
  */
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, within } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { TabStrip } from '@/components/editor/TabStrip'
@@ -108,14 +109,22 @@ beforeEach(() => {
 afterEach(cleanup)
 
 function renderStrip() {
-  render(
+  const { container } = render(
     <TooltipProvider>
       <TabStrip isCover={false} onHome={() => {}} onBase={() => {}} />
     </TooltipProvider>,
   )
-  const tablist = screen.getByRole('tablist', { name: 'Open views' })
-  const row = tablist.querySelector('[data-workspace-badges]')
-  if (row === null) throw new Error('no badge row inside the tablist')
+  // Scoped to the render rather than asked of `screen`: an accessible-name
+  // query computes a name for every candidate in its container, and the
+  // suite's own guidance is to keep that container to the assertion's subject.
+  const tablist = within(container).getByRole('tablist', {
+    name: 'Open views',
+  })
+  // Found against the DOCUMENT, not the tablist, so that a row which moved
+  // elsewhere is still found and still scores -1 below. A row missing from the
+  // document altogether is a different failure, and says so.
+  const row = document.querySelector('[data-workspace-badges]')
+  if (row === null) throw new Error('the badge row did not render at all')
   const children = Array.from(tablist.children)
   return {
     tablist,
