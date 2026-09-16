@@ -60,8 +60,23 @@ blueprint underneath them moves.
 
 ## 4. Deploying
 
+Two files tell the host what to do, and nothing in a build, a test or a page
+load reads either of them.
+
 `netlify.toml` carries the build command, the `dist/` publish directory, the
-node version and the SPA redirect. Any static host works. Live-database
-mode needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` **at build
-time**. Blueprint-specific gotchas are in
+node version, and the redirect table: a 404 for `/assets/*`, then the SPA
+fallback for everything else. The 404 is first on purpose — a host takes the
+first rule that matches — so a hashed chunk a deploy no longer ships says it is
+missing instead of being answered with the app shell.
+
+`public/_headers` carries the CSP for every path, and the one-year immutable
+cache for `/assets/*` alone. The file's own comments say which origins the CSP
+has to name and why nothing unhashed may be cached that long.
+
+Both the order and the cache are held by `npm run check:hosting` — what its
+failure means is in [engineering/checks.md](../engineering/checks.md).
+
+Any static host works; the same two rules have an equivalent everywhere.
+Live-database mode needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` **at
+build time**. Blueprint-specific gotchas are in
 [`skills/map/references/deploy-notes.md`](../../skills/map/references/deploy-notes.md).

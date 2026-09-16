@@ -86,6 +86,7 @@
     "check:function-bodies": "node scripts/check-function-bodies.mjs",
     "check:deployment-seed-load": "node scripts/check-deployment-seed-loads.mjs",
     "check:glossary": "node scripts/check-glossary-only.mjs",
+    "check:hosting": "node scripts/check-hosting-rules.mjs",
     "interface-map": "node scripts/generate-interface-schema-map.mjs",
     "check:interface-map": "node scripts/generate-interface-schema-map.mjs --check",
     "agent-account": "node scripts/generate-agent-account.mjs",

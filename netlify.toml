@@ -5,6 +5,21 @@
 [build.environment]
   NODE_VERSION = "22"
 
+# A hashed chunk this deploy no longer ships says so. The host takes the first
+# rule that matches, so without this one every name under /assets/ that is not
+# on disk falls through to the fallback below and is answered with the app
+# shell — a 200, and text/html, where a script was asked for. The browser
+# reports that as a module it could not import, naming the import site and not
+# the missing file. `:splat` keeps the real path, so an asset that IS there is
+# still served from it; only the ones that are not answer 404.
+#
+# ORDER IS THE RULE: below the fallback this block is never reached, and the
+# defect is back wearing the fix. `npm run check:hosting` holds it.
+[[redirects]]
+  from = "/assets/*"
+  to = "/assets/:splat"
+  status = 404
+
 # SPA fallback — client-side routing must always land on index.html.
 [[redirects]]
   from = "/*"
