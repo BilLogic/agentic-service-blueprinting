@@ -57,6 +57,27 @@ that repository's 0013 is the import decision, which lives here as 0020.
 | [0020](0020-the-deployment-imports-the-template.md) | The deployment imports the template, and never edits it |
 | [0021](0021-the-template-owns-the-agent.md) | The template owns the agent; a deployment configures it like the UI |
 | [0022](0022-the-deployment-overlays-the-package-per-path.md) | The deployment overlays the package per path, and a residents list is the gate |
+| [0023](0023-a-document-a-deployment-resolves-is-a-published-path.md) | A document a deployment resolves is a published path |
+| [0024](0024-an-installations-offline-board-is-a-value-on-a-tree.md) | An installation's offline board is a value on a tree, not a store |
+| [0025](0025-brand-derives-from-primary-with-one-dial-per-channel.md) | Brand derives from primary, with one dial per channel |
+
+## Where one record replaced part of another
+
+[0025](0025-brand-derives-from-primary-with-one-dial-per-channel.md) supersedes
+one half of [0008](0008-a-primitive-is-a-hue-and-a-semantic-token-is-a-job.md):
+the mechanism that separated the two words for the accent, "a pair of dials
+each". `--brand` now derives from `--primary`'s resolved colour through three
+optional per-channel dials, and resolves to primary exactly when none of them
+is set. Everything else in 0008 stands unamended — the job split between the
+action fill and the identity fill, the rule that a primitive is named for its
+hue and never for its role, the five recorded divergences from upstream, and
+the seven brand tokens with their names and their derivations.
+
+0008 carries no banner saying so, deliberately. An accepted record is not
+edited to announce its own supersession; that is how a decision log turns into
+a thread of back-and-forth, which is the thing the convention exists to
+prevent. This section is where a reader who arrives at 0008 cold is meant to
+find out, and keeping it current is what that rule costs.
 
 ## Moved here from BilLogic/plus-uno-blueprint (#551)
 
