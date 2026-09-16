@@ -18,7 +18,7 @@
  * which point the test is about the harness. That wiring is verified by
  * hand, in the browser, against a board made to throw.
  */
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { EditorErrorBoundary } from '@/components/EditorErrorBoundary'
 
@@ -77,5 +77,51 @@ describe('a board that throws', () => {
     view.rerender(<Shell tab="blueprint" throws={false} />)
     act(() => retry.click())
     expect(screen.getByText('board')).toBeDefined()
+  })
+})
+
+/**
+ * `scope` varies the sentence and which button leads, and nothing else. Both
+ * are asserted because the second is invisible to a reader of the diff: the
+ * copy tells an app-scope reader to reload, so the emphasised control has to
+ * be the one the copy names, and `bg-primary` is what emphasis is made of.
+ */
+describe('the app scope', () => {
+  const surface = () => screen.getByText('Something went wrong').parentElement!
+
+  it('tells a reader to reload, and leads with the button that does', () => {
+    quiet()
+    render(
+      <EditorErrorBoundary scope="app">
+        <Boom throws />
+      </EditorErrorBoundary>,
+    )
+
+    const card = surface()
+    expect(within(card).getByText(/nothing below this point came up/)).toBeDefined()
+    expect(
+      within(card).getByRole('button', { name: 'Reload' }).className,
+    ).toContain('bg-primary')
+    expect(
+      within(card).getByRole('button', { name: 'Try again' }).className,
+    ).not.toContain('bg-primary')
+  })
+
+  it('leaves the view scope leading with "Try again"', () => {
+    quiet()
+    render(
+      <EditorErrorBoundary>
+        <Boom throws />
+      </EditorErrorBoundary>,
+    )
+
+    const card = surface()
+    expect(within(card).getByText(/move to another scenario/)).toBeDefined()
+    expect(
+      within(card).getByRole('button', { name: 'Try again' }).className,
+    ).toContain('bg-primary')
+    expect(
+      within(card).getByRole('button', { name: 'Reload' }).className,
+    ).not.toContain('bg-primary')
   })
 })

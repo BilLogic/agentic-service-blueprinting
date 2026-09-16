@@ -318,12 +318,8 @@ export function DeploymentConfigProvider({
    * own. The package's board is keyed by this template's identifiers and
    * answers a deployment nothing, so the fallback would be a deployment's
    * chrome around a blank canvas with no error anywhere — the silent version
-   * of the failure. WHERE THE THROW LANDS IS THE HOST'S: this provider is the
-   * outermost element `App` renders, and the editor's boundary is inside it,
-   * so nothing in this package catches it — the page comes up blank with the
-   * error in the console, which is what the render walk fails on and what a
-   * person reads. A host that wants a rendered message puts its own boundary
-   * above `App`.
+   * of the failure. It lands on `App`'s app-scoped `EditorErrorBoundary`,
+   * which is above this provider — see that class's comment.
    */
   if (failure) throw failure
   if (awaiting) return null
