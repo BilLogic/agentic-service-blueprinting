@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.44.19
+
+**The render walk waits for the shell before asking about the cover.** It
+used to ask at once, and on a deployment's slower first paint it saw no
+cover, skipped the dismissal, and then every sidebar click landed on the
+cover that had appeared behind the question. Both specs that dismiss the
+cover now wait for the cover or a sidebar row first.
+
+**Upgrading a deployment:** nothing to do. A deployment whose walk went red
+on v1.44.18 at the first phase chevron goes green on this pin.
+
 ## 1.44.18
 
 **The visual system tightens, and the chrome does the jobs the audit
@@ -7747,8 +7758,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                    ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                    "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                      ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                      "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
