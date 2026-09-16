@@ -84,6 +84,18 @@ both. This doc answers "what does this gesture MEAN and why", for every surface
 that renders a blueprint. What a *phone* does with the same canvas is
 [mobile-shell.md](mobile-shell.md).
 
+The top nav's tab strip opens with the workspace, which is a **permanent tab**
+rather than a heading — `WorkspaceServiceSwitcher`, the same chrome as a slice
+tab and no close button. The workspace's state badges (`WorkspaceBadges`:
+sample data, authoring, edit preview, the simulated tier) sit immediately after
+it, inside the tablist. Each of them qualifies the name to its left, so they
+belong beside it; they spent a while at the far end of the strip under
+`ml-auto`, which put every open tab between a state and its subject. They are
+`Badge` on the shared variants rather than hand-rolled spans, so the resting
+indicator carries the control edge instead of computing to `border-width: 0` —
+and in light mode that edge is the only thing separating it from the nav, which
+resolves to the same colour.
+
 The top nav's right cluster includes **Jump to…** (`JumpToSearch`): a labelled
 field with a ⌘K hint at desktop widths, collapsing to an icon below `md`. It
 opens a command dialog grouped as Scenarios, Cells and Actions. Selecting a

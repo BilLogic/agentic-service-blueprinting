@@ -93,12 +93,12 @@ export function WorkspaceBadges() {
           deployment's own database. Connecting one hides the sample for good,
           gaps and all — too large a difference to leave to the code. */}
       {!configured ? (
-        <span
+        <Badge
+          variant="default"
           title="No database connected — every board here is the template's bundled sample. Connect one and it is replaced by your own rows, including where they are empty."
-          className="inline-flex items-center rounded-md px-2 py-1 text-xs text-muted-foreground"
         >
           sample data
-        </span>
+        </Badge>
       ) : null}
       {/* Writing with the local authoring key is a privileged state that
           looks exactly like the read-only app otherwise. Say so. */}

@@ -357,6 +357,26 @@ export function TabStrip({
             tabIndex={activeKey === null ? 0 : -1}
             onActivate={onBase}
           />
+          {/* The workspace's state, next to the workspace. Every badge in this
+              row qualifies the name to its left — which of the two worlds this
+              is, whether writes land, whether they will be refused — and they
+              used to sit under `ml-auto` with every open tab in between, where
+              a state and its subject were the two ends of the strip.
+
+              Inside the tablist rather than beside it, because the name is a
+              PERMANENT TAB and not a heading: a position after that tab is the
+              only place "beside the workspace" exists. They are spans, so the
+              roving-tabindex handler above — which walks `[role="tab"]` — does
+              not see them, and the index it maps onto `[base, ...tabs]` is
+              unchanged. They scroll with the tab they qualify, which is the
+              behaviour worth having: the name going out of view takes its
+              state with it. */}
+          <div
+            data-workspace-badges=""
+            className="flex shrink-0 items-center gap-2"
+          >
+            <WorkspaceBadges />
+          </div>
       {tabs.map((tab) => {
         const key = tabKey(tab)
         const active = key === activeKey
@@ -424,11 +444,8 @@ export function TabStrip({
         )
       })}
         </div>
-        {/* Environment badges (authoring / edit preview) keep their home in
-            the top nav, at the quiet end of the strip. */}
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <JumpToSearch />
-          <WorkspaceBadges />
         </div>
         <DeleteSliceDialog
           slice={deleteTarget}
