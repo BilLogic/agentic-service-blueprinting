@@ -8,7 +8,9 @@ repeats the word above it.
 The definition card's term stops borrowing the shared `Eyebrow` — a lane,
 status, entity or divider badge reading `Frontstage` is now answered by a card
 that spells the word the same way, instead of in the uppercase register
-section labels use. The section eyebrows elsewhere are untouched.
+section labels use. The section eyebrows elsewhere are untouched, and the seam
+is renamed to match what it now is: `DefinitionSection.term` and
+`data-definition-term`.
 
 A lane role is a label and a body rather than one `Name — meaning` sentence the
 badge parsed on its em dash, so all eight bodies start with what the role means

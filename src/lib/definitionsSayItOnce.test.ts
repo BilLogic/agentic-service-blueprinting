@@ -77,20 +77,29 @@ const ROSTER: Record<string, readonly DefinitionPair[]> = {
  *
  * Each returns the phrase it matched, so a failure names the mistake rather
  * than only pointing at the string.
+ *
+ * The label match is WORD-BOUNDARY aware. A bare `startsWith` fails a
+ * `Support` body opening "Supporting teams…", which repeats nothing — it is a
+ * different word that happens to begin with the same letters. The boundary is
+ * "the next character is not a letter or digit", so `Support —`, `Support:`
+ * and `Support is` are all still caught.
  */
-function repeatsItsTerm(
-  label: string,
-  body: string,
-): string | null {
+function repeatsItsTerm(label: string, body: string): string | null {
   const opening = body.trim().toLowerCase()
   const term = label.trim().toLowerCase()
+  const opensWith = (phrase: string) =>
+    opening.startsWith(phrase) && !/[a-z0-9]/.test(opening.charAt(phrase.length))
   // "Storyboard — the frames…", "Storyboard: the frames…" and a bare
   // "Storyboard is…" are one mistake wearing three punctuations.
-  if (term && opening.startsWith(term)) return label
-  if (opening.startsWith('this is')) return 'This is'
-  if (opening.startsWith('these are')) return 'These are'
-  for (const verb of ['is', 'are']) {
-    if (opening.startsWith(`the ${term} ${verb}`)) return `The ${label} ${verb}`
+  if (term && opensWith(term)) return label
+  if (opensWith('this is')) return 'This is'
+  if (opensWith('these are')) return 'These are'
+  for (const article of ['the', 'a', 'an']) {
+    for (const verb of ['is', 'are']) {
+      if (opensWith(`${article} ${term} ${verb}`)) {
+        return `${article[0]!.toUpperCase()}${article.slice(1)} ${label} ${verb}`
+      }
+    }
   }
   return null
 }
@@ -104,5 +113,39 @@ describe('a definition never repeats its term', () => {
         `"${label}" is already printed above this body: ${body}`,
       ).toBe(null)
     }
+  })
+})
+
+/**
+ * The predicate's own edges, which the roster cannot show.
+ *
+ * Every string in the roster passes, so a roster-only suite stays green when
+ * the check stops catching anything at all — and just as green when it starts
+ * catching words that merely begin with the label.
+ */
+describe('what counts as repeating the term', () => {
+  it.each([
+    ['Support', 'Support — teams, vendors and infrastructure.', 'Support'],
+    ['Support', 'Support: teams and vendors.', 'Support'],
+    ['Support', 'Support is where the work goes.', 'Support'],
+    ['Lane', 'This is a row of the board.', 'This is'],
+    ['Lane', 'These are the rows of the board.', 'These are'],
+    ['Lane', 'The lane is a row of the board.', 'The Lane is'],
+    ['Lane', 'A lane is a row of the board.', 'A Lane is'],
+    ['Lane', 'An lane are rows of the board.', 'An Lane are'],
+  ])('%s + "%s"', (label, body, matched) => {
+    expect(repeatsItsTerm(label, body)).toBe(matched)
+  })
+
+  it.each([
+    // A different word that happens to start with the label's letters.
+    ['Support', 'Supporting teams, vendors and infrastructure behind the work.'],
+    ['Core', 'Corridors the customer never sees.'],
+    // The label appears, but not as the opening word.
+    ['Lane', 'A row of the board — one lane per participant.'],
+    // An article and the term, with no copula behind it, is prose.
+    ['Lane', 'The lane holds one kind of participant.'],
+  ])('%s + "%s" is not a repeat', (label, body) => {
+    expect(repeatsItsTerm(label, body)).toBe(null)
   })
 })

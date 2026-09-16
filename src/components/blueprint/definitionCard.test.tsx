@@ -4,7 +4,7 @@
  *
  * The card's own seam is the CARD. "One section and two sections are typeset
  * identically" is the assertion that stops the pattern drifting into two
- * shapes — a category half in a small-caps eyebrow and an instance half in a
+ * shapes — a category half in a small-caps title and an instance half in a
  * plain medium-weight name, inside one card.
  *
  * The board wiring is exercised through the three labels that render a
@@ -101,8 +101,8 @@ function hover(element: Element) {
 const sections = (card: HTMLElement) =>
   Array.from(card.querySelectorAll('[data-definition-section]'))
 
-const eyebrow = (section: Element) =>
-  section.querySelector('[data-definition-eyebrow]') as HTMLElement
+const term = (section: Element) =>
+  section.querySelector('[data-definition-term]') as HTMLElement
 
 const body = (section: Element) =>
   section.querySelector('[data-definition-body]') as HTMLElement
@@ -110,17 +110,17 @@ const body = (section: Element) =>
 /* -------------------------------------------------- the card is one shape */
 
 describe('the definition card', () => {
-  const one = [{ eyebrow: 'Path', body: ENTITY_KIND_DEFINITIONS.path.definition }]
+  const one = [{ term: 'Path', body: ENTITY_KIND_DEFINITIONS.path.definition }]
   const two = [
     ...one,
-    { eyebrow: 'Happy Path', body: 'The customer joins on time.' },
+    { term: 'Happy Path', body: 'The customer joins on time.' },
   ]
 
   it('sets a category and an instance identically — one shape, not two', () => {
     render(<DefinitionCard sections={two} />)
     const card = document.querySelector('[data-definition-card]') as HTMLElement
     const [category, instance] = sections(card)
-    expect(eyebrow(instance).className).toBe(eyebrow(category).className)
+    expect(term(instance).className).toBe(term(category).className)
     expect(body(instance).className).toBe(body(category).className)
   })
 
@@ -129,7 +129,7 @@ describe('the definition card', () => {
     const alone = sections(
       document.querySelector('[data-definition-card]') as HTMLElement,
     )[0]
-    const aloneClasses = [eyebrow(alone).className, body(alone).className]
+    const aloneClasses = [term(alone).className, body(alone).className]
     cleanup()
 
     render(<DefinitionCard sections={two} />)
@@ -137,7 +137,7 @@ describe('the definition card', () => {
       document.querySelector('[data-definition-card]') as HTMLElement,
     )
     for (const section of paired) {
-      expect([eyebrow(section).className, body(section).className]).toEqual(
+      expect([term(section).className, body(section).className]).toEqual(
         aloneClasses,
       )
     }
@@ -158,7 +158,7 @@ describe('the definition card', () => {
 describe('a definition opens on hover, and is reachable without a pointer', () => {
   it('opens the card on hover', async () => {
     render(
-      <DefinitionPopover sections={[{ eyebrow: 'Lane', body: 'One row.' }]}>
+      <DefinitionPopover sections={[{ term: 'Lane', body: 'One row.' }]}>
         <span>Front stage</span>
       </DefinitionPopover>,
     )
@@ -168,7 +168,7 @@ describe('a definition opens on hover, and is reachable without a pointer', () =
 
   it('gives the trigger a tab stop, so focus reaches it', () => {
     render(
-      <DefinitionPopover sections={[{ eyebrow: 'Lane', body: 'One row.' }]}>
+      <DefinitionPopover sections={[{ term: 'Lane', body: 'One row.' }]}>
         <span>Front stage</span>
       </DefinitionPopover>,
     )
@@ -223,13 +223,13 @@ describe('the labels that show a category and an instance', () => {
       mount()
       hover(screen.getByText(label))
       const card = await screen.findByText(label, {
-        selector: '[data-definition-eyebrow]',
+        selector: '[data-definition-term]',
       })
       const parts = sections(
         card.closest('[data-definition-card]') as HTMLElement,
       )
       expect(parts).toHaveLength(2)
-      expect(eyebrow(parts[1]).className).toBe(eyebrow(parts[0]).className)
+      expect(term(parts[1]).className).toBe(term(parts[0]).className)
       expect(body(parts[1]).className).toBe(body(parts[0]).className)
     },
   )
@@ -248,7 +248,7 @@ describe('an entity definition', () => {
     await screen.findByText(ENTITY_KIND_DEFINITIONS.lane.definition)
     const card = document.querySelector('[data-definition-card]') as HTMLElement
     expect(sections(card)).toHaveLength(1)
-    expect(eyebrow(sections(card)[0]).textContent).toBe('Lane')
+    expect(term(sections(card)[0]).textContent).toBe('Lane')
   })
 
   it('says so when nobody has written the instance description yet', async () => {
@@ -269,7 +269,7 @@ describe('an entity definition', () => {
     const [, instance] = sections(card)
     // The placeholder changes the BODY only. The heading is the heading.
     expect(body(instance).className).toContain('italic')
-    expect(eyebrow(instance).className).toBe(eyebrow(sections(card)[0]).className)
+    expect(term(instance).className).toBe(term(sections(card)[0]).className)
   })
 })
 
@@ -286,14 +286,14 @@ describe('the stakeholder card', () => {
     )
     hover(screen.getByText('Site Surveyor'))
     const first = await screen.findByText(STAKEHOLDER_KIND_LABELS.staff, {
-      selector: '[data-definition-eyebrow]',
+      selector: '[data-definition-term]',
     })
     const card = first.closest('[data-definition-card]') as HTMLElement
     const [kind, instance] = sections(card)
 
-    expect(eyebrow(kind).textContent).toBe('Staff')
+    expect(term(kind).textContent).toBe('Staff')
     expect(body(kind).textContent).toBe(STAKEHOLDER_KIND_MEANING.staff)
-    expect(eyebrow(instance).textContent).toBe('Site Surveyor')
+    expect(term(instance).textContent).toBe('Site Surveyor')
     expect(body(instance).textContent).toBe(
       'The surveyor a household meets on every visit.',
     )
@@ -400,7 +400,7 @@ describe('a made-up word is a plain field label, and still explains itself', () 
     expect(card).not.toBeNull()
     expect(
       within(card as HTMLElement).getAllByText('Storyboard', {
-        selector: '[data-definition-eyebrow]',
+        selector: '[data-definition-term]',
       }),
     ).toHaveLength(1)
   })
@@ -411,15 +411,6 @@ describe('a made-up word is a plain field label, and still explains itself', () 
 describe('the made-up words and the entity kinds', () => {
   it('the term map holds only the words a reader could not guess', () => {
     expect(Object.keys(PANEL_TERMS).sort()).toEqual(['storyboard', 'touchpoint'])
-  })
-
-  it('a definition never opens by naming the term the eyebrow already prints', () => {
-    for (const [term, definition] of Object.entries(PANEL_TERMS)) {
-      expect(
-        definition.toLowerCase().startsWith(term.toLowerCase()),
-        term,
-      ).toBe(false)
-    }
   })
 
   it('the six entity-kind definitions are the generic set, carrying no instance example', () => {
@@ -554,8 +545,8 @@ describe('the example grounds the generic definition in this deployment', () => 
     ).closest('[data-definition-card]') as HTMLElement
     const [kind, example] = sections(card)
     expect(sections(card)).toHaveLength(2)
-    expect(eyebrow(example).textContent).toBe('Example')
-    expect(eyebrow(example).className).toBe(eyebrow(kind).className)
+    expect(term(example).textContent).toBe('Example')
+    expect(term(example).className).toBe(term(kind).className)
     expect(body(example).className).toBe(body(kind).className)
   })
 
@@ -588,7 +579,7 @@ describe('the example grounds the generic definition in this deployment', () => 
     ).closest('[data-definition-card]') as HTMLElement
     expect(sections(card)).toHaveLength(1)
     expect(
-      screen.queryByText('Example', { selector: '[data-definition-eyebrow]' }),
+      screen.queryByText('Example', { selector: '[data-definition-term]' }),
     ).toBeNull()
   })
 
@@ -605,8 +596,8 @@ describe('the example grounds the generic definition in this deployment', () => 
       await screen.findByText(ENTITY_EXAMPLE_PLACEHOLDER)
     ).closest('[data-definition-card]') as HTMLElement
     const [kind, example] = sections(card)
-    expect(eyebrow(example).textContent).toBe('Example')
+    expect(term(example).textContent).toBe('Example')
     expect(body(example).className).toContain('italic')
-    expect(eyebrow(example).className).toBe(eyebrow(kind).className)
+    expect(term(example).className).toBe(term(kind).className)
   })
 })

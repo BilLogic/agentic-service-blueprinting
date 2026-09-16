@@ -308,10 +308,10 @@ export function Field({
         /* The definition CARD, not a bare sentence and not a tooltip. A
            tooltip never opens on touch, and this hint carries `PANEL_TERMS`
            entries — definitions — on a shell that has a phone posture. The
-           field's own label is the section's eyebrow, which is why the hint
+           field's own label is the section's term, which is why the hint
            itself no longer has to open by naming the field. */
         <DefinitionPopover
-          sections={[{ eyebrow: label, body: hint }]}
+          sections={[{ term: label, body: hint }]}
           side="left"
         >
           {labelText}
@@ -631,7 +631,7 @@ export function PanelKindBadge({
    */
   category?: DefinitionSection | null
   /**
-   * What this kind of row IS, shown on hover, under the label as its eyebrow.
+   * What this kind of row IS, shown on hover, under the label as its term.
    *
    * It used to hang off an ⓘ beside the badge — a second control for one fact,
    * when the badge is already the thing whose meaning is in question. Hovering
@@ -645,7 +645,7 @@ export function PanelKindBadge({
   */
   const sections: DefinitionSection[] = []
   if (category) sections.push(category)
-  if (description) sections.push({ eyebrow: label, body: description })
+  if (description) sections.push({ term: label, body: description })
 
   /*
     What an explained badge wears, and the one thing it must not.

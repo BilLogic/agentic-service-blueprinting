@@ -56,7 +56,7 @@ export function BlueprintDividerRailLabel({
      tooltip is `mouseOnly` — so on the phone posture this app has, the reader
      least likely to know the convention was the one who could not read it. */
   return (
-    <DefinitionPopover sections={[{ eyebrow: label, body: meaning }]}>
+    <DefinitionPopover sections={[{ term: label, body: meaning }]}>
       {caption}
     </DefinitionPopover>
   )

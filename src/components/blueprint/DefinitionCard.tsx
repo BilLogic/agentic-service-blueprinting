@@ -9,12 +9,12 @@ import { cn } from '@/lib/utils'
 /**
  * One part of a definition: the word, and what it means.
  *
- * `eyebrow` is a category ("Path", "Staff", "Live") or an instance's own name
+ * `term` is a category ("Path", "Staff", "Live") or an instance's own name
  * ("Happy Path", "Blueprint owner"). Both are set the same way, which is the
  * whole point — see `DefinitionCard`.
  */
 export type DefinitionSection = {
-  eyebrow: string
+  term: string
   body: string
   /**
    * True when `body` is the placeholder rather than authored prose. It changes
@@ -24,7 +24,7 @@ export type DefinitionSection = {
 }
 
 /**
- * A definition, as ONE shape: sections, each an eyebrow above a body,
+ * A definition, as ONE shape: sections, each a term above a body,
  * identically typeset and hairline-separated.
  *
  * One section is a term and its meaning. Two is a category then an instance —
@@ -44,7 +44,7 @@ export function DefinitionCard({ sections }: { sections: DefinitionSection[] }) 
     <div data-definition-card="" className="flex flex-col">
       {sections.map((section, index) => (
         <div
-          key={`${index}-${section.eyebrow}`}
+          key={`${index}-${section.term}`}
           data-definition-section=""
           /* The hairline separates sections; it never heads one. */
           className={cn(
@@ -71,10 +71,10 @@ export function DefinitionCard({ sections }: { sections: DefinitionSection[] }) 
             underneath it, which is backwards for the thing being defined.
           */}
           <span
-            data-definition-eyebrow=""
+            data-definition-term=""
             className="block text-xs font-medium text-foreground"
           >
-            {section.eyebrow}
+            {section.term}
           </span>
           <span
             data-definition-body=""
