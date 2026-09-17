@@ -73,7 +73,7 @@ vi.mock('@/contexts/CanvasZoomChromeContext', () => ({
   useCanvasZoomChrome: () => null,
 }))
 
-vi.mock('next-themes', () => ({
+vi.mock('@/lib/theme', () => ({
   useTheme: () => ({ resolvedTheme: 'light', setTheme: vi.fn() }),
 }))
 

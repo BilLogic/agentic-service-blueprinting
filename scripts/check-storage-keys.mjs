@@ -72,7 +72,7 @@
  *
  * Two spellings pass, and they are the two the tree uses: `storageKey('…')` at
  * the call site, and an identifier declared ONCE in the file as
- * `storageKey('…')` — the module-scope idiom eight modules share. Every other
+ * `storageKey('…')` — the module-scope idiom nine modules share. Every other
  * key expression at a store call fails, including one assembled some third way
  * and one this check simply cannot follow, and that strictness is deliberate: a
  * guard that accepted what it could not read would accept the next literal
