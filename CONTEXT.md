@@ -437,6 +437,28 @@ read covers its scope unless its `service` argument moves it; a write that
 creates under the service lands on the scope's service. A tool never
 resolves a slug — the shell did, once.
 
+**Skill** — one of the four flows a reader starts by naming it in the
+composer: `/sb:map`, `/sb:slice`, `/sb:audit`, `/sb:whatif`. The same
+`SKILL.md` an IDE agent follows from this repository's `skills/` tree,
+vendored into the bundle and joined to the system prompt for the one message
+that names it. **Not a Tool**: a tool is one call the model makes, a skill is
+a flow the reader starts, and a skill reaches the board only through the tools
+the roster offers. Several skills may ride one message, in the order the
+reader picked them. A skill is invoked by its official namespaced name; the
+bare segment after the colon finds it in the menu and suggests it, and
+invokes nothing.
+
+**Send** — one message the reader commits: its text, and the skills it names.
+The unit a write batch is counted against.
+
+**Turn** — a send and everything the agent does answering it, until the loop
+stops, exhausts its rounds or fails. The unit a repeated read is counted
+against.
+
+**Round** — one provider call inside a turn, with the tool calls its answer
+asked for and their results. A turn allows a fixed number of them; the last
+one may call no tools, so a turn that runs out of rounds still answers.
+
 ## The session
 
 **identity** — whether anyone is signed in.
