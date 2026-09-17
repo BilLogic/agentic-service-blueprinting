@@ -1,5 +1,4 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { ThemeProvider } from 'next-themes'
 import { EditorErrorBoundary } from '@/components/EditorErrorBoundary'
 import { EditorShell } from '@/components/editor/EditorShell'
 import { ScenarioPathSelectionReset } from '@/components/editor/ScenarioPathSelectionReset'
@@ -17,6 +16,16 @@ import { ViewStateProvider } from '@/contexts/ViewStateContext'
 import type { DeploymentConfig } from '@/deploymentConfig'
 import { queryClient } from '@/lib/queryClient'
 import { useStaleChunkReload } from '@/lib/staleChunkReload'
+/*
+ * Imported for its SIDE EFFECT and nothing else: `theme.ts` reads the stored
+ * theme and stamps the class and `color-scheme` on the root while this import
+ * graph evaluates — before React renders, in the template's own entry and in a
+ * deployment that mounts this component alike. It sits here, at the root a
+ * deployment imports, so neither consumer can reach `App` without it. Its
+ * header carries why this is a module-scope effect rather than the provider it
+ * replaced.
+ */
+import '@/lib/theme'
 
 /**
  * The app root. Standalone it takes no props and runs on the template
@@ -56,8 +65,11 @@ import { useStaleChunkReload } from '@/lib/staleChunkReload'
  *   1. The DEPLOYMENT SEAM. `DeploymentConfigProvider` is the outermost
  *      provider because every band below may be skinned by it and none of it may be skinned
  *      half way down.
- *   2. INFRASTRUCTURE — the query cache, the theme, the database client.
- *      Nothing here renders anything the reader sees.
+ *   2. INFRASTRUCTURE — the query cache and the database client. Nothing here
+ *      renders anything the reader sees. The theme used to be a third
+ *      provider in this band and is now a module-scope effect instead, which
+ *      is a band above all of these rather than a peer of them: it has
+ *      finished before the first of them is constructed.
  *   3. SHARED READS — the active service, then the two session-wide reads
  *      that hang off it. One query each, cached and shared by everything
  *      below, which is the whole reason they are providers rather than hooks
@@ -87,70 +99,61 @@ export function App({ config }: { config?: DeploymentConfig | null }) {
     <EditorErrorBoundary scope="app">
       <DeploymentConfigProvider config={config}>
         <QueryClientProvider client={queryClient}>
-          {/*
-           * `attribute="class"` matches the token setup: themes/light.css targets
-           * `:root, .light`, themes/dark.css targets `.dark`, and the `dark:`
-           * variant is `&:where(.dark, .dark *)`. `enableColorScheme` (on by
-           * default) also sets `color-scheme` on the root, which is what makes
-           * scrollbars and native form controls follow the theme.
-           */}
-          <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-            <SupabaseProvider>
+          <SupabaseProvider>
+            {/*
+             * Resolves the URL slug to the active service and canonicalises
+             * the slug into the address bar. Above everything that reads a
+             * service, so no reader below it can see a stale one.
+             */}
+            <ActiveServiceProvider>
               {/*
-               * Resolves the URL slug to the active service and canonicalises
-               * the slug into the address bar. Above everything that reads a
-               * service, so no reader below it can see a stale one.
+               * Above the editor so both the menubar identity headers and the
+               * canvas read one cached service query; the definition popovers
+               * on the board pick their per-kind example out of it by kind.
                */}
-              <ActiveServiceProvider>
+              <EntityExamplesProvider>
                 {/*
-                 * Above the editor so both the menubar identity headers and the
-                 * canvas read one cached service query; the definition popovers
-                 * on the board pick their per-kind example out of it by kind.
+                 * One unscoped read of `touchpoints.tone` and `.aliases` for
+                 * the whole session, published to the module store every
+                 * touchpoint face resolves its colour through.
                  */}
-                <EntityExamplesProvider>
-                  {/*
-                   * One unscoped read of `touchpoints.tone` and `.aliases` for
-                   * the whole session, published to the module store every
-                   * touchpoint face resolves its colour through.
-                   */}
-                  <TouchpointRegistryProvider>
-                    <EditorProvider>
-                      <ViewStateProvider>
-                        <PathSelectionProvider>
+                <TouchpointRegistryProvider>
+                  <EditorProvider>
+                    <ViewStateProvider>
+                      <PathSelectionProvider>
+                        {/*
+                         * A comparison is a statement about the scenario it
+                         * was built in, so moving to another one collapses it.
+                         * Inside the provider it drives, under the editor
+                         * whose navigation it watches.
+                         */}
+                        <ScenarioPathSelectionReset />
+                        {/*
+                         * The board reaches the address bar here, beside the
+                         * reset, and for the same reason: it joins navigation,
+                         * the path selection and the tab state, and none of
+                         * those three providers may learn about the other two.
+                         */}
+                        <BoardAddressSync />
+                        <TooltipProvider delay={200}>
+                          <EditorErrorBoundary>
+                            <EditorShell />
+                          </EditorErrorBoundary>
                           {/*
-                           * A comparison is a statement about the scenario it
-                           * was built in, so moving to another one collapses it.
-                           * Inside the provider it drives, under the editor
-                           * whose navigation it watches.
+                           * Outside the boundary, on purpose: a write can fail
+                           * as the shell falls over, and the notice is what
+                           * says so. Inside it, the one message explaining the
+                           * blank screen would be caught by the blank screen.
                            */}
-                          <ScenarioPathSelectionReset />
-                          {/*
-                           * The board reaches the address bar here, beside the
-                           * reset, and for the same reason: it joins navigation,
-                           * the path selection and the tab state, and none of
-                           * those three providers may learn about the other two.
-                           */}
-                          <BoardAddressSync />
-                          <TooltipProvider delay={200}>
-                            <EditorErrorBoundary>
-                              <EditorShell />
-                            </EditorErrorBoundary>
-                            {/*
-                             * Outside the boundary, on purpose: a write can fail
-                             * as the shell falls over, and the notice is what
-                             * says so. Inside it, the one message explaining the
-                             * blank screen would be caught by the blank screen.
-                             */}
-                            <WriteFailureNotices />
-                          </TooltipProvider>
-                        </PathSelectionProvider>
-                      </ViewStateProvider>
-                    </EditorProvider>
-                  </TouchpointRegistryProvider>
-                </EntityExamplesProvider>
-              </ActiveServiceProvider>
-            </SupabaseProvider>
-          </ThemeProvider>
+                          <WriteFailureNotices />
+                        </TooltipProvider>
+                      </PathSelectionProvider>
+                    </ViewStateProvider>
+                  </EditorProvider>
+                </TouchpointRegistryProvider>
+              </EntityExamplesProvider>
+            </ActiveServiceProvider>
+          </SupabaseProvider>
         </QueryClientProvider>
       </DeploymentConfigProvider>
     </EditorErrorBoundary>

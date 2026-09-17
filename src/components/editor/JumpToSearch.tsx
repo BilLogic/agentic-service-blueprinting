@@ -8,7 +8,6 @@ import {
   SunMoon,
   type LucideIcon,
 } from 'lucide-react'
-import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import {
   Command,
@@ -23,6 +22,7 @@ import { useCanvasZoomChrome } from '@/contexts/CanvasZoomChromeContext'
 import { useEditor } from '@/contexts/EditorContext'
 import { useCanvasBlueprints } from '@/hooks/useCanvasBlueprints'
 import { requestScenarioCellFocus } from '@/lib/canvasFocusCells'
+import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 import {
   getMainSlides,

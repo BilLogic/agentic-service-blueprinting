@@ -38,14 +38,18 @@
  * A deployment that MOUNTS this package cannot edit a constant inside a module
  * it imports — by design it imports the template rather than overlaying it —
  * so it calls `configureStorageNamespace('acme-')` instead, and it must do so
- * BEFORE it imports the app. That ordering is not a preference. Eight modules
+ * BEFORE it imports the app. That ordering is not a preference. Nine modules
  * compute their key at MODULE SCOPE (`agent/settings.ts`, `agent/sessions.ts`,
  * `agent/placement.ts`, `devPortal.ts`, `mobilePathMemory.ts`,
- * `slideSheetHeight.ts`, `staleChunkReload.ts`,
- * `components/editor/EditorShell.tsx`), and five of those go further and READ
+ * `slideSheetHeight.ts`, `staleChunkReload.ts`, `theme.ts`,
+ * `components/editor/EditorShell.tsx`), and six of those go further and READ
  * localStorage at module scope to seed a `useSyncExternalStore` snapshot
  * (`agent/settings.ts`, `agent/sessions.ts`, `agent/placement.ts`,
- * `devPortal.ts`, `slideSheetHeight.ts`). All
+ * `devPortal.ts`, `slideSheetHeight.ts`, `theme.ts`). `theme.ts` goes further
+ * still and ACTS on what it read, stamping the theme class on the document
+ * before the first paint — a job that used to be an inline script a strict
+ * Content Security Policy refused, and the clearest illustration of why this
+ * work cannot wait for a React lifecycle. All
  * of that happens while the import graph evaluates — before React exists, let
  * alone before `App` renders. A `DeploymentConfig` field would therefore be
  * read one lifecycle too late, and the failure would be silent: the app would

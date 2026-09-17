@@ -467,8 +467,8 @@ function applies(selector: string, theme: Theme, scope: Scope): boolean {
     if (trimmed === ':root') return true
     if (trimmed === '.light') return theme === 'light'
     if (trimmed === '.dark') return theme === 'dark'
-    // next-themes stamps the class on documentElement, so `:root.light` and
-    // friends are the same element wearing both.
+    // `lib/theme.ts` stamps the class on documentElement, so `:root.light`
+    // and friends are the same element wearing both.
     if (trimmed === ':root.light' || trimmed === 'html.light')
       return theme === 'light'
     if (trimmed === ':root.dark' || trimmed === 'html.dark')
