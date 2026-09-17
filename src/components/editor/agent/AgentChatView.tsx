@@ -65,8 +65,11 @@ import {
 } from '@/lib/agent/loop'
 import {
   AGENT_SKILL_COMMANDS,
+  findSkillByToken,
+  findSkillLookup,
   parseSkillDraft,
   skillMatchesQuery,
+  spliceSkillLookup,
   type AgentSkillCommand,
 } from '@/lib/agent/skills'
 import {
@@ -170,17 +173,16 @@ export function AgentChatView({
     return lines.join('\n')
   }, [activePathKeys, changes, mode])
 
-  // "/" at the start of an otherwise word-only draft is a skill lookup.
-  const slashQuery =
-    !pendingSkill && draft.startsWith('/') && !draft.includes(' ')
-      ? draft.slice(1).toLowerCase()
-      : null
-  const slashMatches =
-    slashQuery !== null
-      ? AGENT_SKILL_COMMANDS.filter((command) =>
-          skillMatchesQuery(command, slashQuery),
-        )
-      : []
+  // A slash that opens a word starts a skill lookup, wherever in the draft
+  // it sits — the rule and the spans it reports live in skills.ts, because
+  // the strings it must NOT fire on (a reference path, a URL, `and/or`, a
+  // date) are worth a table of tests and not a condition in a render body.
+  const slashLookup = pendingSkill ? null : findSkillLookup(draft)
+  const slashMatches = slashLookup
+    ? AGENT_SKILL_COMMANDS.filter((command) =>
+        skillMatchesQuery(command, slashLookup.query),
+      )
+    : []
   const slashOpen = slashMatches.length > 0
   // Arrow keys and hover move one highlight through the *pickable* matches
   // (cmdk drives hover via onValueChange; the arrows below drive the rest).
@@ -208,9 +210,18 @@ export function AgentChatView({
     setSlashHighlight(next.id)
   }
 
+  // Picking replaces the TOKEN, not the message: the badge takes the
+  // `/token` span's place and the words either side of it stay where they
+  // were. This used to clear the field, which ate the sentence a reader was
+  // half-way through — and once a lookup can open mid-sentence, there is
+  // always a sentence to eat. No caret write is needed: the token ran to the
+  // end of the draft, so the shortened value leaves the caret where it was.
   const pickSkill = (command: AgentSkillCommand) => {
-    if (!command.content) return
-    setAgentDraft(session.id, { text: '', skillId: command.id })
+    if (!command.content || !slashLookup) return
+    setAgentDraft(session.id, {
+      text: spliceSkillLookup(draft, slashLookup),
+      skillId: command.id,
+    })
   }
 
   const send = () => {
@@ -555,13 +566,8 @@ export function AgentChatView({
                 // on the spot — the token is recognized, not just text.
                 if (!pendingSkill) {
                   const token = /^\/([\w:]+)\s([\s\S]*)$/.exec(value)
-                  const lowered = token?.[1].toLowerCase()
-                  const command = lowered
-                    ? AGENT_SKILL_COMMANDS.find(
-                        (entry) =>
-                          entry.id === lowered ||
-                          entry.aliases.includes(lowered),
-                      )
+                  const command = token
+                    ? findSkillByToken(token[1])
                     : undefined
                   if (command?.content) {
                     setAgentDraft(session.id, {
@@ -598,12 +604,15 @@ export function AgentChatView({
                   if (highlighted) pickSkill(highlighted)
                   return
                 }
-                if (slashOpen && event.key === 'Escape') {
+                if (slashOpen && event.key === 'Escape' && slashLookup) {
                   // Mark the event consumed: the canvas selection listener
                   // skips defaultPrevented Escapes, and closing this menu
                   // must not also wipe a cell selection.
                   event.preventDefault()
-                  setDraft('')
+                  // Dismissal drops the token the menu is open on — the same
+                  // keystroke that used to empty a draft holding nothing but
+                  // "/aud", now spelled so it leaves the prose around it.
+                  setDraft(spliceSkillLookup(draft, slashLookup))
                   return
                 }
                 if (

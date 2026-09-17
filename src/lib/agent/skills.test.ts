@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   AGENT_SKILL_COMMANDS,
+  findSkillLookup,
   parseSkillDraft,
   skillMatchesQuery,
+  spliceSkillLookup,
 } from '@/lib/agent/skills'
 import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
 import { readReference, referenceNames } from '@/lib/agent/tools/references'
@@ -20,12 +22,12 @@ describe('agent skills (vendored SKILL.md)', () => {
     }
   })
 
-  it('parses namespaced and bare slash drafts', () => {
+  it('parses a namespaced slash draft, and only a namespaced one', () => {
     const namespaced = parseSkillDraft('/sb:audit the sample scenario')
     expect(namespaced?.command.id).toBe('sb:audit')
     expect(namespaced?.rest).toBe('the sample scenario')
-    const bare = parseSkillDraft('/audit')
-    expect(bare?.command.id).toBe('sb:audit')
+    // The official name invokes; the bare alias only finds.
+    expect(parseSkillDraft('/audit')).toBeNull()
     expect(parseSkillDraft('/frobnicate now')).toBeNull()
   })
 
@@ -34,6 +36,49 @@ describe('agent skills (vendored SKILL.md)', () => {
     expect(skillMatchesQuery(audit, 'au')).toBe(true)
     expect(skillMatchesQuery(audit, 'sb:au')).toBe(true)
     expect(skillMatchesQuery(audit, 'zz')).toBe(false)
+  })
+})
+
+describe('the skill lookup a draft carries', () => {
+  // The table the trigger exists for: a slash opens a lookup when it opens a
+  // word, and the four strings below are the ones that used to be mistaken
+  // for one the moment the trigger stopped being anchored to index 0.
+  const cases: [string, string | null][] = [
+    ['/', ''],
+    ['/sb:aud', 'sb:aud'],
+    ['Hey can u /sb:aud', 'sb:aud'],
+    ['Hey can u /', ''],
+    ['check this、/aud', 'aud'],
+    ['/sb:audit this', null],
+    ['look at src/lib', null],
+    ['see http://example.test', null],
+    ['do this and/or that', null],
+    ['on 2026/09/17', null],
+  ]
+  for (const [draft, query] of cases) {
+    it(`${query === null ? 'ignores' : `reads "${query}" from`} ${JSON.stringify(draft)}`, () => {
+      expect(findSkillLookup(draft)?.query ?? null).toBe(query)
+    })
+  }
+
+  it('reads the token to the end of the draft, and stops at a space', () => {
+    const lookup = findSkillLookup('Hey can u /sb:aud')
+    expect(lookup).toEqual({ query: 'sb:aud', start: 10, end: 17 })
+    expect(findSkillLookup('Hey can u /sb:aud ')).toBeNull()
+  })
+
+  it('stays quiet while the draft already opens with a resolved skill', () => {
+    // That skill owns its arguments — a slash inside them is argument text.
+    expect(findSkillLookup('/sb:map from /notes')).toBeNull()
+    // An unresolved head token owns nothing, so the lookup still runs.
+    expect(findSkillLookup('/audit the intake and /sb:m')?.query).toBe('sb:m')
+  })
+
+  it('splices out the token span and nothing else', () => {
+    const draft = 'Hey can u /sb:aud'
+    const lookup = findSkillLookup(draft)!
+    expect(spliceSkillLookup(draft, lookup)).toBe('Hey can u ')
+    expect(spliceSkillLookup('/sb:aud', findSkillLookup('/sb:aud')!)).toBe('')
   })
 })
 
