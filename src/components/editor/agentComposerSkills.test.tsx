@@ -31,6 +31,7 @@ vi.mock('@/contexts/SupabaseProvider', () => ({
 vi.mock('@/hooks/useMobileShell', () => ({ isMobileViewport: () => false }))
 
 import { AgentPanel } from '@/components/editor/AgentPanel'
+import { COMPOSER_FIELD_METRICS } from '@/components/editor/agent/ComposerSkillInk'
 import { PathSelectionProvider } from '@/contexts/PathSelectionContext'
 import {
   agentSessionsSnapshot,
@@ -62,6 +63,13 @@ const menuOption = (label: string) => {
   const menu = screen.queryByLabelText('Agent skills')
   return menu ? within(menu).queryByText(label) : null
 }
+
+/**
+ * The layer that draws the prose behind the field. It is `aria-hidden`, so it
+ * is queried the one way a hidden node can be: by the slot it declares.
+ */
+const skillInk = () =>
+  document.querySelector<HTMLElement>('[data-slot="composer-skill-ink"]')
 
 /** Pick a skill through the menu, the way a reader does. */
 const pick = (composer: HTMLElement, typed: string, label: string) => {
@@ -97,13 +105,13 @@ afterEach(() => {
 })
 
 describe('the composer opens a skill lookup wherever a slash opens a word', () => {
-  it('opens on a token typed mid-sentence, and picking keeps the prose around it', () => {
+  it('opens on a token typed mid-sentence, and accepting completes it in place', () => {
     const composer = openComposer()
     pick(composer, 'Hey can u /sb:aud', '/sb:audit')
-    // The badge stands where the token was; the words before it are still
-    // the reader's message, and they are what sends.
-    expect((composer as HTMLTextAreaElement).value).toBe('Hey can u ')
-    expect(screen.getByRole('button', { name: 'Remove skill' })).toBeTruthy()
+    // The token gains its ending where it sits. It used to be lifted out of
+    // the prose into a badge above the field, which put the reader's word at
+    // the front of their own message.
+    expect((composer as HTMLTextAreaElement).value).toBe('Hey can u /sb:audit ')
   })
 
   it('finds a skill by the segment after its namespace', () => {
@@ -129,6 +137,64 @@ describe('the composer opens a skill lookup wherever a slash opens a word', () =
   })
 })
 
+describe('a token that names a skill is coloured where it sits', () => {
+  it('draws the whole draft behind the field, with the token in role ink', () => {
+    const composer = openComposer()
+    type(composer, 'Hey can u /sb:audit the intake')
+    const ink = skillInk()!
+    // The layer carries the SAME string, so the caret and the colour agree.
+    // The trailing newline is the one the block would otherwise collapse.
+    expect(ink.textContent).toBe('Hey can u /sb:audit the intake\n')
+    expect(within(ink).getByText('/sb:audit').className).toContain(
+      'text-text-primary',
+    )
+    // And the field hands the drawing over while the layer is doing it.
+    expect(composer.className).toContain('text-transparent')
+  })
+
+  it('wears the same metrics as the field, down to the last one', () => {
+    // The shimmer guard. Two copies of one string wrap alike only while they
+    // agree on every property that decides a line break, so the agreement is
+    // one string and this asserts both of them still wear it.
+    const composer = openComposer()
+    type(composer, 'Hey can u /sb:audit the intake')
+    const ink = skillInk()!
+    for (const metric of COMPOSER_FIELD_METRICS.split(' ')) {
+      expect(composer.className.split(' '), metric).toContain(metric)
+      expect(ink.className.split(' '), metric).toContain(metric)
+    }
+  })
+
+  it('follows the field when a long message scrolls', () => {
+    const composer = openComposer()
+    type(composer, 'Hey can u /sb:audit the intake')
+    composer.scrollTop = 40
+    fireEvent.scroll(composer)
+    expect(skillInk()!.scrollTop).toBe(40)
+  })
+
+  it('leaves the field drawing its own text when no token resolves', () => {
+    const composer = openComposer()
+    // A bare alias resolves nothing, so nothing is coloured and nothing runs.
+    type(composer, 'then /audit the intake')
+    expect(skillInk()).toBeNull()
+    expect(composer.className).not.toContain('text-transparent')
+  })
+
+  it('stands down while an IME is composing', () => {
+    const composer = openComposer()
+    type(composer, 'Hey can u /sb:audit')
+    expect(skillInk()).toBeTruthy()
+    // A preedit string lives in the field, and transparent text would make
+    // it invisible for as long as it is being composed.
+    fireEvent.compositionStart(composer)
+    expect(skillInk()).toBeNull()
+    expect(composer.className).not.toContain('text-transparent')
+    fireEvent.compositionEnd(composer)
+    expect(skillInk()).toBeTruthy()
+  })
+})
+
 describe("the menu's keyboard behaviour", () => {
   it('walks the matches with the arrows and accepts the highlighted one', () => {
     const composer = openComposer()
@@ -137,10 +203,9 @@ describe("the menu's keyboard behaviour", () => {
     type(composer, '/')
     fireEvent.keyDown(composer, { key: 'ArrowDown' })
     fireEvent.keyDown(composer, { key: 'Enter' })
-    // The menu is closed, so the label left on screen is the badge's.
+    // Accepted and completed: the menu is shut and the token is in the text.
     expect(menuOption('/sb:slice')).toBeNull()
-    expect(screen.getByText('/sb:slice')).toBeTruthy()
-    expect((composer as HTMLTextAreaElement).value).toBe('')
+    expect((composer as HTMLTextAreaElement).value).toBe('/sb:slice ')
   })
 
   it('accepts on Tab, and wraps round the ends with ArrowUp', () => {
@@ -149,7 +214,7 @@ describe("the menu's keyboard behaviour", () => {
     fireEvent.keyDown(composer, { key: 'ArrowUp' })
     fireEvent.keyDown(composer, { key: 'Tab' })
     expect(menuOption('/sb:whatif')).toBeNull()
-    expect(screen.getByText('/sb:whatif')).toBeTruthy()
+    expect((composer as HTMLTextAreaElement).value).toBe('/sb:whatif ')
   })
 
   it('dismisses on Escape without touching a character of the draft', () => {

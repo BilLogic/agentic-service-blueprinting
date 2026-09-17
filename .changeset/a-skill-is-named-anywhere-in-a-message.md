@@ -18,11 +18,25 @@ text. The lookup is deliberately tail-of-draft rather than caret-aware, which
 keeps it derived from the text alone; the cost is that editing back into an
 earlier token does not reopen the menu.
 
-Picking replaces the token and nothing else. The badge takes the `/token`
-span's place, the words either side stay where they were, and one of the two
-spaces that surrounded a mid-sentence token goes with it so the message has no
-hole in it. It used to clear the whole field, which was invisible while a
-draft could only ever be "/aud" and eats a sentence the moment it can be more.
+**Accepting a match completes the token where it sits, and colours it.** A
+word-start token that names a skill is drawn in role ink exactly where the
+reader typed it, and `/sb:aud` becomes `/sb:audit ` in place, the way a shell
+completion behaves — the prose either side is not read, moved or trimmed. The
+token is the invocation: the draft carries no skill field any more, and the
+skills a message runs are parsed out of its text at send, in the order the
+tokens appear. A coloured token will run; an uncoloured one is a word with a
+slash on it.
+
+This replaces the badge the first version shipped. Accepting used to lift the
+token out of the prose and stand the skill in a row above the field, which
+moved the reader's word to the front of their own message: `asdasd /sb:audit`
+became `[/sb:audit] asdasd`, and the position they had typed it in was gone.
+The badge row is deleted. The field stays a real `<textarea>` — selection,
+IME, the mobile keyboard and native undo all come from the browser — so the
+colour is drawn by a layer behind it that renders the same string with the
+token in a span, sharing one class string with the field so the two cannot
+wrap differently. While an IME is composing, the field draws its own text.
+
 Escape closes the menu and leaves every character typed.
 
 **One canonical spelling invokes.** A bare alias — `/audit` for `/sb:audit` —

@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   AGENT_SKILL_COMMANDS,
+  completeSkillToken,
+  draftWithoutSkillTokens,
   findSkillLookup,
-  parseSkillDraft,
+  findSkillTokens,
   skillMatchesQuery,
-  spliceSkillLookup,
 } from '@/lib/agent/skills'
 import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
 import { readReference, referenceNames } from '@/lib/agent/tools/references'
@@ -22,13 +23,17 @@ describe('agent skills (vendored SKILL.md)', () => {
     }
   })
 
-  it('parses a namespaced slash draft, and only a namespaced one', () => {
-    const namespaced = parseSkillDraft('/sb:audit the sample scenario')
-    expect(namespaced?.command.id).toBe('sb:audit')
-    expect(namespaced?.rest).toBe('the sample scenario')
+  it('reads the skill out of a typed-through draft, and only a namespaced one', () => {
+    expect(findSkillTokens('/sb:audit the sample scenario')).toEqual([
+      {
+        command: AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:audit'),
+        start: 0,
+        end: 9,
+      },
+    ])
     // The official name invokes; the bare alias only finds.
-    expect(parseSkillDraft('/audit')).toBeNull()
-    expect(parseSkillDraft('/frobnicate now')).toBeNull()
+    expect(findSkillTokens('/audit')).toEqual([])
+    expect(findSkillTokens('/frobnicate now')).toEqual([])
   })
 
   it('prefix-matches queries against ids and aliases', () => {
@@ -75,21 +80,65 @@ describe('the skill lookup a draft carries', () => {
     expect(findSkillLookup('/audit the intake and /sb:m')?.query).toBe('sb:m')
   })
 
-  it('splices out the token span and nothing else', () => {
+  it('completes the token in place, leaving the prose before it untouched', () => {
+    const audit = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:audit')!
     const draft = 'Hey can u /sb:aud'
-    const lookup = findSkillLookup(draft)!
-    expect(spliceSkillLookup(draft, lookup)).toBe('Hey can u ')
-    expect(spliceSkillLookup('/sb:aud', findSkillLookup('/sb:aud')!)).toBe('')
+    // The token gains its ending and a space, and does not move: the badge
+    // this replaced took it out of the sentence and stood it at the front.
+    expect(completeSkillToken(draft, findSkillLookup(draft)!, audit)).toBe(
+      'Hey can u /sb:audit ',
+    )
+    expect(
+      completeSkillToken('/aud', findSkillLookup('/aud')!, audit),
+    ).toBe('/sb:audit ')
   })
 
-  it('takes one of the two spaces that surrounded a mid-sentence span', () => {
-    // The notice's span, not a lookup's: a token with prose on both sides.
-    expect(
-      spliceSkillLookup('Hey can u /sb:audit the goal setting', {
-        start: 10,
-        end: 19,
-      }),
-    ).toBe('Hey can u the goal setting')
+  it('closes its own lookup, so the menu does not reopen on the completion', () => {
+    const audit = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:audit')!
+    const draft = 'Hey can u /sb:aud'
+    const completed = completeSkillToken(draft, findSkillLookup(draft)!, audit)
+    expect(findSkillLookup(completed)).toBeNull()
+  })
+})
+
+describe('the skills a draft names', () => {
+  const idsIn = (draft: string) =>
+    findSkillTokens(draft).map((span) => span.command.id)
+
+  it('reads a token wherever it opens a word, in the order it appears', () => {
+    expect(idsIn('build this from my notes /sb:map then /sb:audit it')).toEqual([
+      'sb:map',
+      'sb:audit',
+    ])
+    expect(idsIn('check this、/sb:whatif')).toEqual(['sb:whatif'])
+  })
+
+  it('reports the span the composer colours', () => {
+    const spans = findSkillTokens('Hey can u /sb:audit the intake')
+    expect(spans).toHaveLength(1)
+    expect('Hey can u /sb:audit the intake'.slice(spans[0]!.start, spans[0]!.end))
+      .toBe('/sb:audit')
+  })
+
+  it('reads nothing out of the strings a slash is text in', () => {
+    // The same table the lookup refuses. This walk is NOT tail-anchored, so
+    // the path cases are its own to refuse: a token with a path behind it,
+    // and a URL.
+    expect(idsIn('check /sb:audit/notes.md')).toEqual([])
+    expect(idsIn('see http://example.test')).toEqual([])
+    expect(idsIn('look at src/lib')).toEqual([])
+    expect(idsIn('do this and/or that')).toEqual([])
+    expect(idsIn('on 2026/09/17')).toEqual([])
+    // A bare alias resolves nothing, so it colours nothing and runs nothing.
+    expect(idsIn('then /audit the intake')).toEqual([])
+  })
+
+  it('says what the message holds besides the skills it names', () => {
+    expect(draftWithoutSkillTokens('/sb:audit')).toBe('')
+    expect(draftWithoutSkillTokens('  /sb:map /sb:audit ')).toBe('')
+    expect(draftWithoutSkillTokens('Hey can u /sb:audit the intake')).toBe(
+      'Hey can u  the intake',
+    )
   })
 })
 

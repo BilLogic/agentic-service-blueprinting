@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 import {
   ChevronLeft,
   Loader2,
@@ -14,11 +21,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupTextarea,
-} from '@/components/ui/input-group'
+import { InputGroup, InputGroupTextarea } from '@/components/ui/input-group'
 import { Popover, PopoverContent } from '@/components/ui/popover'
 import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker'
 import {
@@ -30,7 +33,6 @@ import {
   MessageScrollerViewport,
 } from '@/components/ui/message-scroller'
 import { IconTooltip } from '@/components/editor/IconTooltip'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Attachment,
@@ -41,6 +43,10 @@ import {
   AttachmentTitle,
 } from '@/components/ui/attachment'
 import { AgentTrialBanner } from '@/components/editor/AgentTrialBanner'
+import {
+  COMPOSER_FIELD_METRICS,
+  ComposerSkillInk,
+} from '@/components/editor/agent/ComposerSkillInk'
 import { ChangeCount } from '@/components/editor/agent/ChangeCount'
 import { RenameSessionDialog } from '@/components/editor/agent/SessionDialogs'
 import { blockTranscript } from '@/components/editor/agent/transcriptBlocks'
@@ -65,11 +71,11 @@ import {
 } from '@/lib/agent/loop'
 import {
   AGENT_SKILL_COMMANDS,
-  findSkillByToken,
+  completeSkillToken,
+  draftWithoutSkillTokens,
   findSkillLookup,
-  parseSkillDraft,
+  findSkillTokens,
   skillMatchesQuery,
-  spliceSkillLookup,
   type AgentSkillCommand,
 } from '@/lib/agent/skills'
 import {
@@ -115,20 +121,13 @@ export function AgentChatView({
   // Same reason the panel keeps the open session outside the component,
   // plus a bonus: drafts are per session, so switching conversations no
   // longer eats what you were typing.
-  const storedDraft = useAgentDraft(session.id)
-  const draft = storedDraft.text
-  const pendingSkill = storedDraft.skillId
-    ? (AGENT_SKILL_COMMANDS.find(
-        (entry) => entry.id === storedDraft.skillId,
-      ) ?? null)
-    : null
-  const setDraft = (text: string) =>
-    setAgentDraft(session.id, { text, skillId: storedDraft.skillId })
-  const setPendingSkill = (command: AgentSkillCommand | null) =>
-    setAgentDraft(session.id, {
-      text: storedDraft.text,
-      skillId: command?.id ?? null,
-    })
+  const draft = useAgentDraft(session.id).text
+  const setDraft = (text: string) => setAgentDraft(session.id, { text })
+  // The skills this message names, read out of the text and nowhere else.
+  // There is no picked-versus-mentioned distinction to keep, because nothing
+  // outside the draft records a pick: a token that resolves is coloured, and a
+  // coloured token runs.
+  const skillTokens = findSkillTokens(draft)
   const attachment = usePendingAgentAttachment()
   const { events, running } = useAgentRun(session.id)
   // Same canAgent gate as the sessions list: without persistence the
@@ -140,6 +139,30 @@ export function AgentChatView({
   // The slash menu is a portalled popover; this is what it anchors to (and
   // what --anchor-width measures).
   const composerRowRef = useRef<HTMLDivElement>(null)
+  // The field and the coloured layer behind it. The layer's overflow is
+  // hidden, so it is scrolled from here rather than by the reader: a message
+  // past six lines scrolls the field, and a layer left at the top would show
+  // the first line's colour against the sixth line's text.
+  const fieldRef = useRef<HTMLTextAreaElement>(null)
+  const inkRef = useRef<HTMLDivElement>(null)
+  const syncInkScroll = () => {
+    const field = fieldRef.current
+    const ink = inkRef.current
+    if (!field || !ink) return
+    ink.scrollTop = field.scrollTop
+    ink.scrollLeft = field.scrollLeft
+  }
+  // A keystroke at the bottom of a scrolled field moves its scrollTop without
+  // ever firing a scroll event in time to matter, so the sync also runs after
+  // the write that caused it — before paint, or the colour lags a frame behind
+  // the caret on every character typed.
+  useLayoutEffect(syncInkScroll, [draft])
+  // Composition text lives in the field, and the field's own text is
+  // transparent while the layer behind it is doing the drawing — so an IME
+  // preedit string would be invisible for as long as it is being composed.
+  // While composing, the field shows its own text and the layer stands down.
+  const [composing, setComposing] = useState(false)
+  const inking = skillTokens.length > 0 && !composing
 
   // Reopening a session after a reload restores its transcript from
   // agent_messages (no-op for never-persisted sessions). `client` is a
@@ -177,7 +200,7 @@ export function AgentChatView({
   // it sits — the rule and the spans it reports live in skills.ts, because
   // the strings it must NOT fire on (a reference path, a URL, `and/or`, a
   // date) are worth a table of tests and not a condition in a render body.
-  const slashLookup = pendingSkill ? null : findSkillLookup(draft)
+  const slashLookup = findSkillLookup(draft)
   const slashMatches = slashLookup
     ? AGENT_SKILL_COMMANDS.filter((command) =>
         skillMatchesQuery(command, slashLookup.query),
@@ -216,33 +239,29 @@ export function AgentChatView({
     setSlashHighlight(next.id)
   }
 
-  // Picking replaces the TOKEN, not the message: the badge takes the
-  // `/token` span's place and the words either side of it stay where they
-  // were. This used to clear the field, which ate the sentence a reader was
-  // half-way through — and once a lookup can open mid-sentence, there is
-  // always a sentence to eat. No caret write is needed: the token ran to the
-  // end of the draft, so the shortened value leaves the caret where it was.
+  // Accepting a match COMPLETES the token in place — `/sb:aud` becomes
+  // `/sb:audit `, exactly where the reader typed it, the way a shell
+  // completion behaves. It neither clears the field nor removes the token: the
+  // first ate the sentence a reader was half-way through, and the second
+  // moved their word to the front of the message as a badge. The rewrite
+  // itself is in skills.ts, with the spans it works on.
   const pickSkill = (command: AgentSkillCommand) => {
     if (!command.content || !slashLookup) return
-    setAgentDraft(session.id, {
-      text: spliceSkillLookup(draft, slashLookup),
-      skillId: command.id,
-    })
+    setDraft(completeSkillToken(draft, slashLookup, command))
   }
 
   const send = () => {
     let text = draft.trim()
-    let skill = pendingSkill
-    // Typed-through form: "/map turn my notes into a scenario" sends in one go.
-    if (!skill) {
-      const parsed = parseSkillDraft(text)
-      if (parsed?.command.content) {
-        skill = parsed.command
-        text = parsed.rest
-      }
-    }
+    // The text decides, and it decides at send: every resolved token runs, in
+    // the order it appears. The token stays in what goes to the model, because
+    // it is what the reader wrote — "/sb:audit the intake" reads as the
+    // instruction it is.
+    const skill = skillTokens[0]?.command ?? null
     const attached = takePendingAgentAttachment()
-    if (!text && skill) text = `Run ${skill.label} from the top of its flow.`
+    // A draft that is nothing but a skill name is a complete instruction with
+    // no sentence in it, and the bare token reads poorly as a message.
+    if (skill && !draftWithoutSkillTokens(draft))
+      text = `Run ${skill.label} from the top of its flow.`
     if (!text && attached) text = 'Here are my canvas annotations.'
     // The trial runs with NO client on purpose — sample reads, no writes.
     if (!text || running || (!client && !isSampleTrial)) {
@@ -533,56 +552,40 @@ export function AgentChatView({
           {/* ONE field, the DS's own: InputGroup draws the border and the
               focus treatment (a single soft ring on the control, the same
               geometry every other input in the app has), and the recognized
-              /command rides in an addon INSIDE it as an accent badge
-              (Claude's grammar — the token visibly stopped being text).
+              recognized token is COLOURED where it was typed, by a mirrored
+              layer behind the field (ComposerSkillInk). The badge row that
+              used to sit in an addon here is gone: it lifted the token out of
+              the prose and stood it at the front of the message.
               The old hand-rolled wrapper stacked a 1px border and a 2px ring
               on a borderless textarea: the box-around-a-box. */}
           <InputGroup className="min-h-8 flex-1">
-            {pendingSkill ? (
-              <InputGroupAddon align="inline-start" className="self-start py-2">
-                <Badge
-                  variant="secondary"
-                  className="gap-1 border-primary/25 bg-primary/10 font-mono text-primary"
-                >
-                  {pendingSkill.label}
-                  <IconTooltip label="Drop the skill from this message">
-                    <button
-                      type="button"
-                      aria-label="Remove skill"
-                      onClick={() => setPendingSkill(null)}
-                      className="rounded-md p-1 transition-colors hover:bg-primary/15"
-                    >
-                      <X className="size-2.5" aria-hidden />
-                    </button>
-                  </IconTooltip>
-                </Badge>
-              </InputGroupAddon>
+            {inking ? (
+              <ComposerSkillInk ref={inkRef} draft={draft} tokens={skillTokens} />
             ) : null}
             <InputGroupTextarea
+              ref={fieldRef}
               rows={1}
               // No imperative height write: the DS Textarea is
               // `field-sizing-content`, so the browser grows it. max-h caps
               // it at ~6 lines and then it scrolls, as before.
               // geometry: min-h-7 is a 28px composer box; a 20px line sits in the padding.
-              className="max-h-30 min-h-7 py-2 leading-5"
+              //
+              // `relative` puts the field above the coloured layer, which is
+              // absolutely positioned and therefore paints over a static
+              // sibling however early it sits in the DOM. The selection band
+              // is translucent for the same stacking reason: an opaque one
+              // would cover the only copy of the text a reader can see.
+              className={cn(
+                COMPOSER_FIELD_METRICS,
+                'relative selection:bg-primary/25',
+                inking && 'text-transparent caret-foreground',
+              )}
               value={draft}
+              onScroll={syncInkScroll}
+              onCompositionStart={() => setComposing(true)}
+              onCompositionEnd={() => setComposing(false)}
               onChange={(event) => {
                 const value = event.target.value
-                // Typing a full command + space converts it into the badge
-                // on the spot — the token is recognized, not just text.
-                if (!pendingSkill) {
-                  const token = /^\/([\w:]+)\s([\s\S]*)$/.exec(value)
-                  const command = token
-                    ? findSkillByToken(token[1])
-                    : undefined
-                  if (command?.content) {
-                    setAgentDraft(session.id, {
-                      text: token![2],
-                      skillId: command.id,
-                    })
-                    return
-                  }
-                }
                 // A dismissal answers for the draft that was on screen; the
                 // next keystroke is a new draft, and the menu is free again.
                 if (slashDismissed) setSlashDismissed(false)
@@ -625,25 +628,15 @@ export function AgentChatView({
                   setSlashDismissed(true)
                   return
                 }
-                if (
-                  event.key === 'Backspace' &&
-                  draft === '' &&
-                  pendingSkill
-                ) {
-                  setPendingSkill(null)
-                  return
-                }
                 if (event.key === 'Enter' && !event.shiftKey) {
                   event.preventDefault()
                   send()
                 }
               }}
               placeholder={
-                pendingSkill
-                  ? pendingSkill.summary
-                  : keyed
-                    ? 'Message the agent… ("/" for skills)'
-                    : 'Add an API key in agent settings first'
+                keyed
+                  ? 'Message the agent… ("/" for skills)'
+                  : 'Add an API key in agent settings first'
               }
               aria-label="Message the agent"
               disabled={!keyed}
@@ -658,7 +651,7 @@ export function AgentChatView({
               disabled={
                 !keyed ||
                 running ||
-                (draft.trim() === '' && !pendingSkill && !attachment)
+                (draft.trim() === '' && !attachment)
               }
               onClick={send}
             >
