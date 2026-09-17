@@ -232,13 +232,17 @@ describe('the loop, provider → tool → result → provider', () => {
  * suite should not spend waiting.
  */
 describe('a provider call that drops at the network layer', () => {
+  // Every case here either waits out a backoff or must be shown not to
+  // start one, so the clock is faked for all of them; `afterEach` restores
+  // it for the rest of the file.
+  beforeEach(() => vi.useFakeTimers())
+
   /** Past the two backoffs, whichever of them this case reaches. */
   const runOutTheBackoff = () => vi.advanceTimersByTimeAsync(5000)
 
   const loadFailed = () => new TypeError('Load failed')
 
   it('retries a dropped connection and finishes the turn the reader asked for', async () => {
-    vi.useFakeTimers()
     provider.turns = [
       loadFailed(),
       { parts: [{ type: 'text', text: 'Four phases, Discover to Maintain.' }], stopReason: 'end' },
@@ -254,7 +258,6 @@ describe('a provider call that drops at the network layer', () => {
   })
 
   it('keeps the tool results an earlier round gathered when a later round is retried', async () => {
-    vi.useFakeTimers()
     provider.turns = [
       { parts: [call('c1', 'list_blueprint', { granularity: ['phase'] })], stopReason: 'tool_use' },
       loadFailed(),
@@ -271,7 +274,6 @@ describe('a provider call that drops at the network layer', () => {
   })
 
   it('gives up after two retries with a status naming the round and the count', async () => {
-    vi.useFakeTimers()
     provider.turns = [loadFailed(), loadFailed(), loadFailed()]
 
     const pending = send({ client: null, text: 'What phases are there?' })
@@ -324,7 +326,6 @@ describe('a provider call that drops at the network layer', () => {
   })
 
   it('stops between tries when the reader presses stop during the backoff', async () => {
-    vi.useFakeTimers()
     const sessionId = 'loop-abort-during-backoff'
     provider.turns = [
       () => {

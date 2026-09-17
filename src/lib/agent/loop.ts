@@ -406,9 +406,14 @@ class ConnectionDroppedError extends Error {
  * reader as a network story. A `SyntaxError` from parsing a truncated body,
  * or a schema mismatch in an adapter, is not going to come out differently
  * the second time — it fails on the first attempt, under its own name.
- * A TypeError raised by a bug inside an adapter is the one case this cannot
- * tell apart from the drop, and it is retried; the round is idempotent, so
- * the cost is a second of delay before the same message arrives.
+ * Two things do share the class and cannot be told apart from a drop. A
+ * request the browser itself refuses on CORS or CSP grounds is the likelier
+ * one in practice — a misconfigured origin waits out the backoff and is
+ * then told the connection was lost, which is the wrong story but the right
+ * behaviour, since nothing in the response distinguishes it. The other is a
+ * TypeError raised by a bug inside an adapter. Both are retried; the round
+ * is idempotent, so the cost is about a second before the same message
+ * arrives anyway.
  */
 function isConnectionDropped(error: unknown): boolean {
   return error instanceof TypeError
@@ -855,9 +860,13 @@ export async function sendToAgent(input: {
           text: `Provider error on ${where}: ${message}`,
         })
       } else {
-        // Not the provider's verdict and not the network: a tool dispatch,
-        // a persistence write, or a bug in this loop. Say where it happened
-        // and quote it, and claim nothing about whose fault it was.
+        // Neither the provider's verdict nor the network. A tool that
+        // throws never reaches here — it is caught per call and fed back as
+        // an error tool_result — so what lands is a bug in this loop, or an
+        // adapter throwing something that is not a TypeError: a 200 whose
+        // body will not parse, a response in a shape it did not expect. Say
+        // where it happened, quote it, and claim nothing about whose fault
+        // it was.
         push(sessionId, {
           kind: 'status',
           text: `The turn failed on ${where}: ${message}`,

@@ -12,9 +12,10 @@ took every tool result the round had already gathered with it. On a phone
 that is routine rather than exotic: one radio blip mid-request and an audit
 that had read four scenarios is gone with nothing to resume from.
 
-The retry sits at the single seam in the agent loop that every provider call
-goes through, so all three adapters get it without any of them knowing about
-it, and a retried round re-sends the transcript as it stands — the earlier
+The retry sits in `src/lib/agent/loop.ts`, at the one seam every provider
+call goes through, so `src/lib/agent/providers/anthropic.ts`,
+`google.ts` and `openai.ts` all get it without any of them knowing about it,
+and a retried round re-sends the transcript as it stands — the earlier
 rounds' tool results included. Two extra tries, a short backoff, and the
 backoff is cut short by Stop so pressing it never looks ignored.
 
