@@ -60,6 +60,8 @@ that repository's 0013 is the import decision, which lives here as 0020.
 | [0023](0023-a-document-a-deployment-resolves-is-a-published-path.md) | A document a deployment resolves by name is a published path, wherever it lives |
 | [0024](0024-an-installations-offline-board-is-a-value-on-a-tree.md) | An installation's offline board is a value on a tree, not a store |
 | [0025](0025-brand-derives-from-primary-with-one-dial-per-channel.md) | Brand derives from primary, with one dial per channel — superseding the brand mechanism of [0008](0008-a-primitive-is-a-hue-and-a-semantic-token-is-a-job.md) |
+| [0026](0026-a-skill-is-invoked-by-its-official-name.md) | A skill is invoked by its official name; its alias only finds it |
+| [0027](0027-a-skill-token-lives-in-the-prose.md) | A skill token lives in the prose, and the text is the only record |
 
 ## Moved here from BilLogic/plus-uno-blueprint (#551)
 

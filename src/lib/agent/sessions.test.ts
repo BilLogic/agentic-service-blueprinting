@@ -230,14 +230,12 @@ describe('a deleted session takes its draft with it', () => {
   it('leaves nothing under an id that can never come back', () => {
     const session = createAgentSession('Drafting')
     const { result } = renderHook(() => useAgentDraft(session.id))
-    act(() =>
-      setAgentDraft(session.id, { text: 'half a sentence', skillIds: [] }),
-    )
+    act(() => setAgentDraft(session.id, { text: 'half a sentence' }))
     expect(result.current.text).toBe('half a sentence')
 
     act(() => deleteAgentSession(session.id))
 
-    expect(result.current).toEqual({ text: '', skillIds: [] })
+    expect(result.current).toEqual({ text: '' })
   })
 })
 

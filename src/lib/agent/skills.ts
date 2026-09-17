@@ -87,8 +87,8 @@ export function findSkillByToken(token: string): AgentSkillCommand | undefined {
 
 /**
  * Where a lookup sits in the draft: the query to match skills against, and
- * the half-open span of the `/token` itself, so picking can lift out the
- * token and leave the prose around it standing.
+ * the half-open span of the `/token` itself, so accepting can rewrite that
+ * span and leave the prose around it exactly where it was.
  */
 export type SkillLookup = { query: string; start: number; end: number }
 
@@ -145,29 +145,144 @@ export function findSkillLookup(draft: string): SkillLookup | null {
 }
 
 /**
- * The draft with the token span lifted out and the prose either side of it
- * kept. Picking a skill used to clear the field, which threw away the
- * sentence the reader was in the middle of writing; the badge replaces the
- * token, not the message.
+ * Accepting from the menu COMPLETES the token where it sits, the way a shell
+ * completion does: `Hey can u /sb:aud` becomes `Hey can u /sb:audit `, and the
+ * prose either side of the span is not read, moved or trimmed.
  *
- * One space of the two that surrounded a mid-sentence token goes with it,
- * because the alternative is a message that reads "Hey can u  the goal
- * setting scenario" — a visible hole where the reader's word used to be.
- * A token at the end of the draft has nothing after it, so nothing is
- * collapsed and the space the reader typed before it survives.
+ * It does not remove the token, and that is the reversal. Accepting used to
+ * lift the span out of the prose and render the skill as a badge in a row
+ * above the field, which moved the reader's word to the front of the message
+ * and lost the position they had typed it in — `asdasd /sb:audit` became
+ * `[/sb:audit] asdasd`. The token IS the invocation now, so it stays in the
+ * sentence and takes a colour instead.
  *
- * The span is any token span, not only a lookup's: the unrun-token notice
- * removes the token it offered through this same function.
+ * The trailing space earns its place twice: it closes the lookup, because a
+ * token has to run to the end of the draft to be one and a space is outside
+ * the token grammar, and it leaves the reader mid-sentence rather than
+ * mid-word. Without it the menu reopens on the completed token and the next
+ * Enter picks the same skill again instead of sending.
+ *
+ * No caret write goes with this. Setting a textarea's value leaves the caret
+ * at the end of the text, and a lookup's span reaches the end of the draft,
+ * so the end is where the reader was already typing.
+ *
+ * A span the prose continues after keeps the space it already has rather than
+ * gaining a second: the near-miss offer rewrites a token in mid-sentence
+ * through here, and "then /audit the intake" would otherwise come back as
+ * "then /sb:audit  the intake" — a visible hole in the reader's own sentence,
+ * from the one caller whose span does not reach the end of the draft.
  */
-export function spliceSkillLookup(
+export function completeSkillToken(
   draft: string,
   span: { start: number; end: number },
+  command: AgentSkillCommand,
 ): string {
-  const before = draft.slice(0, span.start)
   const after = draft.slice(span.end)
-  return /\s$/.test(before) && /^\s/.test(after)
-    ? before + after.slice(1)
-    : before + after
+  const gap = /^\s/.test(after) ? '' : ' '
+  return `${draft.slice(0, span.start)}${command.label}${gap}${after}`
+}
+
+/** A token that resolves to a skill: which skill, and where in the draft. */
+export type SkillTokenSpan = {
+  command: AgentSkillCommand
+  /** Half-open, over the `/token` including its slash. */
+  start: number
+  end: number
+}
+
+/**
+ * Every word-start slash token in the draft, wherever it sits. The lookup
+ * above gets its path safety free from the `$` anchor — a token that has to be
+ * the last thing in the draft cannot have `/notes.md` behind it — and this
+ * walk, which reads the whole draft, has to say so itself: without the
+ * lookahead, "check /sb:audit/notes.md" stops the token at the slash,
+ * resolves it, and colours a path segment as a skill that will run.
+ *
+ * The lookahead forbids a token character as well as a slash, and that is
+ * load-bearing rather than belt-and-braces: forbidding only the slash lets
+ * the match BACKTRACK to a shorter token — "sb:audi" — which satisfies it and
+ * leaves the walk reading tokens the reader never typed.
+ *
+ * Both readers of the draft go through here — the spans that get coloured and
+ * run, and the near-miss offer at the foot of this file — so a token grammar
+ * one of them accepts is a token grammar the other accepts too.
+ */
+const TOKEN_ENDS_HERE = `(?![/${SKILL_TOKEN_INNER}])`
+const SKILL_TOKEN_ANYWHERE = new RegExp(
+  `(?:^|[\\s。、？！])/(${SKILL_TOKEN_CHARS}+)${TOKEN_ENDS_HERE}`,
+  'g',
+)
+
+function* wordStartTokens(
+  draft: string,
+): Generator<{ token: string; start: number; end: number }> {
+  for (const match of draft.matchAll(SKILL_TOKEN_ANYWHERE)) {
+    const token = match[1]
+    // The match opens on the whitespace that qualified the slash, except at
+    // the head of the draft where there is none.
+    const start = match.index + match[0].length - token.length - 1
+    yield { token, start, end: start + token.length + 1 }
+  }
+}
+
+/**
+ * Every token in the draft that names a skill, in the order they appear.
+ *
+ * THE TEXT IS THE ONLY RECORD of the skills a message carries — no badge, no
+ * draft field and no component state holds a pick any more — so this one walk
+ * answers both questions the composer asks of a draft: which spans to colour,
+ * and which skills the send runs. One source cannot disagree with itself, and
+ * the pair that preceded it did: a badge could outlive the token that made it
+ * and a token could sit in the prose with no badge beside it.
+ */
+export function findSkillTokens(draft: string): SkillTokenSpan[] {
+  const spans: SkillTokenSpan[] = []
+  for (const { token, start, end } of wordStartTokens(draft)) {
+    const command = findSkillByToken(token)
+    if (command?.content) spans.push({ command, start, end })
+  }
+  return spans
+}
+
+/**
+ * The skills a draft RUNS: one per resolved token, in the order the tokens
+ * appear, each skill once however many times it is named.
+ *
+ * Ordered, because the order is the instruction — "/sb:map my notes then
+ * /sb:audit it" is two steps in a sequence, and the loop is told to work
+ * through them in that sequence rather than blend them. Deduped, because a
+ * reader who names a skill twice in one sentence means it once, and a second
+ * copy of a multi-kilobyte SKILL.md buys nothing but prompt. UNCAPPED: there
+ * are four skills, and a limit would be a rule with no failure behind it.
+ *
+ * The send reads this and nothing else. There is no second record to consult
+ * and none to keep in step.
+ */
+export function skillsInDraft(draft: string): AgentSkillCommand[] {
+  const skills: AgentSkillCommand[] = []
+  for (const { command } of findSkillTokens(draft))
+    if (!skills.includes(command)) skills.push(command)
+  return skills
+}
+
+/**
+ * What the message says BESIDES the skills it names — the draft with every
+ * resolved token taken out. Not what sends: the token stays in the text that
+ * goes to the model, because that is what the reader wrote. This answers the
+ * narrower question of whether a draft is a sentence at all, so that a draft
+ * which is nothing but a skill name can be sent as a plain instruction
+ * instead of as the bare token.
+ *
+ * Backwards through the spans, so each slice is taken at an offset the
+ * earlier ones have not moved yet.
+ */
+export function draftWithoutSkillTokens(draft: string): string {
+  return findSkillTokens(draft)
+    .reduceRight(
+      (text, span) => text.slice(0, span.start) + text.slice(span.end),
+      draft,
+    )
+    .trim()
 }
 
 /** The bare spelling a token missed by: never resolved, only suggested. */
@@ -177,84 +292,39 @@ function findSkillByAlias(token: string): AgentSkillCommand | undefined {
 }
 
 /**
- * A skill a message NAMES but does not invoke — the token the reader typed,
- * the skill it points at, and whether it spelled the name or only an alias.
+ * A near miss: the token as typed and the skill it nearly named, with the
+ * span to rewrite if the reader takes the offer.
  */
 export type UnrunSkillToken = {
   /** The token as typed, without its slash. */
   token: string
-  /** The skill to run, or the closest match when the token only aliased one. */
+  /** The closest skill — the one whose bare alias the token spelled. */
   command: AgentSkillCommand
-  matched: 'name' | 'alias'
+  /** Half-open, over the `/token` including its slash. */
   start: number
   end: number
 }
 
 /**
- * Every word-start slash token in the draft, wherever it sits. The lookup
- * next door gets its path safety free from the `$` anchor — a token that has
- * to be the last thing in the draft cannot have `/notes.md` behind it — and
- * this scan, which reads the whole draft, has to say so itself: without the
- * lookahead, "check /sb:audit/notes.md" stops the token at the slash,
- * resolves it, and offers to run the audit on a path.
+ * The first token in the draft that nearly names a skill and therefore runs
+ * nothing: a word-start token matching a skill's bare alias and no skill's
+ * official name. `/audit` is the case — it looks like an invocation, it is
+ * not one, and a message carrying it would otherwise send as prose with
+ * nobody told, which is the failure this exists for. One real session spent
+ * four rounds re-reading the same scenario while the agent improvised the
+ * flow it had never been given.
  *
- * The lookahead forbids a token character as well as a slash, and that is
- * load-bearing rather than belt-and-braces: forbidding only the slash lets
- * the match BACKTRACK to a shorter token — "sb:audi" — which satisfies it and
- * leaves the scan reading tokens the reader never typed.
- */
-const TOKEN_ENDS_HERE = `(?![/${SKILL_TOKEN_INNER}])`
-const SKILL_TOKEN_ANYWHERE = new RegExp(
-  `(?:^|[\\s。、？！])/(${SKILL_TOKEN_CHARS}+)${TOKEN_ENDS_HERE}`,
-  'g',
-)
-
-/**
- * The first skill a draft names without invoking it — what the composer asks
- * about before sending prose that reads like a command.
- *
- * This is the failure the notice exists for: a reader wrote "/sb:audit the
- * goal setting scenario", it sent as prose, no skill loaded, and NOTHING said
- * so — so the agent improvised, and one real session spent four rounds
- * re-reading the same scenario before the turn died. Silence is the defect;
- * the token is not.
- *
- * A draft that already invokes returns null, because it runs. A token that
- * matches only an alias returns the canonical skill to OFFER — an alias
- * resolves nothing, and a mid-sentence mention that resolved itself would be
- * the silent skill run the naming rule exists to prevent.
+ * A token that DOES resolve is not a near miss and never comes back from
+ * here. It is coloured in the field and it runs — that is the whole of the
+ * promise the colour makes, and a prompt asking a reader to confirm what
+ * they can already see would be asking them to read it twice.
  */
 export function findUnrunSkillToken(draft: string): UnrunSkillToken | null {
-  if (parseSkillDraft(draft)) return null
-  for (const match of draft.matchAll(SKILL_TOKEN_ANYWHERE)) {
-    const token = match[1]
-    const command = findSkillByToken(token) ?? findSkillByAlias(token)
+  for (const { token, start, end } of wordStartTokens(draft)) {
+    if (findSkillByToken(token)) continue
+    const command = findSkillByAlias(token)
     if (!command?.content) continue
-    // The match opens on the whitespace that qualified the slash, except at
-    // the head of the draft where there is none.
-    const start = match.index + match[0].length - token.length - 1
-    return {
-      token,
-      command,
-      matched: findSkillByToken(token) ? 'name' : 'alias',
-      start,
-      end: start + token.length + 1,
-    }
+    return { token, command, start, end }
   }
   return null
-}
-
-/**
- * A draft that *starts* with a skill's official name invokes it:
- * "/sb:audit the intake". Returns the command and the remainder, or null when
- * the token matches no skill — an alias among them (the text then sends
- * as-is, and the unrun-token notice is what breaks the silence).
- */
-export function parseSkillDraft(
-  draft: string,
-): { command: AgentSkillCommand; rest: string } | null {
-  const match = /^\/([\w:]+)\s*([\s\S]*)$/.exec(draft.trim())
-  if (!match) return null
-  const command = findSkillByToken(match[1])
-  return command ? { command, rest: match[2].trim() } : null
 }

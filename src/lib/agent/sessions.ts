@@ -66,15 +66,17 @@ export type AgentAttachment = {
 /**
  * Per-session composer state — switching sessions keeps each draft.
  *
- * `skillIds` is a LIST, in pick order, and uncapped: "build this from my
- * notes, then check it" is one message naming two skills that compose, and
- * the reader is the one who knows how many they want. It held one id, so
- * picking a second silently replaced the first.
+ * TEXT AND NOTHING ELSE. The draft used to carry the skill a reader had
+ * picked, in a field beside the text, and that field was a second record of
+ * something the text already said: the skills a message runs are the tokens
+ * in it, parsed at send. Two records disagree, and this pair did — a picked
+ * skill outlived the token that made it, and a token typed in a sentence sat
+ * there with nothing recording it.
  */
-type AgentDraft = { text: string; skillIds: string[] }
+type AgentDraft = { text: string }
 
 const STORAGE_KEY = storageKey('agent-sessions')
-const EMPTY_DRAFT: AgentDraft = { text: '', skillIds: [] }
+const EMPTY_DRAFT: AgentDraft = { text: '' }
 
 /** A stored entry that carries the three fields nothing can substitute for. */
 type StoredSession = Record<string, unknown> & {
@@ -381,14 +383,8 @@ function openSessionSnapshot(): AgentSession | null {
 export function setAgentDraft(sessionId: string, draft: AgentDraft): void {
   const current = drafts[sessionId] ?? EMPTY_DRAFT
   // Reference equality is what `useSyncExternalStore` re-renders on, so a
-  // write that changes nothing has to be dropped here — element-wise for the
-  // skills, since every pick builds a fresh array.
-  if (
-    current.text === draft.text &&
-    current.skillIds.length === draft.skillIds.length &&
-    current.skillIds.every((id, index) => id === draft.skillIds[index])
-  )
-    return
+  // write that changes nothing has to be dropped here.
+  if (current.text === draft.text) return
   drafts = { ...drafts, [sessionId]: draft }
   emit()
 }

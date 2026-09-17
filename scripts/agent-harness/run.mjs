@@ -36,6 +36,14 @@
  *   Everything else — the writes, the refusals, and every database read's
  *   text — answers in the app's words, and `toolParity.test.mjs` fails if a
  *   sentence the app says turns up composed here again.
+ * - DELIBERATELY NOT MIRRORED: the loop's repeat-read guard, which answers a
+ *   read already run this turn with a pointer to the earlier result instead
+ *   of running it again. The gates copied above shape what a model DOES —
+ *   how many writes land, how many rounds it gets — and a harness that let a
+ *   model exceed them would grade a run the app could not have. This one
+ *   shapes only what a model SEES TWICE, and no case in the suite repeats a
+ *   read, so a copy here would be machinery no case exercises, free to drift
+ *   from the loop unnoticed. Mirror it the day a case needs it.
  *
  * Provider selection is NEUTRAL — the first key found wins:
  *   GEMINI_API_KEY, then ANTHROPIC_API_KEY, then OPENAI_API_KEY

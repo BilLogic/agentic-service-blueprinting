@@ -443,7 +443,8 @@ composer: `/sb:map`, `/sb:slice`, `/sb:audit`, `/sb:whatif`. The same
 vendored into the bundle and joined to the system prompt for the one message
 that names it. **Not a tool**: a tool is one call the model makes, a skill is
 a flow the reader starts. One message may name any number of them, in the
-order the reader picked them and with no ceiling.
+order their tokens appear in its text and with no ceiling — the text is the
+only record of which skills a message runs.
 
 **Send** — one message the reader commits: its text, and the skills it names.
 

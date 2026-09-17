@@ -9,8 +9,9 @@
  * on a token typed mid-sentence, and whether picking from it keeps the
  * sentence the token was sitting in.
  *
- * Beside it: the notice a message gets when it NAMES a skill and carries
- * none. The sentence the model is told lives in the loop's own test; what is
+ * Beside it: the colour a resolved token takes where it was typed, and the
+ * notice a NEAR MISS gets — `/audit`, which names no skill and runs nothing.
+ * The sentence the model is told lives in the loop's own test; what is
  * asserted here is the choice the reader is given, and that neither branch is
  * taken for them.
  *
@@ -49,6 +50,7 @@ vi.mock('@/contexts/SupabaseProvider', () => ({
 vi.mock('@/hooks/useMobileShell', () => ({ isMobileViewport: () => false }))
 
 import { AgentPanel } from '@/components/editor/AgentPanel'
+import { COMPOSER_FIELD_METRICS } from '@/components/editor/agent/ComposerSkillInk'
 import { PathSelectionProvider } from '@/contexts/PathSelectionContext'
 import {
   agentSessionsSnapshot,
@@ -72,14 +74,22 @@ const type = (composer: HTMLElement, value: string) =>
   fireEvent.change(composer, { target: { value } })
 
 /**
- * The menu's row for a skill — scoped to the popover, because a picked
- * skill's badge carries the same label and an unscoped text query would find
- * whichever the DOM happened to hold first, passing on the wrong node.
+ * The menu's row for a skill — scoped to the popover, because the token in
+ * the field and the layer drawing it behind carry the same label, and an
+ * unscoped text query would find whichever the DOM happened to hold first,
+ * passing on the wrong node.
  */
 const menuOption = (label: string) => {
   const menu = screen.queryByLabelText('Agent skills')
   return menu ? within(menu).queryByText(label) : null
 }
+
+/**
+ * The layer that draws the prose behind the field. It is `aria-hidden`, so it
+ * is queried the one way a hidden node can be: by the slot it declares.
+ */
+const skillInk = () =>
+  document.querySelector<HTMLElement>('[data-slot="composer-skill-ink"]')
 
 /** Pick a skill through the menu, the way a reader does. */
 const pick = (composer: HTMLElement, typed: string, label: string) => {
@@ -116,13 +126,13 @@ afterEach(() => {
 })
 
 describe('the composer opens a skill lookup wherever a slash opens a word', () => {
-  it('opens on a token typed mid-sentence, and picking keeps the prose around it', () => {
+  it('opens on a token typed mid-sentence, and accepting completes it in place', () => {
     const composer = openComposer()
     pick(composer, 'Hey can u /sb:aud', '/sb:audit')
-    // The badge stands where the token was; the words before it are still
-    // the reader's message, and they are what sends.
-    expect((composer as HTMLTextAreaElement).value).toBe('Hey can u ')
-    expect(screen.getByRole('button', { name: 'Remove /sb:audit' })).toBeTruthy()
+    // The token gains its ending where it sits. It used to be lifted out of
+    // the prose into a badge above the field, which put the reader's word at
+    // the front of their own message.
+    expect((composer as HTMLTextAreaElement).value).toBe('Hey can u /sb:audit ')
   })
 
   it('finds a skill by the segment after its namespace', () => {
@@ -148,99 +158,164 @@ describe('the composer opens a skill lookup wherever a slash opens a word', () =
   })
 })
 
-describe('a message that names a skill it does not carry', () => {
-  const NAMED = 'Hey can u /sb:audit the goal setting scenario'
-
-  it('asks once, and sends nothing until the reader chooses', async () => {
+describe('a token that names a skill is coloured where it sits', () => {
+  it('draws the whole draft behind the field, with the token in role ink', () => {
     const composer = openComposer()
-    type(composer, NAMED)
+    type(composer, 'Hey can u /sb:audit the intake')
+    const ink = skillInk()!
+    // The layer carries the SAME string, so the caret and the colour agree.
+    // The trailing newline is the one the block would otherwise collapse.
+    expect(ink.textContent).toBe('Hey can u /sb:audit the intake\n')
+    expect(within(ink).getByText('/sb:audit').className).toContain(
+      'text-text-primary',
+    )
+    // And the field hands the drawing over while the layer is doing it.
+    expect(composer.className).toContain('text-transparent')
+  })
+
+  it('wears the same metrics as the field, down to the last one', () => {
+    // The shimmer guard. Two copies of one string wrap alike only while they
+    // agree on every property that decides a line break, so the agreement is
+    // one string and this asserts both of them still wear it.
+    const composer = openComposer()
+    type(composer, 'Hey can u /sb:audit the intake')
+    const ink = skillInk()!
+    for (const metric of COMPOSER_FIELD_METRICS.split(' ')) {
+      expect(composer.className.split(' '), metric).toContain(metric)
+      expect(ink.className.split(' '), metric).toContain(metric)
+    }
+  })
+
+  it('follows the field when a long message scrolls', () => {
+    const composer = openComposer()
+    type(composer, 'Hey can u /sb:audit the intake')
+    composer.scrollTop = 40
+    fireEvent.scroll(composer)
+    expect(skillInk()!.scrollTop).toBe(40)
+  })
+
+  it('leaves the field drawing its own text when no token resolves', () => {
+    const composer = openComposer()
+    // A bare alias resolves nothing, so nothing is coloured and nothing runs.
+    type(composer, 'then /audit the intake')
+    expect(skillInk()).toBeNull()
+    expect(composer.className).not.toContain('text-transparent')
+  })
+
+  it('stands down while an IME is composing', () => {
+    const composer = openComposer()
+    type(composer, 'Hey can u /sb:audit')
+    expect(skillInk()).toBeTruthy()
+    // A preedit string lives in the field, and transparent text would make
+    // it invisible for as long as it is being composed.
+    fireEvent.compositionStart(composer)
+    expect(skillInk()).toBeNull()
+    expect(composer.className).not.toContain('text-transparent')
+    fireEvent.compositionEnd(composer)
+    expect(skillInk()).toBeTruthy()
+  })
+})
+
+describe('a token that nearly names a skill', () => {
+  const NEAR = 'then /audit the intake'
+
+  it('asks once, and sends nothing until the reader chooses', () => {
+    const composer = openComposer()
+    type(composer, NEAR)
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(screen.getByText(/closest match is \/sb:audit/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Run /sb:audit' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Send as text' })).toBeTruthy()
     // Neither branch taken for them: nothing has gone to the model.
     expect(provider.inputs).toEqual([])
   })
 
-  it('runs the skill when asked to, on the prose minus the token', async () => {
+  it('completes the token in place when the offer is taken', async () => {
     const composer = openComposer()
-    type(composer, NAMED)
+    type(composer, NEAR)
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     fireEvent.click(screen.getByRole('button', { name: 'Run /sb:audit' }))
     await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
     const sent = provider.inputs[0]!
     expect(sent.system).toContain('--- active skill: /sb:audit')
-    expect(JSON.stringify(sent.messages)).toContain(
-      'Hey can u the goal setting scenario',
-    )
+    // The official name stands where the reader's near miss stood, and the
+    // sentence either side of it is untouched — accepting an offer moves a
+    // word no more than accepting from the menu does.
+    expect(JSON.stringify(sent.messages)).toContain('then /sb:audit the intake')
   })
 
-  it('sends the prose unchanged when asked to, and says the skill did not run', async () => {
+  it('sends the prose unchanged when asked to, and says nothing ran', async () => {
     const composer = openComposer()
-    type(composer, NAMED)
+    type(composer, NEAR)
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     fireEvent.click(screen.getByRole('button', { name: 'Send as text' }))
     await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
     const sent = provider.inputs[0]!
-    expect(JSON.stringify(sent.messages)).toContain(NAMED)
-    expect(sent.system).toContain('did NOT run')
+    expect(JSON.stringify(sent.messages)).toContain(NEAR)
+    expect(sent.system).toContain('is NOT a skill name')
     expect(sent.system).not.toContain('--- active skill')
   })
 
-  it('offers the canonical skill for a bare alias instead of running it', () => {
+  it('asks nothing about a token that resolves — it runs', async () => {
     const composer = openComposer()
-    type(composer, 'then /audit the intake')
+    type(composer, 'Hey can u /sb:audit the goal setting scenario')
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
-    expect(screen.getByText(/closest match is \/sb:audit/)).toBeTruthy()
-    expect(provider.inputs).toEqual([])
-  })
-
-  it('leaves a message carrying a skill alone', async () => {
-    const composer = openComposer()
-    pick(composer, 'Hey can u /sb:aud', '/sb:audit')
-    type(composer, 'Hey can u check the goal setting scenario')
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    // Straight through, with the skill loaded. The prompt that used to stand
+    // here asked a reader to confirm what the colour in the field already
+    // told them.
     await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
     expect(screen.queryByRole('button', { name: 'Send as text' })).toBeNull()
+    expect(provider.inputs[0]!.system).toContain('--- active skill: /sb:audit')
   })
 })
 
 describe('one message carrying several skills', () => {
-  it('holds a badge per skill in pick order, each dropped on its own', () => {
+  it('colours every token it resolves, wherever each one sits', () => {
     const composer = openComposer()
-    pick(composer, 'build this from my notes /sb:map', '/sb:map')
-    pick(composer, 'build this from my notes then check it /sb:aud', '/sb:audit')
-    expect(
-      screen.getAllByRole('button', { name: /^Remove \/sb:/ }).map(
-        (button) => button.getAttribute('aria-label'),
-      ),
-    ).toEqual(['Remove /sb:map', 'Remove /sb:audit'])
-
-    fireEvent.click(screen.getByRole('button', { name: 'Remove /sb:map' }))
-    expect(screen.queryByRole('button', { name: 'Remove /sb:map' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Remove /sb:audit' })).toBeTruthy()
-    // The prose is nobody's collateral.
+    type(composer, 'build this from my notes /sb:map then /sb:audit it')
+    const ink = skillInk()!
+    expect(within(ink).getByText('/sb:map')).toBeTruthy()
+    expect(within(ink).getByText('/sb:audit')).toBeTruthy()
+    // And the prose between them is nobody's collateral.
     expect((composer as HTMLTextAreaElement).value).toBe(
-      'build this from my notes then check it ',
+      'build this from my notes /sb:map then /sb:audit it',
     )
   })
 
-  it('counts a skill picked twice once', () => {
+  it('runs them in the order the sentence puts them in', async () => {
     const composer = openComposer()
-    pick(composer, '/sb:map', '/sb:map')
-    pick(composer, 'and /sb:map', '/sb:map')
-    expect(screen.getAllByRole('button', { name: 'Remove /sb:map' })).toHaveLength(1)
-  })
-
-  it('sends every picked skill, and an instruction when the prose is empty', async () => {
-    const composer = openComposer()
-    pick(composer, '/sb:map', '/sb:map')
-    pick(composer, '/sb:aud', '/sb:audit')
+    type(composer, 'build this from my notes /sb:map then /sb:audit it')
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
     const sent = provider.inputs[0]!
-    expect(sent.system).toContain('--- active skill: /sb:map')
-    expect(sent.system).toContain('--- active skill: /sb:audit')
+    expect(sent.system.indexOf('--- active skill: /sb:map')).toBeLessThan(
+      sent.system.indexOf('--- active skill: /sb:audit'),
+    )
+    expect(sent.system).toContain('in this order: /sb:map → /sb:audit')
+    // The text is what sends, tokens and all — it is what the reader wrote.
     expect(JSON.stringify(sent.messages)).toContain(
+      'build this from my notes /sb:map then /sb:audit it',
+    )
+  })
+
+  it('counts a skill named twice once', async () => {
+    const composer = openComposer()
+    type(composer, '/sb:map from my notes, then /sb:map the rest')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
+    // One body, not two: a reader who names a skill twice means it once, and
+    // a second copy of a multi-kilobyte SKILL.md buys nothing but prompt.
+    expect(
+      provider.inputs[0]!.system.split('--- active skill: /sb:map'),
+    ).toHaveLength(2)
+  })
+
+  it('sends an instruction when the tokens are the whole message', async () => {
+    const composer = openComposer()
+    type(composer, '/sb:map /sb:audit')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
+    expect(JSON.stringify(provider.inputs[0]!.messages)).toContain(
       'Run /sb:map, then /sb:audit — each from the top of its flow, in that order.',
     )
   })
@@ -254,10 +329,21 @@ describe("the menu's keyboard behaviour", () => {
     type(composer, '/')
     fireEvent.keyDown(composer, { key: 'ArrowDown' })
     fireEvent.keyDown(composer, { key: 'Enter' })
-    // The menu is closed, so the label left on screen is the badge's.
+    // Accepted and completed: the menu is shut and the token is in the text.
     expect(menuOption('/sb:slice')).toBeNull()
-    expect(screen.getByText('/sb:slice')).toBeTruthy()
-    expect((composer as HTMLTextAreaElement).value).toBe('')
+    expect((composer as HTMLTextAreaElement).value).toBe('/sb:slice ')
+  })
+
+  it('takes the item the arrows left on focus, not the first one', () => {
+    // The gesture in full: a populated list, the highlight walked two down,
+    // and Tab taking THAT row. A Tab handler that reached for the first match
+    // instead would pass every other case in this block.
+    const composer = openComposer()
+    type(composer, '/')
+    fireEvent.keyDown(composer, { key: 'ArrowDown' })
+    fireEvent.keyDown(composer, { key: 'ArrowDown' })
+    fireEvent.keyDown(composer, { key: 'Tab' })
+    expect((composer as HTMLTextAreaElement).value).toBe('/sb:audit ')
   })
 
   it('accepts on Tab, and wraps round the ends with ArrowUp', () => {
@@ -266,7 +352,7 @@ describe("the menu's keyboard behaviour", () => {
     fireEvent.keyDown(composer, { key: 'ArrowUp' })
     fireEvent.keyDown(composer, { key: 'Tab' })
     expect(menuOption('/sb:whatif')).toBeNull()
-    expect(screen.getByText('/sb:whatif')).toBeTruthy()
+    expect((composer as HTMLTextAreaElement).value).toBe('/sb:whatif ')
   })
 
   it('dismisses on Escape without touching a character of the draft', () => {

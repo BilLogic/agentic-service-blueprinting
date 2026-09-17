@@ -5,10 +5,13 @@ import type { Database } from '@/types/database'
 import { anthropicAdapter } from '@/lib/agent/providers/anthropic'
 import { googleAdapter } from '@/lib/agent/providers/google'
 import { openaiAdapter } from '@/lib/agent/providers/openai'
-import type {
-  AgentMessage,
-  AgentProviderAdapter,
-  AgentToolCallPart,
+import {
+  ProviderError,
+  type AgentMessage,
+  type AgentProviderAdapter,
+  type AgentToolCallPart,
+  type ChatInput,
+  type ChatResult,
 } from '@/lib/agent/providers/provider'
 import { dispatchTool, type DispatchContext } from '@/lib/agent/tools/registry'
 import type { OfflineBoard } from '@/data/blueprintFallbacks'
@@ -16,6 +19,7 @@ import { agentSearchPlan } from '@/lib/agent/searchPlan'
 import { toolSpec } from '@/lib/agent/tools/definition'
 import { findToolDefinition } from '@/lib/agent/tools/definitions'
 import { sessionRoster, toolEnabled } from '@/lib/agent/tools/roster'
+import { UI_SURFACE_READ_TOOLS } from '@/lib/agent/tools/definitions/ui'
 import {
   MOBILE_SHELL_REFUSAL,
   NO_SEARCH_REFUSAL,
@@ -23,8 +27,10 @@ import {
   VIEW_ONLY_REFUSAL,
   BATCH_LIMIT_REFUSAL,
   BATCH_PAUSED_STATUS,
+  REPEAT_READ_SUPPRESSED,
   WRITE_BATCH_LIMIT,
   noSuchToolRefusal,
+  repeatReadRefusal,
 } from '@/lib/agent/tools/refusals'
 import { isMobileViewport } from '@/hooks/useMobileShell'
 import { collectAgentUiContext } from '@/lib/agent/uiBridge'
@@ -103,7 +109,7 @@ export function buildSystem(
     '\n\n--- canvas-adapter reference (FULL text — get_reference serves the other, deeper references) ---\n',
     readReference('canvas-adapter', roster),
     doctrine ? `\n\n--- deployment doctrine ---\n${doctrine}` : '',
-    // One block per skill, in the order they were picked; the paragraph that
+    // One block per skill, in the order the message named them; the paragraph that
     // translates a skill for this surface follows them ONCE, because it is
     // the same sentence about every one of them and N copies of it would
     // read as N different instructions.
@@ -132,9 +138,9 @@ export type TranscriptEvent =
       kind: 'user'
       text: string
       /**
-       * Every skill the message invoked, in pick order — a message carries as
-       * many as the reader picked, and a turn that reads back with one of
-       * them is a turn that reads back wrong.
+       * Every skill the message invoked, in the order its text named them —
+       * a message carries as many as it names, and a turn that reads back
+       * with one of them is a turn that reads back wrong.
        */
       skills?: string[]
       /** Attachment label when the message carried one. */
@@ -373,6 +379,33 @@ function detailText(value: unknown): string {
     : text
 }
 
+/**
+ * The arguments a refusal names, compactly. NOT `callSummary`: that label is
+ * written for a transcript row a person skims, so it keeps to short strings
+ * and drops everything else — which renders the call that motivated the
+ * repeat guard, `list_blueprint` with a granularity list and a limit, as an
+ * empty string. A model being sent back to an earlier result needs to know
+ * WHICH earlier result, so arrays, numbers and booleans have to survive.
+ * Capped, because this is a label for a call and not a copy of its input.
+ */
+const REFUSAL_ARGS_LIMIT = 160
+
+function refusalArgs(call: AgentToolCallPart): string {
+  const rendered = Object.entries(call.args)
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) => `${key}: ${renderArg(value)}`)
+    .join(', ')
+  return rendered.length > REFUSAL_ARGS_LIMIT
+    ? `${rendered.slice(0, REFUSAL_ARGS_LIMIT)}…`
+    : rendered
+}
+
+function renderArg(value: unknown): string {
+  if (Array.isArray(value)) return value.map(renderArg).join('|')
+  if (value !== null && typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
+
 /** One-line label for a tool call — the transcript's change-row text. */
 function callSummary(call: AgentToolCallPart): string {
   const bits = Object.entries(call.args)
@@ -382,7 +415,122 @@ function callSummary(call: AgentToolCallPart): string {
   return bits.join(', ')
 }
 
+/**
+ * What makes two tool calls the same call: the name, and the arguments with
+ * every object's keys in one order. A raw `JSON.stringify` of the arguments
+ * would key on whatever order the provider happened to serialize them in,
+ * and two byte-identical calls a round apart would read as different work.
+ *
+ * Keyed on the arguments AS SENT, before the tool's schema parses them, so a
+ * stray extra key or an omitted argument the schema defaults makes two keys
+ * for what runs as one read. That is the trade taken deliberately: a missed
+ * duplicate is one repeat that behaves the way it always has, while a key
+ * that collapsed two genuinely different calls would refuse a read the model
+ * never ran.
+ */
+function callKey(call: AgentToolCallPart): string {
+  return `${call.name}:${stableJson(call.args)}`
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`
+  if (value !== null && typeof value === 'object')
+    return `{${Object.entries(value as Record<string, unknown>)
+      .filter(([, entry]) => entry !== undefined)
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${stableJson(entry)}`)
+      .join(',')}}`
+  return JSON.stringify(value) ?? 'null'
+}
+
 const MAX_ROUNDS = 12
+
+/**
+ * How many extra tries a provider call gets when it dies at the network
+ * layer, and how long the loop waits before each one. Two is enough for the
+ * failure this exists for — a phone's radio blipping for a moment mid
+ * request — and few enough that a genuinely unreachable provider still
+ * reaches the reader in a couple of seconds rather than a minute.
+ */
+const NETWORK_RETRIES = 2
+const RETRY_BACKOFF_MS = 400
+
+/**
+ * A provider call that never completed, after every retry it was owed.
+ * Distinct from `ProviderError` because the two need different words: the
+ * provider refusing a request is something the reader (or their key) can
+ * act on, a dropped connection is something to try again.
+ */
+class ConnectionDroppedError extends Error {
+  readonly attempts: number
+  constructor(attempts: number, detail: string) {
+    super(detail)
+    this.name = 'ConnectionDroppedError'
+    this.attempts = attempts
+  }
+}
+
+/**
+ * The one failure a retry can fix: a request that never reached anyone.
+ * Both WebKit and Chromium throw a bare `TypeError` out of `fetch` for it —
+ * WebKit's wording is the `Load failed` this retry exists for.
+ *
+ * Named rather than assumed: the tempting version is "anything that is not
+ * a `ProviderError` and not an abort", and that reports our own bugs to the
+ * reader as a network story. A `SyntaxError` from parsing a truncated body,
+ * or a schema mismatch in an adapter, is not going to come out differently
+ * the second time — it fails on the first attempt, under its own name.
+ * Two things do share the class and cannot be told apart from a drop. A
+ * request the browser itself refuses on CORS or CSP grounds is the likelier
+ * one in practice — a misconfigured origin waits out the backoff and is
+ * then told the connection was lost, which is the wrong story but the right
+ * behaviour, since nothing in the response distinguishes it. The other is a
+ * TypeError raised by a bug inside an adapter. Both are retried; the round
+ * is idempotent, so the cost is about a second before the same message
+ * arrives anyway.
+ */
+function isConnectionDropped(error: unknown): boolean {
+  return error instanceof TypeError
+}
+
+/** A backoff that stop can cut short — waiting out a retry the reader has
+ *  already cancelled would leave Stop looking ignored for a second. */
+function waitBeforeRetry(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const abort = () => {
+      clearTimeout(timer)
+      reject(new DOMException('stopped', 'AbortError'))
+    }
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', abort)
+      resolve()
+    }, ms)
+    signal.addEventListener('abort', abort, { once: true })
+  })
+}
+
+/**
+ * The single seam every provider call in a run goes through, so all three
+ * adapters get the retry without any of them knowing about it — and so a
+ * retried round re-sends the transcript as it stands, tool results from
+ * earlier rounds included, instead of the turn dying with them unsaved.
+ */
+async function chatWithRetry(
+  adapter: AgentProviderAdapter,
+  request: ChatInput,
+): Promise<ChatResult> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await adapter.chat(request)
+    } catch (error) {
+      if (!isConnectionDropped(error)) throw error
+      if (request.signal.aborted) throw new DOMException('stopped', 'AbortError')
+      if (attempt > NETWORK_RETRIES)
+        throw new ConnectionDroppedError(attempt, errorMessage(error))
+      await waitBeforeRetry(RETRY_BACKOFF_MS * attempt, request.signal)
+    }
+  }
+}
 
 /**
  * The loop: send → text lands in the transcript, tool calls dispatch onto
@@ -408,16 +556,20 @@ export async function sendToAgent(input: {
   contextNote: string
   text: string
   /**
-   * The skills invoked with this message, in pick order — every one of their
-   * SKILL.md bodies joins the system prompt.
+   * The skills invoked with this message, in the order its text named them —
+   * every one of their SKILL.md bodies joins the system prompt. The composer
+   * parses them out of the draft at send; nothing else records them.
    */
   skills?: readonly AgentSkillCommand[]
   /**
-   * A skill this message NAMES and deliberately did not run — the reader was
-   * asked and chose to send their sentence as prose. The model is told so, in
-   * the words below: without that, the likeliest reading of a message
-   * containing "/sb:audit" is that the audit is loaded, and a model that
-   * believes it improvises the flow it was never given.
+   * A NEAR MISS this message deliberately did not run: a word-start token
+   * that names no skill but spells a skill's bare alias, offered to the
+   * reader, who chose to send their sentence as prose instead. A token that
+   * does resolve never arrives here — it runs, which is what its colour in
+   * the composer promises. The model is told about the miss in the words
+   * below, because the likeliest reading of a message containing "/audit" is
+   * that the audit is loaded, and a model that believes it improvises the
+   * flow it was never given.
    */
   unrunSkill?: { token: string; label: string } | null
   /** Canvas hand-off (annotation capture) folded into this message. */
@@ -480,6 +632,31 @@ export async function sendToAgent(input: {
   // IS the check-in.
   let writesThisSend = 0
 
+  // A model that loops re-reads the same thing: one real session ran an
+  // identical board read four times inside a turn, each repeat re-injecting
+  // a payload the conversation already held and buying the rounds that
+  // followed nothing. Every read this send has dispatched is remembered by
+  // name and arguments, and a second call on the same key is answered with a
+  // pointer instead of run. Per SEND rather than per round, because the
+  // repeats that motivated this were in separate rounds.
+  //
+  // A CHANGE RETIRES WHAT IT CAN FALSIFY, and only that. The record is a
+  // claim that an earlier answer still describes the world, so a call that
+  // changes the world ends the claim — but the two kinds of call change
+  // different worlds. A landed write can alter anything any read described,
+  // so it clears the record whole; the write tools themselves tell the model
+  // to re-read for the ids they just created. An interface call moves the
+  // CANVAS, which falsifies what the user is looking at and nothing about
+  // what a scenario contains, so it retires only the UI-surface reads.
+  //
+  // The width matters more than it looks. The canvas adapter tells the model
+  // to `open_scenario` and `focus_cell` every time it names a cell, so reads
+  // and camera moves interleave constantly: a rule that let any move clear
+  // the record whole would empty it between every pair of reads and dedupe
+  // nothing at all — the four identical board reads this exists to stop,
+  // each politely separated by a `focus_cell`.
+  const readsThisSend = new Set<string>()
+
   // No database, no writes — not "refused writes", ABSENT ones. The roster
   // is the definitions that may run without one, and the paragraph below
   // tells the model what it is looking at so it stops trying to author.
@@ -511,16 +688,16 @@ export async function sendToAgent(input: {
 
   /**
    * The paragraphs that are true of THIS send rather than of the session:
-   * the tier, the no-database trial, a skill the user named and did not run,
-   * and the mobile shell. They sit after the cacheable prefix, so they are a
-   * function rather than part of `buildSystem` — and a function rather than
-   * an expression spelled at each call site, because it used to be spelled at
-   * one of two and the other went without: the closing call below passed the
-   * context and nothing else, so on the round-budget path the model was no
-   * longer told which tier it was on, that it had no database, or that a
-   * skill the message named had not run. That last is the path the notice
-   * exists for — the session that motivated it exhausted its rounds and then
-   * answered from the closing call.
+   * the tier, the no-database trial, a skill name the message nearly typed
+   * and did not run, and the mobile shell. They sit after the cacheable
+   * prefix, so they are a function rather than part of `buildSystem` — and a
+   * function rather than an expression spelled at each call site, because it
+   * used to be spelled at one of two and the other went without: the closing
+   * call below passed the context and nothing else, so on the round-budget
+   * path the model was no longer told which tier it was on, that it had no
+   * database, or that a near-miss token had run nothing. That last is the
+   * path the notice exists for — the session that motivated it exhausted its
+   * rounds and then answered from the closing call.
    *
    * `mobileReading` is sampled per round, so it is the argument.
    */
@@ -537,14 +714,21 @@ export async function sendToAgent(input: {
       ? '\n\n--- sample data, no database ---\nThis app has NO database connected. Everything you can read is the template\'s bundled SAMPLE blueprint, and you have read and navigation tools only — no write tool exists in this session. Answer, explain, and navigate; when the user wants an edit, say plainly that authoring needs a connected database — never imply you changed anything.'
       : '') +
     (unrunSkill
-      ? `\n\n--- a skill the user named, which did not run ---\nThe user's message contains the token "/${unrunSkill.token}", which names the ${unrunSkill.label} skill, and they chose to send the message as text: the skill did NOT run and its instructions are NOT in this prompt. Do not describe it as having run, and do not summarise what it would have produced. Answer the message as written; where ${unrunSkill.label} is what the work needs, say so plainly and invite them to run it.`
+      ? `\n\n--- a skill name the message nearly typed ---\nThe user's message contains the token "/${unrunSkill.token}", which is NOT a skill name here; the closest skill is ${unrunSkill.label}. They were offered it and chose to send the message as text, so NO skill ran and no skill's instructions are in this prompt. Do not describe ${unrunSkill.label} as having run, and do not summarise what it would have produced. Answer the message as written; where ${unrunSkill.label} is what the work needs, say so plainly and invite them to run it by that official name.`
       : '') +
     (mobileReading
       ? '\n\n--- mobile shell ---\nThe user is on the MOBILE app, which is view-only for everyone — your tools are navigation and reading only (no writes, no annotations, no canvas mode switch). The mobile view is a vertical journey reader: scrolling down moves forward through the steps; a Map view shows the 2-D board. When the user wants an edit, explain it is made on desktop — never imply you made it.'
       : '')
 
+  // Hoisted so the catch can say WHERE a failure happened: a status that
+  // says only "provider error" leaves someone unable to tell a turn that
+  // died before it did anything from one that died after eleven rounds of
+  // reading.
+  let round = 0
+  let closingRound = false
+
   try {
-    for (let round = 0; round < MAX_ROUNDS; round += 1) {
+    for (; round < MAX_ROUNDS; round += 1) {
       // Rebuilt every round: the live UI context changes as the agent's own
       // navigation tools move the canvas mid-conversation — and so can the
       // shell itself (rotation across the breakpoint).
@@ -577,7 +761,7 @@ export async function sendToAgent(input: {
       const liveContext = [contextNote, collectAgentUiContext()]
         .filter(Boolean)
         .join('\n')
-      const result = await adapter.chat({
+      const result = await chatWithRetry(adapter, {
         system:
           buildSystem(liveContext, skills, roster) + sendNotes(mobileReading),
         systemStableLength,
@@ -613,6 +797,21 @@ export async function sendToAgent(input: {
         findToolDefinition(call.name)?.surface === 'write' ||
         (call.name === 'ui_command' &&
           agentUiCommandMutates(String(call.args.command ?? '')))
+      // Only the eyes are guarded. An interface call is the agent's hands:
+      // re-centring on a cell the reader has since panned away from is the
+      // tool working, not a loop, so a camera move may repeat as often as
+      // the conversation needs it to.
+      const isRead = (call: AgentToolCallPart) =>
+        findToolDefinition(call.name)?.surface === 'read'
+      // The other half of that: hands leave marks, but only where they
+      // reached. A canvas move retires the reads that report the canvas —
+      // named by `ui.ts` from its own definitions — and leaves the board
+      // reads standing, because it changed no row.
+      const forgetUiSurfaceReads = () => {
+        for (const key of readsThisSend)
+          if (UI_SURFACE_READ_TOOLS.some((name) => key.startsWith(`${name}:`)))
+            readsThisSend.delete(key)
+      }
       for (const call of calls) {
         // Off-roster calls: a model can still emit a name it invented or
         // remembered from another session, so each gate the roster applied
@@ -716,6 +915,31 @@ export async function sendToAgent(input: {
           }
           continue
         }
+        if (isRead(call) && readsThisSend.has(callKey(call))) {
+          results.parts.push({
+            type: 'tool_result',
+            toolCallId: call.id,
+            name: call.name,
+            result: repeatReadRefusal(call.name, refusalArgs(call)),
+            isError: true,
+          })
+          // A tool row rather than the status line the batch pause uses,
+          // and one apiece rather than one per round. A status row states a
+          // fact about the turn; these rows are calls the model made, and a
+          // reader scanning the tool rows for what the agent did has to see
+          // them there, in place, with the arguments that repeated —
+          // collapsed or filed elsewhere, the loop stops being visible as a
+          // loop, which is the thing a bad turn is read back for.
+          push(sessionId, {
+            kind: 'tool',
+            name: call.name,
+            summary: REPEAT_READ_SUPPRESSED,
+            isError: true,
+            args: detailText(call.args),
+            result: detailText(repeatReadRefusal(call.name, refusalArgs(call))),
+          })
+          continue
+        }
         try {
           const output = await dispatchTool(
             client,
@@ -727,6 +951,14 @@ export async function sendToAgent(input: {
           // Counted AFTER success: a write that failed changed nothing and
           // must not eat batch budget.
           if (isWrite(call)) writesThisSend += 1
+          // Recorded AFTER success, for the same reason: a read that threw
+          // put no result in the conversation to point the model back at.
+          // And a call that landed a change retires the answers it could
+          // have falsified, for the same reason in reverse.
+          if (isRead(call)) readsThisSend.add(callKey(call))
+          if (isWrite(call)) readsThisSend.clear()
+          else if (findToolDefinition(call.name)?.surface === 'interface')
+            forgetUiSurfaceReads()
           results.parts.push({
             type: 'tool_result',
             toolCallId: call.id,
@@ -776,7 +1008,8 @@ export async function sendToAgent(input: {
             },
           ],
         })
-        const closing = await adapter.chat({
+        closingRound = true
+        const closing = await chatWithRetry(adapter, {
           system:
             buildSystem(
               [contextNote, collectAgentUiContext()].filter(Boolean).join('\n'),
@@ -810,8 +1043,31 @@ export async function sendToAgent(input: {
         text: 'Stopped. Whatever already landed is in the change sheet, revertible.',
       })
     } else {
+      const where = closingRound ? 'the closing round' : `round ${round + 1}`
       const message = errorMessage(error)
-      push(sessionId, { kind: 'status', text: `Provider error: ${message}` })
+      if (error instanceof ConnectionDroppedError) {
+        push(sessionId, {
+          kind: 'status',
+          text: `Connection lost on ${where} after ${error.attempts} tries (${message}) — everything the turn already gathered is kept; send a message to carry on.`,
+        })
+      } else if (error instanceof ProviderError) {
+        push(sessionId, {
+          kind: 'status',
+          text: `Provider error on ${where}: ${message}`,
+        })
+      } else {
+        // Neither the provider's verdict nor the network. A tool that
+        // throws never reaches here — it is caught per call and fed back as
+        // an error tool_result — so what lands is a bug in this loop, or an
+        // adapter throwing something that is not a TypeError: a 200 whose
+        // body will not parse, a response in a shape it did not expect. Say
+        // where it happened, quote it, and claim nothing about whose fault
+        // it was.
+        push(sessionId, {
+          kind: 'status',
+          text: `The turn failed on ${where}: ${message}`,
+        })
+      }
     }
   } finally {
     run.running = false
