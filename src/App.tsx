@@ -15,6 +15,7 @@ import { TouchpointRegistryProvider } from '@/contexts/TouchpointRegistryProvide
 import { ViewStateProvider } from '@/contexts/ViewStateContext'
 import type { DeploymentConfig } from '@/deploymentConfig'
 import { queryClient } from '@/lib/queryClient'
+import { useStaleChunkReload } from '@/lib/staleChunkReload'
 /*
  * Imported for its SIDE EFFECT and nothing else: `theme.ts` reads the stored
  * theme and stamps the class and `color-scheme` on the root while this import
@@ -25,7 +26,6 @@ import { queryClient } from '@/lib/queryClient'
  * replaced.
  */
 import '@/lib/theme'
-import { useStaleChunkReload } from '@/lib/staleChunkReload'
 
 /**
  * The app root. Standalone it takes no props and runs on the template

@@ -6,13 +6,15 @@ import { storageKey } from '@/lib/storageNamespace'
  *
  * This replaced `next-themes`, and the reason is a Content Security Policy.
  * That library's flash guard is an INLINE `<script>` it injects into the
- * document, and a deployment serving `default-src 'self'` with no `script-src`
- * refuses it — an inline script is not `'self'`. The guard therefore did
- * nothing: the class arrived from React, after the first paint, so a reader
- * whose stored theme is dark saw a light frame on every load, and the console
- * carried a refusal every time to say so. The fixes available were to loosen
- * the policy, to plumb a nonce through a static host, or to own the sixty
- * lines below; the first two trade a real protection for a theme.
+ * document, and `public/_headers` in this repository serves
+ * `default-src 'self'` with no `script-src`, which refuses it — an inline
+ * script is not `'self'`. The policy is OURS, not some stricter adopter's, so
+ * the guard did nothing in every build of this template: the class arrived
+ * from React, after the first paint, so a reader whose stored theme is dark
+ * saw a light frame on every load, and the console carried a refusal every
+ * time to say so. The fixes available were to loosen the policy, to plumb a
+ * nonce through a static host, or to own the module below; the first two
+ * trade a real protection for a theme.
  *
  * ── WHY THE WORK HAPPENS AT MODULE SCOPE ───────────────────────────────────
  *
@@ -67,7 +69,7 @@ export type ResolvedTheme = 'light' | 'dark'
 export const THEME_STORAGE_KEY = storageKey('theme')
 
 /** Nothing stored means light. Not the system preference — see the header. */
-export const DEFAULT_THEME: ThemeChoice = 'light'
+const DEFAULT_THEME: ThemeChoice = 'light'
 
 const DARK_QUERY = '(prefers-color-scheme: dark)'
 
@@ -97,16 +99,25 @@ export function resolveTheme(
   return choice
 }
 
-function mediaQuery(): MediaQueryList | null {
-  // jsdom and any non-browser evaluation may have no `matchMedia`; a missing
-  // query is "no dark preference" rather than a crash on import.
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function')
-    return null
-  return window.matchMedia(DARK_QUERY)
-}
+/*
+ * ONE `MediaQueryList`, held for the life of the module.
+ *
+ * `matchMedia` returns a FRESH object per call, so a listener added to the
+ * result of a call nothing keeps is a listener on an unreferenced object. An
+ * engine free to collect it stops delivering `change`, and a reader who chose
+ * `'system'` silently stops following the OS. Holding one also stops
+ * allocating a query on every publish.
+ *
+ * jsdom and any non-browser evaluation may have no `matchMedia`; a missing
+ * query is "no dark preference" rather than a crash on import.
+ */
+const darkQuery: MediaQueryList | null =
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia(DARK_QUERY)
+    : null
 
 function systemPrefersDark(): boolean {
-  return mediaQuery()?.matches === true
+  return darkQuery?.matches === true
 }
 
 function readStoredTheme(): ThemeChoice {
@@ -186,7 +197,7 @@ if (typeof document !== 'undefined') {
   // Live tracking, for as long as the choice is `'system'`. `publish`
   // re-resolves, so a reader who has chosen outright is unaffected by the OS
   // flipping at sunset.
-  mediaQuery()?.addEventListener('change', () => {
+  darkQuery?.addEventListener('change', () => {
     publish(snapshot.theme)
   })
 
