@@ -9,7 +9,6 @@ import {
 } from '@/components/ui/sheet'
 import { AgentPanel } from '@/components/editor/AgentPanel'
 import { Button } from '@/components/ui/button'
-import { agentFlightBackdropClass } from '@/components/mobile/mobileAgentBridge'
 
 /**
  * The agent, as a BOTTOM sheet — a little over half the screen, so the
@@ -32,7 +31,6 @@ import { agentFlightBackdropClass } from '@/components/mobile/mobileAgentBridge'
 export function MobileAgentSheet({
   open,
   onOpenChange,
-  backdropCleared = false,
   onOccludedHeightChange,
 }: {
   open: boolean
@@ -44,7 +42,6 @@ export function MobileAgentSheet({
    * it washes it out. Tap-to-dismiss comes back with the scrim; the sheet's
    * own ✕ never went away.
    */
-  backdropCleared?: boolean
   /**
    * The height this sheet takes off the bottom of the screen, measured
    * rather than recomputed from the `svh` class below — the two would drift,
@@ -83,9 +80,16 @@ export function MobileAgentSheet({
         side="bottom"
         showCloseButton={false}
         ref={measureRef}
-        // One state, one render — see `agentFlightBackdropClass`, which owns
-        // the reason the wash and the pass-through have to travel together.
-        overlayClassName={agentFlightBackdropClass(backdropCleared)}
+        // A THIN scrim that never moves. The sheet's own surface is opaque,
+        // so this wash only ever covers the strip of canvas above it — and at
+        // this weight that strip stays readable, which is the whole point: a
+        // camera move the agent makes is visible AS it happens, with no state
+        // to clear and restore and nothing to fall out of phase.
+        //
+        // The heavier wash it replaces is why the sheet used to close on a
+        // jump: at 90% over a blur the canvas behind was unreadable, so the
+        // only way to show the move was to take the conversation away.
+        overlayClassName="bg-background/40 supports-backdrop-filter:backdrop-blur-none"
         // min-h + max-h pin the size in BOTH directions: the sheet variant's
         // own data-[side=bottom] h-auto survives tailwind-merge (different
         // variant prefix), so a bare h-[60svh] loses to it — content-hungry

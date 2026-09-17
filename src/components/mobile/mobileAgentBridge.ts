@@ -80,17 +80,6 @@ export function makeMobileAgentBridge({
  * `backdrop-blur-none` needs the same `supports-` prefix the blur was written
  * with, or tailwind-merge keeps both and the blur outlives the wash.
  */
-const BACKDROP_TRANSITION =
-  'transition-[opacity,pointer-events] transition-discrete duration-150'
-const BACKDROP_CLEARED =
-  'pointer-events-none opacity-0 supports-backdrop-filter:backdrop-blur-none'
-
-export function agentFlightBackdropClass(cleared: boolean): string {
-  return cleared
-    ? `${BACKDROP_TRANSITION} ${BACKDROP_CLEARED}`
-    : BACKDROP_TRANSITION
-}
-
 /**
  * How long the sheet will hold its scrim down waiting for a verdict.
  *
@@ -111,7 +100,6 @@ export type AgentCameraFlightWatch = {
     cancel: () => void
   }
   /** True while the camera is moving — the sheet's scrim reads it. */
-  setFlying: (flying: boolean) => void
   /** Once, when the move has settled or the deadline says to stop waiting. */
   onSettled: () => void
   deadlineMs?: number
@@ -134,7 +122,6 @@ export type AgentCameraFlightWatch = {
  */
 export function makeAgentCameraFlightWatcher({
   awaitOutcome,
-  setFlying,
   onSettled,
   deadlineMs = AGENT_CAMERA_FLIGHT_DEADLINE_MS,
 }: AgentCameraFlightWatch) {
@@ -144,7 +131,6 @@ export function makeAgentCameraFlightWatcher({
     // Listen BEFORE the selection commits: the outcome is published from the
     // fit the selection triggers, and a waiter attached afterwards can miss it.
     const outcome = awaitOutcome(targetId)
-    setFlying(true)
     // The loser of the race is cleaned up either way: a verdict that arrives
     // first leaves a live 2s timer behind, and every superseded jump leaves
     // another, so a reader jumping around the board accumulates them.
@@ -158,7 +144,6 @@ export function makeAgentCameraFlightWatcher({
       clearTimeout(deadline)
       outcome.cancel()
       if (token !== generation) return
-      setFlying(false)
       onSettled()
     })
   }

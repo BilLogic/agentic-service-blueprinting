@@ -114,7 +114,6 @@ export function MobileShell() {
     the camera nothing.
   */
   const [agentSheetOccludedPx, setAgentSheetOccludedPx] = useState(0)
-  const [cameraFlying, setCameraFlying] = useState(false)
   const closeNavDrawer = useCallback(() => setNavOpen(false), [])
   useEditorNavCloser(closeNavDrawer)
 
@@ -229,7 +228,6 @@ export function MobileShell() {
     () =>
       makeAgentCameraFlightWatcher({
         awaitOutcome: waitForCanvasNavigationOutcome,
-        setFlying: setCameraFlying,
         // The caret goes back to where the reader left it. A jump they asked
         // for in words should not cost them a tap to carry on in words.
         onSettled: focusAgentComposer,
@@ -464,7 +462,6 @@ export function MobileShell() {
         <MobileAgentSheet
           open={agentOpen}
           onOpenChange={setAgentOpen}
-          backdropCleared={cameraFlying}
           onOccludedHeightChange={setAgentSheetOccludedPx}
         />
       ) : null}
