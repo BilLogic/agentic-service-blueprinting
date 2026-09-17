@@ -89,7 +89,12 @@ type UseZoomPanViewportOptions = {
   fitMargin?: number
   /** Extra top inset on top of fitMargin (px). */
   fitTopInset?: number
-  /** Extra bottom inset on top of fitMargin (px). */
+  /**
+   * Extra bottom inset on top of fitMargin (px). Defaults to `fitTopInset`,
+   * because an UNEQUAL pair moves the framing off the target's true centre
+   * and a caller that named only the top did not ask for that — the old
+   * default of 0 against a 56px top centred everything 28px high.
+   */
   fitBottomInset?: number
   /** Animate camera moves when resetKey / fitSelector change. */
   animateFit?: boolean
@@ -384,7 +389,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     minFitZoom = MIN_ZOOM,
     fitMargin = BLUEPRINT_VIEWPORT_ARTBOARD_MARGIN,
     fitTopInset = BLUEPRINT_VIEWPORT_FIT_TOP_INSET,
-    fitBottomInset = 0,
+    fitBottomInset = fitTopInset,
     animateFit = false,
     fitDurationMs,
     refitOnResize = true,
@@ -2413,9 +2418,27 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       // Readable-zoom clamp: keep the camera the user chose when it can
       // already read a cell; only zoom in from far-out overview scales.
       const nextZoom = safeZoom >= 0.5 ? safeZoom : clampZoom(0.7)
+      /*
+        Centre in the strip the reader can SEE, not in the container box.
+
+        A fit already frames inside these insets (`computeFitTransform`), and
+        for every caller routed through `getCanvasFocusFitInsets` the pair is
+        symmetric, so this is the same container centre it has always been —
+        as it is for a direct caller, whose bottom inset defaults to its top.
+        It stops being the same the
+        moment something opaque sits on one edge — the phone's agent sheet
+        owns the lower 60% of the screen — and a focus that ignored it flew
+        the cell to the middle of the viewport, which is to say behind the
+        panel the reader was reading.
+      */
+      const visibleTop = fitMargin + fitTopInset
+      const visibleHeight = Math.max(
+        container.clientHeight - visibleTop - (fitMargin + fitBottomInset),
+        1,
+      )
       const nextPan = {
         x: container.clientWidth / 2 - worldX * nextZoom,
-        y: container.clientHeight / 2 - worldY * nextZoom,
+        y: visibleTop + visibleHeight / 2 - worldY * nextZoom,
       }
 
       const animate = (opts?.animate ?? true) && !prefersReducedMotion()
@@ -2429,7 +2452,14 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       if (completion === 'completed') pulseBlueprintCells(found)
       return { kind: 'flown', completion }
     },
-    [animateTransform, commitTransform, supersedeCameraNavigation],
+    [
+      animateTransform,
+      commitTransform,
+      fitBottomInset,
+      fitMargin,
+      fitTopInset,
+      supersedeCameraNavigation,
+    ],
   )
 
   const zoomIn = useCallback(() => {
