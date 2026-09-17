@@ -648,6 +648,10 @@ export function AgentChatView({
             ) : null}
             <InputGroupTextarea
               ref={fieldRef}
+              // The seam `focusAgentComposer` finds this by. The phone's
+              // shell gives the caret back here after an agent-driven camera
+              // move, so the reader keeps typing without hunting for the box.
+              data-agent-composer=""
               rows={1}
               // No imperative height write: the DS Textarea is
               // `field-sizing-content`, so the browser grows it. max-h caps
