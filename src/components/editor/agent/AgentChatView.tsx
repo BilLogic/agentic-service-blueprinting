@@ -183,7 +183,13 @@ export function AgentChatView({
         skillMatchesQuery(command, slashLookup.query),
       )
     : []
-  const slashOpen = slashMatches.length > 0
+  // Dismissal is the one fact about the menu the draft cannot carry: the
+  // reader wants the token they typed to stay typed AND the menu gone, and
+  // the draft that opened the menu is still the draft. It is cleared by the
+  // next keystroke, so the menu is never shut for a token the reader has not
+  // seen it open on.
+  const [slashDismissed, setSlashDismissed] = useState(false)
+  const slashOpen = slashMatches.length > 0 && !slashDismissed
   // Arrow keys and hover move one highlight through the *pickable* matches
   // (cmdk drives hover via onValueChange; the arrows below drive the rest).
   // Derived-with-a-guard, the house pattern: as typing reshapes the matches,
@@ -457,10 +463,10 @@ export function AgentChatView({
             to the field. */}
         <Popover
           open={slashOpen}
-          // Purely derived from the draft: nothing but the text can open or
-          // close it, so an outside press is a no-op rather than a state
-          // that disagrees with what is typed. Escape is handled in the
-          // textarea, where it also clears the draft.
+          // Derived from the draft and one dismissal flag, and from nothing
+          // else: an outside press is a no-op rather than a state that
+          // disagrees with what is typed. Escape is handled in the textarea,
+          // where it sets that flag and leaves the text alone.
           onOpenChange={() => undefined}
         >
           <PopoverContent
@@ -577,6 +583,9 @@ export function AgentChatView({
                     return
                   }
                 }
+                // A dismissal answers for the draft that was on screen; the
+                // next keystroke is a new draft, and the menu is free again.
+                if (slashDismissed) setSlashDismissed(false)
                 setDraft(value)
               }}
               onKeyDown={(event) => {
@@ -604,15 +613,16 @@ export function AgentChatView({
                   if (highlighted) pickSkill(highlighted)
                   return
                 }
-                if (slashOpen && event.key === 'Escape' && slashLookup) {
+                if (slashOpen && event.key === 'Escape') {
                   // Mark the event consumed: the canvas selection listener
                   // skips defaultPrevented Escapes, and closing this menu
                   // must not also wipe a cell selection.
                   event.preventDefault()
-                  // Dismissal drops the token the menu is open on — the same
-                  // keystroke that used to empty a draft holding nothing but
-                  // "/aud", now spelled so it leaves the prose around it.
-                  setDraft(spliceSkillLookup(draft, slashLookup))
+                  // The menu closes and the draft is UNTOUCHED. Escape used
+                  // to clear the field, which was invisible while a draft
+                  // could only ever be "/aud" and is text deletion with no
+                  // undo the moment a sentence surrounds the token.
+                  setSlashDismissed(true)
                   return
                 }
                 if (

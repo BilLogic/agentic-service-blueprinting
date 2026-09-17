@@ -50,6 +50,7 @@ describe('the skill lookup a draft carries', () => {
     ['Hey can u /', ''],
     ['check this、/aud', 'aud'],
     ['/sb:audit this', null],
+    ['check /sb:audit/notes.md', null],
     ['look at src/lib', null],
     ['see http://example.test', null],
     ['do this and/or that', null],
@@ -79,6 +80,16 @@ describe('the skill lookup a draft carries', () => {
     const lookup = findSkillLookup(draft)!
     expect(spliceSkillLookup(draft, lookup)).toBe('Hey can u ')
     expect(spliceSkillLookup('/sb:aud', findSkillLookup('/sb:aud')!)).toBe('')
+  })
+
+  it('takes one of the two spaces that surrounded a mid-sentence span', () => {
+    // The notice's span, not a lookup's: a token with prose on both sides.
+    expect(
+      spliceSkillLookup('Hey can u /sb:audit the goal setting', {
+        start: 10,
+        end: 19,
+      }),
+    ).toBe('Hey can u the goal setting')
   })
 })
 

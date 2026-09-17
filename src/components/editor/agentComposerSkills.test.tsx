@@ -15,7 +15,7 @@
  * the same reasons. Nothing here sends, so there is no provider adapter and
  * no database.
  */
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/contexts/SupabaseProvider', () => ({
@@ -53,7 +53,21 @@ function openComposer(): HTMLElement {
 const type = (composer: HTMLElement, value: string) =>
   fireEvent.change(composer, { target: { value } })
 
-const menuOption = (label: string) => screen.queryByText(label)
+/**
+ * The menu's row for a skill — scoped to the popover, because a picked
+ * skill's badge carries the same label and an unscoped text query would find
+ * whichever the DOM happened to hold first, passing on the wrong node.
+ */
+const menuOption = (label: string) => {
+  const menu = screen.queryByLabelText('Agent skills')
+  return menu ? within(menu).queryByText(label) : null
+}
+
+/** Pick a skill through the menu, the way a reader does. */
+const pick = (composer: HTMLElement, typed: string, label: string) => {
+  type(composer, typed)
+  fireEvent.click(menuOption(label)!)
+}
 
 beforeAll(() => {
   // cmdk measures its list, and the menu scrolls the highlight into view —
@@ -85,8 +99,7 @@ afterEach(() => {
 describe('the composer opens a skill lookup wherever a slash opens a word', () => {
   it('opens on a token typed mid-sentence, and picking keeps the prose around it', () => {
     const composer = openComposer()
-    type(composer, 'Hey can u /sb:aud')
-    fireEvent.click(screen.getByText('/sb:audit'))
+    pick(composer, 'Hey can u /sb:aud', '/sb:audit')
     // The badge stands where the token was; the words before it are still
     // the reader's message, and they are what sends.
     expect((composer as HTMLTextAreaElement).value).toBe('Hey can u ')
@@ -113,5 +126,43 @@ describe('the composer opens a skill lookup wherever a slash opens a word', () =
     expect(menuOption('/sb:audit')).toBeTruthy()
     type(composer, 'Hey can u /aud ')
     expect(menuOption('/sb:audit')).toBeNull()
+  })
+})
+
+describe("the menu's keyboard behaviour", () => {
+  it('walks the matches with the arrows and accepts the highlighted one', () => {
+    const composer = openComposer()
+    // Every skill matches an empty query, so the list is the four of them in
+    // definition order and the second one is reachable in one keystroke.
+    type(composer, '/')
+    fireEvent.keyDown(composer, { key: 'ArrowDown' })
+    fireEvent.keyDown(composer, { key: 'Enter' })
+    // The menu is closed, so the label left on screen is the badge's.
+    expect(menuOption('/sb:slice')).toBeNull()
+    expect(screen.getByText('/sb:slice')).toBeTruthy()
+    expect((composer as HTMLTextAreaElement).value).toBe('')
+  })
+
+  it('accepts on Tab, and wraps round the ends with ArrowUp', () => {
+    const composer = openComposer()
+    type(composer, '/')
+    fireEvent.keyDown(composer, { key: 'ArrowUp' })
+    fireEvent.keyDown(composer, { key: 'Tab' })
+    expect(menuOption('/sb:whatif')).toBeNull()
+    expect(screen.getByText('/sb:whatif')).toBeTruthy()
+  })
+
+  it('dismisses on Escape without touching a character of the draft', () => {
+    const composer = openComposer()
+    type(composer, 'Hey can u /sb:aud')
+    expect(menuOption('/sb:audit')).toBeTruthy()
+    fireEvent.keyDown(composer, { key: 'Escape' })
+    expect(menuOption('/sb:audit')).toBeNull()
+    // The token is the reader's text until they pick something. Escape used
+    // to delete it, with no undo.
+    expect((composer as HTMLTextAreaElement).value).toBe('Hey can u /sb:aud')
+    // Typing asks again.
+    type(composer, 'Hey can u /sb:audi')
+    expect(menuOption('/sb:audit')).toBeTruthy()
   })
 })
