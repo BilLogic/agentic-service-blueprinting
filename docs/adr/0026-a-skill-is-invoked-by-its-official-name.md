@@ -41,13 +41,16 @@ The alias keeps two jobs, both of which stop short of running anything. It
 matches in the composer's menu, so a reader still types `aud` and finds
 `/sb:audit` without typing the namespace first. And it is the source of the
 near-miss suggestion: a token that resolves to no skill but matches an alias
-produces "closest match: `/sb:audit`", offered for the reader to accept.
+names the canonical skill as the closest match, offered for the reader to
+accept rather than run. The wording of that offer belongs to the surface that
+makes it.
 
-This is the same division the tool this composer mirrors draws. Its matcher
-tests a command's full name, the segment after its last colon and its display
-name; its dispatch takes the canonical name; and when a typed token names
-nothing available, it tells the model the token did not run and names the
-closest command rather than guessing.
+The division is not novel: the tool this composer mirrors separates the two
+acts the same way, matching a typed fragment loosely while dispatching on a
+canonical name, and telling the model plainly when a typed token named nothing
+available. That is precedent for the shape, not a commitment to its matcher —
+what this composer searches on is its own question, settled where the search
+lives.
 
 ## Consequences
 
