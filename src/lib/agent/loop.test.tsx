@@ -23,9 +23,14 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ChatInput, ChatResult } from '@/lib/agent/providers/provider'
 import type { Database } from '@/types/database'
 
-/** The scripted provider: answers each round from the queue, and keeps what it was sent. */
+/**
+ * The scripted provider: answers each round from the queue, and keeps what
+ * it was sent. A queued Error is thrown instead of answered — that is how
+ * the dropped-connection cases below reach the loop — and a queued function
+ * runs first, so a case can abort the run from inside the provider call.
+ */
 const provider = vi.hoisted(() => ({
-  turns: [] as ChatResult[],
+  turns: [] as Array<ChatResult | Error | DOMException | (() => ChatResult)>,
   inputs: [] as ChatInput[],
 }))
 
@@ -34,7 +39,10 @@ vi.mock('@/lib/agent/providers/anthropic', () => ({
     id: 'anthropic',
     chat: async (input: ChatInput): Promise<ChatResult> => {
       provider.inputs.push(input)
-      return provider.turns.shift() ?? { parts: [], stopReason: 'end' }
+      const turn = provider.turns.shift()
+      if (typeof turn === 'function') return turn()
+      if (turn instanceof Error || turn instanceof DOMException) throw turn
+      return turn ?? { parts: [], stopReason: 'end' }
     },
   },
 }))
@@ -53,7 +61,8 @@ vi.mock('@/lib/authoringRpc', async (importOriginal) => ({
 }))
 
 import { setActiveService } from '@/contexts/activeService'
-import { sendToAgent, useAgentRun } from '@/lib/agent/loop'
+import { sendToAgent, stopAgent, useAgentRun } from '@/lib/agent/loop'
+import { ProviderError } from '@/lib/agent/providers/provider'
 import { PACKAGE_OFFLINE_BOARD } from '@/data/blueprintFallbacks'
 import type { AgentSettings } from '@/lib/agent/settings'
 import { SAMPLE_TRIAL_REFUSAL, noSuchToolRefusal } from '@/lib/agent/tools/refusals'
@@ -204,5 +213,109 @@ describe('the loop, provider → tool → result → provider', () => {
       isError: true,
     })
     expect(events.map((event) => event.kind)).toEqual(['user', 'assistant'])
+  })
+})
+
+/**
+ * The failure a phone produces: a fetch that never completed, which WebKit
+ * reports as `TypeError: Load failed`. Nothing rejected the request — the
+ * radio blipped — so a turn that dies on it throws away every tool result
+ * the round had already gathered for no reason a retry could not fix.
+ */
+describe('a provider call that drops at the network layer', () => {
+  const sendTo = (sessionId: string, text: string) =>
+    sendToAgent({
+      client: null,
+      text,
+      sessionId,
+      offlineBoard: PACKAGE_OFFLINE_BOARD,
+      settings: SETTINGS,
+      contextNote: '',
+    }).then(() => renderHook(() => useAgentRun(sessionId)).result.current.events)
+
+  const loadFailed = () => new TypeError('Load failed')
+
+  it('retries a dropped connection and finishes the turn the reader asked for', async () => {
+    provider.turns = [
+      loadFailed(),
+      { parts: [{ type: 'text', text: 'Four phases, Discover to Maintain.' }], stopReason: 'end' },
+    ]
+
+    const events = await sendTo('loop-drop-retried', 'What phases are there?')
+
+    expect(provider.inputs).toHaveLength(2)
+    expect(events.map((event) => event.kind)).toEqual(['user', 'assistant'])
+    expect(events.at(-1)).toEqual({ kind: 'assistant', text: 'Four phases, Discover to Maintain.' })
+  })
+
+  it('keeps the tool results an earlier round gathered when a later round is retried', async () => {
+    provider.turns = [
+      { parts: [call('c1', 'list_blueprint', { granularity: ['phase'] })], stopReason: 'tool_use' },
+      loadFailed(),
+      { parts: [{ type: 'text', text: 'Four phases.' }], stopReason: 'end' },
+    ]
+
+    await sendTo('loop-drop-keeps-results', 'What phases are there?')
+
+    // The retry is the same round, sent again: it still carries the result
+    // of the call that already ran.
+    const retried = provider.inputs[2]!.messages
+      .filter((message) => message.role === 'tool')
+      .flatMap((message) => message.parts)
+    expect(retried[0]).toMatchObject({ type: 'tool_result', toolCallId: 'c1' })
+  })
+
+  it('gives up after two retries with a status naming the round and the drop', async () => {
+    provider.turns = [loadFailed(), loadFailed(), loadFailed()]
+
+    const events = await sendTo('loop-drop-exhausted', 'What phases are there?')
+
+    expect(provider.inputs).toHaveLength(3)
+    const status = events.at(-1)
+    expect(status).toMatchObject({ kind: 'status' })
+    expect((status as { text: string }).text).toMatch(/connection/i)
+    expect((status as { text: string }).text).toContain('round 1')
+    expect((status as { text: string }).text).not.toMatch(/Provider error/)
+  })
+
+  it('does not retry a provider refusal, and keeps its status and detail', async () => {
+    provider.turns = [new ProviderError('anthropic', 429, 'rate limit exceeded')]
+
+    const events = await sendTo('loop-refusal-not-retried', 'What phases are there?')
+
+    expect(provider.inputs).toHaveLength(1)
+    expect(events.at(-1)).toEqual({
+      kind: 'status',
+      text: 'Provider error on round 1: anthropic 429: rate limit exceeded',
+    })
+  })
+
+  it('never retries an abort, and keeps the stopped status', async () => {
+    provider.turns = [new DOMException('stopped', 'AbortError')]
+
+    const events = await sendTo('loop-abort-not-retried', 'What phases are there?')
+
+    expect(provider.inputs).toHaveLength(1)
+    expect(events.at(-1)).toEqual({
+      kind: 'status',
+      text: 'Stopped. Whatever already landed is in the change sheet, revertible.',
+    })
+  })
+
+  it('stops between retries when the reader presses stop during the backoff', async () => {
+    provider.turns = [
+      () => {
+        stopAgent('loop-abort-during-backoff')
+        throw loadFailed()
+      },
+    ]
+
+    const events = await sendTo('loop-abort-during-backoff', 'What phases are there?')
+
+    expect(provider.inputs).toHaveLength(1)
+    expect(events.at(-1)).toEqual({
+      kind: 'status',
+      text: 'Stopped. Whatever already landed is in the change sheet, revertible.',
+    })
   })
 })

@@ -5,10 +5,13 @@ import type { Database } from '@/types/database'
 import { anthropicAdapter } from '@/lib/agent/providers/anthropic'
 import { googleAdapter } from '@/lib/agent/providers/google'
 import { openaiAdapter } from '@/lib/agent/providers/openai'
-import type {
-  AgentMessage,
-  AgentProviderAdapter,
-  AgentToolCallPart,
+import {
+  ProviderError,
+  type AgentMessage,
+  type AgentProviderAdapter,
+  type AgentToolCallPart,
+  type ChatInput,
+  type ChatResult,
 } from '@/lib/agent/providers/provider'
 import { dispatchTool, type DispatchContext } from '@/lib/agent/tools/registry'
 import type { OfflineBoard } from '@/data/blueprintFallbacks'
@@ -369,6 +372,83 @@ function callSummary(call: AgentToolCallPart): string {
 const MAX_ROUNDS = 12
 
 /**
+ * How many extra tries a provider call gets when it dies at the network
+ * layer, and how long the loop waits before each one. Two is enough for the
+ * failure this exists for — a phone's radio blipping for a moment mid
+ * request — and few enough that a genuinely unreachable provider still
+ * reaches the reader in a couple of seconds rather than a minute.
+ */
+const NETWORK_RETRIES = 2
+const RETRY_BACKOFF_MS = 400
+
+/**
+ * A provider call that never completed, after every retry it was owed.
+ * Distinct from `ProviderError` because the two need different words: the
+ * provider refusing a request is something the reader (or their key) can
+ * act on, a dropped connection is something to try again.
+ */
+class ConnectionDroppedError extends Error {
+  readonly attempts: number
+  constructor(attempts: number, detail: string) {
+    super(detail)
+    this.name = 'ConnectionDroppedError'
+    this.attempts = attempts
+  }
+}
+
+/**
+ * Network-class, meaning: nothing at the other end judged this request.
+ * `ProviderError` is the provider's own verdict — a 400 replayed is still a
+ * 400 — and an AbortError is the reader pressing stop. Everything else that
+ * escapes an adapter is the fetch itself failing, which is the WebKit
+ * `TypeError: Load failed` this retry exists for.
+ */
+function isConnectionDropped(error: unknown): boolean {
+  if (error instanceof ProviderError) return false
+  if (error instanceof DOMException && error.name === 'AbortError') return false
+  return true
+}
+
+/** A backoff that stop can cut short — waiting out a retry the reader has
+ *  already cancelled would leave Stop looking ignored for a second. */
+function waitBeforeRetry(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const abort = () => {
+      clearTimeout(timer)
+      reject(new DOMException('stopped', 'AbortError'))
+    }
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', abort)
+      resolve()
+    }, ms)
+    signal.addEventListener('abort', abort, { once: true })
+  })
+}
+
+/**
+ * The single seam every provider call in a run goes through, so all three
+ * adapters get the retry without any of them knowing about it — and so a
+ * retried round re-sends the transcript as it stands, tool results from
+ * earlier rounds included, instead of the turn dying with them unsaved.
+ */
+async function chatWithRetry(
+  adapter: AgentProviderAdapter,
+  request: ChatInput,
+): Promise<ChatResult> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await adapter.chat(request)
+    } catch (error) {
+      if (!isConnectionDropped(error)) throw error
+      if (request.signal.aborted) throw new DOMException('stopped', 'AbortError')
+      if (attempt > NETWORK_RETRIES)
+        throw new ConnectionDroppedError(attempt, errorMessage(error))
+      await waitBeforeRetry(RETRY_BACKOFF_MS * attempt, request.signal)
+    }
+  }
+}
+
+/**
  * The loop: send → text lands in the transcript, tool calls dispatch onto
  * the real wrappers → results feed back → repeat until the model stops or
  * the human hits Stop. Whatever landed stays — revertible from the sheet.
@@ -472,8 +552,15 @@ export async function sendToAgent(input: {
     signal: controller.signal,
   }
 
+  // Which call a failure happened on, in the reader's terms. A status that
+  // says only "provider error" leaves someone unable to tell a turn that
+  // died before it did anything from one that died after eleven rounds of
+  // reading.
+  let roundLabel = 'round 1'
+
   try {
     for (let round = 0; round < MAX_ROUNDS; round += 1) {
+      roundLabel = `round ${round + 1}`
       // Rebuilt every round: the live UI context changes as the agent's own
       // navigation tools move the canvas mid-conversation — and so can the
       // shell itself (rotation across the breakpoint).
@@ -503,7 +590,7 @@ export async function sendToAgent(input: {
       const liveContext = [contextNote, collectAgentUiContext()]
         .filter(Boolean)
         .join('\n')
-      const result = await adapter.chat({
+      const result = await chatWithRetry(adapter, {
         system:
           buildSystem(liveContext, skill, roster) +
           // The mobile paragraph subsumes the tier one — and they disagree
@@ -716,7 +803,8 @@ export async function sendToAgent(input: {
             },
           ],
         })
-        const closing = await adapter.chat({
+        roundLabel = 'the closing round'
+        const closing = await chatWithRetry(adapter, {
           system: buildSystem(
             [contextNote, collectAgentUiContext()].filter(Boolean).join('\n'),
             skill,
@@ -748,9 +836,17 @@ export async function sendToAgent(input: {
         kind: 'status',
         text: 'Stopped. Whatever already landed is in the change sheet, revertible.',
       })
+    } else if (error instanceof ConnectionDroppedError) {
+      push(sessionId, {
+        kind: 'status',
+        text: `Connection lost on ${roundLabel} after ${error.attempts} tries (${error.message}) — everything the turn already gathered is kept; send a message to carry on.`,
+      })
     } else {
       const message = errorMessage(error)
-      push(sessionId, { kind: 'status', text: `Provider error: ${message}` })
+      push(sessionId, {
+        kind: 'status',
+        text: `Provider error on ${roundLabel}: ${message}`,
+      })
     }
   } finally {
     run.running = false
