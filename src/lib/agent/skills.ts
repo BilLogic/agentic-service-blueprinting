@@ -106,20 +106,27 @@ export type SkillLookup = { query: string; start: number; end: number }
  * token does not reopen the menu, which is the rarer half of the gesture.
  *
  * A space after the token closes it, because the space is not in the token's
- * character class and the token has to reach the end.
+ * character class and the token has to reach the end. So does a second slash:
+ * `/sb:audit/notes.md` is a path, and the token has to be the last thing in
+ * the draft for it to be a lookup at all.
+ *
+ * ONE SPELLING of the token grammar, `SKILL_TOKEN_CHARS`, used by every
+ * pattern below. Two spellings of it drift, and the drift shows up as a
+ * trigger that fires on a string the tests next door swear it refuses.
  */
 const SKILL_TOKEN_CHARS = '[a-zA-Z0-9._:-]'
 const LOOKUP_AT_HEAD = new RegExp(`^/(${SKILL_TOKEN_CHARS}*)$`)
 const LOOKUP_AFTER_SPACE = new RegExp(
   `[\\s。、？！]/(${SKILL_TOKEN_CHARS}*)$`,
 )
+const RESOLVED_HEAD_SKILL = new RegExp(`^/(${SKILL_TOKEN_CHARS}+)\\s`)
 
 export function findSkillLookup(draft: string): SkillLookup | null {
   // A draft that already opens with a resolved skill is that skill's
   // arguments from the space onwards, and a slash inside arguments is
   // argument text — offering a second lookup there would put a menu over
   // a path the reader is typing for the skill to read.
-  const head = /^\/([\w.:-]+)\s/.exec(draft)
+  const head = RESOLVED_HEAD_SKILL.exec(draft)
   if (head && findSkillByToken(head[1])) return null
   const atHead = LOOKUP_AT_HEAD.exec(draft)
   if (atHead)
@@ -136,14 +143,19 @@ export function findSkillLookup(draft: string): SkillLookup | null {
 }
 
 /**
- * The draft with the looked-up token lifted out — the prose either side of it
- * untouched. Picking a skill used to clear the field, which threw away the
+ * The draft with the token span lifted out and the prose either side of it
+ * kept. Picking a skill used to clear the field, which threw away the
  * sentence the reader was in the middle of writing; the badge replaces the
  * token, not the message.
  *
  * One space of the two that surrounded a mid-sentence token goes with it,
  * because the alternative is a message that reads "Hey can u  the goal
  * setting scenario" — a visible hole where the reader's word used to be.
+ * A token at the end of the draft has nothing after it, so nothing is
+ * collapsed and the space the reader typed before it survives.
+ *
+ * The span is any token span, not only a lookup's: the unrun-token notice
+ * removes the token it offered through this same function.
  */
 export function spliceSkillLookup(
   draft: string,
