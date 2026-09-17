@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   AGENT_SKILL_COMMANDS,
   findSkillLookup,
+  findUnrunSkillToken,
   parseSkillDraft,
   skillMatchesQuery,
   spliceSkillLookup,
@@ -79,6 +80,43 @@ describe('the skill lookup a draft carries', () => {
     const lookup = findSkillLookup(draft)!
     expect(spliceSkillLookup(draft, lookup)).toBe('Hey can u ')
     expect(spliceSkillLookup('/sb:aud', findSkillLookup('/sb:aud')!)).toBe('')
+  })
+
+  it('takes one of the two spaces that surrounded a mid-sentence token', () => {
+    const draft = 'Hey can u /sb:audit the goal setting'
+    expect(spliceSkillLookup(draft, findUnrunSkillToken(draft)!)).toBe(
+      'Hey can u the goal setting',
+    )
+  })
+})
+
+describe('a skill token that would send as prose', () => {
+  it('names the skill a word-start token spells exactly', () => {
+    const unrun = findUnrunSkillToken('Hey can u /sb:audit the goal setting')
+    expect(unrun).toEqual({
+      token: 'sb:audit',
+      command: AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:audit'),
+      matched: 'name',
+      start: 10,
+      end: 19,
+    })
+  })
+
+  it('offers the canonical skill for a bare alias rather than resolving it', () => {
+    const unrun = findUnrunSkillToken('then /audit the intake')
+    expect(unrun?.command.id).toBe('sb:audit')
+    expect(unrun?.matched).toBe('alias')
+  })
+
+  it('stays quiet where there is nothing to say', () => {
+    // A draft that already invokes needs no notice — it runs.
+    expect(findUnrunSkillToken('/sb:audit the intake')).toBeNull()
+    // A token naming nothing is a word with a slash on it.
+    expect(findUnrunSkillToken('Hey can u /frobnicate this')).toBeNull()
+    // The same strings the lookup refuses to fire on.
+    expect(findUnrunSkillToken('look at src/lib')).toBeNull()
+    expect(findUnrunSkillToken('do this and/or that')).toBeNull()
+    expect(findUnrunSkillToken('on 2026/09/17')).toBeNull()
   })
 })
 

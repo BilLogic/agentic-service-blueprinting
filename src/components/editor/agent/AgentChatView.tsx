@@ -67,10 +67,12 @@ import {
   AGENT_SKILL_COMMANDS,
   findSkillByToken,
   findSkillLookup,
+  findUnrunSkillToken,
   parseSkillDraft,
   skillMatchesQuery,
   spliceSkillLookup,
   type AgentSkillCommand,
+  type UnrunSkillToken,
 } from '@/lib/agent/skills'
 import {
   clearAgentDraft,
@@ -137,6 +139,11 @@ export function AgentChatView({
     useAgentTranscriptHydrating(session.id) && canAgent && !isSampleTrial
   const changeCount = useAgentChangeCount(session.id)
   const [renaming, setRenaming] = useState(false)
+  // A skill the draft names with nothing attached, waiting on the one choice
+  // only the reader can make: run it, or send the sentence. Component state
+  // rather than the draft store, because it is a question being asked right
+  // now and not something the message carries.
+  const [unrunSkill, setUnrunSkill] = useState<UnrunSkillToken | null>(null)
   // The slash menu is a portalled popover; this is what it anchors to (and
   // what --anchor-width measures).
   const composerRowRef = useRef<HTMLDivElement>(null)
@@ -218,16 +225,26 @@ export function AgentChatView({
   // end of the draft, so the shortened value leaves the caret where it was.
   const pickSkill = (command: AgentSkillCommand) => {
     if (!command.content || !slashLookup) return
+    setUnrunSkill(null)
     setAgentDraft(session.id, {
       text: spliceSkillLookup(draft, slashLookup),
       skillId: command.id,
     })
   }
 
-  const send = () => {
-    let text = draft.trim()
-    let skill = pendingSkill
-    // Typed-through form: "/map turn my notes into a scenario" sends in one go.
+  /**
+   * The send itself, once every question about the message is settled: what
+   * text goes, which skill rides with it, and — when the reader chose prose
+   * over a skill their sentence named — what the model is told did not run.
+   */
+  const dispatch = (
+    draftText: string,
+    skill: AgentSkillCommand | null,
+    unrun: UnrunSkillToken | null,
+  ) => {
+    let text = draftText.trim()
+    // Typed-through form: "/sb:map turn my notes into a scenario" sends in
+    // one go.
     if (!skill) {
       const parsed = parseSkillDraft(text)
       if (parsed?.command.content) {
@@ -244,6 +261,7 @@ export function AgentChatView({
       if (attached) setPendingAgentAttachment(attached)
       return
     }
+    setUnrunSkill(null)
     clearAgentDraft(session.id)
     void sendToAgent({
       client,
@@ -253,9 +271,32 @@ export function AgentChatView({
       contextNote,
       text,
       skill,
+      unrunSkill: unrun
+        ? { token: unrun.token, label: unrun.command.label }
+        : null,
       attachment: attached,
       allowWrites: canAgentWrite,
     })
+  }
+
+  const send = () => {
+    // Asked ALREADY, and pressed again: the reader has read the question and
+    // means the message, so it goes as prose — with the model told.
+    if (unrunSkill) {
+      dispatch(draft, null, unrunSkill)
+      return
+    }
+    // An unpicked skill token is never silent. A sentence that names a skill
+    // and carries no skill is the one case where sending straight through is
+    // a guess about what the reader meant, so it asks — once.
+    if (!pendingSkill) {
+      const named = findUnrunSkillToken(draft)
+      if (named) {
+        setUnrunSkill(named)
+        return
+      }
+    }
+    dispatch(draft, pendingSkill, null)
   }
 
   return (
@@ -444,6 +485,44 @@ export function AgentChatView({
             ) : null}
           </div>
         ) : null}
+        {unrunSkill ? (
+          /* The one thing that must not happen silently: a message that
+             names a skill, sent as prose, with nobody told. Two choices and
+             no default — running a skill the reader only mentioned is as
+             wrong as dropping one they meant. */
+          <div
+            role="status"
+            className="mb-2 flex flex-col gap-2 rounded-lg border border-muted bg-muted/40 p-2"
+          >
+            <p className="text-xs text-muted-foreground">
+              {unrunSkill.matched === 'name'
+                ? `This message names ${unrunSkill.command.label} but no skill is attached.`
+                : `“/${unrunSkill.token}” is not a skill name — the closest match is ${unrunSkill.command.label}.`}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="xs"
+                variant="default"
+                onClick={() =>
+                  dispatch(
+                    spliceSkillLookup(draft, unrunSkill),
+                    unrunSkill.command,
+                    null,
+                  )
+                }
+              >
+                Run {unrunSkill.command.label}
+              </Button>
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => dispatch(draft, null, unrunSkill)}
+              >
+                Send as text
+              </Button>
+            </div>
+          </div>
+        ) : null}
         {/* The slash menu: type "/" to see the four skills — the same
             SKILL.md files IDE agents run, minus their file mechanics.
             PORTALLED, anchored to the composer row. Two reasons, both
@@ -577,6 +656,9 @@ export function AgentChatView({
                     return
                   }
                 }
+                // The question was about the draft as it stood; editing it is
+                // an answer to neither choice, so it goes away.
+                if (unrunSkill) setUnrunSkill(null)
                 setDraft(value)
               }}
               onKeyDown={(event) => {

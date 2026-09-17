@@ -72,7 +72,12 @@ const client = {} as unknown as SupabaseClient<Database>
  * that hook is the only reader the app has.
  */
 let sessions = 0
-const send = (input: { client: SupabaseClient<Database> | null; text: string }) => {
+const send = (
+  input: Omit<
+    Parameters<typeof sendToAgent>[0],
+    'sessionId' | 'offlineBoard' | 'settings' | 'contextNote'
+  >,
+) => {
   const sessionId = `loop-test-${(sessions += 1)}`
   return sendToAgent({
     ...input,
@@ -204,5 +209,20 @@ describe('the loop, provider → tool → result → provider', () => {
       isError: true,
     })
     expect(events.map((event) => event.kind)).toEqual(['user', 'assistant'])
+  })
+
+  it('tells the model a skill the message named did not run, without loading it', async () => {
+    provider.turns = [{ parts: [{ type: 'text', text: 'Noted.' }], stopReason: 'end' }]
+    await send({
+      client,
+      text: 'Hey can u /sb:audit the goal setting scenario',
+      unrunSkill: { token: 'sb:audit', label: '/sb:audit' },
+    })
+    const system = provider.inputs[0]!.system
+    expect(system).toContain('/sb:audit')
+    expect(system).toContain('did NOT run')
+    expect(system).toContain('Do not describe it as having run')
+    // A notice, not an invocation: the skill body stays out of the prompt.
+    expect(system).not.toContain('--- active skill')
   })
 })

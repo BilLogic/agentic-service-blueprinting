@@ -393,6 +393,14 @@ export async function sendToAgent(input: {
   text: string
   /** Slash-skill invoked with this message (its SKILL.md joins the system prompt). */
   skill?: AgentSkillCommand | null
+  /**
+   * A skill this message NAMES and deliberately did not run — the reader was
+   * asked and chose to send their sentence as prose. The model is told so, in
+   * the words below: without that, the likeliest reading of a message
+   * containing "/sb:audit" is that the audit is loaded, and a model that
+   * believes it improvises the flow it was never given.
+   */
+  unrunSkill?: { token: string; label: string } | null
   /** Canvas hand-off (annotation capture) folded into this message. */
   attachment?: AgentAttachment | null
   /**
@@ -402,8 +410,16 @@ export async function sendToAgent(input: {
    */
   allowWrites?: boolean
 }): Promise<void> {
-  const { client, sessionId, settings, contextNote, text, skill, attachment } =
-    input
+  const {
+    client,
+    sessionId,
+    settings,
+    contextNote,
+    text,
+    skill,
+    unrunSkill,
+    attachment,
+  } = input
   const allowWrites = input.allowWrites !== false
   const run = runFor(sessionId)
   if (run.running) return
@@ -516,6 +532,9 @@ export async function sendToAgent(input: {
             : '\n\n--- session tier ---\nThis session is VIEW-ONLY (not a service account): you have no write tools. Navigate, read, annotate, and answer with citations; when the user wants an edit, describe the exact change for a service account to make — never imply you made it.') +
           (sampleTrial
             ? '\n\n--- sample data, no database ---\nThis app has NO database connected. Everything you can read is the template\'s bundled SAMPLE blueprint, and you have read and navigation tools only — no write tool exists in this session. Answer, explain, and navigate; when the user wants an edit, say plainly that authoring needs a connected database — never imply you changed anything.'
+            : '') +
+          (unrunSkill
+            ? `\n\n--- a skill the user named, which did not run ---\nThe user's message contains the token "/${unrunSkill.token}", which names the ${unrunSkill.label} skill, and they chose to send the message as text: the skill did NOT run and its instructions are NOT in this prompt. Do not describe it as having run, and do not summarise what it would have produced. Answer the message as written; where ${unrunSkill.label} is what the work needs, say so plainly and invite them to run it.`
             : '') +
           (mobileReading
             ? '\n\n--- mobile shell ---\nThe user is on the MOBILE app, which is view-only for everyone — your tools are navigation and reading only (no writes, no annotations, no canvas mode switch). The mobile view is a vertical journey reader: scrolling down moves forward through the steps; a Map view shows the 2-D board. When the user wants an edit, explain it is made on desktop — never imply you made it.'

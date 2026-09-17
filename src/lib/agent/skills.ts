@@ -140,9 +140,80 @@ export function findSkillLookup(draft: string): SkillLookup | null {
  * untouched. Picking a skill used to clear the field, which threw away the
  * sentence the reader was in the middle of writing; the badge replaces the
  * token, not the message.
+ *
+ * One space of the two that surrounded a mid-sentence token goes with it,
+ * because the alternative is a message that reads "Hey can u  the goal
+ * setting scenario" — a visible hole where the reader's word used to be.
  */
-export function spliceSkillLookup(draft: string, lookup: SkillLookup): string {
-  return draft.slice(0, lookup.start) + draft.slice(lookup.end)
+export function spliceSkillLookup(
+  draft: string,
+  span: { start: number; end: number },
+): string {
+  const before = draft.slice(0, span.start)
+  const after = draft.slice(span.end)
+  return /\s$/.test(before) && /^\s/.test(after)
+    ? before + after.slice(1)
+    : before + after
+}
+
+/** The bare spelling a token missed by: never resolved, only suggested. */
+function findSkillByAlias(token: string): AgentSkillCommand | undefined {
+  const t = token.toLowerCase()
+  return AGENT_SKILL_COMMANDS.find((entry) => entry.aliases.includes(t))
+}
+
+/**
+ * A skill a message NAMES but does not invoke — the token the reader typed,
+ * the skill it points at, and whether it spelled the name or only an alias.
+ */
+export type UnrunSkillToken = {
+  /** The token as typed, without its slash. */
+  token: string
+  /** The skill to run, or the closest match when the token only aliased one. */
+  command: AgentSkillCommand
+  matched: 'name' | 'alias'
+  start: number
+  end: number
+}
+
+const SKILL_TOKEN_ANYWHERE = new RegExp(
+  `(?:^|[\\s。、？！])/(${SKILL_TOKEN_CHARS}+)`,
+  'g',
+)
+
+/**
+ * The first skill a draft names without invoking it — what the composer asks
+ * about before sending prose that reads like a command.
+ *
+ * This is the failure the notice exists for: a reader wrote "/sb:audit the
+ * goal setting scenario", it sent as prose, no skill loaded, and NOTHING said
+ * so — so the agent improvised, and one real session spent four rounds
+ * re-reading the same scenario before the turn died. Silence is the defect;
+ * the token is not.
+ *
+ * A draft that already invokes returns null, because it runs. A token that
+ * matches only an alias returns the canonical skill to OFFER — an alias
+ * resolves nothing, and a mid-sentence mention that resolved itself would be
+ * the silent skill run the naming rule exists to prevent.
+ */
+export function findUnrunSkillToken(draft: string): UnrunSkillToken | null {
+  if (parseSkillDraft(draft)) return null
+  for (const match of draft.matchAll(SKILL_TOKEN_ANYWHERE)) {
+    const token = match[1]
+    const command = findSkillByToken(token) ?? findSkillByAlias(token)
+    if (!command?.content) continue
+    // The match opens on the whitespace that qualified the slash, except at
+    // the head of the draft where there is none.
+    const start = match.index + match[0].length - token.length - 1
+    return {
+      token,
+      command,
+      matched: findSkillByToken(token) ? 'name' : 'alias',
+      start,
+      end: start + token.length + 1,
+    }
+  }
+  return null
 }
 
 /**
