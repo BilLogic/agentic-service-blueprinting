@@ -56,7 +56,12 @@ import { setActiveService } from '@/contexts/activeService'
 import { sendToAgent, useAgentRun } from '@/lib/agent/loop'
 import { PACKAGE_OFFLINE_BOARD } from '@/data/blueprintFallbacks'
 import type { AgentSettings } from '@/lib/agent/settings'
-import { SAMPLE_TRIAL_REFUSAL, noSuchToolRefusal } from '@/lib/agent/tools/refusals'
+import {
+  REPEAT_READ_SUPPRESSED,
+  SAMPLE_TRIAL_REFUSAL,
+  noSuchToolRefusal,
+  repeatReadRefusal,
+} from '@/lib/agent/tools/refusals'
 import { configureAgentTools } from '@/lib/agent/tools/roster'
 
 const SETTINGS: AgentSettings = { provider: 'anthropic', models: {}, keys: { anthropic: 'test-key' } }
@@ -204,5 +209,137 @@ describe('the loop, provider → tool → result → provider', () => {
       isError: true,
     })
     expect(events.map((event) => event.kind)).toEqual(['user', 'assistant'])
+  })
+})
+
+/**
+ * The repeat-read guard. A model that loops re-reads the same thing: the
+ * session that motivated this ran one identical `list_blueprint` four times
+ * inside a turn, spending a round and re-injecting an identical payload each
+ * time. These drive the same shape through the scripted provider and assert
+ * what the model is handed back, what the person sees, and — the point of
+ * the whole thing — what never reached a tool.
+ */
+describe('a read the turn already ran', () => {
+  /** Two sends on ONE session, so the "fresh send, fresh record" case is reachable. */
+  const sendOn = (sessionId: string, input: { client: SupabaseClient<Database> | null; text: string }) =>
+    sendToAgent({
+      ...input,
+      sessionId,
+      offlineBoard: PACKAGE_OFFLINE_BOARD,
+      settings: SETTINGS,
+      contextNote: '',
+    }).then(() => renderHook(() => useAgentRun(sessionId)).result.current.events)
+
+  it('refuses the repeat with a pointer rather than dispatching it again', async () => {
+    provider.turns = [
+      { parts: [call('r1', 'list_blueprint', { granularity: ['phase'], limit: 5 })], stopReason: 'tool_use' },
+      // Same call, arguments written in the other order: providers do not
+      // promise key order between rounds, and neither does the model.
+      { parts: [call('r2', 'list_blueprint', { limit: 5, granularity: ['phase'] })], stopReason: 'tool_use' },
+      { parts: [{ type: 'text', text: 'Four phases.' }], stopReason: 'end' },
+    ]
+
+    const events = await send({ client: null, text: 'What phases are there?' })
+
+    // Round one ran and answered with the board.
+    expect(resultsFedBack(1)[0]!.result).toMatch(/^\d+ of \d+:/)
+    // Round two was refused, error-shaped, and the payload is NOT restated.
+    // (`resultsFedBack` is every tool part the round was handed, in order —
+    // round one's result first, then the answer to the repeat.)
+    const refused = resultsFedBack(2).at(-1)!
+    expect(refused).toEqual({
+      type: 'tool_result',
+      toolCallId: 'r2',
+      name: 'list_blueprint',
+      result: repeatReadRefusal('list_blueprint'),
+      isError: true,
+    })
+    expect(refused.result).not.toMatch(/^\d+ of \d+:/)
+    // The round budget is untouched: the turn ran on to its answer.
+    expect(events.at(-1)).toEqual({ kind: 'assistant', text: 'Four phases.' })
+  })
+
+  it('leaves each suppressed repeat in the transcript, one row apiece', async () => {
+    provider.turns = [
+      { parts: [call('r1', 'list_blueprint', { granularity: ['phase'] })], stopReason: 'tool_use' },
+      {
+        parts: [
+          call('r2', 'list_blueprint', { granularity: ['phase'] }),
+          call('r3', 'list_blueprint', { granularity: ['phase'] }),
+        ],
+        stopReason: 'tool_use',
+      },
+      { parts: [{ type: 'text', text: 'Four phases.' }], stopReason: 'end' },
+    ]
+
+    const events = await send({ client: null, text: 'What phases are there?' })
+
+    const rows = events.filter((event) => event.kind === 'tool')
+    expect(rows).toHaveLength(3)
+    // The loop in full, not a tidied summary of it: both repeats are rows.
+    expect(rows.slice(1)).toEqual([
+      {
+        kind: 'tool',
+        name: 'list_blueprint',
+        summary: REPEAT_READ_SUPPRESSED,
+        isError: true,
+        args: JSON.stringify({ granularity: ['phase'] }, null, 2),
+        result: repeatReadRefusal('list_blueprint'),
+      },
+      {
+        kind: 'tool',
+        name: 'list_blueprint',
+        summary: REPEAT_READ_SUPPRESSED,
+        isError: true,
+        args: JSON.stringify({ granularity: ['phase'] }, null, 2),
+        result: repeatReadRefusal('list_blueprint'),
+      },
+    ])
+  })
+
+  it('dispatches the same read under different arguments', async () => {
+    provider.turns = [
+      { parts: [call('r1', 'list_blueprint', { granularity: ['phase'] })], stopReason: 'tool_use' },
+      { parts: [call('r2', 'list_blueprint', { granularity: ['scenario'] })], stopReason: 'tool_use' },
+      { parts: [{ type: 'text', text: 'Phases and scenarios.' }], stopReason: 'end' },
+    ]
+
+    await send({ client: null, text: 'What is on the board?' })
+
+    expect(resultsFedBack(2).at(-1)!.result).toMatch(/^\d+ of \d+:/)
+    expect(resultsFedBack(2).at(-1)!.isError).toBeUndefined()
+  })
+
+  it('lets an interface call repeat — the camera is the agent\'s hands, not its eyes', async () => {
+    provider.turns = [
+      { parts: [call('i1', 'focus_cell', { cell_id: 'cell-1' })], stopReason: 'tool_use' },
+      { parts: [call('i2', 'focus_cell', { cell_id: 'cell-1' })], stopReason: 'tool_use' },
+      { parts: [{ type: 'text', text: 'Centred.' }], stopReason: 'end' },
+    ]
+
+    await send({ client: null, text: 'Show me that cell again' })
+
+    expect(resultsFedBack(2).at(-1)!.result).not.toBe(repeatReadRefusal('focus_cell'))
+    expect(resultsFedBack(2).at(-1)!.result).toBe(resultsFedBack(1).at(-1)!.result)
+  })
+
+  it('starts a fresh record on the next send, so the read runs again', async () => {
+    const sessionId = `loop-test-repeat-${(sessions += 1)}`
+    provider.turns = [
+      { parts: [call('r1', 'list_blueprint', { granularity: ['phase'] })], stopReason: 'tool_use' },
+      { parts: [{ type: 'text', text: 'Four phases.' }], stopReason: 'end' },
+    ]
+    await sendOn(sessionId, { client: null, text: 'What phases are there?' })
+
+    provider.turns = [
+      { parts: [call('r2', 'list_blueprint', { granularity: ['phase'] })], stopReason: 'tool_use' },
+      { parts: [{ type: 'text', text: 'Still four.' }], stopReason: 'end' },
+    ]
+    await sendOn(sessionId, { client: null, text: 'Check again' })
+
+    // Fourth provider call of the session — the second send's second round.
+    expect(resultsFedBack(3).at(-1)!.result).toMatch(/^\d+ of \d+:/)
+    expect(resultsFedBack(3).at(-1)!.isError).toBeUndefined()
   })
 })

@@ -23,8 +23,10 @@ import {
   VIEW_ONLY_REFUSAL,
   BATCH_LIMIT_REFUSAL,
   BATCH_PAUSED_STATUS,
+  REPEAT_READ_SUPPRESSED,
   WRITE_BATCH_LIMIT,
   noSuchToolRefusal,
+  repeatReadRefusal,
 } from '@/lib/agent/tools/refusals'
 import { isMobileViewport } from '@/hooks/useMobileShell'
 import { collectAgentUiContext } from '@/lib/agent/uiBridge'
@@ -366,6 +368,27 @@ function callSummary(call: AgentToolCallPart): string {
   return bits.join(', ')
 }
 
+/**
+ * What makes two tool calls the same call: the name, and the arguments with
+ * every object's keys in one order. A raw `JSON.stringify` of the arguments
+ * would key on whatever order the provider happened to serialize them in,
+ * and two byte-identical calls a round apart would read as different work.
+ */
+function callKey(call: AgentToolCallPart): string {
+  return `${call.name}:${stableJson(call.args)}`
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`
+  if (value !== null && typeof value === 'object')
+    return `{${Object.entries(value as Record<string, unknown>)
+      .filter(([, entry]) => entry !== undefined)
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${stableJson(entry)}`)
+      .join(',')}}`
+  return JSON.stringify(value) ?? 'null'
+}
+
 const MAX_ROUNDS = 12
 
 /**
@@ -442,6 +465,16 @@ export async function sendToAgent(input: {
   // instruction. The counter resets per user message — sending "keep going"
   // IS the check-in.
   let writesThisSend = 0
+
+  // A model that loops re-reads the same thing: one real session ran an
+  // identical board read four times inside a turn, each repeat spending a
+  // round and re-injecting a payload the conversation already held. Every
+  // read this send has dispatched is remembered by name and arguments, and a
+  // second call on the same key is answered with a pointer instead of run.
+  // Per SEND rather than per round, because the repeats that motivated this
+  // were in separate rounds — and it resets with the next user message,
+  // because a board a write has changed makes a later re-read honest.
+  const readsThisSend = new Set<string>()
 
   // No database, no writes — not "refused writes", ABSENT ones. The roster
   // is the definitions that may run without one, and the paragraph below
@@ -553,6 +586,12 @@ export async function sendToAgent(input: {
         findToolDefinition(call.name)?.surface === 'write' ||
         (call.name === 'ui_command' &&
           agentUiCommandMutates(String(call.args.command ?? '')))
+      // Only the eyes are guarded. An interface call is the agent's hands:
+      // re-centring on a cell the reader has since panned away from is the
+      // tool working, not a loop, so a camera move may repeat as often as
+      // the conversation needs it to.
+      const isRead = (call: AgentToolCallPart) =>
+        findToolDefinition(call.name)?.surface === 'read'
       for (const call of calls) {
         // Off-roster calls: a model can still emit a name it invented or
         // remembered from another session, so each gate the roster applied
@@ -656,6 +695,28 @@ export async function sendToAgent(input: {
           }
           continue
         }
+        if (isRead(call) && readsThisSend.has(callKey(call))) {
+          results.parts.push({
+            type: 'tool_result',
+            toolCallId: call.id,
+            name: call.name,
+            result: repeatReadRefusal(call.name),
+            isError: true,
+          })
+          // A row apiece, deliberately unlike the batch pause's single
+          // status line: that row states one fact about the turn, whereas
+          // these rows ARE the loop, and a reader looking back at a bad
+          // turn came to see it rather than a tidied summary of it.
+          push(sessionId, {
+            kind: 'tool',
+            name: call.name,
+            summary: REPEAT_READ_SUPPRESSED,
+            isError: true,
+            args: detailText(call.args),
+            result: detailText(repeatReadRefusal(call.name)),
+          })
+          continue
+        }
         try {
           const output = await dispatchTool(
             client,
@@ -667,6 +728,9 @@ export async function sendToAgent(input: {
           // Counted AFTER success: a write that failed changed nothing and
           // must not eat batch budget.
           if (isWrite(call)) writesThisSend += 1
+          // Recorded AFTER success, for the same reason: a read that threw
+          // put no result in the conversation to point the model back at.
+          if (isRead(call)) readsThisSend.add(callKey(call))
           results.parts.push({
             type: 'tool_result',
             toolCallId: call.id,

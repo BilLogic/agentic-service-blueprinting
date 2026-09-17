@@ -44,3 +44,16 @@ export const BATCH_LIMIT_REFUSAL = `Batch limit: ${WRITE_BATCH_LIMIT} writes alr
 
 /** The status row the transcript shows once per round when the batch limit bites. */
 export const BATCH_PAUSED_STATUS = `Paused after ${WRITE_BATCH_LIMIT} writes — reply "continue" for the next batch.`
+
+/**
+ * A read whose name and arguments the turn has already dispatched. The
+ * result is in the conversation and is deliberately NOT restated: the
+ * duplicated payload is half of what a repeat costs, and the model needs a
+ * pointer back to it rather than a second copy.
+ */
+export function repeatReadRefusal(name: string): string {
+  return `${name} already ran this turn with these exact arguments — its result is earlier in this conversation and is not repeated here. Read it there, or call again with different arguments.`
+}
+
+/** How a transcript row marks a repeat the loop answered instead of running. */
+export const REPEAT_READ_SUPPRESSED = 'Suppressed — already run this turn'
