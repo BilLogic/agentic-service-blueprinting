@@ -121,6 +121,10 @@ describe('a skill token that would send as prose', () => {
     expect(findUnrunSkillToken('look at src/lib')).toBeNull()
     expect(findUnrunSkillToken('do this and/or that')).toBeNull()
     expect(findUnrunSkillToken('on 2026/09/17')).toBeNull()
+    // This scan is NOT tail-anchored, so the path cases it has to refuse are
+    // its own to refuse: a token with a path behind it, and a URL.
+    expect(findUnrunSkillToken('check /sb:audit/notes.md')).toBeNull()
+    expect(findUnrunSkillToken('see http://example.test')).toBeNull()
   })
 })
 

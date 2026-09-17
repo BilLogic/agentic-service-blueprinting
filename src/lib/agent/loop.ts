@@ -488,6 +488,40 @@ export async function sendToAgent(input: {
     signal: controller.signal,
   }
 
+  /**
+   * The paragraphs that are true of THIS send rather than of the session:
+   * the tier, the no-database trial, a skill the user named and did not run,
+   * and the mobile shell. They sit after the cacheable prefix, so they are a
+   * function rather than part of `buildSystem` — and a function rather than
+   * an expression spelled at each call site, because it used to be spelled at
+   * one of two and the other went without: the closing call below passed the
+   * context and nothing else, so on the round-budget path the model was no
+   * longer told which tier it was on, that it had no database, or that a
+   * skill the message named had not run. That last is the path the notice
+   * exists for — the session that motivated it exhausted its rounds and then
+   * answered from the closing call.
+   *
+   * `mobileReading` is sampled per round, so it is the argument.
+   */
+  const sendNotes = (mobileReading: boolean): string =>
+    // The mobile paragraph subsumes the tier one — and they disagree
+    // about annotations (viewer tier has annotate_cells; the mobile
+    // roster does not), so only one may speak per send.
+    // The sample-trial paragraph subsumes the tier one too — with no
+    // database there is no tier to be outside of.
+    (allowWrites || mobileReading || sampleTrial
+      ? ''
+      : '\n\n--- session tier ---\nThis session is VIEW-ONLY (not a service account): you have no write tools. Navigate, read, annotate, and answer with citations; when the user wants an edit, describe the exact change for a service account to make — never imply you made it.') +
+    (sampleTrial
+      ? '\n\n--- sample data, no database ---\nThis app has NO database connected. Everything you can read is the template\'s bundled SAMPLE blueprint, and you have read and navigation tools only — no write tool exists in this session. Answer, explain, and navigate; when the user wants an edit, say plainly that authoring needs a connected database — never imply you changed anything.'
+      : '') +
+    (unrunSkill
+      ? `\n\n--- a skill the user named, which did not run ---\nThe user's message contains the token "/${unrunSkill.token}", which names the ${unrunSkill.label} skill, and they chose to send the message as text: the skill did NOT run and its instructions are NOT in this prompt. Do not describe it as having run, and do not summarise what it would have produced. Answer the message as written; where ${unrunSkill.label} is what the work needs, say so plainly and invite them to run it.`
+      : '') +
+    (mobileReading
+      ? '\n\n--- mobile shell ---\nThe user is on the MOBILE app, which is view-only for everyone — your tools are navigation and reading only (no writes, no annotations, no canvas mode switch). The mobile view is a vertical journey reader: scrolling down moves forward through the steps; a Map view shows the 2-D board. When the user wants an edit, explain it is made on desktop — never imply you made it.'
+      : '')
+
   try {
     for (let round = 0; round < MAX_ROUNDS; round += 1) {
       // Rebuilt every round: the live UI context changes as the agent's own
@@ -521,24 +555,7 @@ export async function sendToAgent(input: {
         .join('\n')
       const result = await adapter.chat({
         system:
-          buildSystem(liveContext, skill, roster) +
-          // The mobile paragraph subsumes the tier one — and they disagree
-          // about annotations (viewer tier has annotate_cells; the mobile
-          // roster does not), so only one may speak per send.
-          // The sample-trial paragraph subsumes the tier one too — with no
-          // database there is no tier to be outside of.
-          (allowWrites || mobileReading || sampleTrial
-            ? ''
-            : '\n\n--- session tier ---\nThis session is VIEW-ONLY (not a service account): you have no write tools. Navigate, read, annotate, and answer with citations; when the user wants an edit, describe the exact change for a service account to make — never imply you made it.') +
-          (sampleTrial
-            ? '\n\n--- sample data, no database ---\nThis app has NO database connected. Everything you can read is the template\'s bundled SAMPLE blueprint, and you have read and navigation tools only — no write tool exists in this session. Answer, explain, and navigate; when the user wants an edit, say plainly that authoring needs a connected database — never imply you changed anything.'
-            : '') +
-          (unrunSkill
-            ? `\n\n--- a skill the user named, which did not run ---\nThe user's message contains the token "/${unrunSkill.token}", which names the ${unrunSkill.label} skill, and they chose to send the message as text: the skill did NOT run and its instructions are NOT in this prompt. Do not describe it as having run, and do not summarise what it would have produced. Answer the message as written; where ${unrunSkill.label} is what the work needs, say so plainly and invite them to run it.`
-            : '') +
-          (mobileReading
-            ? '\n\n--- mobile shell ---\nThe user is on the MOBILE app, which is view-only for everyone — your tools are navigation and reading only (no writes, no annotations, no canvas mode switch). The mobile view is a vertical journey reader: scrolling down moves forward through the steps; a Map view shows the 2-D board. When the user wants an edit, explain it is made on desktop — never imply you made it.'
-            : ''),
+          buildSystem(liveContext, skill, roster) + sendNotes(mobileReading),
         systemStableLength,
         messages: run.messages,
         tools: roster.map(toolSpec),
@@ -736,11 +753,12 @@ export async function sendToAgent(input: {
           ],
         })
         const closing = await adapter.chat({
-          system: buildSystem(
-            [contextNote, collectAgentUiContext()].filter(Boolean).join('\n'),
-            skill,
-            roster,
-          ),
+          system:
+            buildSystem(
+              [contextNote, collectAgentUiContext()].filter(Boolean).join('\n'),
+              skill,
+              roster,
+            ) + sendNotes(mobileReading),
           systemStableLength,
           messages: run.messages,
           tools: [],

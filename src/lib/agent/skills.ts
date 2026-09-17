@@ -114,7 +114,9 @@ export type SkillLookup = { query: string; start: number; end: number }
  * pattern below. Two spellings of it drift, and the drift shows up as a
  * trigger that fires on a string the tests next door swear it refuses.
  */
-const SKILL_TOKEN_CHARS = '[a-zA-Z0-9._:-]'
+// The trailing `-` stays last: anywhere else in a class it is a range.
+const SKILL_TOKEN_INNER = 'a-zA-Z0-9._:-'
+const SKILL_TOKEN_CHARS = `[${SKILL_TOKEN_INNER}]`
 const LOOKUP_AT_HEAD = new RegExp(`^/(${SKILL_TOKEN_CHARS}*)$`)
 const LOOKUP_AFTER_SPACE = new RegExp(
   `[\\s。、？！]/(${SKILL_TOKEN_CHARS}*)$`,
@@ -188,8 +190,22 @@ export type UnrunSkillToken = {
   end: number
 }
 
+/**
+ * Every word-start slash token in the draft, wherever it sits. The lookup
+ * next door gets its path safety free from the `$` anchor — a token that has
+ * to be the last thing in the draft cannot have `/notes.md` behind it — and
+ * this scan, which reads the whole draft, has to say so itself: without the
+ * lookahead, "check /sb:audit/notes.md" stops the token at the slash,
+ * resolves it, and offers to run the audit on a path.
+ *
+ * The lookahead forbids a token character as well as a slash, and that is
+ * load-bearing rather than belt-and-braces: forbidding only the slash lets
+ * the match BACKTRACK to a shorter token — "sb:audi" — which satisfies it and
+ * leaves the scan reading tokens the reader never typed.
+ */
+const TOKEN_ENDS_HERE = `(?![/${SKILL_TOKEN_INNER}])`
 const SKILL_TOKEN_ANYWHERE = new RegExp(
-  `(?:^|[\\s。、？！])/(${SKILL_TOKEN_CHARS}+)`,
+  `(?:^|[\\s。、？！])/(${SKILL_TOKEN_CHARS}+)${TOKEN_ENDS_HERE}`,
   'g',
 )
 
