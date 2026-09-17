@@ -48,6 +48,9 @@ vi.mock('@/hooks/useMobileShell', () => ({ isMobileViewport: () => false }))
  * says which time it ran, so "the guard let this one through" is a fact
  * about dispatch rather than an inference from the text.
  */
+// Both mocks below are file-global though only the two cases that pass a
+// `client` reach them: a later test that takes one gets this stubbed board
+// and this fixed scope rather than the real modules.
 const board = vi.hoisted(() => ({ reads: 0 }))
 vi.mock('@/lib/agent/tools/read', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/agent/tools/read')>()),
@@ -259,24 +262,19 @@ describe('the loop, provider → tool → result → provider', () => {
 describe('a read the turn already ran', () => {
   it('refuses the repeat with a pointer rather than dispatching it again', async () => {
     provider.turns = [
-      {
-        parts: [call('r1', 'list_blueprint', { granularity: ['step'], scenario: 'Goal Setting' })],
-        stopReason: 'tool_use',
-      },
+      // The shape from the session that motivated the guard: a granularity
+      // LIST and a number, neither of which a string-only label survives.
+      { parts: [call('r1', 'list_blueprint', { granularity: ['phase'], limit: 5 })], stopReason: 'tool_use' },
       // Same call, arguments written in the other order: providers do not
       // promise key order between rounds, and neither does the model.
-      {
-        parts: [call('r2', 'list_blueprint', { scenario: 'Goal Setting', granularity: ['step'] })],
-        stopReason: 'tool_use',
-      },
+      { parts: [call('r2', 'list_blueprint', { limit: 5, granularity: ['phase'] })], stopReason: 'tool_use' },
       { parts: [{ type: 'text', text: 'Four phases.' }], stopReason: 'end' },
     ]
 
     const events = await send({ client: null, text: 'What phases are there?' })
 
-    // Round one ran: whatever the board said, it is the tool's answer.
-    expect(answerTo('r1').isError).toBeUndefined()
-    expect(answerTo('r1').result).not.toContain('already ran this turn')
+    // Round one ran and answered with the board.
+    expect(answerTo('r1').result).toMatch(/^\d+ of \d+:/)
     // Round two was refused, error-shaped, and the payload is NOT restated.
     const refused = answerTo('r2')
     expect(refused).toEqual({
@@ -286,10 +284,11 @@ describe('a read the turn already ran', () => {
       // The refusal NAMES the arguments — a turn can hold several reads of
       // one tool, and "list_blueprint already ran" would leave the model to
       // guess which earlier result it is being sent back to.
-      result: repeatReadRefusal('list_blueprint', 'scenario: Goal Setting'),
+      // The label echoes the call AS SENT — the match is order-independent,
+      // the label is not, and the model reads back the words it wrote.
+      result: repeatReadRefusal('list_blueprint', 'limit: 5, granularity: phase'),
       isError: true,
     })
-    expect(refused.result).toContain('Goal Setting')
     expect(refused.result).not.toMatch(/^\d+ of \d+:/)
     // The round budget is untouched: the turn ran on to its answer.
     expect(events.at(-1)).toEqual({ kind: 'assistant', text: 'Four phases.' })
@@ -320,7 +319,7 @@ describe('a read the turn already ran', () => {
         summary: REPEAT_READ_SUPPRESSED,
         isError: true,
         args: JSON.stringify({ granularity: ['phase'] }, null, 2),
-        result: repeatReadRefusal('list_blueprint', ''),
+        result: repeatReadRefusal('list_blueprint', 'granularity: phase'),
       },
       {
         kind: 'tool',
@@ -328,7 +327,7 @@ describe('a read the turn already ran', () => {
         summary: REPEAT_READ_SUPPRESSED,
         isError: true,
         args: JSON.stringify({ granularity: ['phase'] }, null, 2),
-        result: repeatReadRefusal('list_blueprint', ''),
+        result: repeatReadRefusal('list_blueprint', 'granularity: phase'),
       },
     ])
   })
@@ -355,7 +354,7 @@ describe('a read the turn already ran', () => {
 
     await send({ client: null, text: 'Show me that cell again' })
 
-    expect(answerTo('i2').result).not.toBe(repeatReadRefusal('focus_cell', 'cell_id: cell-1'))
+    expect(answerTo('i2').result).not.toContain('already ran this turn')
     expect(answerTo('i2').result).toBe(answerTo('i1').result)
   })
 
@@ -397,6 +396,36 @@ describe('a read the turn already ran', () => {
     expect(
       events.some((event) => event.kind === 'tool' && event.summary === REPEAT_READ_SUPPRESSED),
     ).toBe(false)
+  })
+
+  it('keeps suppressing a board read across a camera move, and re-observes the canvas after one', async () => {
+    // The adapter tells the model to `focus_cell` every time it names a
+    // cell, so reads and moves interleave constantly. A move that retired
+    // the whole record would empty it between every pair of reads — the
+    // four identical board reads, each politely separated by a focus.
+    provider.turns = [
+      { parts: [call('r1', 'list_blueprint', { granularity: ['phase'] })], stopReason: 'tool_use' },
+      { parts: [call('u1', 'get_ui_state', {})], stopReason: 'tool_use' },
+      { parts: [call('i1', 'focus_cell', { cell_id: 'cell-1' })], stopReason: 'tool_use' },
+      {
+        parts: [
+          call('r2', 'list_blueprint', { granularity: ['phase'] }),
+          call('u2', 'get_ui_state', {}),
+        ],
+        stopReason: 'tool_use',
+      },
+      { parts: [{ type: 'text', text: 'Here.' }], stopReason: 'end' },
+    ]
+
+    await send({ client: null, text: 'Which phase holds that cell?' })
+
+    // The camera moved; the board did not.
+    expect(answerTo('r2')).toMatchObject({
+      result: repeatReadRefusal('list_blueprint', 'granularity: phase'),
+      isError: true,
+    })
+    expect(answerTo('u2')).toMatchObject({ result: NO_UI_STATE })
+    expect(answerTo('u2').isError).toBeUndefined()
   })
 
   it('observes the canvas again after moving it — a navigation call retires the record too', async () => {
