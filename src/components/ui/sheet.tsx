@@ -52,6 +52,7 @@ function SheetOverlay({ className, ...props }: SheetPrimitive.Backdrop.Props) {
 
 function SheetContent({
   className,
+  overlayClassName,
   children,
   side = "right",
   showCloseButton = true,
@@ -59,10 +60,20 @@ function SheetContent({
 }: SheetPrimitive.Popup.Props & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
+  /*
+   * ADDITION to the vendored source, allowed only with a stated reason.
+   * The scrim is not decoration here: it washes the page to ~10% and blurs
+   * it, so a caller whose panel sits OVER live, moving content needs a way
+   * to stand the scrim down for the duration of that movement. The mobile
+   * agent sheet is that caller. Reached through the content rather than by
+   * exporting the overlay, because the overlay is mounted by this component
+   * and a second one rendered by a caller would be a second scrim.
+   */
+  overlayClassName?: string
 }) {
   return (
     <SheetPortal>
-      <SheetOverlay />
+      <SheetOverlay className={overlayClassName} />
       <SheetPrimitive.Popup
         data-slot="sheet-content"
         {...ground("popover")}

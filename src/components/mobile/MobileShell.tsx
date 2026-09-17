@@ -35,7 +35,12 @@ import {
   resolveDefaultPathId,
   writeLastViewedPath,
 } from '@/lib/mobilePathMemory'
-import { makeMobileAgentBridge } from '@/components/mobile/mobileAgentBridge'
+import {
+  makeAgentCameraFlightWatcher,
+  makeMobileAgentBridge,
+} from '@/components/mobile/mobileAgentBridge'
+import { focusAgentComposer } from '@/lib/agent/composerFocus'
+import { waitForCanvasNavigationOutcome } from '@/lib/canvasNavigationOutcome'
 import { getMainSlides, getSlideDisplayLabel, getSubslides } from '@/types/nav'
 import type { NavItem } from '@/types/nav'
 import { useActiveServiceId } from '@/contexts/activeService'
@@ -96,6 +101,20 @@ export function MobileShell() {
   const [navOpen, setNavOpen] = useState(false)
   const [navSurface, setNavSurface] = useState<MobileNavSurface>('blueprints')
   const [agentOpen, setAgentOpen] = useState(false)
+  /*
+    What the agent sheet takes off the bottom of the canvas, and whether the
+    camera is in the air.
+
+    These two are the whole reason an agent-driven jump no longer closes the
+    sheet. The occluded height goes to the canvas as a fit inset, so the
+    destination lands in the strip above the panel rather than behind it; the
+    flight flag goes to the sheet, which fades its scrim out for the duration
+    of the move. The sheet is measured rather than assumed — see its own
+    note — and it reports 0 the moment it unmounts, so a closed sheet costs
+    the camera nothing.
+  */
+  const [agentSheetOccludedPx, setAgentSheetOccludedPx] = useState(0)
+  const [cameraFlying, setCameraFlying] = useState(false)
   const closeNavDrawer = useCallback(() => setNavOpen(false), [])
   useEditorNavCloser(closeNavDrawer)
 
@@ -188,26 +207,55 @@ export function MobileShell() {
     writeLastViewedPath(selectedScenarioId, pathId)
   }
 
-  // Agent-driven navigation closes the sheet first and leaves any slice tab
-  // for the base canvas — a jump should be VISIBLE, not land behind an
-  // opaque surface.
+  /*
+    Agent-driven navigation KEEPS the sheet and leaves any slice tab for the
+    base canvas. A jump should be visible, and the sheet used to buy that by
+    closing — which took the conversation away mid-run, in the one moment a
+    reader most needs it: the session keeps going in the module whether or not
+    a surface is showing it, so a turn that failed after the jump had nowhere
+    to report the failure. Now the sheet's scrim clears for the flight instead,
+    and the camera is told what the sheet covers.
+
+    The watcher reads the canvas's published verdict and nothing reads back.
+    The canvas keeps its own clock: it reports where it got to and is never
+    told when to be there, so the scrim waits on the camera and the camera
+    waits on nothing.
+  */
+  const agentOpenRef = useRef(agentOpen)
+  useEffect(() => {
+    agentOpenRef.current = agentOpen
+  }, [agentOpen])
+  const watchCameraFlight = useMemo(
+    () =>
+      makeAgentCameraFlightWatcher({
+        awaitOutcome: waitForCanvasNavigationOutcome,
+        setFlying: setCameraFlying,
+        // The caret goes back to where the reader left it. A jump they asked
+        // for in words should not cost them a tap to carry on in words.
+        onSettled: focusAgentComposer,
+      }),
+    [],
+  )
   useEffect(
     () =>
       registerAgentUiBridge(
         makeMobileAgentBridge({
           selectPhase: (phaseId) => {
-            setAgentOpen(false)
+            // A jump with the sheet already closed has no scrim to clear and
+            // no composer to hand the caret back to: leave it exactly as it
+            // was rather than arming a watcher for nobody.
+            if (agentOpenRef.current) void watchCameraFlight(phaseId)
             activateTab(null)
             selectPhase(phaseId)
           },
           selectScenario: (scenarioId) => {
-            setAgentOpen(false)
+            if (agentOpenRef.current) void watchCameraFlight(scenarioId)
             openScenario(scenarioId, { closeNav: true })
           },
           openAgent: () => setAgentOpen(true),
         }),
       ),
-    [selectPhase, openScenario, activateTab],
+    [selectPhase, openScenario, activateTab, watchCameraFlight],
   )
 
   // What the shell knows about the phone's screen, for get_ui_state.
@@ -351,6 +399,7 @@ export function MobileShell() {
                         soloScenarioId={displayedScenarioId ?? undefined}
                         soloPhaseId={selectedPhaseId ?? undefined}
                         renderHeader={() => null}
+                        occludedBottomPx={agentSheetOccludedPx}
                         onInitialFitReady={onIncomingFitReady}
                       />
                     </div>
@@ -400,7 +449,12 @@ export function MobileShell() {
       ) : null}
 
       {canAgent ? (
-        <MobileAgentSheet open={agentOpen} onOpenChange={setAgentOpen} />
+        <MobileAgentSheet
+          open={agentOpen}
+          onOpenChange={setAgentOpen}
+          backdropCleared={cameraFlying}
+          onOccludedHeightChange={setAgentSheetOccludedPx}
+        />
       ) : null}
     </CanvasModeProvider>
   )
