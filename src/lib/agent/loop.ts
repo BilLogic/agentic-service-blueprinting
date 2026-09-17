@@ -93,17 +93,29 @@ const ROLE = roleDoc.trimEnd()
  */
 export function buildSystem(
   contextNote: string,
-  skill: AgentSkillCommand | null | undefined,
+  skills: readonly AgentSkillCommand[],
   roster: readonly ToolDefinition[],
 ): string {
   const doctrine = agentDoctrine()
+  const invoked = skills.filter((skill) => skill.content)
   return [
     ROLE,
     '\n\n--- canvas-adapter reference (FULL text — get_reference serves the other, deeper references) ---\n',
     readReference('canvas-adapter', roster),
     doctrine ? `\n\n--- deployment doctrine ---\n${doctrine}` : '',
-    skill?.content
-      ? `\n\n--- active skill: ${skill.label} (invoked by the user; the same SKILL.md IDE agents follow) ---\n${skill.content}\n\nYou are the canvas agent, not an IDE agent: skip the skill's file/script/CLI mechanics and act through your tools, translated by the canvas-adapter above. The skill's judgment — what makes a good blueprint/slice, the order of questions, the quality bars — applies in full.`
+    // One block per skill, in the order they were picked; the paragraph that
+    // translates a skill for this surface follows them ONCE, because it is
+    // the same sentence about every one of them and N copies of it would
+    // read as N different instructions.
+    ...invoked.map(
+      (skill) =>
+        `\n\n--- active skill: ${skill.label} (invoked by the user; the same SKILL.md IDE agents follow) ---\n${skill.content}`,
+    ),
+    invoked.length > 1
+      ? `\n\nThe user invoked these skills together, in this order: ${invoked.map((skill) => skill.label).join(' → ')}. Work through them in that order — each one's own flow, in full — rather than blending them into one pass.`
+      : '',
+    invoked.length > 0
+      ? `\n\nYou are the canvas agent, not an IDE agent: skip the skill's file/script/CLI mechanics and act through your tools, translated by the canvas-adapter above. The skill's judgment — what makes a good blueprint/slice, the order of questions, the quality bars — applies in full.`
       : '',
     contextNote ? `\n\n--- current context ---\n${contextNote}` : '',
   ].join('')
@@ -119,7 +131,16 @@ export type TranscriptEvent =
   | {
       kind: 'user'
       text: string
-      /** Slash-skill id when the message invoked one (rendered as a badge). */
+      /**
+       * Every skill the message invoked, in pick order — a message carries as
+       * many as the reader picked, and a turn that reads back with one of
+       * them is a turn that reads back wrong.
+       */
+      skills?: string[]
+      /**
+       * The single id earlier releases wrote. Persisted rows still carry it,
+       * so the transcript reads it; nothing writes it.
+       */
       skill?: string
       /** Attachment label when the message carried one. */
       attachmentLabel?: string
@@ -391,8 +412,11 @@ export async function sendToAgent(input: {
   settings: AgentSettings
   contextNote: string
   text: string
-  /** Slash-skill invoked with this message (its SKILL.md joins the system prompt). */
-  skill?: AgentSkillCommand | null
+  /**
+   * The skills invoked with this message, in pick order — every one of their
+   * SKILL.md bodies joins the system prompt.
+   */
+  skills?: readonly AgentSkillCommand[]
   /**
    * A skill this message NAMES and deliberately did not run — the reader was
    * asked and chose to send their sentence as prose. The model is told so, in
@@ -416,10 +440,10 @@ export async function sendToAgent(input: {
     settings,
     contextNote,
     text,
-    skill,
     unrunSkill,
     attachment,
   } = input
+  const skills = input.skills ?? []
   const allowWrites = input.allowWrites !== false
   const run = runFor(sessionId)
   if (run.running) return
@@ -443,7 +467,9 @@ export async function sendToAgent(input: {
   push(sessionId, {
     kind: 'user',
     text,
-    ...(skill ? { skill: skill.id } : {}),
+    ...(skills.length > 0
+      ? { skills: skills.map((entry) => entry.id) }
+      : {}),
     ...(attachment
       ? { attachmentLabel: attachment.label, attachmentPayload: attachment.payload }
       : {}),
@@ -511,17 +537,20 @@ export async function sendToAgent(input: {
         allowWrites,
         searchOffered: searchPlan.offered,
       })
-      // The stable system prefix (role + adapter + doctrine + skill —
-      // everything before the live context) is byte-identical across this
-      // send's rounds while the roster holds; its length lets caching
-      // providers put a cache breakpoint there.
-      const systemStableLength = buildSystem('', skill, roster).length
+      // The stable system prefix (role + adapter + doctrine + EVERY skill
+      // this message carries — everything before the live context) is
+      // byte-identical across this send's rounds while the roster holds; its
+      // length lets caching providers put a cache breakpoint there. It is
+      // measured through the same builder the prompt is assembled with, so a
+      // message carrying several skill bodies moves the breakpoint past all
+      // of them rather than cutting the prompt mid-skill.
+      const systemStableLength = buildSystem('', skills, roster).length
       const liveContext = [contextNote, collectAgentUiContext()]
         .filter(Boolean)
         .join('\n')
       const result = await adapter.chat({
         system:
-          buildSystem(liveContext, skill, roster) +
+          buildSystem(liveContext, skills, roster) +
           // The mobile paragraph subsumes the tier one — and they disagree
           // about annotations (viewer tier has annotate_cells; the mobile
           // roster does not), so only one may speak per send.
@@ -738,7 +767,7 @@ export async function sendToAgent(input: {
         const closing = await adapter.chat({
           system: buildSystem(
             [contextNote, collectAgentUiContext()].filter(Boolean).join('\n'),
-            skill,
+            skills,
             roster,
           ),
           systemStableLength,

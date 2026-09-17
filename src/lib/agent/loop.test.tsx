@@ -54,6 +54,7 @@ vi.mock('@/lib/authoringRpc', async (importOriginal) => ({
 
 import { setActiveService } from '@/contexts/activeService'
 import { sendToAgent, useAgentRun } from '@/lib/agent/loop'
+import { AGENT_SKILL_COMMANDS } from '@/lib/agent/skills'
 import { PACKAGE_OFFLINE_BOARD } from '@/data/blueprintFallbacks'
 import type { AgentSettings } from '@/lib/agent/settings'
 import { SAMPLE_TRIAL_REFUSAL, noSuchToolRefusal } from '@/lib/agent/tools/refusals'
@@ -224,5 +225,31 @@ describe('the loop, provider → tool → result → provider', () => {
     expect(system).toContain('Do not describe it as having run')
     // A notice, not an invocation: the skill body stays out of the prompt.
     expect(system).not.toContain('--- active skill')
+  })
+
+  it('carries several skills: every body in pick order, one translation note, and the cache breakpoint past them all', async () => {
+    provider.turns = [{ parts: [{ type: 'text', text: 'On it.' }], stopReason: 'end' }]
+    const map = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:map')!
+    const audit = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:audit')!
+    const events = await send({
+      client,
+      text: 'build this from my notes, then check it',
+      skills: [map, audit],
+    })
+    const { system, systemStableLength } = provider.inputs[0]!
+    expect(system.indexOf('--- active skill: /sb:map')).toBeLessThan(
+      system.indexOf('--- active skill: /sb:audit'),
+    )
+    expect(system).toContain('in this order: /sb:map → /sb:audit')
+    // The sentence that translates a skill for this surface is about all of
+    // them, so it is said once rather than per skill.
+    expect(system.split('You are the canvas agent, not an IDE agent')).toHaveLength(2)
+    // The cache breakpoint sits past EVERY body, not mid-skill: the prefix it
+    // measures has to be the whole stable prompt.
+    const stable = system.slice(0, systemStableLength)
+    expect(stable).toContain(map.content!.trimEnd().slice(-60))
+    expect(stable).toContain(audit.content!.trimEnd().slice(-60))
+    // The turn reads back with both, not just the first.
+    expect(events[0]).toMatchObject({ kind: 'user', skills: ['sb:map', 'sb:audit'] })
   })
 })

@@ -119,17 +119,18 @@ export function AgentChatView({
   // longer eats what you were typing.
   const storedDraft = useAgentDraft(session.id)
   const draft = storedDraft.text
-  const pendingSkill = storedDraft.skillId
-    ? (AGENT_SKILL_COMMANDS.find(
-        (entry) => entry.id === storedDraft.skillId,
-      ) ?? null)
-    : null
+  // The skills this message carries, in pick order — resolved from the ids
+  // the store holds, so a skill a later release drops falls out of an old
+  // draft instead of rendering an empty badge.
+  const pendingSkills = storedDraft.skillIds.flatMap(
+    (id) => AGENT_SKILL_COMMANDS.find((entry) => entry.id === id) ?? [],
+  )
   const setDraft = (text: string) =>
-    setAgentDraft(session.id, { text, skillId: storedDraft.skillId })
-  const setPendingSkill = (command: AgentSkillCommand | null) =>
+    setAgentDraft(session.id, { text, skillIds: storedDraft.skillIds })
+  const dropPendingSkill = (id: string) =>
     setAgentDraft(session.id, {
       text: storedDraft.text,
-      skillId: command?.id ?? null,
+      skillIds: storedDraft.skillIds.filter((entry) => entry !== id),
     })
   const attachment = usePendingAgentAttachment()
   const { events, running } = useAgentRun(session.id)
@@ -184,7 +185,7 @@ export function AgentChatView({
   // it sits — the rule and the spans it reports live in skills.ts, because
   // the strings it must NOT fire on (a reference path, a URL, `and/or`, a
   // date) are worth a table of tests and not a condition in a render body.
-  const slashLookup = pendingSkill ? null : findSkillLookup(draft)
+  const slashLookup = findSkillLookup(draft)
   const slashMatches = slashLookup
     ? AGENT_SKILL_COMMANDS.filter((command) =>
         skillMatchesQuery(command, slashLookup.query),
@@ -223,12 +224,17 @@ export function AgentChatView({
   // half-way through — and once a lookup can open mid-sentence, there is
   // always a sentence to eat. No caret write is needed: the token ran to the
   // end of the draft, so the shortened value leaves the caret where it was.
+  // Picked twice counts once, and the order is the order they were picked:
+  // the message is a sequence of flows, and appending is what makes "build
+  // this from my notes, then check it" one message rather than two.
   const pickSkill = (command: AgentSkillCommand) => {
     if (!command.content || !slashLookup) return
     setUnrunSkill(null)
     setAgentDraft(session.id, {
       text: spliceSkillLookup(draft, slashLookup),
-      skillId: command.id,
+      skillIds: storedDraft.skillIds.includes(command.id)
+        ? storedDraft.skillIds
+        : [...storedDraft.skillIds, command.id],
     })
   }
 
@@ -239,21 +245,28 @@ export function AgentChatView({
    */
   const dispatch = (
     draftText: string,
-    skill: AgentSkillCommand | null,
+    picked: readonly AgentSkillCommand[],
     unrun: UnrunSkillToken | null,
   ) => {
     let text = draftText.trim()
+    let skills = picked
     // Typed-through form: "/sb:map turn my notes into a scenario" sends in
     // one go.
-    if (!skill) {
+    if (skills.length === 0) {
       const parsed = parseSkillDraft(text)
       if (parsed?.command.content) {
-        skill = parsed.command
+        skills = [parsed.command]
         text = parsed.rest
       }
     }
     const attached = takePendingAgentAttachment()
-    if (!text && skill) text = `Run ${skill.label} from the top of its flow.`
+    // Skills and no words is a complete instruction — and with several, the
+    // order is the instruction.
+    if (!text && skills.length > 0)
+      text =
+        skills.length === 1
+          ? `Run ${skills[0].label} from the top of its flow.`
+          : `Run ${skills.map((skill) => skill.label).join(', then ')} — each from the top of its flow, in that order.`
     if (!text && attached) text = 'Here are my canvas annotations.'
     // The trial runs with NO client on purpose — sample reads, no writes.
     if (!text || running || (!client && !isSampleTrial)) {
@@ -270,7 +283,7 @@ export function AgentChatView({
       settings,
       contextNote,
       text,
-      skill,
+      skills,
       unrunSkill: unrun
         ? { token: unrun.token, label: unrun.command.label }
         : null,
@@ -283,20 +296,20 @@ export function AgentChatView({
     // Asked ALREADY, and pressed again: the reader has read the question and
     // means the message, so it goes as prose — with the model told.
     if (unrunSkill) {
-      dispatch(draft, null, unrunSkill)
+      dispatch(draft, [], unrunSkill)
       return
     }
     // An unpicked skill token is never silent. A sentence that names a skill
     // and carries no skill is the one case where sending straight through is
     // a guess about what the reader meant, so it asks — once.
-    if (!pendingSkill) {
+    if (pendingSkills.length === 0) {
       const named = findUnrunSkillToken(draft)
       if (named) {
         setUnrunSkill(named)
         return
       }
     }
-    dispatch(draft, pendingSkill, null)
+    dispatch(draft, pendingSkills, null)
   }
 
   return (
@@ -506,7 +519,7 @@ export function AgentChatView({
                 onClick={() =>
                   dispatch(
                     spliceSkillLookup(draft, unrunSkill),
-                    unrunSkill.command,
+                    [unrunSkill.command],
                     null,
                   )
                 }
@@ -516,7 +529,7 @@ export function AgentChatView({
               <Button
                 size="xs"
                 variant="outline"
-                onClick={() => dispatch(draft, null, unrunSkill)}
+                onClick={() => dispatch(draft, [], unrunSkill)}
               >
                 Send as text
               </Button>
@@ -611,24 +624,36 @@ export function AgentChatView({
               The old hand-rolled wrapper stacked a 1px border and a 2px ring
               on a borderless textarea: the box-around-a-box. */}
           <InputGroup className="min-h-8 flex-1">
-            {pendingSkill ? (
-              <InputGroupAddon align="inline-start" className="self-start py-2">
-                <Badge
-                  variant="secondary"
-                  className="gap-1 border-primary/25 bg-primary/10 font-mono text-primary"
-                >
-                  {pendingSkill.label}
-                  <IconTooltip label="Drop the skill from this message">
-                    <button
-                      type="button"
-                      aria-label="Remove skill"
-                      onClick={() => setPendingSkill(null)}
-                      className="rounded-md p-1 transition-colors hover:bg-primary/15"
+            {pendingSkills.length > 0 ? (
+              /* One badge per skill, each dropped on its own — the others and
+                 the prose stay. They wrap rather than scroll: the row is as
+                 tall as the reader's message needs, and there is no cap on
+                 how many skills that is. */
+              <InputGroupAddon
+                align="inline-start"
+                className="flex-wrap self-start py-2"
+              >
+                {pendingSkills.map((skill) => (
+                  <Badge
+                    key={skill.id}
+                    variant="secondary"
+                    className="gap-1 border-primary/25 bg-primary/10 font-mono text-primary"
+                  >
+                    {skill.label}
+                    <IconTooltip
+                      label={`Drop ${skill.label} from this message`}
                     >
-                      <X className="size-2.5" aria-hidden />
-                    </button>
-                  </IconTooltip>
-                </Badge>
+                      <button
+                        type="button"
+                        aria-label={`Remove ${skill.label}`}
+                        onClick={() => dropPendingSkill(skill.id)}
+                        className="rounded-md p-1 transition-colors hover:bg-primary/15"
+                      >
+                        <X className="size-2.5" aria-hidden />
+                      </button>
+                    </IconTooltip>
+                  </Badge>
+                ))}
               </InputGroupAddon>
             ) : null}
             <InputGroupTextarea
@@ -643,18 +668,17 @@ export function AgentChatView({
                 const value = event.target.value
                 // Typing a full command + space converts it into the badge
                 // on the spot — the token is recognized, not just text.
-                if (!pendingSkill) {
-                  const token = /^\/([\w:]+)\s([\s\S]*)$/.exec(value)
-                  const command = token
-                    ? findSkillByToken(token[1])
-                    : undefined
-                  if (command?.content) {
-                    setAgentDraft(session.id, {
-                      text: token![2],
-                      skillId: command.id,
-                    })
-                    return
-                  }
+                const token = /^\/([\w:]+)\s([\s\S]*)$/.exec(value)
+                const command = token ? findSkillByToken(token[1]) : undefined
+                if (
+                  command?.content &&
+                  !storedDraft.skillIds.includes(command.id)
+                ) {
+                  setAgentDraft(session.id, {
+                    text: token![2],
+                    skillIds: [...storedDraft.skillIds, command.id],
+                  })
+                  return
                 }
                 // The question was about the draft as it stood; editing it is
                 // an answer to neither choice, so it goes away.
@@ -700,9 +724,11 @@ export function AgentChatView({
                 if (
                   event.key === 'Backspace' &&
                   draft === '' &&
-                  pendingSkill
+                  pendingSkills.length > 0
                 ) {
-                  setPendingSkill(null)
+                  // Backwards through the badges, newest first — the same
+                  // direction the key deletes text in.
+                  dropPendingSkill(pendingSkills[pendingSkills.length - 1].id)
                   return
                 }
                 if (event.key === 'Enter' && !event.shiftKey) {
@@ -711,9 +737,11 @@ export function AgentChatView({
                 }
               }}
               placeholder={
-                pendingSkill
-                  ? pendingSkill.summary
-                  : keyed
+                pendingSkills.length === 1
+                  ? pendingSkills[0].summary
+                  : pendingSkills.length > 1
+                    ? `${pendingSkills.length} skills, run in the order shown`
+                    : keyed
                     ? 'Message the agent… ("/" for skills)'
                     : 'Add an API key in agent settings first'
               }
@@ -730,7 +758,9 @@ export function AgentChatView({
               disabled={
                 !keyed ||
                 running ||
-                (draft.trim() === '' && !pendingSkill && !attachment)
+                (draft.trim() === '' &&
+                  pendingSkills.length === 0 &&
+                  !attachment)
               }
               onClick={send}
             >

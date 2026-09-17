@@ -19,7 +19,7 @@
  * probe, and the provider adapter — the same seams the agent-session slice
  * fakes and for the same reasons. There is no database and no network.
  */
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ChatInput, ChatResult } from '@/lib/agent/providers/provider'
 
@@ -71,7 +71,21 @@ function openComposer(): HTMLElement {
 const type = (composer: HTMLElement, value: string) =>
   fireEvent.change(composer, { target: { value } })
 
-const menuOption = (label: string) => screen.queryByText(label)
+/**
+ * The menu's row for a skill — scoped to the popover, because the badge on
+ * an already-picked skill carries the same label and a bare text query would
+ * find whichever the DOM happened to hold first.
+ */
+const menuOption = (label: string) => {
+  const menu = screen.queryByLabelText('Agent skills')
+  return menu ? within(menu).queryByText(label) : null
+}
+
+/** Pick a skill through the menu, the way a reader does. */
+const pick = (composer: HTMLElement, typed: string, label: string) => {
+  type(composer, typed)
+  fireEvent.click(menuOption(label)!)
+}
 
 beforeAll(() => {
   // cmdk measures its list, and the menu scrolls the highlight into view —
@@ -104,12 +118,11 @@ afterEach(() => {
 describe('the composer opens a skill lookup wherever a slash opens a word', () => {
   it('opens on a token typed mid-sentence, and picking keeps the prose around it', () => {
     const composer = openComposer()
-    type(composer, 'Hey can u /sb:aud')
-    fireEvent.click(screen.getByText('/sb:audit'))
+    pick(composer, 'Hey can u /sb:aud', '/sb:audit')
     // The badge stands where the token was; the words before it are still
     // the reader's message, and they are what sends.
     expect((composer as HTMLTextAreaElement).value).toBe('Hey can u ')
-    expect(screen.getByRole('button', { name: 'Remove skill' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Remove /sb:audit' })).toBeTruthy()
   })
 
   it('finds a skill by the segment after its namespace', () => {
@@ -183,11 +196,52 @@ describe('a message that names a skill it does not carry', () => {
 
   it('leaves a message carrying a skill alone', async () => {
     const composer = openComposer()
-    type(composer, 'Hey can u /sb:aud')
-    fireEvent.click(screen.getByText('/sb:audit'))
+    pick(composer, 'Hey can u /sb:aud', '/sb:audit')
     type(composer, 'Hey can u check the goal setting scenario')
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
     expect(screen.queryByRole('button', { name: 'Send as text' })).toBeNull()
+  })
+})
+
+describe('one message carrying several skills', () => {
+  it('holds a badge per skill in pick order, each dropped on its own', () => {
+    const composer = openComposer()
+    pick(composer, 'build this from my notes /sb:map', '/sb:map')
+    pick(composer, 'build this from my notes then check it /sb:aud', '/sb:audit')
+    expect(
+      screen.getAllByRole('button', { name: /^Remove \/sb:/ }).map(
+        (button) => button.getAttribute('aria-label'),
+      ),
+    ).toEqual(['Remove /sb:map', 'Remove /sb:audit'])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove /sb:map' }))
+    expect(screen.queryByRole('button', { name: 'Remove /sb:map' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Remove /sb:audit' })).toBeTruthy()
+    // The prose is nobody's collateral.
+    expect((composer as HTMLTextAreaElement).value).toBe(
+      'build this from my notes then check it ',
+    )
+  })
+
+  it('counts a skill picked twice once', () => {
+    const composer = openComposer()
+    pick(composer, '/sb:map', '/sb:map')
+    pick(composer, 'and /sb:map', '/sb:map')
+    expect(screen.getAllByRole('button', { name: 'Remove /sb:map' })).toHaveLength(1)
+  })
+
+  it('sends every picked skill, and an instruction when the prose is empty', async () => {
+    const composer = openComposer()
+    pick(composer, '/sb:map', '/sb:map')
+    pick(composer, '/sb:aud', '/sb:audit')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
+    const sent = provider.inputs[0]!
+    expect(sent.system).toContain('--- active skill: /sb:map')
+    expect(sent.system).toContain('--- active skill: /sb:audit')
+    expect(JSON.stringify(sent.messages)).toContain(
+      'Run /sb:map, then /sb:audit — each from the top of its flow, in that order.',
+    )
   })
 })

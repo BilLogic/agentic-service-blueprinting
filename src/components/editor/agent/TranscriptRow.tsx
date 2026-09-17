@@ -177,17 +177,22 @@ export function TranscriptRow({
   event: TranscriptEvent
 }) {
   switch (event.kind) {
-    case 'user':
+    case 'user': {
+      // Every skill the message invoked, in the order it invoked them. The
+      // `skill` fallback is what earlier releases wrote when a message could
+      // only carry one, and a persisted row still has it — a turn read back
+      // from the database must not lose the badge it was sent with.
+      const invokedSkills = event.skills ?? (event.skill ? [event.skill] : [])
       return (
         <Message align="end">
           <MessageContent>
-            {event.skill || event.attachmentLabel ? (
-              <div className="mb-1 flex justify-end gap-1">
-                {event.skill ? (
-                  <Badge variant="secondary" className="font-mono">
-                    /{event.skill}
+            {invokedSkills.length > 0 || event.attachmentLabel ? (
+              <div className="mb-1 flex flex-wrap justify-end gap-1">
+                {invokedSkills.map((skill) => (
+                  <Badge key={skill} variant="secondary" className="font-mono">
+                    /{skill}
                   </Badge>
-                ) : null}
+                ))}
                 {event.attachmentLabel ? (
                   <Badge variant="outline">
                     <Pencil aria-hidden />
@@ -204,6 +209,7 @@ export function TranscriptRow({
           </MessageContent>
         </Message>
       )
+    }
     case 'assistant':
       return (
         <Message>
