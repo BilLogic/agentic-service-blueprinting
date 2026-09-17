@@ -35,3 +35,17 @@ export const listUiCommandsTool = defineTool({
   availability: { sample: false, mobile: false },
   run: async (_args, ctx) => ctx.ui.listCommands(),
 })
+
+/**
+ * The two reads whose answer is the SCREEN rather than the board: what the
+ * user is looking at, and which controls the open surfaces have registered.
+ * Named from the definitions themselves, here beside them, because they are
+ * the reads a canvas move falsifies — moving the camera changes what
+ * `get_ui_state` would say and nothing about what a scenario contains — and
+ * something outside this module has to know which reads those are without
+ * a field on every definition saying so.
+ */
+export const UI_SURFACE_READ_TOOLS: readonly string[] = [
+  getUiStateTool.name,
+  listUiCommandsTool.name,
+]
