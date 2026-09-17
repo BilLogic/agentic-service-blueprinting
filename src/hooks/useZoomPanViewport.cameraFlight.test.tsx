@@ -52,7 +52,10 @@ let cameraState: () => {
 }
 let panCamera: (dx: number, dy: number) => void
 let refitCamera: () => false | Promise<CameraTransitionResult>
-let focusCamera: (ids: string[]) => Promise<FocusCellsResult>
+let focusCamera: (
+  ids: string[],
+  opts?: { animate?: boolean },
+) => Promise<FocusCellsResult>
 
 function Harness({
   resetKey,
@@ -64,6 +67,7 @@ function Harness({
   onFitReady,
   containerSize = { width: 1000, height: 600 },
   mountBoard = true,
+  fitBottomInset = 0,
 }: {
   resetKey: string
   target: Rect
@@ -75,12 +79,15 @@ function Harness({
   containerSize?: { width: number; height: number }
   /** False omits the board node so a sized viewport cannot measure it. */
   mountBoard?: boolean
+  /** Height of a surface occluding the bottom edge (the phone's agent sheet). */
+  fitBottomInset?: number
 }) {
   const camera = useZoomPanViewport({
     resetKey,
     fitSelector: '[data-target]',
     fitMargin: 0,
     fitTopInset: 0,
+    fitBottomInset,
     maxFitZoom: 4,
     animateFit: true,
     refitOnResize: false,
@@ -257,6 +264,59 @@ describe('viewport camera flights', () => {
       await Promise.resolve()
     })
     expect(onFitReady).toHaveBeenCalledTimes(1)
+  })
+
+  /*
+    The phone keeps its agent sheet open across a jump, so the lower 60% of
+    the screen is opaque. Both camera moves have to frame inside what is left:
+    a fit already reads the inset, and a focus centred on the raw container
+    until this pair pinned it.
+  */
+  it('fits inside the strip a bottom-occluding surface leaves visible', () => {
+    render(
+      <Harness
+        resetKey="occluded"
+        target={{ left: 0, top: 0, width: 1000, height: 100 }}
+        fitBottomInset={300}
+      />,
+    )
+    act(() => {
+      flushFrame(0)
+      flushFrame(16)
+    })
+
+    const camera = cameraState()
+    expect(camera.zoom).toBeCloseTo(1)
+    // Centred in the visible 300px, not in the 600px container (which would
+    // have put the target's middle at y=300 — exactly on the sheet's edge).
+    expect(camera.pan.y).toBeCloseTo(100)
+    expect(camera.pan.y + 100 * camera.zoom).toBeLessThan(300)
+  })
+
+  it('flies a focused cell above a bottom-occluding surface', async () => {
+    render(
+      <Harness
+        resetKey="occluded"
+        target={{ left: 0, top: 0, width: 100, height: 100 }}
+        fitBottomInset={300}
+      />,
+    )
+    act(() => {
+      flushFrame(0)
+      flushFrame(16)
+    })
+    act(() => panCamera(0, -250))
+    expect(cameraState().pan.y).toBeCloseTo(-250)
+
+    await act(async () => {
+      await focusCamera(['cell-1'], { animate: false })
+    })
+
+    const camera = cameraState()
+    // The cell's centre lands at 150 — the middle of the visible strip —
+    // rather than at 300, which is behind the surface.
+    expect(camera.pan.y).toBeCloseTo(0)
+    expect(camera.pan.y + 50 * camera.zoom).toBeCloseTo(150)
   })
 
   it('finishes a nearby recenter inside the distance-aware timing floor', () => {

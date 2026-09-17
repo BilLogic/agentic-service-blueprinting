@@ -41,14 +41,30 @@ export type CanvasFocusFitInsets = {
  * Breathing room around the framed target.
  * Focus uses a tight margin so the selected scenario fills the viewport
  * without clipping; bottom inset clears the prev/next nav controls.
+ *
+ * `occludedBottomPx` is a surface actually SITTING on the canvas's bottom
+ * edge — on the phone, the agent sheet, which owns the lower 60% of the
+ * screen and is opaque. Without it the camera centres a target the reader
+ * cannot see, because half the viewport it centred in is behind a panel.
+ *
+ * It lands differently in the two branches, and the difference is the
+ * clearance each one keeps. Focus keeps 56px for the bottom controls, which
+ * live INSIDE the strip the sheet covers, so the occlusion takes that
+ * clearance over rather than stacking on it — stacked, the two would frame
+ * the target into a sliver for no gain. The overview keeps no bottom
+ * clearance at all, so there is nothing for the occlusion to win against and
+ * it is the whole inset.
  */
-export function getCanvasFocusFitInsets(view: EditorView): CanvasFocusFitInsets {
+export function getCanvasFocusFitInsets(
+  view: EditorView,
+  occludedBottomPx = 0,
+): CanvasFocusFitInsets {
   if (view === 'home' || view === 'landing') {
     return {
       margin: BLUEPRINT_VIEWPORT_ARTBOARD_MARGIN,
       // Sticky navbar sits outside the viewport — no overlay inset needed.
       topInset: 0,
-      bottomInset: 0,
+      bottomInset: occludedBottomPx,
     }
   }
 
@@ -57,6 +73,6 @@ export function getCanvasFocusFitInsets(view: EditorView): CanvasFocusFitInsets 
     // Keep bottom navigation clearance without shifting the selected board
     // above the canvas center. Equal insets preserve the true visual center.
     topInset: 56,
-    bottomInset: 56,
+    bottomInset: Math.max(56, occludedBottomPx),
   }
 }
