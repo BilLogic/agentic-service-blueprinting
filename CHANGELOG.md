@@ -1,5 +1,69 @@
 # Changelog
 
+## 1.44.25
+
+**The theme is stamped by the app's own code, so a strict script policy no
+longer refuses it.** Setting the theme before the first paint used to be the
+job of an inline `<script>` the theme library injected, and the Content
+Security Policy this template ships — `default-src 'self'` with no
+`script-src` — refuses an inline script. The guard therefore did nothing: the
+class arrived from React after the first paint, so a reader whose saved theme
+is dark saw a light frame on every load, and every load logged a refusal. The
+work now happens while the app's own module graph evaluates, which is a hashed
+asset and allowed by the policy. The library is gone from the dependencies,
+and the saved theme moves onto the storage namespace.
+
+**Upgrading a deployment:**
+
+- **A saved theme resets once.** The key moves from the bare `theme` onto the
+  namespace seam, so it is `<prefix>theme` — `sb-theme` in the template.
+  Nothing migrates it: the first load after upgrading finds no saved theme and
+  opens light. Choosing a theme writes the new key. Two installations on one
+  origin stop sharing a theme as a result.
+- `next-themes` is no longer a dependency. A deployment importing `useTheme`
+  from it imports from the template instead; the hook's shape is unchanged,
+  except that `resolvedTheme` is always a theme rather than `undefined` until
+  an effect has run.
+- **No policy change is needed, and none should be made.** A deployment that
+  loosened `script-src`, added a nonce or pinned a script hash to get the
+  theme script running can drop that now.
+- One refusal still appears in the console on load, and it is not the theme: a
+  validation library probes for `Function` at startup and the policy refuses
+  it. That probe is wrapped and falls back safely. It predates this release
+  and is untouched by it.
+
+### Patch Changes
+
+- 8da8a7f: The theme is decided and stamped on the document by the app's own module graph
+  instead of by an inline script, so a strict Content Security Policy no longer
+  refuses it, and the stored theme takes the namespace prefix.
+
+  `next-themes` injected an inline `<script>` to set the class before the first
+  paint. The `public/_headers` this template ships serves `default-src 'self'`
+  with no `script-src`, which refused it — an inline script is not `'self'` — so
+  the guard did nothing, the class arrived from React after the first paint, and
+  every load carried a refusal in the console. `src/lib/theme.ts` replaces the library: it reads the stored
+  theme, resolves it and applies the class and `color-scheme` to the root while
+  the import graph evaluates, which is a hashed asset doing the work and
+  therefore allowed by `'self'`. No policy changes, no nonce, and no script in
+  any `index.html`. Behaviour is otherwise as it was, deliberately: the default is
+  light, `'system'` still resolves through `prefers-color-scheme` and still
+  tracks it live, and the theme still follows a second tab of the same
+  installation.
+
+  **One saved theme resets, once.** The key moved from the bare `theme` that
+  `next-themes` chose onto the namespace seam, so it is `<prefix>theme` from this
+  release — `sb-theme` in the template. Nothing migrates it: the first load after
+  upgrading reads no stored theme and opens light, and choosing a theme writes
+  the new key. That is also what takes the last stored value off the shared
+  origin — two installations on one host no longer read each other's theme, and
+  `npm run check:storage-keys` can now see the key at all, because it is built
+  under `src/` rather than inside a dependency.
+
+  Anything importing `useTheme` from `next-themes` imports it from
+  `@/lib/theme` instead; the hook's shape is the same, except that
+  `resolvedTheme` is a theme rather than `undefined` until an effect has run.
+
 ## 1.44.24
 
 **A tab that outlived a deploy recovers itself, a missing chunk says so, and the
@@ -8219,8 +8283,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                                ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                                "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                                  ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                                  "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
