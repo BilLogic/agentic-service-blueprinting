@@ -51,6 +51,7 @@ describe('the skill lookup a draft carries', () => {
     ['Hey can u /', ''],
     ['check this、/aud', 'aud'],
     ['/sb:audit this', null],
+    ['check /sb:audit/notes.md', null],
     ['look at src/lib', null],
     ['see http://example.test', null],
     ['do this and/or that', null],
@@ -82,11 +83,14 @@ describe('the skill lookup a draft carries', () => {
     expect(spliceSkillLookup('/sb:aud', findSkillLookup('/sb:aud')!)).toBe('')
   })
 
-  it('takes one of the two spaces that surrounded a mid-sentence token', () => {
-    const draft = 'Hey can u /sb:audit the goal setting'
-    expect(spliceSkillLookup(draft, findUnrunSkillToken(draft)!)).toBe(
-      'Hey can u the goal setting',
-    )
+  it('takes one of the two spaces that surrounded a mid-sentence span', () => {
+    // The notice's span, not a lookup's: a token with prose on both sides.
+    expect(
+      spliceSkillLookup('Hey can u /sb:audit the goal setting', {
+        start: 10,
+        end: 19,
+      }),
+    ).toBe('Hey can u the goal setting')
   })
 })
 
@@ -117,6 +121,10 @@ describe('a skill token that would send as prose', () => {
     expect(findUnrunSkillToken('look at src/lib')).toBeNull()
     expect(findUnrunSkillToken('do this and/or that')).toBeNull()
     expect(findUnrunSkillToken('on 2026/09/17')).toBeNull()
+    // This scan is NOT tail-anchored, so the path cases it has to refuse are
+    // its own to refuse: a token with a path behind it, and a URL.
+    expect(findUnrunSkillToken('check /sb:audit/notes.md')).toBeNull()
+    expect(findUnrunSkillToken('see http://example.test')).toBeNull()
   })
 })
 

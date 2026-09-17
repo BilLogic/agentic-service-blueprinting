@@ -72,9 +72,9 @@ const type = (composer: HTMLElement, value: string) =>
   fireEvent.change(composer, { target: { value } })
 
 /**
- * The menu's row for a skill — scoped to the popover, because the badge on
- * an already-picked skill carries the same label and a bare text query would
- * find whichever the DOM happened to hold first.
+ * The menu's row for a skill — scoped to the popover, because a picked
+ * skill's badge carries the same label and an unscoped text query would find
+ * whichever the DOM happened to hold first, passing on the wrong node.
  */
 const menuOption = (label: string) => {
   const menu = screen.queryByLabelText('Agent skills')
@@ -243,5 +243,43 @@ describe('one message carrying several skills', () => {
     expect(JSON.stringify(sent.messages)).toContain(
       'Run /sb:map, then /sb:audit — each from the top of its flow, in that order.',
     )
+  })
+})
+
+describe("the menu's keyboard behaviour", () => {
+  it('walks the matches with the arrows and accepts the highlighted one', () => {
+    const composer = openComposer()
+    // Every skill matches an empty query, so the list is the four of them in
+    // definition order and the second one is reachable in one keystroke.
+    type(composer, '/')
+    fireEvent.keyDown(composer, { key: 'ArrowDown' })
+    fireEvent.keyDown(composer, { key: 'Enter' })
+    // The menu is closed, so the label left on screen is the badge's.
+    expect(menuOption('/sb:slice')).toBeNull()
+    expect(screen.getByText('/sb:slice')).toBeTruthy()
+    expect((composer as HTMLTextAreaElement).value).toBe('')
+  })
+
+  it('accepts on Tab, and wraps round the ends with ArrowUp', () => {
+    const composer = openComposer()
+    type(composer, '/')
+    fireEvent.keyDown(composer, { key: 'ArrowUp' })
+    fireEvent.keyDown(composer, { key: 'Tab' })
+    expect(menuOption('/sb:whatif')).toBeNull()
+    expect(screen.getByText('/sb:whatif')).toBeTruthy()
+  })
+
+  it('dismisses on Escape without touching a character of the draft', () => {
+    const composer = openComposer()
+    type(composer, 'Hey can u /sb:aud')
+    expect(menuOption('/sb:audit')).toBeTruthy()
+    fireEvent.keyDown(composer, { key: 'Escape' })
+    expect(menuOption('/sb:audit')).toBeNull()
+    // The token is the reader's text until they pick something. Escape used
+    // to delete it, with no undo.
+    expect((composer as HTMLTextAreaElement).value).toBe('Hey can u /sb:aud')
+    // Typing asks again.
+    type(composer, 'Hey can u /sb:audi')
+    expect(menuOption('/sb:audit')).toBeTruthy()
   })
 })

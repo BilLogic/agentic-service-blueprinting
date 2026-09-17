@@ -252,4 +252,37 @@ describe('the loop, provider → tool → result → provider', () => {
     // The turn reads back with both, not just the first.
     expect(events[0]).toMatchObject({ kind: 'user', skills: ['sb:map', 'sb:audit'] })
   })
+
+  it('still says the skill did not run on the closing call, after the round budget is spent', async () => {
+    // Every round asks for a tool, so the loop spends its budget and then
+    // makes ONE no-tools closing call — which is the path the session that
+    // motivated the notice actually took, and the path that used to drop it.
+    provider.turns = Array.from({ length: 12 }, () => ({
+      parts: [call('r', 'list_blueprint', { granularity: ['phase'] })],
+      stopReason: 'tool_use' as const,
+    }))
+    await send({
+      client,
+      text: 'Hey can u /sb:audit the goal setting scenario',
+      unrunSkill: { token: 'sb:audit', label: '/sb:audit' },
+    })
+    // The closing call is the one that was sent no tools.
+    const closing = provider.inputs.at(-1)!
+    expect(closing.tools).toEqual([])
+    expect(closing.system).toContain('did NOT run')
+    expect(closing.system).toContain('Do not describe it as having run')
+  })
+
+  it('still says the session has no database on the closing call', async () => {
+    // The same line dropped the tier, trial and mobile paragraphs too — a
+    // trial that spent its budget was told mid-run that it had a database.
+    provider.turns = Array.from({ length: 12 }, () => ({
+      parts: [call('r', 'list_blueprint', { granularity: ['phase'] })],
+      stopReason: 'tool_use' as const,
+    }))
+    await send({ client: null, text: 'walk me through the sample' })
+    const closing = provider.inputs.at(-1)!
+    expect(closing.tools).toEqual([])
+    expect(closing.system).toContain('This app has NO database connected')
+  })
 })
