@@ -42,6 +42,24 @@ vi.mock('@/lib/agent/providers/anthropic', () => ({
 // jsdom has no matchMedia; the shell under test is the desktop one.
 vi.mock('@/hooks/useMobileShell', () => ({ isMobileViewport: () => false }))
 
+/**
+ * The database-backed board read, counted. The sample trial's read answers
+ * from the bundled fixture and needs nothing; these cases need a read that
+ * says which time it ran, so "the guard let this one through" is a fact
+ * about dispatch rather than an inference from the text.
+ */
+const board = vi.hoisted(() => ({ reads: 0 }))
+vi.mock('@/lib/agent/tools/read', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/agent/tools/read')>()),
+  listBlueprint: async () => `board read ${(board.reads += 1)}`,
+}))
+// The scope a database read resolves first, which would otherwise be the
+// call that reaches the client this file never builds.
+vi.mock('@/lib/agent/tools/definitions/scope', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/agent/tools/definitions/scope')>()),
+  readScope: async () => ({ kind: 'service', serviceId: 'svc-1', serviceName: 'Rooftop Retrofit' }),
+}))
+
 /** The write, captured at the RPC wrapper: which service, and the id handed back. */
 const phasesCreated: { serviceId: string; name: string }[] = []
 vi.mock('@/lib/authoringRpc', async (importOriginal) => ({
@@ -63,6 +81,7 @@ import {
   repeatReadRefusal,
 } from '@/lib/agent/tools/refusals'
 import { configureAgentTools } from '@/lib/agent/tools/roster'
+import { NO_UI_STATE } from '@/lib/agent/tools/definitions/ui'
 
 const SETTINGS: AgentSettings = { provider: 'anthropic', models: {}, keys: { anthropic: 'test-key' } }
 
@@ -77,8 +96,13 @@ const client = {} as unknown as SupabaseClient<Database>
  * that hook is the only reader the app has.
  */
 let sessions = 0
-const send = (input: { client: SupabaseClient<Database> | null; text: string }) => {
-  const sessionId = `loop-test-${(sessions += 1)}`
+const send = (input: {
+  client: SupabaseClient<Database> | null
+  text: string
+  /** Pass one to send TWICE on the same session — the only case that needs it. */
+  sessionId?: string
+}) => {
+  const sessionId = input.sessionId ?? `loop-test-${(sessions += 1)}`
   return sendToAgent({
     ...input,
     sessionId,
@@ -96,6 +120,17 @@ const resultsFedBack = (round: number) =>
     .filter((message) => message.role === 'tool')
     .flatMap((message) => message.parts)
 
+/**
+ * The answer the model was handed for one call, found by its id. The loop
+ * hands the provider its LIVE message array, so every recorded input ends
+ * the run holding every round's results — a round index cannot pick a call
+ * out, and the id can.
+ */
+const answerTo = (id: string) =>
+  resultsFedBack(provider.inputs.length - 1).find(
+    (part) => part.type === 'tool_result' && part.toolCallId === id,
+  )!
+
 const call = (id: string, name: string, args: Record<string, unknown>) =>
   ({ type: 'tool_call', id, name, args }) as const
 
@@ -103,6 +138,7 @@ beforeEach(() => {
   provider.turns = []
   provider.inputs = []
   phasesCreated.length = 0
+  board.reads = 0
 })
 
 afterEach(() => {
@@ -221,40 +257,39 @@ describe('the loop, provider → tool → result → provider', () => {
  * the whole thing — what never reached a tool.
  */
 describe('a read the turn already ran', () => {
-  /** Two sends on ONE session, so the "fresh send, fresh record" case is reachable. */
-  const sendOn = (sessionId: string, input: { client: SupabaseClient<Database> | null; text: string }) =>
-    sendToAgent({
-      ...input,
-      sessionId,
-      offlineBoard: PACKAGE_OFFLINE_BOARD,
-      settings: SETTINGS,
-      contextNote: '',
-    }).then(() => renderHook(() => useAgentRun(sessionId)).result.current.events)
-
   it('refuses the repeat with a pointer rather than dispatching it again', async () => {
     provider.turns = [
-      { parts: [call('r1', 'list_blueprint', { granularity: ['phase'], limit: 5 })], stopReason: 'tool_use' },
+      {
+        parts: [call('r1', 'list_blueprint', { granularity: ['step'], scenario: 'Goal Setting' })],
+        stopReason: 'tool_use',
+      },
       // Same call, arguments written in the other order: providers do not
       // promise key order between rounds, and neither does the model.
-      { parts: [call('r2', 'list_blueprint', { limit: 5, granularity: ['phase'] })], stopReason: 'tool_use' },
+      {
+        parts: [call('r2', 'list_blueprint', { scenario: 'Goal Setting', granularity: ['step'] })],
+        stopReason: 'tool_use',
+      },
       { parts: [{ type: 'text', text: 'Four phases.' }], stopReason: 'end' },
     ]
 
     const events = await send({ client: null, text: 'What phases are there?' })
 
-    // Round one ran and answered with the board.
-    expect(resultsFedBack(1)[0]!.result).toMatch(/^\d+ of \d+:/)
+    // Round one ran: whatever the board said, it is the tool's answer.
+    expect(answerTo('r1').isError).toBeUndefined()
+    expect(answerTo('r1').result).not.toContain('already ran this turn')
     // Round two was refused, error-shaped, and the payload is NOT restated.
-    // (`resultsFedBack` is every tool part the round was handed, in order —
-    // round one's result first, then the answer to the repeat.)
-    const refused = resultsFedBack(2).at(-1)!
+    const refused = answerTo('r2')
     expect(refused).toEqual({
       type: 'tool_result',
       toolCallId: 'r2',
       name: 'list_blueprint',
-      result: repeatReadRefusal('list_blueprint'),
+      // The refusal NAMES the arguments — a turn can hold several reads of
+      // one tool, and "list_blueprint already ran" would leave the model to
+      // guess which earlier result it is being sent back to.
+      result: repeatReadRefusal('list_blueprint', 'scenario: Goal Setting'),
       isError: true,
     })
+    expect(refused.result).toContain('Goal Setting')
     expect(refused.result).not.toMatch(/^\d+ of \d+:/)
     // The round budget is untouched: the turn ran on to its answer.
     expect(events.at(-1)).toEqual({ kind: 'assistant', text: 'Four phases.' })
@@ -285,7 +320,7 @@ describe('a read the turn already ran', () => {
         summary: REPEAT_READ_SUPPRESSED,
         isError: true,
         args: JSON.stringify({ granularity: ['phase'] }, null, 2),
-        result: repeatReadRefusal('list_blueprint'),
+        result: repeatReadRefusal('list_blueprint', ''),
       },
       {
         kind: 'tool',
@@ -293,7 +328,7 @@ describe('a read the turn already ran', () => {
         summary: REPEAT_READ_SUPPRESSED,
         isError: true,
         args: JSON.stringify({ granularity: ['phase'] }, null, 2),
-        result: repeatReadRefusal('list_blueprint'),
+        result: repeatReadRefusal('list_blueprint', ''),
       },
     ])
   })
@@ -307,8 +342,8 @@ describe('a read the turn already ran', () => {
 
     await send({ client: null, text: 'What is on the board?' })
 
-    expect(resultsFedBack(2).at(-1)!.result).toMatch(/^\d+ of \d+:/)
-    expect(resultsFedBack(2).at(-1)!.isError).toBeUndefined()
+    expect(answerTo('r2').result).toMatch(/^\d+ of \d+:/)
+    expect(answerTo('r2').isError).toBeUndefined()
   })
 
   it('lets an interface call repeat — the camera is the agent\'s hands, not its eyes', async () => {
@@ -320,8 +355,8 @@ describe('a read the turn already ran', () => {
 
     await send({ client: null, text: 'Show me that cell again' })
 
-    expect(resultsFedBack(2).at(-1)!.result).not.toBe(repeatReadRefusal('focus_cell'))
-    expect(resultsFedBack(2).at(-1)!.result).toBe(resultsFedBack(1).at(-1)!.result)
+    expect(answerTo('i2').result).not.toBe(repeatReadRefusal('focus_cell', 'cell_id: cell-1'))
+    expect(answerTo('i2').result).toBe(answerTo('i1').result)
   })
 
   it('starts a fresh record on the next send, so the read runs again', async () => {
@@ -330,16 +365,62 @@ describe('a read the turn already ran', () => {
       { parts: [call('r1', 'list_blueprint', { granularity: ['phase'] })], stopReason: 'tool_use' },
       { parts: [{ type: 'text', text: 'Four phases.' }], stopReason: 'end' },
     ]
-    await sendOn(sessionId, { client: null, text: 'What phases are there?' })
+    await send({ sessionId, client: null, text: 'What phases are there?' })
 
     provider.turns = [
       { parts: [call('r2', 'list_blueprint', { granularity: ['phase'] })], stopReason: 'tool_use' },
       { parts: [{ type: 'text', text: 'Still four.' }], stopReason: 'end' },
     ]
-    await sendOn(sessionId, { client: null, text: 'Check again' })
+    await send({ sessionId, client: null, text: 'Check again' })
 
-    // Fourth provider call of the session — the second send's second round.
-    expect(resultsFedBack(3).at(-1)!.result).toMatch(/^\d+ of \d+:/)
-    expect(resultsFedBack(3).at(-1)!.isError).toBeUndefined()
+    expect(answerTo('r2').result).toMatch(/^\d+ of \d+:/)
+    expect(answerTo('r2').isError).toBeUndefined()
+  })
+
+  it('runs the verification re-read a write asks for, because the write retires the record', async () => {
+    // The write tools say so themselves — "re-read the blueprint for the new
+    // lane ids". A record that outlived the write would refuse that re-read
+    // and point the model at a description of the board BEFORE its own edit.
+    setActiveService({ id: 'svc-1', slug: 'rooftop-retrofit', name: 'Rooftop Retrofit' })
+    provider.turns = [
+      { parts: [call('r1', 'list_blueprint', { granularity: ['phase'] })], stopReason: 'tool_use' },
+      { parts: [call('w1', 'create_phase', { name: 'Handover' })], stopReason: 'tool_use' },
+      { parts: [call('r2', 'list_blueprint', { granularity: ['phase'] })], stopReason: 'tool_use' },
+      { parts: [{ type: 'text', text: 'Five phases now.' }], stopReason: 'end' },
+    ]
+
+    const events = await send({ client, text: 'Add a Handover phase and check it landed' })
+
+    expect(board.reads).toBe(2)
+    expect(answerTo('r2')).toMatchObject({ result: 'board read 2' })
+    expect(events.filter((event) => event.kind === 'tool')).toHaveLength(3)
+    expect(
+      events.some((event) => event.kind === 'tool' && event.summary === REPEAT_READ_SUPPRESSED),
+    ).toBe(false)
+  })
+
+  it('observes the canvas again after moving it — a navigation call retires the record too', async () => {
+    // `get_ui_state` takes no arguments, so its key never varies: without
+    // this rule the SECOND call in a turn is suppressed forever, and a tool
+    // documented as what the user is looking at RIGHT NOW would answer only
+    // once, before any of the moves worth observing.
+    provider.turns = [
+      { parts: [call('u1', 'get_ui_state', {})], stopReason: 'tool_use' },
+      { parts: [call('u2', 'get_ui_state', {})], stopReason: 'tool_use' },
+      { parts: [call('i1', 'focus_cell', { cell_id: 'cell-1' })], stopReason: 'tool_use' },
+      { parts: [call('u3', 'get_ui_state', {})], stopReason: 'tool_use' },
+      { parts: [{ type: 'text', text: 'Here it is.' }], stopReason: 'end' },
+    ]
+
+    await send({ client: null, text: 'Show me that cell' })
+
+    // Nothing moved between the first two, so the repeat is answered.
+    expect(answerTo('u2')).toMatchObject({
+      result: repeatReadRefusal('get_ui_state', ''),
+      isError: true,
+    })
+    // The move happened, so the observation after it runs.
+    expect(answerTo('u3')).toMatchObject({ result: NO_UI_STATE })
+    expect(answerTo('u3').isError).toBeUndefined()
   })
 })

@@ -373,6 +373,13 @@ function callSummary(call: AgentToolCallPart): string {
  * every object's keys in one order. A raw `JSON.stringify` of the arguments
  * would key on whatever order the provider happened to serialize them in,
  * and two byte-identical calls a round apart would read as different work.
+ *
+ * Keyed on the arguments AS SENT, before the tool's schema parses them, so a
+ * stray extra key or an omitted argument the schema defaults makes two keys
+ * for what runs as one read. That is the trade taken deliberately: a missed
+ * duplicate is one repeat that behaves the way it always has, while a key
+ * that collapsed two genuinely different calls would refuse a read the model
+ * never ran.
  */
 function callKey(call: AgentToolCallPart): string {
   return `${call.name}:${stableJson(call.args)}`
@@ -467,13 +474,21 @@ export async function sendToAgent(input: {
   let writesThisSend = 0
 
   // A model that loops re-reads the same thing: one real session ran an
-  // identical board read four times inside a turn, each repeat spending a
-  // round and re-injecting a payload the conversation already held. Every
-  // read this send has dispatched is remembered by name and arguments, and a
-  // second call on the same key is answered with a pointer instead of run.
-  // Per SEND rather than per round, because the repeats that motivated this
-  // were in separate rounds — and it resets with the next user message,
-  // because a board a write has changed makes a later re-read honest.
+  // identical board read four times inside a turn, each repeat re-injecting
+  // a payload the conversation already held and buying the rounds that
+  // followed nothing. Every read this send has dispatched is remembered by
+  // name and arguments, and a second call on the same key is answered with a
+  // pointer instead of run. Per SEND rather than per round, because the
+  // repeats that motivated this were in separate rounds.
+  //
+  // CLEARED BY ANYTHING THAT CHANGES STATE — a landed write, or an interface
+  // call that moved the canvas. The record is a claim that an earlier answer
+  // still describes the world, and a call that changes the world retires it:
+  // the write tools themselves tell the model to re-read for the ids they
+  // created, and `get_ui_state` is documented as what the user is looking at
+  // RIGHT NOW, which a navigation call has just made false. Without this a
+  // turn could move the canvas and then be refused the observation of its
+  // own move, pointed back at a description of the screen before it.
   const readsThisSend = new Set<string>()
 
   // No database, no writes — not "refused writes", ABSENT ones. The roster
@@ -592,6 +607,11 @@ export async function sendToAgent(input: {
       // the conversation needs it to.
       const isRead = (call: AgentToolCallPart) =>
         findToolDefinition(call.name)?.surface === 'read'
+      // The other half of that: hands leave marks. Whatever a write changed
+      // on the board, and wherever an interface call left the canvas, is
+      // not what this turn's earlier reads described.
+      const changesState = (call: AgentToolCallPart) =>
+        isWrite(call) || findToolDefinition(call.name)?.surface === 'interface'
       for (const call of calls) {
         // Off-roster calls: a model can still emit a name it invented or
         // remembered from another session, so each gate the roster applied
@@ -700,20 +720,23 @@ export async function sendToAgent(input: {
             type: 'tool_result',
             toolCallId: call.id,
             name: call.name,
-            result: repeatReadRefusal(call.name),
+            result: repeatReadRefusal(call.name, callSummary(call)),
             isError: true,
           })
-          // A row apiece, deliberately unlike the batch pause's single
-          // status line: that row states one fact about the turn, whereas
-          // these rows ARE the loop, and a reader looking back at a bad
-          // turn came to see it rather than a tidied summary of it.
+          // A tool row rather than the status line the batch pause uses,
+          // and one apiece rather than one per round. A status row states a
+          // fact about the turn; these rows are calls the model made, and a
+          // reader scanning the tool rows for what the agent did has to see
+          // them there, in place, with the arguments that repeated —
+          // collapsed or filed elsewhere, the loop stops being visible as a
+          // loop, which is the thing a bad turn is read back for.
           push(sessionId, {
             kind: 'tool',
             name: call.name,
             summary: REPEAT_READ_SUPPRESSED,
             isError: true,
             args: detailText(call.args),
-            result: detailText(repeatReadRefusal(call.name)),
+            result: detailText(repeatReadRefusal(call.name, callSummary(call))),
           })
           continue
         }
@@ -730,7 +753,10 @@ export async function sendToAgent(input: {
           if (isWrite(call)) writesThisSend += 1
           // Recorded AFTER success, for the same reason: a read that threw
           // put no result in the conversation to point the model back at.
+          // And a call that landed a change retires every earlier answer,
+          // for the same reason in reverse.
           if (isRead(call)) readsThisSend.add(callKey(call))
+          if (changesState(call)) readsThisSend.clear()
           results.parts.push({
             type: 'tool_result',
             toolCallId: call.id,
