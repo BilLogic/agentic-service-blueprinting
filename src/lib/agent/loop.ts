@@ -137,11 +137,6 @@ export type TranscriptEvent =
        * them is a turn that reads back wrong.
        */
       skills?: string[]
-      /**
-       * The single id earlier releases wrote. Persisted rows still carry it,
-       * so the transcript reads it; nothing writes it.
-       */
-      skill?: string
       /** Attachment label when the message carried one. */
       attachmentLabel?: string
       /** The attachment's model-facing payload (annotation structure) —

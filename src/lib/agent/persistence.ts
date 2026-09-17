@@ -98,6 +98,28 @@ export function isAgentPersistenceAttached(): boolean {
   return attached !== null
 }
 
+/**
+ * A stored user turn as an earlier release wrote it: ONE skill id, because a
+ * message could only carry one. Rows in that shape are still in the table.
+ */
+type StoredEvent = TranscriptEvent & { skill?: string }
+
+/**
+ * A stored event as this build's transcript.
+ *
+ * The one-skill spelling is settled HERE, at the read, where there is still a
+ * list to hand back — the same reason the session list normalises its rows in
+ * `sessions.ts` rather than letting a surface meet the shape later. A
+ * transcript row can only render what it is given, so a fallback living there
+ * is a promise about JSON another release wrote, made in the one place that
+ * cannot do anything about it being wrong.
+ */
+function asTranscriptEvent(stored: StoredEvent): TranscriptEvent {
+  if (stored.kind !== 'user' || !stored.skill) return stored
+  const { skill, ...event } = stored
+  return { ...event, skills: event.skills ?? [skill] }
+}
+
 export async function loadPersistedEvents(
   sessionId: string,
 ): Promise<TranscriptEvent[] | null> {
@@ -109,6 +131,7 @@ export async function loadPersistedEvents(
     .order('seq', { ascending: true })
   if (error || !data) return null
   return data
-    .map((row) => row.payload as unknown as TranscriptEvent)
+    .map((row) => row.payload as unknown as StoredEvent)
     .filter((event) => event && typeof event.kind === 'string')
+    .map(asTranscriptEvent)
 }

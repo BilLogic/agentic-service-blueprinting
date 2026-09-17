@@ -3,11 +3,10 @@
  * A past turn reads back with every skill it invoked.
  *
  * A message can carry several skills, so a row that shows one of them
- * misreports the turn — and the rows a reopened session hydrates from the
- * database are the ones nobody can correct by looking at the composer. The
- * second case is the older spelling: a row persisted when a message could
- * only carry one skill still carries the single field, and it still has to
- * render the badge it was sent with.
+ * misreports the turn. The older spelling — a row persisted when a message
+ * could only carry one skill — is pinned where it is handled, through the
+ * hydrate in `src/slices/agentSession.slice.test.tsx`, because the read is
+ * what settles it and a hand-built event would prove nothing about the read.
  */
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -30,15 +29,5 @@ describe('a user turn that invoked skills', () => {
     }
     render(<TranscriptRow event={event} />)
     expect(badges()).toEqual(['/sb:map', '/sb:audit'])
-  })
-
-  it('still shows the badge on a row an earlier release persisted', () => {
-    const event: TranscriptEvent = {
-      kind: 'user',
-      text: 'audit the intake',
-      skill: 'sb:audit',
-    }
-    render(<TranscriptRow event={event} />)
-    expect(badges()).toEqual(['/sb:audit'])
   })
 })

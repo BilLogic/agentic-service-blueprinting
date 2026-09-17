@@ -477,4 +477,47 @@ describe('goes red on a stripped attribution: the write lands, the ledger does n
     // The fresh graph's ledger is not the one the outer teardown clears.
     ledger.clearSession()
   })
+
+  it('reads a turn an earlier release persisted, whose payload names one skill', async () => {
+    // The shape the table still holds: `skill`, singular, from the releases
+    // where a message could carry one. The read is what turns it into this
+    // build's list, so the hydrate is where it has to be asserted — a row
+    // handed the list by hand would prove nothing about the row in the table.
+    const sessionId = 'session-persisted-earlier'
+    backend.current = inMemoryDatabase({
+      ...SEED(),
+      agent_sessions: [
+        {
+          id: sessionId,
+          title: 'An audited intake',
+          created_at: '2026-01-01T00:00:00.000Z',
+          updated_at: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      agent_messages: [
+        {
+          session_id: sessionId,
+          seq: 0,
+          kind: 'user',
+          payload: { kind: 'user', text: 'audit the intake', skill: 'sb:audit' },
+        },
+        {
+          session_id: sessionId,
+          seq: 1,
+          kind: 'user',
+          payload: { kind: 'user', text: 'then map it', skills: ['sb:map', 'sb:slice'] },
+        },
+      ],
+    })
+    renderSurface()
+    // The list arrives from the database merge, then the session opens and
+    // the transcript hydrates out of `agent_messages`.
+    await vi.waitFor(() => expect(screen.getByText('An audited intake')).toBeTruthy())
+    fireEvent.click(screen.getByText('An audited intake'))
+    await vi.waitFor(() => expect(transcript().getByText('audit the intake')).toBeTruthy())
+    expect(transcript().getByText('/sb:audit')).toBeTruthy()
+    // And the turn that named several still reads back with all of them.
+    expect(transcript().getByText('/sb:map')).toBeTruthy()
+    expect(transcript().getByText('/sb:slice')).toBeTruthy()
+  })
 })

@@ -178,11 +178,11 @@ export function TranscriptRow({
 }) {
   switch (event.kind) {
     case 'user': {
-      // Every skill the message invoked, in the order it invoked them. The
-      // `skill` fallback is what earlier releases wrote when a message could
-      // only carry one, and a persisted row still has it — a turn read back
-      // from the database must not lose the badge it was sent with.
-      const invokedSkills = event.skills ?? (event.skill ? [event.skill] : [])
+      // Every skill the message invoked, in the order it invoked them. A row
+      // an earlier release persisted named one skill in a field of its own;
+      // it arrives here as a list like any other, because the read settles
+      // the shape (`loadPersistedEvents`) rather than leaving it to a row.
+      const invokedSkills = event.skills ?? []
       return (
         <Message align="end">
           <MessageContent>
