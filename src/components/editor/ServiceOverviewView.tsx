@@ -291,6 +291,15 @@ type ServiceOverviewViewProps = {
    * no cell. Without an override the key is the focused (or solo) scenario.
    */
   focusCellsKey?: string
+  /**
+   * Height of an opaque surface sitting on this canvas's bottom edge, in px.
+   *
+   * The phone's agent sheet is the one that passes it: it owns the lower 60%
+   * of the screen and stays open across a jump, so a fit that framed the
+   * whole viewport put the destination behind it. Desktop's dock is beside
+   * the canvas, not over it, and passes nothing.
+   */
+  occludedBottomPx?: number
   /** Notifies an embedding transition after this destination is fitted. */
   onInitialFitReady?: () => void
 }
@@ -311,6 +320,7 @@ function ServiceOverviewViewImpl({
   onRevealStage,
   cameraStateKey,
   focusCellsKey: focusCellsKeyOverride,
+  occludedBottomPx = 0,
   onInitialFitReady,
 }: ServiceOverviewViewProps = {}) {
   const overviewRef = useRef<HTMLDivElement>(null)
@@ -484,7 +494,7 @@ function ServiceOverviewViewImpl({
   const canvasHoldKey = skeletonHoldKey ?? 'service-overview-canvas'
   const fitSelector = getCanvasFocusSelector(view, activeSlide)
   const maxFitZoom = getCanvasFocusMaxZoom(view)
-  const fitInsets = getCanvasFocusFitInsets(view)
+  const fitInsets = getCanvasFocusFitInsets(view, occludedBottomPx)
   // The phone's fit floor. A phase board is far wider than a phone, so an
   // unfloored fit lands around 0.2 — under the semantic threshold, which is
   // why the default view arrived as a grid of grey blocks with nothing to
