@@ -13,14 +13,43 @@ export function makeMobileAgentBridge({
   selectPhase,
   selectScenario,
   openAgent,
+  isAgentOpen = () => false,
+  watchCameraFlight = () => {},
 }: {
   selectPhase: (phaseId: string) => void
   selectScenario: (scenarioId: string) => void
   openAgent: () => void
+  /**
+   * Whether the agent sheet is showing, asked at the moment of the jump
+   * rather than captured when the bridge was built — the bridge is
+   * registered once and the sheet opens and closes under it.
+   *
+   * Defaults to closed, which is the conservative answer: a caller that
+   * never wired a sheet gets the behaviour of a shell that has none.
+   */
+  isAgentOpen?: () => boolean
+  /**
+   * Watch the camera for this target so the open sheet can stand its scrim
+   * down for the flight. Called BEFORE the selection commits, because the
+   * outcome is published by the fit the selection triggers and a watcher
+   * attached afterwards can miss it.
+   */
+  watchCameraFlight?: (targetId: string) => void
 }): AgentUiBridge {
+  /*
+    A jump with the sheet CLOSED has no scrim to clear and no composer to hand
+    the caret back to. Arming a watcher for it would leave a 2s timer and a
+    `setFlying` pair firing at a sheet nobody can see; the gate lives here, in
+    the module that is the agent's hands, so the path is pinned by a unit test
+    rather than by a shell nothing renders in a test.
+  */
+  const jump = (targetId: string, select: (id: string) => void) => {
+    if (isAgentOpen()) watchCameraFlight(targetId)
+    select(targetId)
+  }
   return {
-    selectPhase,
-    selectScenario,
+    selectPhase: (phaseId) => jump(phaseId, selectPhase),
+    selectScenario: (scenarioId) => jump(scenarioId, selectScenario),
     openAgentSurface: openAgent,
     setSidebarCollapsed: () =>
       'The mobile shell has no sidebar — navigation lives in the menu drawer, which the reader opens themselves.',
@@ -81,10 +110,17 @@ export function makeAgentCameraFlightWatcher({
     // fit the selection triggers, and a waiter attached afterwards can miss it.
     const outcome = awaitOutcome(targetId)
     setFlying(true)
+    // The loser of the race is cleaned up either way: a verdict that arrives
+    // first leaves a live 2s timer behind, and every superseded jump leaves
+    // another, so a reader jumping around the board accumulates them.
+    let deadline: ReturnType<typeof setTimeout> | undefined
     return Promise.race([
       outcome.promise,
-      new Promise<void>((done) => setTimeout(done, deadlineMs)),
+      new Promise<void>((done) => {
+        deadline = setTimeout(done, deadlineMs)
+      }),
     ]).then(() => {
+      clearTimeout(deadline)
       outcome.cancel()
       if (token !== generation) return
       setFlying(false)

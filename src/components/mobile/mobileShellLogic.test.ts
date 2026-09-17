@@ -10,16 +10,36 @@ import {
 // selections — the camera move IS the surface change. No setSurface hand
 // exists anymore; this test pins that simplification.
 describe('makeMobileAgentBridge', () => {
-  function harness() {
+  function harness({ agentOpen = false }: { agentOpen?: boolean } = {}) {
     const selectPhase = vi.fn()
     const selectScenario = vi.fn()
     const openAgent = vi.fn()
+    const watchCameraFlight = vi.fn()
+    const order: string[] = []
     const bridge = makeMobileAgentBridge({
+      selectPhase: (id) => {
+        order.push('select')
+        selectPhase(id)
+      },
+      selectScenario: (id) => {
+        order.push('select')
+        selectScenario(id)
+      },
+      openAgent,
+      isAgentOpen: () => agentOpen,
+      watchCameraFlight: (id) => {
+        order.push('watch')
+        watchCameraFlight(id)
+      },
+    })
+    return {
+      bridge,
       selectPhase,
       selectScenario,
       openAgent,
-    })
-    return { bridge, selectPhase, selectScenario, openAgent }
+      watchCameraFlight,
+      order,
+    }
   }
 
   it('phase opens select the phase and nothing else', () => {
@@ -44,6 +64,53 @@ describe('makeMobileAgentBridge', () => {
     expect(h.openAgent).toHaveBeenCalledTimes(1)
     expect(h.selectPhase).not.toHaveBeenCalled()
     expect(h.selectScenario).not.toHaveBeenCalled()
+  })
+
+  /*
+    The sheet stays open across an agent-driven jump, so the jump has to tell
+    the sheet the camera is moving. With the sheet CLOSED there is no scrim to
+    clear and no composer to hand the caret back to, and arming the watcher
+    anyway would leave a deadline timer and a pair of state writes behind for
+    a surface nobody can see.
+  */
+  it('watches the camera for an open sheet, before the selection commits', () => {
+    const h = harness({ agentOpen: true })
+    h.bridge.selectScenario('scen-1')
+    expect(h.watchCameraFlight).toHaveBeenCalledWith('scen-1')
+    expect(h.selectScenario).toHaveBeenCalledWith('scen-1')
+    // The outcome is published by the fit the selection triggers: a watcher
+    // attached after it can miss the verdict entirely.
+    expect(h.order).toEqual(['watch', 'select'])
+  })
+
+  it('watches the camera for an open sheet on a phase jump too', () => {
+    const h = harness({ agentOpen: true })
+    h.bridge.selectPhase('phase-1')
+    expect(h.watchCameraFlight).toHaveBeenCalledWith('phase-1')
+    expect(h.order).toEqual(['watch', 'select'])
+  })
+
+  it('arms no watcher for a jump with the sheet closed', () => {
+    const h = harness({ agentOpen: false })
+    h.bridge.selectScenario('scen-1')
+    h.bridge.selectPhase('phase-1')
+    expect(h.watchCameraFlight).not.toHaveBeenCalled()
+    // And the jump itself is untouched: closed behaves exactly as before.
+    expect(h.selectScenario).toHaveBeenCalledWith('scen-1')
+    expect(h.selectPhase).toHaveBeenCalledWith('phase-1')
+  })
+
+  it('treats an unwired shell as one with no sheet', () => {
+    // The default answer is "closed" — a caller that wired no sheet must not
+    // get flight bookkeeping for one.
+    const selectScenario = vi.fn()
+    const bridge = makeMobileAgentBridge({
+      selectPhase: vi.fn(),
+      selectScenario,
+      openAgent: vi.fn(),
+    })
+    expect(() => bridge.selectScenario('scen-1')).not.toThrow()
+    expect(selectScenario).toHaveBeenCalledWith('scen-1')
   })
 
   it('setSidebarCollapsed reports honestly that no sidebar exists', () => {

@@ -22,9 +22,9 @@ describe('canvas focus framing', () => {
   })
 
   it('ignores an occlusion smaller than the clearance it already keeps', () => {
-    expect(getCanvasFocusFitInsets('detail', 12).bottomInset).toBe(
-      getCanvasFocusFitInsets('detail').bottomInset,
-    )
+    // The number, not the other call: comparing the two stays green if both
+    // drift, and the claim is that the clearance WINS at 56.
+    expect(getCanvasFocusFitInsets('detail', 12).bottomInset).toBe(56)
   })
 
   it('keeps the overview centered without overlay clearance', () => {

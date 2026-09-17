@@ -241,18 +241,18 @@ export function MobileShell() {
       registerAgentUiBridge(
         makeMobileAgentBridge({
           selectPhase: (phaseId) => {
-            // A jump with the sheet already closed has no scrim to clear and
-            // no composer to hand the caret back to: leave it exactly as it
-            // was rather than arming a watcher for nobody.
-            if (agentOpenRef.current) void watchCameraFlight(phaseId)
             activateTab(null)
             selectPhase(phaseId)
           },
           selectScenario: (scenarioId) => {
-            if (agentOpenRef.current) void watchCameraFlight(scenarioId)
             openScenario(scenarioId, { closeNav: true })
           },
           openAgent: () => setAgentOpen(true),
+          // Read through the ref, not the state: the bridge registers once
+          // and the sheet opens and closes under it, so a captured value
+          // would answer for whenever this effect last ran.
+          isAgentOpen: () => agentOpenRef.current,
+          watchCameraFlight: (targetId) => void watchCameraFlight(targetId),
         }),
       ),
     [selectPhase, openScenario, activateTab, watchCameraFlight],

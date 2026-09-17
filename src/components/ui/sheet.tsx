@@ -10,7 +10,13 @@ import { ground } from "@/lib/ground"
 
 /*
  * DIVERGENCE from the vendored source, allowed only with a stated reason.
- * Colour jobs only: the overlay is the page colour at high opacity rather
+ * TWO kinds, and a re-vendor has to carry both: a COLOUR job, and one API
+ * ADDITION — `SheetContent`'s `overlayClassName`, whose own note below says
+ * what it is for. A regenerated copy of this file drops the prop and takes
+ * the phone's agent sheet with it, so the prop is named up here rather than
+ * only where it is declared.
+ *
+ * The colour job: the overlay is the page colour at high opacity rather
  * than a black veil, so the page stays faintly visible behind the panel
  * instead of being replaced by a flat slab.  That makes the panel's own
  * edge load-bearing, and it is stated: the popover plate and a 90%-opaque
@@ -68,6 +74,11 @@ function SheetContent({
    * agent sheet is that caller. Reached through the content rather than by
    * exporting the overlay, because the overlay is mounted by this component
    * and a second one rendered by a caller would be a second scrim.
+   *
+   * A caller fading the scrim out MUST also stop it hit-testing. An
+   * invisible backdrop still carries the dismiss handler, so a reader
+   * looking at what they think is a bare canvas taps a cell and closes the
+   * panel instead — the exact confusion clearing the scrim was meant to end.
    */
   overlayClassName?: string
 }) {

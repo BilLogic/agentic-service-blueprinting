@@ -37,9 +37,11 @@ export function MobileAgentSheet({
   open: boolean
   onOpenChange: (open: boolean) => void
   /**
-   * Fade the scrim out and drop its blur. The canvas behind this sheet is
-   * moving and the reader is meant to watch it — a 90%-opaque page colour
-   * over `inset-0` does not merely cover the canvas, it washes it out.
+   * Fade the scrim out, drop its blur and stop it hit-testing. The canvas
+   * behind this sheet is moving and the reader is meant to watch it — a
+   * 90%-opaque page colour over `inset-0` does not merely cover the canvas,
+   * it washes it out. Tap-to-dismiss comes back with the scrim; the sheet's
+   * own ✕ never went away.
    */
   backdropCleared?: boolean
   /**
@@ -83,10 +85,13 @@ export function MobileAgentSheet({
         // The scrim's own `transition-opacity duration-150` carries the fade
         // both ways. `backdrop-blur-none` needs the same `supports-` prefix
         // the blur was written with, or tailwind-merge keeps both and the
-        // blur outlives the wash.
+        // blur outlives the wash. `pointer-events-none` is not optional: a
+        // scrim faded to nothing still hit-tests and still dismisses, so
+        // without it the reader spends the flight looking at a sharp canvas
+        // whose every tap closes the sheet instead of reaching a cell.
         overlayClassName={
           backdropCleared
-            ? 'opacity-0 supports-backdrop-filter:backdrop-blur-none'
+            ? 'pointer-events-none opacity-0 supports-backdrop-filter:backdrop-blur-none'
             : undefined
         }
         // min-h + max-h pin the size in BOTH directions: the sheet variant's
