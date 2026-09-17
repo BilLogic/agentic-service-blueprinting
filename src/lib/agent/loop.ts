@@ -397,16 +397,21 @@ class ConnectionDroppedError extends Error {
 }
 
 /**
- * Network-class, meaning: nothing at the other end judged this request.
- * `ProviderError` is the provider's own verdict — a 400 replayed is still a
- * 400 — and an AbortError is the reader pressing stop. Everything else that
- * escapes an adapter is the fetch itself failing, which is the WebKit
- * `TypeError: Load failed` this retry exists for.
+ * The one failure a retry can fix: a request that never reached anyone.
+ * Both WebKit and Chromium throw a bare `TypeError` out of `fetch` for it —
+ * WebKit's wording is the `Load failed` this retry exists for.
+ *
+ * Named rather than assumed: the tempting version is "anything that is not
+ * a `ProviderError` and not an abort", and that reports our own bugs to the
+ * reader as a network story. A `SyntaxError` from parsing a truncated body,
+ * or a schema mismatch in an adapter, is not going to come out differently
+ * the second time — it fails on the first attempt, under its own name.
+ * A TypeError raised by a bug inside an adapter is the one case this cannot
+ * tell apart from the drop, and it is retried; the round is idempotent, so
+ * the cost is a second of delay before the same message arrives.
  */
 function isConnectionDropped(error: unknown): boolean {
-  if (error instanceof ProviderError) return false
-  if (error instanceof DOMException && error.name === 'AbortError') return false
-  return true
+  return error instanceof TypeError
 }
 
 /** A backoff that stop can cut short — waiting out a retry the reader has
@@ -552,15 +557,15 @@ export async function sendToAgent(input: {
     signal: controller.signal,
   }
 
-  // Which call a failure happened on, in the reader's terms. A status that
+  // Hoisted so the catch can say WHERE a failure happened: a status that
   // says only "provider error" leaves someone unable to tell a turn that
   // died before it did anything from one that died after eleven rounds of
   // reading.
-  let roundLabel = 'round 1'
+  let round = 0
+  let closingRound = false
 
   try {
-    for (let round = 0; round < MAX_ROUNDS; round += 1) {
-      roundLabel = `round ${round + 1}`
+    for (; round < MAX_ROUNDS; round += 1) {
       // Rebuilt every round: the live UI context changes as the agent's own
       // navigation tools move the canvas mid-conversation — and so can the
       // shell itself (rotation across the breakpoint).
@@ -803,7 +808,7 @@ export async function sendToAgent(input: {
             },
           ],
         })
-        roundLabel = 'the closing round'
+        closingRound = true
         const closing = await chatWithRetry(adapter, {
           system: buildSystem(
             [contextNote, collectAgentUiContext()].filter(Boolean).join('\n'),
@@ -836,17 +841,28 @@ export async function sendToAgent(input: {
         kind: 'status',
         text: 'Stopped. Whatever already landed is in the change sheet, revertible.',
       })
-    } else if (error instanceof ConnectionDroppedError) {
-      push(sessionId, {
-        kind: 'status',
-        text: `Connection lost on ${roundLabel} after ${error.attempts} tries (${error.message}) — everything the turn already gathered is kept; send a message to carry on.`,
-      })
     } else {
+      const where = closingRound ? 'the closing round' : `round ${round + 1}`
       const message = errorMessage(error)
-      push(sessionId, {
-        kind: 'status',
-        text: `Provider error on ${roundLabel}: ${message}`,
-      })
+      if (error instanceof ConnectionDroppedError) {
+        push(sessionId, {
+          kind: 'status',
+          text: `Connection lost on ${where} after ${error.attempts} tries (${message}) — everything the turn already gathered is kept; send a message to carry on.`,
+        })
+      } else if (error instanceof ProviderError) {
+        push(sessionId, {
+          kind: 'status',
+          text: `Provider error on ${where}: ${message}`,
+        })
+      } else {
+        // Not the provider's verdict and not the network: a tool dispatch,
+        // a persistence write, or a bug in this loop. Say where it happened
+        // and quote it, and claim nothing about whose fault it was.
+        push(sessionId, {
+          kind: 'status',
+          text: `The turn failed on ${where}: ${message}`,
+        })
+      }
     }
   } finally {
     run.running = false

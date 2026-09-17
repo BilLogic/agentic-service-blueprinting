@@ -78,11 +78,16 @@ const client = {} as unknown as SupabaseClient<Database>
  * fresh session id because the loop keeps run state per session in module
  * scope and a shared id would carry one case's rows into the next; the
  * events come back through `useAgentRun` rather than a store peek because
- * that hook is the only reader the app has.
+ * that hook is the only reader the app has. A case that has to reach into
+ * its own run mid-flight — stop, below — names the session itself.
  */
 let sessions = 0
-const send = (input: { client: SupabaseClient<Database> | null; text: string }) => {
-  const sessionId = `loop-test-${(sessions += 1)}`
+const send = (input: {
+  client: SupabaseClient<Database> | null
+  text: string
+  sessionId?: string
+}) => {
+  const sessionId = input.sessionId ?? `loop-test-${(sessions += 1)}`
   return sendToAgent({
     ...input,
     sessionId,
@@ -112,6 +117,7 @@ beforeEach(() => {
 afterEach(() => {
   setActiveService(null)
   configureAgentTools(undefined)
+  vi.useRealTimers()
 })
 
 describe('the loop, provider → tool → result → provider', () => {
@@ -221,27 +227,26 @@ describe('the loop, provider → tool → result → provider', () => {
  * reports as `TypeError: Load failed`. Nothing rejected the request — the
  * radio blipped — so a turn that dies on it throws away every tool result
  * the round had already gathered for no reason a retry could not fix.
+ *
+ * The clock is faked throughout: the backoff between tries is real time the
+ * suite should not spend waiting.
  */
 describe('a provider call that drops at the network layer', () => {
-  const sendTo = (sessionId: string, text: string) =>
-    sendToAgent({
-      client: null,
-      text,
-      sessionId,
-      offlineBoard: PACKAGE_OFFLINE_BOARD,
-      settings: SETTINGS,
-      contextNote: '',
-    }).then(() => renderHook(() => useAgentRun(sessionId)).result.current.events)
+  /** Past the two backoffs, whichever of them this case reaches. */
+  const runOutTheBackoff = () => vi.advanceTimersByTimeAsync(5000)
 
   const loadFailed = () => new TypeError('Load failed')
 
   it('retries a dropped connection and finishes the turn the reader asked for', async () => {
+    vi.useFakeTimers()
     provider.turns = [
       loadFailed(),
       { parts: [{ type: 'text', text: 'Four phases, Discover to Maintain.' }], stopReason: 'end' },
     ]
 
-    const events = await sendTo('loop-drop-retried', 'What phases are there?')
+    const pending = send({ client: null, text: 'What phases are there?' })
+    await runOutTheBackoff()
+    const events = await pending
 
     expect(provider.inputs).toHaveLength(2)
     expect(events.map((event) => event.kind)).toEqual(['user', 'assistant'])
@@ -249,39 +254,41 @@ describe('a provider call that drops at the network layer', () => {
   })
 
   it('keeps the tool results an earlier round gathered when a later round is retried', async () => {
+    vi.useFakeTimers()
     provider.turns = [
       { parts: [call('c1', 'list_blueprint', { granularity: ['phase'] })], stopReason: 'tool_use' },
       loadFailed(),
       { parts: [{ type: 'text', text: 'Four phases.' }], stopReason: 'end' },
     ]
 
-    await sendTo('loop-drop-keeps-results', 'What phases are there?')
+    const pending = send({ client: null, text: 'What phases are there?' })
+    await runOutTheBackoff()
+    await pending
 
-    // The retry is the same round, sent again: it still carries the result
-    // of the call that already ran.
-    const retried = provider.inputs[2]!.messages
-      .filter((message) => message.role === 'tool')
-      .flatMap((message) => message.parts)
-    expect(retried[0]).toMatchObject({ type: 'tool_result', toolCallId: 'c1' })
+    // The third call is the second round sent again: it still carries the
+    // result of the call that already ran.
+    expect(resultsFedBack(2)[0]).toMatchObject({ type: 'tool_result', toolCallId: 'c1' })
   })
 
-  it('gives up after two retries with a status naming the round and the drop', async () => {
+  it('gives up after two retries with a status naming the round and the count', async () => {
+    vi.useFakeTimers()
     provider.turns = [loadFailed(), loadFailed(), loadFailed()]
 
-    const events = await sendTo('loop-drop-exhausted', 'What phases are there?')
+    const pending = send({ client: null, text: 'What phases are there?' })
+    await runOutTheBackoff()
+    const events = await pending
 
     expect(provider.inputs).toHaveLength(3)
-    const status = events.at(-1)
-    expect(status).toMatchObject({ kind: 'status' })
-    expect((status as { text: string }).text).toMatch(/connection/i)
-    expect((status as { text: string }).text).toContain('round 1')
-    expect((status as { text: string }).text).not.toMatch(/Provider error/)
+    expect(events.at(-1)).toEqual({
+      kind: 'status',
+      text: 'Connection lost on round 1 after 3 tries (Load failed) — everything the turn already gathered is kept; send a message to carry on.',
+    })
   })
 
   it('does not retry a provider refusal, and keeps its status and detail', async () => {
     provider.turns = [new ProviderError('anthropic', 429, 'rate limit exceeded')]
 
-    const events = await sendTo('loop-refusal-not-retried', 'What phases are there?')
+    const events = await send({ client: null, text: 'What phases are there?' })
 
     expect(provider.inputs).toHaveLength(1)
     expect(events.at(-1)).toEqual({
@@ -290,10 +297,24 @@ describe('a provider call that drops at the network layer', () => {
     })
   })
 
-  it('never retries an abort, and keeps the stopped status', async () => {
+  it('does not retry a failure a second try cannot fix, and does not call it a drop', async () => {
+    // A truncated 200 whose body will not parse: the same request will
+    // produce the same broken body, and the reader is owed the real name.
+    provider.turns = [new SyntaxError('Unexpected end of JSON input')]
+
+    const events = await send({ client: null, text: 'What phases are there?' })
+
+    expect(provider.inputs).toHaveLength(1)
+    expect(events.at(-1)).toEqual({
+      kind: 'status',
+      text: 'The turn failed on round 1: Unexpected end of JSON input',
+    })
+  })
+
+  it('never retries an abort — a regression guard on the stopped status', async () => {
     provider.turns = [new DOMException('stopped', 'AbortError')]
 
-    const events = await sendTo('loop-abort-not-retried', 'What phases are there?')
+    const events = await send({ client: null, text: 'What phases are there?' })
 
     expect(provider.inputs).toHaveLength(1)
     expect(events.at(-1)).toEqual({
@@ -302,15 +323,40 @@ describe('a provider call that drops at the network layer', () => {
     })
   })
 
-  it('stops between retries when the reader presses stop during the backoff', async () => {
+  it('stops between tries when the reader presses stop during the backoff', async () => {
+    vi.useFakeTimers()
+    const sessionId = 'loop-abort-during-backoff'
     provider.turns = [
       () => {
-        stopAgent('loop-abort-during-backoff')
+        // Lands while the loop is waiting out the backoff, not before it —
+        // the wait itself has to notice, or Stop sits ignored for a second.
+        setTimeout(() => stopAgent(sessionId), 50)
+        throw loadFailed()
+      },
+      { parts: [{ type: 'text', text: 'Should never be asked for.' }], stopReason: 'end' },
+    ]
+
+    const pending = send({ client: null, text: 'What phases are there?', sessionId })
+    await runOutTheBackoff()
+    const events = await pending
+
+    expect(provider.inputs).toHaveLength(1)
+    expect(events.at(-1)).toEqual({
+      kind: 'status',
+      text: 'Stopped. Whatever already landed is in the change sheet, revertible.',
+    })
+  })
+
+  it('stops rather than retrying when stop landed during the provider call itself', async () => {
+    const sessionId = 'loop-abort-before-backoff'
+    provider.turns = [
+      () => {
+        stopAgent(sessionId)
         throw loadFailed()
       },
     ]
 
-    const events = await sendTo('loop-abort-during-backoff', 'What phases are there?')
+    const events = await send({ client: null, text: 'What phases are there?', sessionId })
 
     expect(provider.inputs).toHaveLength(1)
     expect(events.at(-1)).toEqual({
