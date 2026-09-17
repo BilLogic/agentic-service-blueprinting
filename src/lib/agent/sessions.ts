@@ -63,11 +63,20 @@ export type AgentAttachment = {
   payload: string
 }
 
-/** Per-session composer state — switching sessions keeps each draft. */
-type AgentDraft = { text: string; skillId: string | null }
+/**
+ * Per-session composer state — switching sessions keeps each draft.
+ *
+ * TEXT AND NOTHING ELSE. The draft used to carry the skill a reader had
+ * picked, in a field beside the text, and that field was a second record of
+ * something the text already said: the skills a message runs are the tokens
+ * in it, parsed at send. Two records disagree, and this pair did — a picked
+ * skill outlived the token that made it, and a token typed in a sentence sat
+ * there with nothing recording it.
+ */
+type AgentDraft = { text: string }
 
 const STORAGE_KEY = storageKey('agent-sessions')
-const EMPTY_DRAFT = { text: '', skillId: null } as const
+const EMPTY_DRAFT: AgentDraft = { text: '' }
 
 /** A stored entry that carries the three fields nothing can substitute for. */
 type StoredSession = Record<string, unknown> & {
@@ -373,7 +382,9 @@ function openSessionSnapshot(): AgentSession | null {
 
 export function setAgentDraft(sessionId: string, draft: AgentDraft): void {
   const current = drafts[sessionId] ?? EMPTY_DRAFT
-  if (current.text === draft.text && current.skillId === draft.skillId) return
+  // Reference equality is what `useSyncExternalStore` re-renders on, so a
+  // write that changes nothing has to be dropped here.
+  if (current.text === draft.text) return
   drafts = { ...drafts, [sessionId]: draft }
   emit()
 }
