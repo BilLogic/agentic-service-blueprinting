@@ -57,6 +57,41 @@ export function makeMobileAgentBridge({
 }
 
 /**
+ * The sheet's scrim, in the two states the flight puts it in.
+ *
+ * The wash and the pass-through are ONE state and the transition is what used
+ * to pull them apart. Both read the same flag in the same render, but only
+ * one of them is animatable: the scrim's own `transition-opacity` eased the
+ * colour over 150 ms while `pointer-events` flipped in the frame the class
+ * landed. That left a window at each end of the clear with the two
+ * disagreeing — a fully opaque scrim already passing taps through, then an
+ * invisible one that had gone back to swallowing them. An invisible surface
+ * eating a tap aimed at a cell is the exact hazard the pass-through exists to
+ * remove, so a fade that reopens it is not a fade worth keeping.
+ *
+ * Naming `pointer-events` in the transition beside `opacity`, with discrete
+ * transitions allowed, keeps the fade AND keeps the pair in step: a discrete
+ * property switches at the midpoint of the same 150 ms, so taps pass through
+ * only once the scrim is already more gone than there, and are taken again
+ * only once it is more there than gone. Neither extreme is ever reachable,
+ * and the transition is declared in BOTH states — a scrim that only named it
+ * while cleared would fade back in with its pass-through already surrendered.
+ *
+ * `backdrop-blur-none` needs the same `supports-` prefix the blur was written
+ * with, or tailwind-merge keeps both and the blur outlives the wash.
+ */
+const BACKDROP_TRANSITION =
+  'transition-[opacity,pointer-events] transition-discrete duration-150'
+const BACKDROP_CLEARED =
+  'pointer-events-none opacity-0 supports-backdrop-filter:backdrop-blur-none'
+
+export function agentFlightBackdropClass(cleared: boolean): string {
+  return cleared
+    ? `${BACKDROP_TRANSITION} ${BACKDROP_CLEARED}`
+    : BACKDROP_TRANSITION
+}
+
+/**
  * How long the sheet will hold its scrim down waiting for a verdict.
  *
  * The wash MUST come back. A camera that never publishes an outcome is an

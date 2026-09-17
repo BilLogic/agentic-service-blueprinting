@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   AGENT_CAMERA_FLIGHT_DEADLINE_MS,
+  agentFlightBackdropClass,
   makeAgentCameraFlightWatcher,
   makeMobileAgentBridge,
 } from '@/components/mobile/mobileAgentBridge'
@@ -193,5 +194,64 @@ describe('makeAgentCameraFlightWatcher', () => {
     await second
     expect(h.setFlying).toHaveBeenLastCalledWith(false)
     expect(h.onSettled).toHaveBeenCalledTimes(1)
+  })
+
+  /*
+    A flight lasts as long as the canvas takes, not one tick of it. The clear
+    read as a flicker when a verdict landed within ~150 ms of the jump —
+    early, because the mount that armed the target was answering for a flight
+    it had already let go of — so this pins the shape of the wait itself: the
+    scrim stays down across every beat of a slow flight and comes back on the
+    verdict, not before.
+  */
+  it('holds the scrim down for the whole flight, not the first tick of it', async () => {
+    const h = harness()
+    const flight = h.watch('scen-1')
+
+    for (const beat of [100, 300, 600, 900]) {
+      await vi.advanceTimersByTimeAsync(beat)
+      expect(h.setFlying).not.toHaveBeenCalledWith(false)
+      expect(h.onSettled).not.toHaveBeenCalled()
+    }
+
+    h.outcomes.get('scen-1')?.({ kind: 'completed' })
+    await flight
+    expect(h.setFlying).toHaveBeenLastCalledWith(false)
+    // Exactly once: the wash is put back by one hand, whichever exit ran.
+    expect(h.setFlying.mock.calls.filter(([flying]) => !flying)).toHaveLength(1)
+    expect(h.onSettled).toHaveBeenCalledTimes(1)
+  })
+})
+
+/*
+  The scrim is one state in both directions. The flag decides it, the two
+  properties are written together, and the transition that carries them is
+  declared whether or not the scrim is cleared — a transition named only in
+  the cleared state fades the wash back in with the pass-through already
+  surrendered, which is the invisible-surface-eating-a-tap hazard again with
+  the sign flipped.
+*/
+describe('agentFlightBackdropClass', () => {
+  const washed = agentFlightBackdropClass(false)
+  const cleared = agentFlightBackdropClass(true)
+
+  it('clears opacity and hit-testing in the same class list, or neither', () => {
+    expect(cleared).toContain('opacity-0')
+    expect(cleared).toContain('pointer-events-none')
+    expect(washed).not.toContain('opacity-0')
+    expect(washed).not.toContain('pointer-events-none')
+  })
+
+  it('transitions both properties together, in both states', () => {
+    for (const state of [washed, cleared]) {
+      expect(state).toContain('transition-[opacity,pointer-events]')
+      // Discrete transitions are what move `pointer-events` on the same
+      // clock as the fade rather than in the frame the class lands.
+      expect(state).toContain('transition-discrete')
+    }
+  })
+
+  it('drops the blur with the wash, under the prefix the blur was written with', () => {
+    expect(cleared).toContain('supports-backdrop-filter:backdrop-blur-none')
   })
 })

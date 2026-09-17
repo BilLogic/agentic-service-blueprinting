@@ -261,6 +261,18 @@ export function MobileShell() {
   // What the shell knows about the phone's screen, for get_ui_state.
   const shellContext = [
     'Mobile shell (view-only): the shared canvas, scoped to the selected phase',
+    /*
+      The phase, in the same words the desktop shell reports it — and it has to
+      be here and not only there, because this is the line the navigation tools
+      VERIFY a selection against. Without it every agent-driven phase jump on
+      the phone answered "navigation started, but the selected phase was not
+      verified" while the canvas sat on exactly the phase asked for: a tool
+      cannot read a selection the shell never reports, and a model told its
+      navigation failed apologises for a move that landed.
+    */
+    phase
+      ? `Selected phase: "${getSlideDisplayLabel(phase, slides)}" (${phase.id})`
+      : 'Selected phase: none',
     scenario
       ? `Selected scenario: "${getSlideDisplayLabel(scenario, slides)}" (${scenario.id})`
       : `Selected scenario: none${view === 'home' ? ' (overview)' : ''}`,

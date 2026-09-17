@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/sheet'
 import { AgentPanel } from '@/components/editor/AgentPanel'
 import { Button } from '@/components/ui/button'
+import { agentFlightBackdropClass } from '@/components/mobile/mobileAgentBridge'
 
 /**
  * The agent, as a BOTTOM sheet — a little over half the screen, so the
@@ -82,18 +83,9 @@ export function MobileAgentSheet({
         side="bottom"
         showCloseButton={false}
         ref={measureRef}
-        // The scrim's own `transition-opacity duration-150` carries the fade
-        // both ways. `backdrop-blur-none` needs the same `supports-` prefix
-        // the blur was written with, or tailwind-merge keeps both and the
-        // blur outlives the wash. `pointer-events-none` is not optional: a
-        // scrim faded to nothing still hit-tests and still dismisses, so
-        // without it the reader spends the flight looking at a sharp canvas
-        // whose every tap closes the sheet instead of reaching a cell.
-        overlayClassName={
-          backdropCleared
-            ? 'pointer-events-none opacity-0 supports-backdrop-filter:backdrop-blur-none'
-            : undefined
-        }
+        // One state, one render — see `agentFlightBackdropClass`, which owns
+        // the reason the wash and the pass-through have to travel together.
+        overlayClassName={agentFlightBackdropClass(backdropCleared)}
         // min-h + max-h pin the size in BOTH directions: the sheet variant's
         // own data-[side=bottom] h-auto survives tailwind-merge (different
         // variant prefix), so a bare h-[60svh] loses to it — content-hungry
