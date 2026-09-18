@@ -52,7 +52,10 @@ picked-versus-mentioned distinction to hold, because nothing outside the text
 holds a pick. A resolved token is coloured and it runs; an unresolved one is a
 word with a slash on it. What is still asked about is the NEAR MISS — a token
 matching only a skill's bare alias, which resolves to nothing and would
-otherwise send as prose with nobody told.
+otherwise send as prose with nobody told. Every miss in the draft is asked
+about, one at a time, and the accepted rewrite is re-checked before it sends:
+a message carries as many tokens as its sentence names, so a question about
+one of them would leave the rest silent.
 
 **The field stays a real `<textarea>`.** The colour comes from a mirrored
 layer behind it that renders the same string with each resolved token in a

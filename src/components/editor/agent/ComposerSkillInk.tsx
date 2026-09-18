@@ -61,6 +61,12 @@ export const COMPOSER_FIELD_METRICS =
  * A deployment that authors an accent gets a genuinely coloured token from the
  * same line of code, which is the case this is tuned for.
  *
+ * In the DARK theme the relation inverts — the ink lands near a lightness of
+ * 0.7676 against a 0.95 prose, so the token reads a shade DARKER than the
+ * words around it. Worth knowing before anyone reaches for a step in
+ * lightness in one direction and finds it is the wrong direction in the other
+ * theme; the signal is the step itself, not which way it goes.
+ *
  * The trailing newline is not decoration. A block collapses the last newline
  * of its content and a textarea renders a line for it, so a message ending in
  * Enter leaves the two with different scroll heights and the sync below lands

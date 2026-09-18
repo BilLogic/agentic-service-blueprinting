@@ -110,6 +110,16 @@ export type SkillLookup = { query: string; start: number; end: number }
  * `/sb:audit/notes.md` is a path, and the token has to be the last thing in
  * the draft for it to be a lookup at all.
  *
+ * A DRAFT THAT OPENS WITH A RESOLVED SKILL still gets a lookup on its later
+ * tokens. A guard used to refuse one — a head command owns its arguments in
+ * the tool this composer mirrors, so a slash inside them is argument text —
+ * and it was deleted, because a message here carries as many skills as its
+ * text names: with the guard, `/sb:map notes then /sb:au` offered nothing and
+ * the second skill had to be typed out in full, which is the feature refusing
+ * itself. What the guard was protecting costs little without it: a path typed
+ * for a skill to read opens a lookup whose query matches no skill, and a
+ * lookup with no matches opens no menu.
+ *
  * ONE SPELLING of the token grammar, `SKILL_TOKEN_CHARS`, used by every
  * pattern below. Two spellings of it drift, and the drift shows up as a
  * trigger that fires on a string the tests next door swear it refuses.
@@ -121,15 +131,8 @@ const LOOKUP_AT_HEAD = new RegExp(`^/(${SKILL_TOKEN_CHARS}*)$`)
 const LOOKUP_AFTER_SPACE = new RegExp(
   `[\\s。、？！]/(${SKILL_TOKEN_CHARS}*)$`,
 )
-const RESOLVED_HEAD_SKILL = new RegExp(`^/(${SKILL_TOKEN_CHARS}+)\\s`)
 
 export function findSkillLookup(draft: string): SkillLookup | null {
-  // A draft that already opens with a resolved skill is that skill's
-  // arguments from the space onwards, and a slash inside arguments is
-  // argument text — offering a second lookup there would put a menu over
-  // a path the reader is typing for the skill to read.
-  const head = RESOLVED_HEAD_SKILL.exec(draft)
-  if (head && findSkillByToken(head[1])) return null
   const atHead = LOOKUP_AT_HEAD.exec(draft)
   if (atHead)
     return { query: atHead[1].toLowerCase(), start: 0, end: draft.length }
@@ -306,25 +309,32 @@ export type UnrunSkillToken = {
 }
 
 /**
- * The first token in the draft that nearly names a skill and therefore runs
- * nothing: a word-start token matching a skill's bare alias and no skill's
- * official name. `/audit` is the case — it looks like an invocation, it is
- * not one, and a message carrying it would otherwise send as prose with
- * nobody told, which is the failure this exists for. One real session spent
- * four rounds re-reading the same scenario while the agent improvised the
- * flow it had never been given.
+ * EVERY token in the draft that nearly names a skill and therefore runs
+ * nothing, in the order they appear: a word-start token matching a skill's
+ * bare alias and no skill's official name. `/audit` is the case — it looks
+ * like an invocation, it is not one, and a message carrying it would
+ * otherwise send as prose with nobody told, which is the failure this exists
+ * for. One real session spent four rounds re-reading the same scenario while
+ * the agent improvised the flow it had never been given.
+ *
+ * ALL of them, not the first: several skills per message is normal here, so
+ * "check /audit then /map this" holds two near misses, and a walk that
+ * stopped at the first asked about `/audit`, completed it, and sent with
+ * `/map` still silent — the exact silence this walk exists to close, reopened
+ * one token to the right.
  *
  * A token that DOES resolve is not a near miss and never comes back from
  * here. It is coloured in the field and it runs — that is the whole of the
  * promise the colour makes, and a prompt asking a reader to confirm what
  * they can already see would be asking them to read it twice.
  */
-export function findUnrunSkillToken(draft: string): UnrunSkillToken | null {
+export function findUnrunSkillTokens(draft: string): UnrunSkillToken[] {
+  const misses: UnrunSkillToken[] = []
   for (const { token, start, end } of wordStartTokens(draft)) {
     if (findSkillByToken(token)) continue
     const command = findSkillByAlias(token)
     if (!command?.content) continue
-    return { token, command, start, end }
+    misses.push({ token, command, start, end })
   }
-  return null
+  return misses
 }

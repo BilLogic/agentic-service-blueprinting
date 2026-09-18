@@ -270,7 +270,7 @@ describe('the loop, provider → tool → result → provider', () => {
     await send({
       client,
       text: 'then /audit the intake',
-      unrunSkill: { token: 'audit', label: '/sb:audit' },
+      unrunSkills: [{ token: 'audit', label: '/sb:audit' }],
     })
     const system = provider.inputs[0]!.system
     expect(system).toContain('/sb:audit')
@@ -278,6 +278,27 @@ describe('the loop, provider → tool → result → provider', () => {
     expect(system).toContain('NO skill ran')
     expect(system).toContain('Do not describe /sb:audit as having run')
     // A notice, not an invocation: the skill body stays out of the prompt.
+    expect(system).not.toContain('--- active skill')
+  })
+
+  it('names every near miss the message carried, not the first of them', async () => {
+    // Several skills per message means several near misses, and a paragraph
+    // that named one of them was the original silence moved one token right:
+    // the model reads "/map" as a map that ran.
+    provider.turns = [{ parts: [{ type: 'text', text: 'Noted.' }], stopReason: 'end' }]
+    await send({
+      client,
+      text: 'check /audit then /map this',
+      unrunSkills: [
+        { token: 'audit', label: '/sb:audit' },
+        { token: 'map', label: '/sb:map' },
+      ],
+    })
+    const system = provider.inputs[0]!.system
+    expect(system).toContain('are NOT skill names here')
+    expect(system).toContain('"/audit" and "/map"')
+    expect(system).toContain('the closest skills are /sb:audit and /sb:map')
+    expect(system).toContain('Do not describe any of /sb:audit and /sb:map as having run')
     expect(system).not.toContain('--- active skill')
   })
 
@@ -318,7 +339,7 @@ describe('the loop, provider → tool → result → provider', () => {
     await send({
       client,
       text: 'then /audit the intake',
-      unrunSkill: { token: 'audit', label: '/sb:audit' },
+      unrunSkills: [{ token: 'audit', label: '/sb:audit' }],
     })
     // The closing call is the one that was sent no tools.
     const closing = provider.inputs.at(-1)!

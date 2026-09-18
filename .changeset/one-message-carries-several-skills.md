@@ -24,6 +24,19 @@ breakpoint is measured through the same builder the prompt is assembled with,
 so several skill bodies move it past all of them instead of cutting the prompt
 mid-skill.
 
+**The menu keeps offering after the first skill, and the notice names every
+near miss.** A lookup used to refuse to open once the draft began with a
+resolved skill — a head command owning its arguments, as it does in the tool
+this composer mirrors — so `/sb:map notes then /sb:au` offered nothing and the
+second skill had to be typed out in full. That guard is gone: what it was
+protecting costs nothing without it, since a path typed for a skill to read
+opens a lookup matching no skill and a lookup with no matches opens no menu.
+For the same reason the near-miss notice now reads out every token in the
+draft that nearly names a skill rather than the first: "check /audit then /map
+this" names both, accepting one rewrites that token and asks again about the
+next, and a sentence sent as prose tells the model about all of them. One
+reported and the rest left out was the same silence with a smaller mouth.
+
 **A turn read back from the database keeps its skills.** The transcript
 records every skill a message invoked. Rows persisted by earlier releases name
 one skill in a field of its own, and that is settled into the list this build

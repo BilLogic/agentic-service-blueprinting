@@ -454,8 +454,10 @@ read are both counted against.
 
 **Round** — one provider call inside a turn, with the tool calls its answer
 asked for and their results. A turn allows a fixed number of them, and a turn
-that spends them all makes one further call offered no tools, so it answers
-from what it learned rather than stopping mid-work.
+that spends them all with its last round still asking for tools makes one
+further call offered no tools, so it answers from what it learned rather than
+stopping mid-work. A turn whose final round answers in prose is finished and
+makes no such call.
 
 ## The session
 

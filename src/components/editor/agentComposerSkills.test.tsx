@@ -288,6 +288,46 @@ describe('a token that nearly names a skill', () => {
     expect(sent.system).not.toContain('--- active skill')
   })
 
+  it('names both misses, and asks again for the second after the first is taken', async () => {
+    // The silence this notice exists to close, reopened one token to the
+    // right: a message with two near misses asked about `/audit`, completed
+    // it, and sent with `/map` still naming nothing. Accepting goes back
+    // through the same check, so the second one asks in its turn.
+    const composer = openComposer()
+    type(composer, 'check /audit then /map this')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(screen.getByText(/closest matches are \/sb:audit and \/sb:map/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Run /sb:audit' }))
+    // Nothing sent yet: the second miss is now the question.
+    expect(provider.inputs).toEqual([])
+    expect(screen.getByText(/closest match is \/sb:map/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Run /sb:map' }))
+    await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
+    const sent = provider.inputs[0]!
+    expect(JSON.stringify(sent.messages)).toContain(
+      'check /sb:audit then /sb:map this',
+    )
+    // Both skills ran, and nothing was reported as unrun.
+    expect(sent.system).toContain('--- active skill: /sb:audit')
+    expect(sent.system).toContain('--- active skill: /sb:map')
+    expect(sent.system).not.toContain('NOT skill name')
+  })
+
+  it('tells the model about every miss when the prose goes as it stands', async () => {
+    const composer = openComposer()
+    type(composer, 'check /audit then /map this')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send as text' }))
+    await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
+    const sent = provider.inputs[0]!
+    expect(JSON.stringify(sent.messages)).toContain('check /audit then /map this')
+    // Both named. One told and the other left out is the same silence with a
+    // smaller mouth — the model reads "/map" as a map that ran.
+    expect(sent.system).toContain('"/audit" and "/map"')
+    expect(sent.system).toContain('/sb:audit and /sb:map')
+    expect(sent.system).not.toContain('--- active skill')
+  })
+
   it('asks nothing about a token that resolves — it runs', async () => {
     const composer = openComposer()
     type(composer, 'Hey can u /sb:audit the goal setting scenario')
