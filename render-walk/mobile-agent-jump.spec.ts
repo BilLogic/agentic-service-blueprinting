@@ -28,9 +28,12 @@ import { VIEW_SCREENSHOT_DIR } from './playwright.config'
  *   3. **The destination rendered above the sheet, legibly.** The board the
  *      agent was asked for has a box, the sheet has a box, a strip-full of
  *      the first is above the second, and cells with words in them are wholly
- *      inside the strip. The FIT INSET itself is the slice's claim, not this
- *      file's — see the note over that block for why no assertion here can
- *      make it.
+ *      inside the strip. It renders there because the phone's fit floor
+ *      anchors the board to its top-left, NOT because the sheet's height was
+ *      handed to the camera — the slice owns that the number is delivered,
+ *      the camera hook's flight test owns what a number like it frames, and
+ *      no assertion on this page can tell the two apart. See the note over
+ *      that block.
  *
  * ── HOW THE AGENT IS DRIVEN WITHOUT A MODEL ────────────────────────────────
  *
@@ -298,12 +301,18 @@ test.describe('the phone agent jump', () => {
     // overflows rather than being centred in whatever rectangle the insets
     // leave. Zeroing `occludedBottomPx` in `getCanvasFocusFitInsets` and
     // walking this flow again produces the destination's box to the pixel:
-    // x 20, y 124, 705 × 737, sheet top 325, both times. The inset is a real
-    // number with a real effect on boards the floor does not bind, and on
-    // this surface it buys nothing a box can see — so THE INSET IS PINNED BY
-    // THE JSDOM SLICE's fit assertion (`camera.fits.at(-1)` carrying
-    // `occludedBottomPx`), not here, and this case is not mutation-checked
-    // against that failure because it no longer claims to catch it.
+    // x 20, y 124, 705 × 737, sheet top 325, both times.
+    //
+    // So the board above the sheet here is the ANCHORING, and saying the
+    // inset put it there — as this file, the shell and a release note once
+    // did — reads a delivered value as a framing. The two claims are pinned
+    // apart: the jsdom slice holds that the measured height reaches the fit
+    // (`camera.fits.at(-1)` carrying `occludedBottomPx`), and
+    // `src/hooks/useZoomPanViewport.cameraFlight.test.tsx` holds what such a
+    // number frames at this same floor — centred inside the strip for a board
+    // that fits it vertically, and out of the solution entirely for one that
+    // does not. Neither is this case, which is why it is not mutation-checked
+    // against a dropped inset: it no longer claims to catch one.
     //
     // What is left is still worth a browser: that the destination the agent
     // was asked for is the board on screen, that a strip-full of it sits

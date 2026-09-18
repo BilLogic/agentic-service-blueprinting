@@ -29,7 +29,9 @@ unblocked by them, but because the risk it was written about came true there
 twice; see the end.
 Amended again 2026-09-18 (#926): the phone's path memory is split on pins of
 its own, which are not this record's bar and are not claimed to be; see the
-end.
+end. Amended again 2026-09-18 (#938): that pair's claim about the fit inset is
+REVERSED — the sheet's height reaches the camera and the ANCHORING frames the
+board, so a value arriving at a function is not an outcome; see the end.
 **Context** `src/components/editor/CanvasAnnotationLayer.tsx`,
 `src/components/blueprint/BlueprintCellDetailPanel.tsx`,
 `src/components/editor/AgentPanel.tsx`
@@ -614,9 +616,10 @@ non-trivial length — so a serialisation a real provider would answer with a
 the phone floors its fit zoom, so a scenario board wider than the screen is
 framed from its top-left and zeroing the inset leaves the destination's box
 identical to the pixel. That claim is the slice's, and the spec says so where
-a reader would otherwise assume the browser held it. It screenshots the
-landed jump, which is the half a person reads. It landed in the same change as
-the slice, the way the annotation-drag pair did.
+a reader would otherwise assume the browser held it — though see the
+amendment at the end of this record for what the pair did NOT hold between
+them. It screenshots the landed jump, which is the half a person reads. It
+landed in the same change as the slice, the way the annotation-drag pair did.
 
 **This component was never named here, and the slice is not owed to a rule.**
 `MobileShell.tsx` is not one of the three this record held, so nothing formally
@@ -639,8 +642,9 @@ the real one arms on (`cameraOutcomeKey`, from `cameraTargetId`) rather than
 once per mount, and publishes through the shipped `settleJump`
 ([28](0028-a-jump-is-awaited-through-one-module.md)). Arming on the key is what lets the slice see
 a jump the board does not remount for. The sheet's own height is stamped for
-the same reason a stub board is: a zero inset would let the "lands above the
-sheet" assertion pass on a shell that had thrown the inset away. Mocked
+the same reason a stub board is: a zero inset would let the "the sheet's measured
+height reaches the fit" assertion pass on a shell that had thrown the inset
+away, since the stand-in's default and the dropped value are the same 0. Mocked
 besides: the Supabase provider, for the single `canAgent` the ✦ affordances
 hang off, and the viewport probe jsdom has no `matchMedia` for.
 
@@ -743,3 +747,42 @@ swapping the happy-path default for the first path in the list reddens three
 module cases. Against unchanged code: the shell pins were written and watched
 pass before anything moved, and re-run against the pre-extraction shell after
 the fact to confirm the extraction had not rewritten them.
+
+## Amended 2026-09-18: a value arriving at a function is not an outcome
+
+**The claim the pair did not hold between them.** The slice above asserts that
+the sheet's measured occluded height REACHED the camera as a fit inset. Every
+prose note around it — the slice's own header, the shell's, the sheet's, the
+fit-inset helper's, the render walk's, and the paragraph in this record — said
+the inset put the destination in the strip above the sheet. Those are two
+claims, and only the first was ever tested. So a value with no effect on this
+surface read as a framing through both review axes, a browser verification and
+a render walk, and the release note carried it to readers.
+
+**What actually frames it.** The phone floors its fit zoom, and on an axis the
+floor pushed off screen the camera anchors: it solves for the TOP inset alone.
+The destination is above the sheet because it is anchored to its top-left, and
+it runs on behind the panel either way — measured, mutating the inset gives a
+pixel-identical destination box. That framing is the one the phone wants: a
+board taller than the strip the sheet leaves has no framing that keeps both of
+its edges, and the edge worth keeping is the one the board begins at. So the
+code stood and the story was corrected, at each of the six places a reader
+meets it, with the reasoning owned by the anchoring note in
+`useZoomPanViewport` and the rest pointing there.
+
+**What closed the gap.** Two cases at the phone's own fit floor, either side
+of the line the inset draws: a board the floor binds by width while it fits
+the strip vertically is centred INSIDE the strip — dropping the inset puts it
+behind the sheet entirely — and a board that does not fit is anchored, framed
+identically with the sheet's height and with 0. Both were watched fail against
+mutations of the branch each covers.
+
+**The lesson for this record is narrower than "add a browser case".** The
+browser case was written, ran, and could not see this either; the render walk
+even measured the identical box and the reading survived. What was missing is
+that a slice able to see only an ARRIVAL has to say so where its reader is
+standing, in the words of the assertion itself — a test named for an outcome
+it cannot observe is worse than no test, because it retires the suspicion that
+would have found the gap. Nothing here is blocked or unblocked by this
+amendment; the correction is prose and two pins, and no behaviour moved.
+

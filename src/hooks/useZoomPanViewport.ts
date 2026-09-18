@@ -1039,6 +1039,36 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
         neither does a reader who has zoomed in past it — that overflow is
         their own doing, and yanking their view to a corner on the next
         resize would be the surprise.
+
+        AND THE ANCHORED AXIS READS THE INSET IT ANCHORS TO, NOTHING ELSE.
+        This is the one place that argument is written out; the shell, the
+        agent sheet, the fit-inset helper and both test halves state the
+        consequence and point here, because it was restated in each of them
+        once and the copies drifted.
+
+        The vertical anchor solves for `insets.top`, so a bottom-occluding
+        surface — the phone's agent sheet, which owns the lower 60% of that
+        screen — does not move it. Deliberate. A board taller than the strip
+        such a surface leaves has no framing that keeps both of its edges, and
+        the edge worth keeping is the one the board begins at: its lane
+        headers and first step, which is what a reader arriving at a
+        destination reads. Buying bottom clearance here would pan that
+        beginning up out of the frame the fit reserves — past `insets.top`,
+        which on the phone's detail canvas is the bottom-navigation clearance
+        mirrored to the top to hold the visual centre — to gain room at an
+        edge already hundreds of pixels off screen. So the destination is
+        above the sheet because it is ANCHORED, and saying the occluded height
+        put it there reads a delivered value as a framing.
+
+        The bottom inset earns its keep in the centring branch above: a board
+        that fits the strip vertically is centred INSIDE the strip rather than
+        in the container, and without the inset that board lands behind the
+        surface entirely. It also decides which of the two branches a board
+        takes at all, since `overflowsY` is measured against `fitHeight` — so
+        "the bottom inset is inert on a floored fit" is too strong a claim;
+        it is inert on an axis the floor pushed off the strip, and the floor
+        can equally bind by width. Both branches are pinned at the phone's own
+        floor in `useZoomPanViewport.cameraFlight.test.tsx`.
       */
       const overflowsX = floored && bounds.width * nextZoom > fitWidth + 0.5
       const overflowsY = floored && bounds.height * nextZoom > fitHeight + 0.5

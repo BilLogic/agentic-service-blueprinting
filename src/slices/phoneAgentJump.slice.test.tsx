@@ -6,10 +6,24 @@
  * reader lands on the cover, taps through to the first scenario, opens the
  * ✦ sheet, and then the agent moves the camera for them — first to another
  * scenario, then to another phase. What is asserted is what a reader would
- * see and what the tool would answer: the sheet STAYS, the destination is
- * aimed above it, the selection comes back in the words the navigation tool
- * verifies against, and the caret returns to the composer once the camera
- * settles.
+ * see and what the tool would answer: the sheet STAYS, the height it
+ * occludes reaches the camera as a fit inset, the selection comes back in
+ * the words the navigation tool verifies against, and the caret returns to
+ * the composer once the camera settles.
+ *
+ * READ THE THIRD OF THOSE NARROWLY. This file can see that the measured
+ * height got to the camera. It cannot see what the camera did with it — the
+ * viewport is stood in for below, and jsdom lays nothing out for the real
+ * one to fit to. Whether the number MOVES the framing is a question about
+ * geometry, answered at the phone's own floor in
+ * `useZoomPanViewport.cameraFlight.test.tsx`, and the answer is that on the
+ * ordinary phone destination it does not: the floor wins, the board is
+ * framed from its top-left, and that solves for the top inset alone. The
+ * destination is above the sheet because it is anchored there. Earlier
+ * wording in this file, in the shell and in the release note said the inset
+ * put it there; it does not, and conflating the two claims is what let a
+ * value that changes nothing on this surface read as a framing through a
+ * review, a browser verification and a render walk.
  *
  * The shell is the real `MobileShell` under the real `EditorProvider`, the
  * sheet is the real `MobileAgentSheet` over the real `AgentPanel`, the
@@ -77,10 +91,11 @@
  *
  * THE SHEET'S HEIGHT IS STAMPED, for the same reason. The sheet measures
  * itself with `getBoundingClientRect`, which jsdom answers 0 for; a zero
- * inset would let the "destination lands above the sheet" assertion pass on a
- * shell that had thrown the inset away. So the sheet's own node reports the
- * height its `60svh` comes to on this screen, and the assertion is that THAT
- * number is what reached the camera.
+ * inset would let the fit assertion below pass against a shell that had
+ * thrown the inset away, since the stand-in's default and the dropped value
+ * are the same 0. So the sheet's own node reports the height its `60svh`
+ * comes to on this screen, and the assertion is that THAT number is what
+ * reached the camera.
  *
  * THE GATES ARE SOMEONE ELSE'S. The Supabase provider stub hand-asserts
  * `canAgent` — the phone's ✦ affordances and the sheet itself hang off it —
@@ -98,10 +113,12 @@
  * camera deadline on a real device, that the strip above the sheet is legible
  * through the scrim, and that the destination renders above the sheet at all
  * are answered in a browser by `render-walk/mobile-agent-jump.spec.ts`, at
- * this same 375×812. THE FIT INSET is this file's claim and stays here: the
- * phone floors its fit zoom, so a board wider than the screen is framed from
- * its top-left and the inset moves nothing a browser can measure — see the
- * note over that block in the spec.
+ * this same 375×812. The inset's DELIVERY is this file's claim and stays
+ * here, because the browser cannot see it either: the phone floors its fit
+ * zoom, so the destination's box is identical to the pixel with the sheet's
+ * height and with 0 — measured, both ways. The inset's EFFECT on a framing
+ * belongs to neither file; it is the camera hook's flight test, which drives
+ * the same floor against a board either side of the strip.
  */
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
@@ -627,7 +644,7 @@ afterEach(() => {
 })
 
 describe('the agent moves the phone camera while the sheet stays up', () => {
-  it('jumps to a scenario and to a phase: the sheet stays, the destination is aimed above it, the selection is reported, and the caret comes back', async () => {
+  it('jumps to a scenario and to a phase: the sheet stays, the sheet\'s measured height reaches the fit, the selection is reported, and the caret comes back', async () => {
     await readerOpensTheSheet()
 
     // THE AGENT JUMPS TO ANOTHER SCENARIO — through the tool the model calls,
@@ -643,9 +660,12 @@ describe('the agent moves the phone camera while the sheet stays up', () => {
     expect(theSheetIsUpWithTheConversation()).toBe(true)
     expect(await uiState()).toContain('Agent sheet: open')
 
-    // 2. THE DESTINATION WAS AIMED ABOVE THE SHEET. The fit that answered for
-    // this jump was given the sheet's occluded height as its inset, so the
-    // board lands in the strip the reader can still see.
+    // 2. THE FIT WAS GIVEN WHAT THE SHEET COVERS. The fit that answered for
+    // this jump ran with the sheet's measured occluded height as its inset,
+    // rather than with the 0 a shell that dropped it would hand down. What
+    // that inset then frames is the hook's business and is not asserted here
+    // — see the file header: on this board the floor anchors the framing and
+    // the number moves nothing.
     expect(camera.fits.at(-1)).toEqual({
       scenarioId: JUMPED.id,
       targetId: JUMPED.id,
@@ -728,7 +748,8 @@ describe('the agent moves the phone camera while the sheet stays up', () => {
         .querySelector('[data-mobile-scenario-swap]')
         ?.getAttribute('data-mobile-scenario-swap'),
     ).toBe('idle')
-    // …and the camera answered anyway, for the phase, aimed above the sheet.
+    // …and the camera answered anyway, for the phase, with the sheet's
+    // height in force.
     expect(camera.fits.length).toBe(fitsBefore + 1)
     expect(camera.fits.at(-1)).toEqual({
       scenarioId: JUMPED.id,
@@ -744,7 +765,7 @@ describe('the agent moves the phone camera while the sheet stays up', () => {
  *
  * The camera still moves and the tool still answers that it landed — which is
  * why this defect shipped — and what goes is the conversation and, with it,
- * the inset that aimed the board above the panel and the composer the caret
+ * the occluded height the camera was told about and the composer the caret
  * was owed.
  */
 describe('goes red when the sheet closes on navigation again', () => {
@@ -760,8 +781,9 @@ describe('goes red when the sheet closes on navigation again', () => {
     expect(camera.fits.at(-1)).toMatchObject({ targetId: JUMPED.id })
 
     // And the assertions the green case makes about the sheet all fail: the
-    // conversation is off screen, the fit was aimed at a screen with nothing
-    // over it, and there is no composer left to hand the caret back to.
+    // conversation is off screen, the fit ran against a screen the shell
+    // reports nothing over, and there is no composer left to hand the caret
+    // back to.
     expect(theSheetIsUpWithTheConversation()).toBe(false)
     expect(await uiState()).toContain('Agent sheet: closed')
     expect(camera.fits.at(-1)!.occludedBottomPx).toBe(0)
