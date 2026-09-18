@@ -21,7 +21,7 @@ import {
 } from '@/lib/cameraTransition'
 import { FOCUS_DIM_OPACITY } from '@/lib/canvasFocusDim'
 import { isCanvasResizeRefitSuppressed } from '@/lib/canvasChromeResize'
-import { publishCanvasNavigationOutcome } from '@/lib/canvasNavigationOutcome'
+import { settleJump, verdictOfFlight } from '@/lib/canvasJump'
 import {
   beginCanvasViewState,
   writeCanvasViewState,
@@ -637,7 +637,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       if (!key) return
       pendingSemanticOutcomeKeyRef.current = null
       semanticOutcomeGenerationRef.current += 1
-      publishCanvasNavigationOutcome(key, result)
+      settleJump(key, verdictOfFlight(result.kind), result.transform)
     },
     [],
   )
@@ -667,10 +667,10 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
    * still in the air after about a sixth of a second.
    *
    * Dropping the key without publishing leaves those waiters listening, so
-   * the remount's own outcome reaches them. A canvas that is gone for good
-   * publishes nothing and each waiter's own deadline says so — an honest
-   * "not verified", rather than a cancellation this viewport is in no
-   * position to claim once it no longer owns the camera.
+   * the remount's own verdict reaches them. A canvas that is gone for good
+   * publishes nothing and the jump's own deadline says so — the `unanswered`
+   * verdict, which is honest in a way a cancellation this viewport is in no
+   * position to claim once it no longer owns the camera is not.
    */
   const relinquishCameraNavigation = useCallback(() => {
     pendingSemanticOutcomeKeyRef.current = null

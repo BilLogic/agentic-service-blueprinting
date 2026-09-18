@@ -40,7 +40,6 @@ import {
   makeMobileAgentBridge,
 } from '@/components/mobile/mobileAgentBridge'
 import { focusAgentComposer } from '@/lib/agent/composerFocus'
-import { waitForCanvasNavigationOutcome } from '@/lib/canvasNavigationOutcome'
 import { describeSelection, selectionOf } from '@/lib/shellContext'
 import { getMainSlides, getSlideDisplayLabel, getSubslides } from '@/types/nav'
 import type { NavItem } from '@/types/nav'
@@ -230,10 +229,11 @@ export function MobileShell() {
   const watchCameraFlight = useMemo(
     () =>
       makeAgentCameraFlightWatcher({
-        awaitOutcome: waitForCanvasNavigationOutcome,
-        // The caret goes back to where the reader left it. A jump they asked
-        // for in words should not cost them a tap to carry on in words.
-        onSettled: focusAgentComposer,
+        // The caret goes back to where the reader left it, whichever way the
+        // jump settled. A jump they asked for in words costs them no tap to
+        // carry on in words, and a camera that nobody answered for still
+        // stops being a reason to hold their keyboard.
+        onSettled: () => focusAgentComposer(),
       }),
     [],
   )
@@ -253,7 +253,8 @@ export function MobileShell() {
           // and the sheet opens and closes under it, so a captured value
           // would answer for whenever this effect last ran.
           isAgentOpen: () => agentOpenRef.current,
-          watchCameraFlight: (targetId) => void watchCameraFlight(targetId),
+          watchCameraFlight: (targetId, commit) =>
+            void watchCameraFlight(targetId, commit),
         }),
       ),
     [selectPhase, openScenario, activateTab, watchCameraFlight],

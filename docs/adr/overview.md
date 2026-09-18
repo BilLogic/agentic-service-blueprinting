@@ -62,6 +62,7 @@ that repository's 0013 is the import decision, which lives here as 0020.
 | [0025](0025-brand-derives-from-primary-with-one-dial-per-channel.md) | Brand derives from primary, with one dial per channel — superseding the brand mechanism of [0008](0008-a-primitive-is-a-hue-and-a-semantic-token-is-a-job.md) |
 | [0026](0026-a-skill-is-invoked-by-its-official-name.md) | A skill is invoked by its official name; its alias only finds it |
 | [0027](0027-a-skill-token-lives-in-the-prose.md) | A skill token lives in the prose, and the text is the only record |
+| [0028](0028-a-jump-is-awaited-through-one-module.md) | A jump is awaited through one module, and answers in one verdict |
 
 ## Moved here from BilLogic/plus-uno-blueprint (#551)
 

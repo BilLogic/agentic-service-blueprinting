@@ -4,7 +4,7 @@ import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useZoomPanViewport } from '@/hooks/useZoomPanViewport'
 import type { CameraTransitionResult } from '@/lib/cameraTransition'
-import { waitForCanvasNavigationOutcome } from '@/lib/canvasNavigationOutcome'
+import { awaitJump } from '@/lib/canvasJump'
 import type { FocusCellsResult } from '@/lib/canvasFocusCells'
 import { FOCUS_DIM_OPACITY } from '@/lib/canvasFocusDim'
 
@@ -956,9 +956,10 @@ describe('viewport camera flights', () => {
     })
 
     target.left = 500
-    const navigation = waitForCanvasNavigationOutcome('next')
-    view.rerender(
-      <Harness resetKey="next" target={target} cameraOutcomeKey="next" />,
+    const navigation = awaitJump('next', () =>
+      view.rerender(
+        <Harness resetKey="next" target={target} cameraOutcomeKey="next" />,
+      ),
     )
     act(() => panCamera(75, 20))
     act(() => {
@@ -971,8 +972,8 @@ describe('viewport camera flights', () => {
       moving: false,
       pan: { x: 75, y: 20 },
     })
-    return expect(navigation.promise).resolves.toMatchObject({
-      kind: 'cancelled',
+    return expect(navigation).resolves.toMatchObject({
+      verdict: 'cancelled',
     })
   })
 
@@ -984,15 +985,16 @@ describe('viewport camera flights', () => {
       flushFrame(16)
     })
 
-    const first = waitForCanvasNavigationOutcome('first')
-    view.rerender(
-      <Harness resetKey="first" target={target} cameraOutcomeKey="first" />,
+    const first = awaitJump('first', () =>
+      view.rerender(
+        <Harness resetKey="first" target={target} cameraOutcomeKey="first" />,
+      ),
     )
     view.rerender(
       <Harness resetKey="second" target={target} cameraOutcomeKey="second" />,
     )
 
-    await expect(first.promise).resolves.toMatchObject({ kind: 'superseded' })
+    await expect(first).resolves.toMatchObject({ verdict: 'superseded' })
   })
 
   /*
@@ -1016,14 +1018,15 @@ describe('viewport camera flights', () => {
       flushFrame(16)
     })
 
-    const waiting = waitForCanvasNavigationOutcome('scen-1')
+    const waiting = awaitJump('scen-1', () =>
+      view.rerender(
+        <Harness resetKey="flight" target={target} cameraOutcomeKey="scen-1" />,
+      ),
+    )
     let outcome: unknown
-    void waiting.promise.then((result) => {
+    void waiting.then((result) => {
       outcome = result
     })
-    view.rerender(
-      <Harness resetKey="flight" target={target} cameraOutcomeKey="scen-1" />,
-    )
     act(() => view.unmount())
     await act(async () => {
       await Promise.resolve()
@@ -1039,7 +1042,7 @@ describe('viewport camera flights', () => {
       await Promise.resolve()
     })
 
-    await expect(waiting.promise).resolves.toMatchObject({ kind: 'completed' })
+    await expect(waiting).resolves.toMatchObject({ verdict: 'landed' })
   })
 
   it('reports cancellation to a caller waiting on a camera fit', async () => {

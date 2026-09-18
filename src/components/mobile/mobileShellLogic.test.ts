@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  AGENT_CAMERA_FLIGHT_DEADLINE_MS,
   makeAgentCameraFlightWatcher,
   makeMobileAgentBridge,
 } from '@/components/mobile/mobileAgentBridge'
+import { JUMP_DEADLINE_MS, settleJump } from '@/lib/canvasJump'
 
 // Pins the agent bridge's handlers: the phone shows ONE surface (the shared
 // canvas, decided 2026-08-17), so phase and scenario opens are plain
@@ -27,9 +27,10 @@ describe('makeMobileAgentBridge', () => {
       },
       openAgent,
       isAgentOpen: () => agentOpen,
-      watchCameraFlight: (id) => {
+      watchCameraFlight: (id, commit) => {
         order.push('watch')
         watchCameraFlight(id)
+        commit()
       },
     })
     return {
@@ -73,13 +74,13 @@ describe('makeMobileAgentBridge', () => {
     watcher anyway would leave a deadline timer and a settle callback behind
     for a surface nobody can see.
   */
-  it('watches the camera for an open sheet, before the selection commits', () => {
+  it('watches the camera for an open sheet, and the watch owns the selection', () => {
     const h = harness({ agentOpen: true })
     h.bridge.selectScenario('scen-1')
     expect(h.watchCameraFlight).toHaveBeenCalledWith('scen-1')
     expect(h.selectScenario).toHaveBeenCalledWith('scen-1')
-    // The outcome is published by the fit the selection triggers: a watcher
-    // attached after it can miss the verdict entirely.
+    // The verdict is published by the fit the selection triggers, so the jump
+    // is handed the selection and commits it once it is already listening.
     expect(h.order).toEqual(['watch', 'select'])
   })
 
@@ -133,42 +134,42 @@ describe('makeAgentCameraFlightWatcher', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
 
+  const transform = { pan: { x: 0, y: 0 }, zoom: 1 }
+
   function harness() {
-    const outcomes = new Map<string, (value: unknown) => void>()
-    const cancels: string[] = []
     const onSettled = vi.fn()
-    const watch = makeAgentCameraFlightWatcher({
-      awaitOutcome: (targetId) => ({
-        promise: new Promise((resolve) => outcomes.set(targetId, resolve)),
-        cancel: () => cancels.push(targetId),
-      }),
-      onSettled,
-    })
-    return { watch, outcomes, cancels, onSettled }
+    return { watch: makeAgentCameraFlightWatcher({ onSettled }), onSettled }
   }
+
+  it('commits the selection it was handed, then waits', () => {
+    const h = harness()
+    const commit = vi.fn()
+    void h.watch('scen-1', commit)
+    expect(commit).toHaveBeenCalledTimes(1)
+    expect(h.onSettled).not.toHaveBeenCalled()
+  })
 
   it('hands the caret back when the canvas says it landed', async () => {
     const h = harness()
-    const flight = h.watch('scen-1')
-    expect(h.onSettled).not.toHaveBeenCalled()
+    const flight = h.watch('scen-1', () => {})
 
-    h.outcomes.get('scen-1')?.({ kind: 'completed' })
+    settleJump('scen-1', 'landed', transform)
     await flight
     expect(h.onSettled).toHaveBeenCalledTimes(1)
-    // The waiter is detached either way, or every jump leaves one attached.
-    expect(h.cancels).toEqual(['scen-1'])
+    expect(h.onSettled).toHaveBeenCalledWith('landed')
   })
 
   it('hands the caret back on the deadline when no verdict ever arrives', async () => {
     const h = harness()
-    const flight = h.watch('scen-1')
+    const flight = h.watch('scen-1', () => {})
 
-    await vi.advanceTimersByTimeAsync(AGENT_CAMERA_FLIGHT_DEADLINE_MS - 1)
+    await vi.advanceTimersByTimeAsync(JUMP_DEADLINE_MS - 1)
     expect(h.onSettled).not.toHaveBeenCalled()
 
     await vi.advanceTimersByTimeAsync(1)
     await flight
-    expect(h.onSettled).toHaveBeenCalledTimes(1)
+    // The reader gets their keyboard back and the shell is told why.
+    expect(h.onSettled).toHaveBeenCalledWith('unanswered')
   })
 
   /*
@@ -178,15 +179,16 @@ describe('makeAgentCameraFlightWatcher', () => {
   */
   it("ignores a superseded flight's verdict and answers only for the latest", async () => {
     const h = harness()
-    const first = h.watch('scen-1')
-    const second = h.watch('scen-2')
+    const first = h.watch('scen-1', () => {})
+    const second = h.watch('scen-2', () => {})
 
-    h.outcomes.get('scen-1')?.({ kind: 'superseded' })
+    settleJump('scen-1', 'superseded', transform)
     await first
     expect(h.onSettled).not.toHaveBeenCalled()
 
-    h.outcomes.get('scen-2')?.({ kind: 'completed' })
+    settleJump('scen-2', 'landed', transform)
     await second
     expect(h.onSettled).toHaveBeenCalledTimes(1)
+    expect(h.onSettled).toHaveBeenCalledWith('landed')
   })
 })
