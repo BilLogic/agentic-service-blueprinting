@@ -32,13 +32,18 @@ import { wholeSystem } from '@/lib/agent/providers/provider'
 import type { ChatInput, ChatResult } from '@/lib/agent/providers/provider'
 
 /** The scripted model: one answer per send, and it keeps what it was sent. */
-const provider = vi.hoisted(() => ({ inputs: [] as ChatInput[] }))
+const provider = vi.hoisted(() => ({
+  inputs: [] as ChatInput[],
+  /** Set to park the answer so a run can be caught mid-flight. */
+  hold: null as Promise<void> | null,
+}))
 
 vi.mock('@/lib/agent/providers/anthropic', () => ({
   anthropicAdapter: {
     id: 'anthropic',
     chat: async (input: ChatInput): Promise<ChatResult> => {
       provider.inputs.push(input)
+      if (provider.hold) await provider.hold
       return { parts: [{ type: 'text', text: 'Noted.' }], stopReason: 'end' }
     },
   },
@@ -119,6 +124,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   provider.inputs = []
+  provider.hold = null
   closeAgentSession()
   agentSessionsSnapshot().forEach((session) => deleteAgentSession(session.id))
   // The composer is disabled without a key, and a disabled field types nothing.
@@ -223,6 +229,11 @@ describe('a token that nearly names a skill', () => {
     // right: a message with two near misses asked about `/audit`, completed
     // it, and sent with `/map` still naming nothing. Accepting goes back
     // through the same check, so the second one asks in its turn.
+    //
+    // The sequence itself is pinned as a pure assertion in
+    // `src/lib/agent/sendDecision.test.ts`, where a returned question can be read
+    // without a click. What this adds is the wiring: the panel renders the
+    // question it got back rather than sending on it.
     const composer = openComposer()
     type(composer, 'check /audit then /map this')
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
@@ -256,6 +267,77 @@ describe('a token that nearly names a skill', () => {
     expect(wholeSystem(sent)).toContain('"/audit" and "/map"')
     expect(wholeSystem(sent)).toContain('/sb:audit and /sb:map')
     expect(wholeSystem(sent)).not.toContain('--- active skill')
+  })
+
+  it('asks nothing while a run is in flight, and leaves the draft where it is', async () => {
+    // How a reader reached a corrupted draft. The composer's Send button is
+    // disabled mid-run but Enter is not, and the question used to be raised
+    // before the panel checked whether a send could happen at all: Enter put
+    // the notice up during a run, accepting rewrote the field, the send was
+    // then dropped on the floor, and the notice stayed on screen holding
+    // spans measured against the text that had just moved. The next click
+    // completed a token against offsets that no longer pointed at it and
+    // `/audit` came back as `/sb:audit dit `. Nothing is decided now until a
+    // send is possible, so the draft and the notice cannot disagree.
+    let release = () => {}
+    provider.hold = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const composer = openComposer()
+    type(composer, 'say hello')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
+    type(composer, NEAR)
+    fireEvent.keyDown(composer, { key: 'Enter' })
+    expect(screen.queryByText(/closest match is \/sb:audit/)).toBeNull()
+    expect((composer as HTMLTextAreaElement).value).toBe(NEAR)
+    expect(provider.inputs.length).toBe(1)
+    release()
+    // Once the run is done the same press asks, and the draft is still the
+    // one the reader typed — untouched by the press that could not send it.
+    await vi.waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull(),
+    )
+    fireEvent.keyDown(composer, { key: 'Enter' })
+    expect(screen.getByText(/closest match is \/sb:audit/)).toBeTruthy()
+    expect((composer as HTMLTextAreaElement).value).toBe(NEAR)
+  })
+
+  it('drops the question when the reader edits the draft it was about', async () => {
+    // The question was about the draft as it stood, and its misses carry
+    // offsets into that exact string. Left standing across an edit, the next
+    // press of Send would declare a miss the sentence may no longer hold —
+    // and an accept would rewrite a span that has moved.
+    const composer = openComposer()
+    type(composer, NEAR)
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(screen.getByRole('button', { name: 'Send as text' })).toBeTruthy()
+    type(composer, 'then /audit the intake please')
+    expect(screen.queryByRole('button', { name: 'Send as text' })).toBeNull()
+    // And the next press asks again rather than sending the edited prose on
+    // an answer given about an older draft.
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(screen.getByText(/closest match is \/sb:audit/)).toBeTruthy()
+    expect(provider.inputs).toEqual([])
+  })
+
+  it('drops the question when a pick from the menu rewrites the draft', () => {
+    // A notice and the menu can be on screen together: this draft has a miss
+    // to answer for AND a token at its tail to complete. Completing the tail
+    // moves the text under the question, so the question goes with it — a
+    // stale miss answered after a pick rewrites the wrong span.
+    const composer = openComposer()
+    type(composer, 'then /audit the /sb:ma')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(screen.getByRole('button', { name: 'Send as text' })).toBeTruthy()
+    fireEvent.click(menuOption('/sb:map')!)
+    expect((composer as HTMLTextAreaElement).value).toBe(
+      'then /audit the /sb:map ',
+    )
+    expect(screen.queryByRole('button', { name: 'Send as text' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(screen.getByText(/closest match is \/sb:audit/)).toBeTruthy()
+    expect(provider.inputs).toEqual([])
   })
 
   it('asks nothing about a token that resolves — it runs', async () => {

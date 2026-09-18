@@ -64,16 +64,14 @@ import {
   useAgentRun,
 } from '@/lib/agent/loop'
 import { useAgentPersistenceWorkPending } from '@/lib/agent/persistenceReadiness'
+import { decideSend, type SendAnswer } from '@/lib/agent/sendDecision'
 import {
   AGENT_SKILL_COMMANDS,
   completeSkillToken,
-  draftWithoutSkillTokens,
   findSkillLookup,
-  findUnrunSkillTokens,
-  skillsInDraft,
   skillMatchesQuery,
   type AgentSkillCommand,
-  type UnrunSkillToken,
+  type SkillNearMiss,
 } from '@/lib/agent/skills'
 import {
   clearAgentDraft,
@@ -140,9 +138,14 @@ export function AgentChatView({
   // EVERY miss, not the first: a message carries as many skills as its text
   // names, so "check /audit then /map this" holds two, and a question about
   // one of them sends the other in silence.
-  const [unrunSkills, setUnrunSkills] = useState<readonly UnrunSkillToken[]>(
-    [],
-  )
+  //
+  // These spans are what the notice RENDERS and nothing more. They are not
+  // handed back to the decision, which walks the draft itself on every path,
+  // so a list left behind by a draft that has moved can mis-word a notice but
+  // can no longer mis-rewrite a message. Clearing it on an edit or a pick is
+  // therefore about the screen telling the truth, not about a module
+  // invariant.
+  const [misses, setMisses] = useState<readonly SkillNearMiss[]>([])
   // The slash menu is a portalled popover; this is what it anchors to (and
   // what --anchor-width measures).
   const composerRowRef = useRef<HTMLDivElement>(null)
@@ -229,44 +232,61 @@ export function AgentChatView({
   // itself is in skills.ts, with the spans it works on.
   const pickSkill = (command: AgentSkillCommand) => {
     if (!command.content || !slashLookup) return
-    setUnrunSkills([])
+    setMisses([])
     setDraft(completeSkillToken(draft, slashLookup, command))
   }
 
   /**
-   * The send itself, once the one open question about the message is settled:
-   * whether a near-miss token the reader was offered is going as prose. What
-   * skills run is not a question here — the text answers it, at the moment it
-   * is read, in the order the tokens appear.
+   * No answer can start a send at all while a run is in flight, or on a
+   * signed-out board that is not the sample trial. The trial runs with NO
+   * client on purpose — sample reads, no writes — so the absent client is a
+   * refusal only outside it.
    */
-  const dispatch = (
-    draftText: string,
-    unrun: readonly UnrunSkillToken[],
-  ) => {
-    let text = draftText.trim()
-    // The text decides, and it decides at send: EVERY resolved token runs, in
-    // the order it appears, and a message may carry as many as it names. The
-    // tokens stay in what goes to the model, because they are what the reader
-    // wrote — "/sb:map my notes then /sb:audit it" reads as the two-step
-    // instruction it is, and the order the sentence puts them in is the order
-    // the loop works through.
-    const skills = skillsInDraft(draftText)
+  const sendBlocked = running || (!client && !isSampleTrial)
+
+  /**
+   * DECIDE, then carry the decision out. `decideSend` says what the draft and
+   * this answer mean — the next question, or the Send; everything here is the
+   * carrying out, which is the part the module has no business knowing: an
+   * annotation on the shelf, the store the draft lives in, and the dispatch.
+   *
+   * It used to be three closures here and an ordering contract written
+   * nowhere, and the step a caller could drop was the re-check: accepting one
+   * offer sent straight out, so a second near miss in the same message rode
+   * along in silence. There is no step to drop now — an accepted answer comes
+   * back as the next question when there is one.
+   *
+   * The blocked check comes BEFORE the decision, and that ordering is the
+   * whole of a defect this used to have. It sat after the rewrite instead, so
+   * accepting an offer while a run was in flight rewrote the field, dropped
+   * the send on the floor, and left the notice on screen still holding the
+   * spans of the draft that had just moved — and the next click completed a
+   * token against offsets that no longer pointed at it, turning `/audit` into
+   * `/sb:audit dit `. Deciding nothing when nothing can be sent means the
+   * draft and the notice stay in agreement.
+   */
+  const resolveSend = (answer: SendAnswer) => {
+    if (sendBlocked) return
+    const decision = decideSend(draft, answer)
+    if (decision.kind === 'ask') {
+      // The rewrite an accepted offer produced, put back in the field with
+      // the question it goes with — one update, so the reader never sees a
+      // notice describing text the field has already left behind.
+      if (decision.draft !== draft) setDraft(decision.draft)
+      setMisses(decision.misses)
+      return
+    }
+    let text = decision.send.text
     const attached = takePendingAgentAttachment()
-    // Tokens and no words is a complete instruction — and with several, the
-    // order is the instruction.
-    if (skills.length > 0 && !draftWithoutSkillTokens(draftText))
-      text =
-        skills.length === 1
-          ? `Run ${skills[0].label} from the top of its flow.`
-          : `Run ${skills.map((skill) => skill.label).join(', then ')} — each from the top of its flow, in that order.`
+    // An empty draft with an annotation on the shelf still has something to
+    // say, and the shelf is the one thing the decision cannot see.
     if (!text && attached) text = 'Here are my canvas annotations.'
-    // The trial runs with NO client on purpose — sample reads, no writes.
-    if (!text || running || (!client && !isSampleTrial)) {
+    if (!text) {
       // Nothing usable to send — put a taken attachment back on the shelf.
       if (attached) setPendingAgentAttachment(attached)
       return
     }
-    setUnrunSkills([])
+    setMisses([])
     clearAgentDraft(session.id)
     void sendToAgent({
       client,
@@ -275,52 +295,22 @@ export function AgentChatView({
       settings,
       contextNote,
       text,
-      skills,
-      unrunSkills: unrun.map((miss) => ({
-        token: miss.token,
-        label: miss.command.label,
-      })),
+      skills: decision.send.skills,
+      declaredMisses: decision.declaredMisses,
       attachment: attached,
       allowWrites: canAgentWrite,
     })
   }
 
   /**
-   * The one gate every send passes through: a draft goes to the model only
-   * once nothing in it nearly names a skill and runs nothing.
-   *
-   * `draftText` is an argument rather than the state, because the two callers
-   * that rewrite the draft first — accepting an offer here, one token at a
-   * time — would otherwise re-check the draft as it stood a render ago and
-   * ask about the miss they have just fixed. Re-checking is the whole point:
-   * it is what makes a rewrite that leaves a SECOND near miss standing ask
-   * again instead of sending it in silence.
-   *
-   * A near miss is never silent. `/audit` names no skill, so it takes no
-   * colour and it runs nothing, and a message carrying it would otherwise
-   * send as prose with nobody told — which reads to the model as an audit it
-   * was never given. A token that resolved needs no question: it is coloured
-   * in the field the reader is looking at, and the colour says it will run.
+   * Pressing Send answers for the misses on screen, if any: the reader has
+   * read the question and pressed again, so the message means itself and
+   * every miss in it is declared. With nothing on screen the press is the
+   * first ask, and the two are different answers rather than one answer with
+   * an empty list.
    */
-  const sendChecked = (draftText: string) => {
-    const misses = findUnrunSkillTokens(draftText)
-    if (misses.length > 0) {
-      setUnrunSkills(misses)
-      return
-    }
-    dispatch(draftText, [])
-  }
-
-  const send = () => {
-    // Asked ALREADY, and pressed again: the reader has read the question and
-    // means the message, so it goes as prose — with the model told about
-    // every miss in it, not the first.
-    if (unrunSkills.length > 0) {
-      dispatch(draft, unrunSkills)
-      return
-    }
-    sendChecked(draft)
-  }
+  const send = () =>
+    resolveSend({ kind: misses.length > 0 ? 'declared' : 'unasked' })
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-agent-panel="chat">
@@ -508,7 +498,7 @@ export function AgentChatView({
             ) : null}
           </div>
         ) : null}
-        {unrunSkills.length > 0 ? (
+        {misses.length > 0 ? (
           /* The one thing that must not happen silently: a token that LOOKS
              like an invocation, spells only a skill's bare name, and runs
              nothing. Two choices and no default — running a skill off a
@@ -519,41 +509,40 @@ export function AgentChatView({
              EVERY miss is named in the sentence, because a message carries as
              many skills as its text names: "check /audit then /map this" is
              two, and a notice that mentioned one of them made the other one's
-             silence look answered. Accepting takes the FIRST and sends the
-             rewritten draft back through the same check, so the next miss
-             asks in its turn rather than riding out on the accept. */
+             silence look answered. Both buttons are one answer handed to the
+             same call, and it is the call that decides whether the answer
+             sends or asks again — the accepted rewrite fixes one token and
+             can leave another standing, and the next miss asks in its turn
+             rather than riding out on the accept. */
           <div
             role="status"
             className="mb-2 flex flex-col gap-2 rounded-lg border border-muted bg-muted/40 p-2"
           >
             <p className="text-xs text-muted-foreground">
-              {unrunSkills.length === 1
-                ? `“/${unrunSkills[0].token}” is not a skill name — the closest match is ${unrunSkills[0].command.label}.`
-                : `${unrunSkills.map((miss) => `“/${miss.token}”`).join(' and ')} are not skill names — the closest matches are ${unrunSkills.map((miss) => miss.command.label).join(' and ')}. One at a time.`}
+              {misses.length === 1
+                ? `“/${misses[0].token}” is not a skill name — the closest match is ${misses[0].command.label}.`
+                : `${misses.map((miss) => `“/${miss.token}”`).join(' and ')} are not skill names — the closest matches are ${misses.map((miss) => miss.command.label).join(' and ')}. One at a time.`}
             </p>
+            {/* Both answers are dead while nothing can be sent. A live
+                button here is not merely a press that does nothing: the
+                accept rewrites the draft on its way to a send that is then
+                refused, and the reader is left looking at a notice about
+                text that has moved. Greying them says what is true — the
+                question is still open, and it keeps until the run is. */}
             <div className="flex gap-2">
               <Button
                 size="xs"
                 variant="default"
-                onClick={() => {
-                  const [miss] = unrunSkills
-                  const rewritten = completeSkillToken(
-                    draft,
-                    miss,
-                    miss.command,
-                  )
-                  setDraft(rewritten)
-                  // Back through the check, not straight to the send: the
-                  // rewrite fixes one token and can leave another standing.
-                  sendChecked(rewritten)
-                }}
+                disabled={sendBlocked}
+                onClick={() => resolveSend({ kind: 'accepted' })}
               >
-                Run {unrunSkills[0].command.label}
+                Run {misses[0].command.label}
               </Button>
               <Button
                 size="xs"
                 variant="outline"
-                onClick={() => dispatch(draft, unrunSkills)}
+                disabled={sendBlocked}
+                onClick={send}
               >
                 Send as text
               </Button>
@@ -655,7 +644,7 @@ export function AgentChatView({
             onDraftChange={(value) => {
               // The question was about the draft as it stood; editing it is
               // an answer to neither choice, so it goes away.
-              if (unrunSkills.length > 0) setUnrunSkills([])
+              if (misses.length > 0) setMisses([])
               // A dismissal answers for the draft that was on screen; the
               // next keystroke is a new draft, and the menu is free again.
               if (slashDismissed) setSlashDismissed(false)
@@ -717,9 +706,7 @@ export function AgentChatView({
               variant="default"
               aria-label="Send"
               disabled={
-                !keyed ||
-                running ||
-                (draft.trim() === '' && !attachment)
+                !keyed || sendBlocked || (draft.trim() === '' && !attachment)
               }
               onClick={send}
             >

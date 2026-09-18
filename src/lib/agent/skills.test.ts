@@ -5,7 +5,7 @@ import {
   draftWithoutSkillTokens,
   findSkillLookup,
   findSkillTokens,
-  findUnrunSkillTokens,
+  findSkillNearMisses,
   skillMatchesQuery,
   skillsInDraft,
 } from '@/lib/agent/skills'
@@ -185,7 +185,7 @@ describe('the skills a draft names', () => {
 
 describe('a near-miss token that would send as prose', () => {
   it('names the closest skill for a bare alias rather than resolving it', () => {
-    expect(findUnrunSkillTokens('then /audit the intake')).toEqual([
+    expect(findSkillNearMisses('then /audit the intake')).toEqual([
       {
         token: 'audit',
         command: AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:audit'),
@@ -200,13 +200,13 @@ describe('a near-miss token that would send as prose', () => {
     // A walk that stopped at the first left the second silent — asked about
     // `/audit`, completed it, and sent with `/map` still naming nothing.
     const draft = 'check /audit then /map this'
-    expect(findUnrunSkillTokens(draft).map((miss) => miss.token)).toEqual([
+    expect(findSkillNearMisses(draft).map((miss) => miss.token)).toEqual([
       'audit',
       'map',
     ])
     // And a resolved token mixed in among them is not a miss.
     expect(
-      findUnrunSkillTokens('/sb:map the notes then /audit it').map(
+      findSkillNearMisses('/sb:map the notes then /audit it').map(
         (miss) => miss.token,
       ),
     ).toEqual(['audit'])
@@ -214,7 +214,7 @@ describe('a near-miss token that would send as prose', () => {
 
   it('reports the span, so accepting rewrites the token where it sits', () => {
     const draft = 'Hey can u /audit the goal setting'
-    const [unrun] = findUnrunSkillTokens(draft)
+    const [unrun] = findSkillNearMisses(draft)
     expect(draft.slice(unrun!.start, unrun!.end)).toBe('/audit')
   })
 
@@ -222,18 +222,18 @@ describe('a near-miss token that would send as prose', () => {
     // A token that RESOLVES is not a near miss. It is coloured in the field
     // and it runs, so there is no silence to break and no question to ask —
     // this is the confirm-once prompt's deletion, pinned.
-    expect(findUnrunSkillTokens('/sb:audit the intake')).toEqual([])
-    expect(findUnrunSkillTokens('Hey can u /sb:audit the goal setting')).toEqual([])
+    expect(findSkillNearMisses('/sb:audit the intake')).toEqual([])
+    expect(findSkillNearMisses('Hey can u /sb:audit the goal setting')).toEqual([])
     // A token naming nothing is a word with a slash on it.
-    expect(findUnrunSkillTokens('Hey can u /frobnicate this')).toEqual([])
+    expect(findSkillNearMisses('Hey can u /frobnicate this')).toEqual([])
     // The same strings the lookup refuses to fire on.
-    expect(findUnrunSkillTokens('look at src/lib')).toEqual([])
-    expect(findUnrunSkillTokens('do this and/or that')).toEqual([])
-    expect(findUnrunSkillTokens('on 2026/09/17')).toEqual([])
+    expect(findSkillNearMisses('look at src/lib')).toEqual([])
+    expect(findSkillNearMisses('do this and/or that')).toEqual([])
+    expect(findSkillNearMisses('on 2026/09/17')).toEqual([])
     // This walk is NOT tail-anchored, so the path cases it has to refuse are
     // its own to refuse: a token with a path behind it, and a URL.
-    expect(findUnrunSkillTokens('check /audit/notes.md')).toEqual([])
-    expect(findUnrunSkillTokens('see http://example.test')).toEqual([])
+    expect(findSkillNearMisses('check /audit/notes.md')).toEqual([])
+    expect(findSkillNearMisses('see http://example.test')).toEqual([])
   })
 })
 
