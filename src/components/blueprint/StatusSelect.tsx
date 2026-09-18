@@ -1,14 +1,6 @@
 import { OptionSelect } from '@/components/blueprint/OptionSelect'
-import {
-  ENTITY_STATUS,
-  ENTITY_STATUS_LABEL,
-  type EntityStatus,
-} from '@/lib/entityStatus'
-
-const OPTIONS = ENTITY_STATUS.map((status) => ({
-  value: status,
-  label: ENTITY_STATUS_LABEL[status],
-}))
+import { STATUS_OPTIONS } from '@/components/blueprint/statusOptions'
+import { type EntityStatus } from '@/lib/entityStatus'
 
 /**
  * Status, as an editable field.
@@ -35,7 +27,7 @@ export function StatusSelect({
     <OptionSelect
       value={value}
       onChange={onChange}
-      options={OPTIONS}
+      options={STATUS_OPTIONS}
       disabled={disabled}
       className={className}
       id={id}
