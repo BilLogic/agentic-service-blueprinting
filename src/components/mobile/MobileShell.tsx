@@ -119,9 +119,10 @@ export function MobileShell() {
     either way. This number frames the targets that FIT the visible strip: a
     cell the agent focuses, centred in it, and a board the floor binds by
     width while it fits vertically, which without this inset would sit behind
-    the sheet entirely. Both framings are pinned in the camera hook's flight
-    test; the phone's agent-jump slice asserts only that this measured height
-    reaches the camera, which is a different claim.
+    the sheet entirely. The anchoring note in `useZoomPanViewport` owns why
+    that framing is the one wanted and pins both branches; the phone's
+    agent-jump slice asserts only that this measured height reaches the
+    camera, which is a different claim again.
   */
   const [agentSheetOccludedPx, setAgentSheetOccludedPx] = useState(0)
   const closeNavDrawer = useCallback(() => setNavOpen(false), [])

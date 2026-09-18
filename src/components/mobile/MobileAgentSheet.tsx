@@ -37,8 +37,18 @@ export function MobileAgentSheet({
   onOpenChange: (open: boolean) => void
   /**
    * The height this sheet covers, measured from its own node and handed up so
-   * the camera can aim above it. Measured rather than read off the `60svh`
-   * class, which would drift the moment either one is retuned.
+   * the canvas can frame inside what is left. Measured rather than read off
+   * the `60svh` class, which would drift the moment either one is retuned.
+   *
+   * It does NOT aim the ordinary destination above this sheet, and the looser
+   * wording was here: the canvas floors its fit zoom, so a board it cannot
+   * fit into the strip left over is framed from its top-left and solves for
+   * the fit's TOP inset alone. That board is visible above the sheet because
+   * it is anchored, and it carries on behind this panel either way. What this
+   * height frames is a target that FITS the strip — a focused cell, or a
+   * board the floor binds by width while it fits vertically. The anchoring
+   * note in `useZoomPanViewport` owns the reasoning; the shell's own note
+   * says what reaches the camera.
    */
   onOccludedHeightChange?: (px: number) => void
 }) {

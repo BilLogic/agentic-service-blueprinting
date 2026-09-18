@@ -55,8 +55,9 @@ export type CanvasFocusFitInsets = {
  * supplied, and it still runs on behind the panel. This inset frames a
  * target that FITS the strip: a cell flight, which centres in it, and a fit
  * whose board the floor binds by width while it fits vertically — where
- * without it the whole board lands behind the sheet. See the anchoring note
- * in `useZoomPanViewport`.
+ * without it the whole board lands behind the sheet. The anchoring note in
+ * `useZoomPanViewport` owns why that is the framing wanted, and pins both
+ * branches at the phone's own floor.
  *
  * It lands differently in the two branches, and the difference is the
  * clearance each one keeps. Focus keeps 56px for the bottom controls, which
