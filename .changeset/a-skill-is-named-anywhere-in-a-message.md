@@ -35,7 +35,8 @@ The badge row is deleted. The field stays a real `<textarea>` — selection,
 IME, the mobile keyboard and native undo all come from the browser — so the
 colour is drawn by a layer behind it that renders the same string with the
 token in a span, sharing one class string with the field so the two cannot
-wrap differently. While an IME is composing, the field draws its own text.
+wrap differently and one box sized by the field, so that an add-on placed in
+the group later narrows both copies or neither. While an IME is composing, the field draws its own text.
 
 Escape closes the menu and leaves every character typed.
 
