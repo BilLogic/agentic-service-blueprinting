@@ -279,7 +279,7 @@ describe('the loop, provider → tool → result → provider', () => {
     await send({
       client,
       text: 'then /audit the intake',
-      unrunSkills: [{ token: 'audit', label: '/sb:audit' }],
+      declaredMisses: [{ token: 'audit', label: '/sb:audit' }],
     })
     const system = wholeSystem(provider.inputs[0]!)
     expect(system).toContain('/sb:audit')
@@ -298,7 +298,7 @@ describe('the loop, provider → tool → result → provider', () => {
     await send({
       client,
       text: 'check /audit then /map this',
-      unrunSkills: [
+      declaredMisses: [
         { token: 'audit', label: '/sb:audit' },
         { token: 'map', label: '/sb:map' },
       ],
@@ -399,7 +399,7 @@ describe('the loop, provider → tool → result → provider', () => {
     await send({
       client,
       text: 'then /audit the intake',
-      unrunSkills: [{ token: 'audit', label: '/sb:audit' }],
+      declaredMisses: [{ token: 'audit', label: '/sb:audit' }],
     })
     // The closing call is the one that was sent no tools.
     const closing = provider.inputs.at(-1)!
