@@ -121,14 +121,15 @@ const settled = new Set<string>()
 
 /**
  * How many times a handle has been forgotten, so a flight from before the
- * forget can neither settle the ask that replaced it nor write.
+ * forget cannot settle the ask that replaced it — and so that work which
+ * asks can decline to write.
  *
  * Forgetting re-arms a handle while its first flight may still be on the
  * wire. Without this, that first flight's completion marks the handle
  * settled, and the surface drops its skeleton for a conversation whose real
  * read has not come back yet. The same count is what a flight compares
- * itself against through `superseded` before it writes anything, which is
- * how one account's rows stop crossing into another's.
+ * itself against through `superseded`, which is how the session-list merge
+ * stops one account's rows crossing into another's.
  */
 const eras = new Map<string, number>()
 
@@ -250,12 +251,16 @@ export function useAgentPersistenceWorkPending(
  * Two callers need it. A client change is a different database's answer, so
  * the ask has to be re-armed: the next client gets its own read, and a flight
  * still on the wire from the previous one cannot settle it. Bumping the era
- * is also what makes that flight abandon its writes rather than merely lose
- * its bookkeeping — a flight reads its own `superseded` before it touches a
- * store or a table, so nothing a re-armed handle's predecessor computed can
- * land. And it is the seam that lets a test prove a read rather than a
- * memory: drop what the tab already knows, and the next open is where another
- * browser starts from.
+ * also OFFERS that flight the chance to abandon its writes rather than merely
+ * lose its bookkeeping — but the offer only reaches work that consults its
+ * own `superseded`, which is an obligation on the caller and is stated as one
+ * on `whenAgentPersistenceReady`. The session-list merge honours it, and that
+ * is what keeps one account's rows out of another's table.
+ * `loop.ts`'s `readTranscript` does not, and does not need to: everything it
+ * writes after its await lands in the in-process run and nowhere durable.
+ * And it is the seam that lets a test prove a read rather than a memory: drop
+ * what the tab already knows, and the next open is where another browser
+ * starts from.
  */
 export function forgetAgentPersistenceWork(work: AgentPersistenceWork): void {
   const handle = handleOf(work)
