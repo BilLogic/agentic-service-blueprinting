@@ -1,3 +1,14 @@
+/*
+ * FIRST, and the position is the whole point: this module turns off zod's
+ * `new Function` probe, and zod reads that flag when the first object schema
+ * is constructed — which happens while the imports below evaluate, because
+ * every agent tool declares its arguments at module scope. ES modules
+ * evaluate depth-first in source order, so a later line here would land after
+ * the probe had already run and been refused by our own script policy.
+ * `validationJit.ts` carries why the flag is free, and why the script policy
+ * stays strict rather than granting the eval it refuses.
+ */
+import '@/lib/validationJit'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { EditorErrorBoundary } from '@/components/EditorErrorBoundary'
 import { EditorShell } from '@/components/editor/EditorShell'
