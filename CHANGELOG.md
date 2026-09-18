@@ -1,5 +1,671 @@
 # Changelog
 
+## 1.44.27
+
+**One data defect is fixed, and it is the reason to take this release.** Until
+now, the chat's session list was merged out of the database on every attach —
+a read followed by two writes — and nothing cancelled that merge when the
+person signed in changed underneath it. A read still in flight across an
+account switch published the previous account's sessions over the new
+account's list and upserted the previous account's rows into the new
+account's table, on a client already bearing the new account's token. The
+panel now notices the switch and the merge declines to write. The switch it
+missed is reachable without signing out: a magic link clicked while already
+signed in, or an admin password sign-in over a live session.
+
+The rest of the release is the codebase deepening behind that: twelve modules
+that each replace a protocol several callers used to re-derive. A camera jump
+is awaited through one module answering in one verdict, instead of a keyed
+waiter map three callers re-learned — including an arm-after-commit ordering
+defect that had shipped twice and is now unsayable, because the module is
+handed the act that commits the selection. A tool refusal, a call's
+admission, a draft's Send, the composer's field and its coloured mirror, the
+selection line a shell reports and the navigation tool checks against,
+whether the transcript can be read yet, and which path a scenario opens on
+are each now owned in one place. The system prompt crosses to a provider as
+its stable part and its volatile part rather than one string plus a character
+index, so it is built once per call instead of twice.
+
+**Two records were corrected rather than left standing.** The phone's camera
+story said the bottom inset frames a board on a floored fit; on an axis the
+zoom floor pushed off the strip it does not, and 1.44.26's release note said
+otherwise. No geometry moved — the anchored framing was already right — but
+the prose now matches the code everywhere a reader meets it. And a test
+asserting where the caret lands after a skill completion could not fail: in
+jsdom the value setter moves the caret there by itself. It is deleted, with
+the gap and the by-hand browser evidence written in its place.
+
+### Upgrading a deployment
+
+- **Nothing to configure, and no migration.** Take the release for the
+  account-switch fix; everything else is internal.
+- **If your deployment builds against the provider input directly**, the
+  system prompt now crosses as `systemStable` + `systemVolatile` instead of
+  `system` plus a character index saying where the stable prefix ended. The
+  adapters in this repo are updated; a fork of one is not.
+- **If you grade agent behaviour with the eval harness**, tool refusals now
+  come from one module shared by the loop and the harness, so a refusal your
+  cases match on is worded identically in both. Re-run a case that asserts on
+  refusal text.
+- **If you read `1.44.26`'s note about the phone camera and the sheet**, it
+  was wrong about why a destination lands where it does. Nothing to change —
+  the pixels are the same — but the corrected account is in this release.
+
+### Patch Changes
+
+- e6efa72: A camera move toward a named target is awaited through one module, and answers
+  in one jump verdict.
+
+  `canvasJump.ts` replaces the keyed waiter map three callers each re-derived a
+  protocol from — the agent's navigation tools, the agent's cell focus, and the
+  phone's sheet, which gives the caret up for a jump and takes it back when the
+  canvas settles. The old channel took a key and nothing else, so everything a
+  caller had to know to use it correctly lived outside it: that a waiter must be
+  attached before the selection commits, because the answer is published by the
+  fit that selection triggers; that the phone's deadline had to outlast the
+  tool's; and that a fourth outcome existed as silence, which each caller
+  re-learned as a timeout of its own. The ordering defect shipped twice.
+
+  **The module is handed the act that commits the selection.** It arms, commits,
+  races, detaches both losers and answers once, so arming after the selection
+  commits is unsayable rather than documented — a caller written the wrong way
+  round fails to compile, because the function it would need does not exist. Two
+  entry points, named for which half a reader is in: `awaitPublishedJump` for a
+  verdict the canvas publishes against a target, and `awaitSelfAnsweringJump`
+  for a commit that hands its own result straight back. Both take the commit, so
+  the ordering mistake is unsayable at either.
+
+  **One camera deadline of 2000 ms, with a measurement as its justification.** It
+  replaces 1800 ms for the navigation tools, 1500 ms for cell focus and 2000 ms
+  for the caret hand-back. Driven through a real scenario open on a phone
+  viewport and read from the publisher itself, the answer arrives at a median of
+  366 ms and a maximum of 422 ms — the fade, plus the canvas remount, plus the
+  fit — and at a maximum of 1332 ms under a 4× CPU throttle. Nothing varied
+  across the three camera sites, so there is no override to pass. The navigation
+  tool's other wait — its poll of the shell's reported selection — is a
+  different question on a different half and keeps its own named constant at
+  1800 ms, so the sentence a model reads when that expires arrives when it
+  always did.
+
+  **Four jump verdict words — landed, cancelled, superseded, unanswered.** The
+  canvas may claim the first three; `unanswered` belongs to the deadline alone,
+  and the type refuses it to the publisher. A verdict and the thing it is about
+  are now one shape, so the nonsense will not typecheck: a self-answering jump
+  either carries the commit's own result or is silence carrying nothing, and no
+  caller can test an answer for null and infer silence privately. A result that
+  never became a flight at all — a cell the board does not hold — gets no
+  verdict rather than borrowing `cancelled`.
+
+  **`unanswered` is what silence is called.** A viewport that lets a flight go
+  publishes nothing so the mount that takes the camera over can answer, and a
+  viewport gone for good publishes nothing at all. That hand-off is guarded by
+  the viewport's React harness case, which is the only test that owns a real
+  unmount and a real remount; the jump module's unit suite asserts the weaker
+  thing it can reach — a waiting jump stays attached through silence — under a
+  name that says only that, and both tests say which is which.
+
+  The phone's watcher keeps its generation guard, because which jump owns the
+  caret is the shell's decision. It takes no verdict parameter: the caret goes
+  back to the composer however the jump settled, and nothing read the word.
+
+  Verified in a browser against the branch rather than by inspection: 22 jumps
+  across desktop and phone, every one answered by the landed sentence, zero
+  console errors, a same-target re-jump (no board remount) answering in 68 ms,
+  a phone median of 369 ms against the 366 ms baseline, the sheet never
+  disappearing under a 20 ms poll, and the caret returning to the composer every
+  time from a blurred start.
+
+- 9dd0031: One module owns every tool refusal, and a refusal crosses to the eval harness
+  only when the harness can say it truthfully.
+
+  `refusals.ts` exists so the loop and the Node harness turn a tool call away in
+  the same words, because a refusal is the prompt an eval case grades a recovery
+  from: reworded on one side only, the harness goes on grading a run against
+  words no session says — and passes, since the sentence it judges against is its
+  own. Two things were wrong with the set. The harness answered an unmapped tool
+  name in a wording of its own, and the registry built its own sentence for a
+  name it knows but the allow-list refuses, so "one module owns the refusals" was
+  not true even inside the app.
+
+  Both are fixed. The missing-tool refusal now comes across the harness's surface
+  entry, so an invented name — the commonest thing a model gets wrong, and the
+  refusal a run is likeliest to be graded on recovering from — is answered
+  identically on both sides. The allow-list refusal moved into `refusals.ts`
+  bytes intact as its own export, and each of the two now says at its definition
+  how it differs from the other, because they are not the same sentence: one
+  answers a name that is nothing here, the other a name the tool layer knows and
+  a fixed surface still refuses.
+
+  **The rule for sharing is now one rule, stated once.** Share a refusal when the
+  harness has a gate of its own whose answer is the same statement AND the
+  statement is true of the harness's session; otherwise it is app-only and says
+  which half fails. Not the test: whether a model could reach it (a model can
+  call any name on the roster), or what today's cases happen to call.
+
+  By that rule the missing-SEARCH refusal is app-only, where it had been shared.
+  The loop says it only when `search_blueprint` was never offered — a tool absent
+  from a roster does not exist for that session — and the harness offers the
+  whole spec table, so the app's sentence would be false of a harness run. The
+  harness now answers a ranked-search call with a sentence true of its own
+  environment, nothing there serving ranked search, and steers to the same two
+  reads, which is the part a case grades. The sample trial's refusal is app-only
+  for the same shape of reason: the harness has the no-database state but not the
+  narrowed roster that goes with it. The repeat-read refusal is app-only because
+  the harness implements no repeat-read guard, and the two transcript-row strings
+  because the harness renders no transcript.
+
+  The pins are pins on the RULE rather than on today's layout. Every shared
+  sentence gets the same four through one helper — owned by `refusals.ts`,
+  re-exported by the entry, destructured by the runner, and used where the
+  runner's own gate fires — so the next refusal is one line and no sentence ends
+  up guarded more loosely than its neighbours. The copy-ban for the one shared
+  sentence BUILDER is over its WORDS, so a concatenation, a format string or one
+  hard-coded name is caught as well as a template literal; the use-pins match the
+  binding in a result position rather than the whitespace under a `case` label,
+  which a reformat used to break.
+
+- d32ef9d: A session-list merge abandons its writes when the account it read for is no
+  longer the one signed in.
+
+  **What was happening to a reader.** The chat's session list is merged out of
+  the database on every attach. That merge is a read followed by two writes: the
+  list the person sees, and an upsert of the sessions the database it read did
+  not have. If the account changed while the read was still on the wire, the read
+  still finished against the rows it started on, and then wrote its result where
+  the new account's rows live. Two things came of that. The previous account's
+  sessions were published over the sessions of the person now signed in, so a
+  reader saw conversations that were not theirs in their own switcher. And rows
+  that existed only in the previous account's table were upserted into the new
+  one, where they stayed: a durable cross-account write, not a flicker a reload
+  would clear.
+
+  The way to reach it needs no sign-out in between. A magic link is mailed with
+  this origin as its redirect, so following one for a second account in a tab
+  already signed in as a first lands back on the page authenticated as the
+  second, with one non-null session simply replacing another. A password sign-in
+  performed while already signed in has the same shape.
+
+  **The fix, in two halves.** The panel now notices. Its persistence effect is
+  keyed on the signed-in account's user id, not only on the client handle — the
+  client is one module singleton per page whose identity never changes and whose
+  token changes underneath it, so an account switch moved nothing the effect was
+  watching and the list work was never re-armed. Keying on the user id rather
+  than the session object means a token refresh, which mints a new session for
+  the same person, still costs nothing.
+
+  And the merge now declines. A piece of parked persistence work is handed the
+  flight it is running as, and the flight knows the era of the handle it started
+  against. The merge asks whether it has been superseded after its read comes
+  back and before either write, so a flight whose account has been replaced
+  computes nothing and returns. The replacement's own merge is the one that
+  publishes, which is what it was always meant to be.
+
+  The era counter that the readiness module already kept was doing less than a
+  comment there claimed: it suppressed the bookkeeping that followed a
+  superseded flight — so the list kept its skeleton honestly — while the flight
+  itself ran to completion and wrote. That comment is corrected here, scoped to
+  the work that actually consults its flight, along with the one on the panel's
+  effect that repeated the claim and the one that credited RLS with protecting
+  the transcript read (what protects it is that its write is in memory only).
+
+  Pinned at both seams, because a case at one is blind to the other's defect: a
+  module-level pair that drives detach, forget, re-attach and re-ask with the
+  first read unanswered, and a panel-level case that renders the real panel and
+  changes only which account is signed in — no new client, no signed-out moment,
+  nothing calling the readiness module by hand. A merge with no account change
+  still converges local-only sessions upward exactly as before.
+
+  A deployment with no database behind it is unaffected — nothing attaches
+  there, so no merge ever runs.
+
+- a13239c: A tool call's admission is one answer, derived from the same description the
+  session's offer is derived from.
+
+  `roster.ts` decided which tools a session was OFFERED. The loop decided whether
+  a call was ADMITTED, in eight near-identical blocks, five of which re-stated
+  conditions the roster had already applied — in a different order, agreeing with
+  it only by a prose note asking the next editor to keep them in step. The
+  failure that bought was not a tool running where it should not: both readers
+  refused the same set. It was the WORDS. A `search_blueprint` call on a
+  no-database session trips the search gate and the trial gate at once, and the
+  call read back "no database is connected" about a tool the roster had withheld
+  for the missing search plan. Whichever reader was written first won, so the
+  order of eight blocks was part of the contract and nothing could see it.
+
+  **One place now says which tools a session has, and in what order the question
+  is asked** — one home for that order, which is not the same as the order
+  ceasing to matter: it is still five sequential `if`s in `toolStanding` and
+  three phases in the admission, so where a NEW gate goes is a choice a reader
+  makes there, with the others in front of them. What one-sourcing buys is that
+  no second reader states the order again, and so which sentence a call tripping
+  two conditions reads back is a function of the description. `toolStanding` answers for one tool: offered, or withheld on a
+  named ground. `sessionRoster` walks every definition through it to build the
+  offer; `admission.ts` walks one call through it and adds the sentence. The
+  gates apply in sequence rather than one mode gate returning for all of them,
+  so the offer no longer leans on a subsumption — a tool the trial may run is a
+  read, so it is one mobile may run — that holds in the definitions today and is
+  invisible to a reader of the function.
+
+  **What stayed live, because no description of a tool can carry it.** The run's
+  abort signal, the write-batch count for this send, and the repeat-read record
+  for this turn arrive as an explicit input, each still refusing in its own
+  words. So does the write gate's INPUT: `ui_command` is a write exactly when its
+  `command` argument names a mutating control, which is an argument-level fact,
+  so the loop keeps its predicate and hands the answer over — in the app, one
+  predicate serving both the viewer's refusal and the batch budget, as before.
+  The gate's PLACE in the order is shared; only its input forks, and the fork is
+  stated at the seam.
+
+  **The eval harness's roster fork is resolved rather than left silent.** The
+  harness handed a provider the whole spec table whatever its environment, so it
+  offered `search_blueprint` with no index behind it and graded models in a state
+  no reader can reach. No case exercised that state. Its offer is now
+  `sessionRoster` handed the mode the harness is actually in, and
+  `searchOffered: false` is the truth of an environment with no deployment index
+  and no embedding key — so the app's missing-search refusal is true on both
+  sides and is shared, and the harness's own wording of it is gone.
+
+  **Its DISPATCH derives from the same admission answer** too, so the mobile gate, the write gate and the batch budget are
+  the app's, in the app's order: the harness had mirrored those three by hand in
+  an order of its own, and a `search_blueprint` call in a mobile case read back
+  "the mobile shell is view-only" about a tool the app withholds for the missing
+  search plan — the very failure this change removes from the loop, still live on
+  the far side.
+
+  Two things there are declared rather than closed. The widening: the harness
+  says it is not a no-database trial, because it rehearses every write as a dry
+  run and a roster narrowed by the missing database would offer nothing for the
+  write half of the suite to call — so no case there can reach the app's
+  no-database refusal, which is why that sentence stays app-only. And the fork:
+  write-ness in the harness is the definition's surface, because the app's
+  argument-level half answers from the live UI command registry that only an open
+  surface fills, and the harness drives no canvas and serves no `ui_command` at
+  all. A mutating `ui_command` is refused to a viewer and budgeted in the app,
+  and is neither there.
+
+  What pins it: an INDEPENDENT statement of what each mode should offer, read off
+  each definition's own availability and surface fields — the offer and the
+  admission are both held to it, so a loosened gate reds rather than comparing
+  the gate to itself — plus the sentence a call failing two gates at once reads
+  back, the refusal category that may cross to the harness, and the harness's
+  offer for each of its modes.
+
+- 8e661dc: One module answers "can the transcript be read yet, and tell me when", and
+  owns the parking of work until it can — so a reopened session no longer comes
+  back a skeleton on the strength of a race between two effects in two files.
+
+  Reading that failure used to mean reading three modules at once. The
+  persistence module held a flag and an attach signal; the loop held three sets
+  of session ids beside the transcript, bookkeeping which hydrate had fired,
+  which was on the wire and which had been parked; and the chat view listed the
+  Supabase client as an effect dependency on purpose, with a comment explaining
+  that child effects run before parent effects and that the retry happened
+  there. Three places had to be right, and each of them stated one third of the
+  same race.
+
+  `persistenceReadiness.ts` states it once. Work is handed over against a handle
+  — a kind and the thing of that kind it is for — and runs immediately if a
+  client is attached, or on the attach signal if not: once per handle, in the
+  order it was parked, never twice. It also answers whether a handle's work is
+  still outstanding, which is the skeleton-versus-empty-state question both the
+  chat view and the sessions list ask, and it carries the seam that forgets a
+  handle so a reopen proves a read rather than a memory. The loop keeps the
+  transcript and nothing else; the chat view's effect depends on the session and
+  nothing else.
+
+  **The sessions list asks the same module.** It used to keep its own pair of
+  flags — one for the merge on the wire, one for the window before the merge
+  even starts — which was a second spelling of one fact and a second chance to
+  get the loading-versus-empty distinction wrong. Its merge is now parked and
+  scheduled like any other read, and the list subscribes to the same outstanding
+  answer the transcript does. The record for cross-surface module stores is
+  amended with the new store and with that fold.
+
+  **A deployment with no database is unchanged, and is now stated in one place
+  rather than five.** The persistence calls had a detached-client guard at the
+  head of each; the guards were pass-throughs, and the thing they guarded — the
+  client — now comes from a single helper that answers `null` for the whole
+  call. Reads return `null`, writes return, nothing throws, and the panel keeps
+  working from localStorage. The legacy single-`skill` read migration stays
+  exactly where it was, at the read.
+
+  **The client does not leave the module.** A caller that can already reach the
+  client has no reason to ask whether persistence is readable, so handing one out
+  was a second, contradictory answer waiting to be written — park-and-wait here,
+  give-up-with-null over there. Queries go through one helper instead, which
+  carries the detached case, folds a failed query into the same `null` a
+  never-persisted session gives, and builds the query inside its own promise
+  chain so a builder that throws on the spot degrades quietly rather than
+  reaching the window.
+
+  Hydration order is pinned without a React harness: work parked before the
+  client lands runs once it does, in order, and not twice. Two kinds of work
+  about one session stay apart, so neither is silently dropped; a flight
+  abandoned by a forget cannot settle the ask that replaced it; and the
+  transcript's skeleton is now asserted through the real panel, mid-read, rather
+  than left to inspection.
+
+- e0a6906: One module decides what a draft sends, so the near-miss re-check cannot be
+  skipped and a stale answer cannot corrupt the draft.
+
+  `sendDecision.ts` takes the composer's draft and one word of consent from the
+  reader, and returns one of two things: the question still to ask, or the Send
+  to commit — this text and these skills, with the misses going as prose
+  declared alongside it. It replaces three closures in the chat panel and an
+  ordering contract that was written nowhere: ask about the first near miss,
+  rewrite the draft on accept, re-check the rewritten draft, dispatch with the
+  misses that remain, and pass the draft text as an argument rather than reading
+  it back from a state setter that has not committed yet. Seven exports of the
+  skills grammar had to be assembled in the right order to commit one Send
+  correctly, and the step a caller could drop was the re-check.
+
+  **It was dropped, and that was the batch's one real defect.** Accepting a near
+  miss rewrote the token and went straight to the send, so a second near miss in
+  the same message rode along in silence — the exact silence the offer exists to
+  close, one token to the right. Accepting is now an answer handed to the
+  module, and the module asks again when the rewrite leaves a miss standing.
+  There is no re-check step to forget, because the answer either comes back as
+  the next question or as the Send.
+
+  **The answer is consent, not data.** It used to carry the near misses the
+  reader had been shown, which handed the caller the one invariant the module
+  actually depends on — that those spans were measured against THIS draft — with
+  nothing to enforce it. Two things went wrong through that hole, and both are
+  now unreachable rather than merely discouraged. A second accept off one
+  question re-applied a span measured against `/audit` to the `/sb:audit ` that
+  had replaced it, and the offsets landed inside the word: the draft became
+  `/sb:audit dit `. And a declaration built from the older list told the model
+  both halves of a contradiction in one message — `/sb:audit` among the skills
+  that ran, `/audit` among the near misses that did not. Every arm now walks the
+  draft it is handed, including the declaration, which used to copy the caller's
+  list verbatim and skip the walk entirely.
+
+  **What the answer says is which of three things happened**: nothing has been
+  asked yet, the reader said send it as typed, or the reader took the offer on
+  the first miss. Three arms rather than an empty list, because "not asked" and
+  "asked, and nothing is pending" are different states that a list conflates —
+  and the emptiness used to decide the behaviour. The committing arm carries one
+  string, not two: a `draft` and a `text` that are equal for every ordinary
+  message and differ only for a token-only one is the perfect shape for a
+  wrong-string bug that passes every hand test, and the panel clears the field
+  rather than reading a draft back out of the decision. The draft stays on the
+  ASK arm, where it is load-bearing — the field must show the accepted rewrite
+  before the next question.
+
+  **A near miss cannot be accepted while a send cannot happen.** The panel's
+  gate on a run in flight sat after the rewrite, so accepting an offer mid-run
+  rewrote the field, dropped the send, and left the notice on screen still
+  holding the spans of the draft that had just moved — which is how a reader
+  reached `/sb:audit dit ` by clicking twice. The gate now comes first, so a
+  blocked send decides nothing and moves nothing, and both of the notice's
+  buttons are disabled while it holds.
+
+  **The accept-then-second-miss sequence is a pure assertion.** It used to be
+  reachable only by clicking through the panel, which is why nothing caught it:
+  the logic lived in a closure no test could call. The sequence is now read off
+  returned values — ask, answer, ask again, answer, send — beside pins for a
+  draft naming four skills sending four in token order, for a send-as-text that
+  declares every miss rather than the first, for a completion that leaves the
+  sentence around the token alone, for a declaration derived from the FINAL text
+  so a draft whose only token resolves declares nothing, and for two accepts
+  running that leave the draft intact. The panel keeps cases of its own, each
+  about state the module does not hold: an edit drops the question and so does a
+  pick from the slash menu, because both move the text the question's spans were
+  measured against, and Enter during a run asks nothing and moves nothing.
+
+  **What is left in the panel is what the module has no business knowing** — an
+  annotation on the shelf, a run already in flight, and a trial with no client.
+  The sentence an empty draft with an attachment sends is the panel's too, for
+  the same reason. The ordering rule for a draft that is nothing but tokens
+  moved out with the rest.
+
+  **One word per concept.** A span in a draft that nearly names a skill is a
+  near miss (`SkillNearMiss`, `findSkillNearMisses`); what the model is told
+  about one going as prose is a declared miss (`DeclaredMiss`,
+  `declaredMisses`), the name it now carries through the prompt builder too. And
+  what the module returns is a `SendDecision`, because a question is not a Send:
+  the Send is the glossary's two fields, its text and the skills it names,
+  nested inside the committing arm.
+
+  The skills grammar itself is unchanged. Its regexes, span arithmetic and the
+  lookahead that stops a path segment resolving as a skill are already one
+  module, and deleting it would put all three back into its callers. The
+  composer's decision record stands as written: the text remains the only record
+  of which skills a message runs, no durable pick sits beside the draft, and the
+  field stays a real textarea.
+
+  Every pin added here was watched fail against a deliberate break — the
+  re-check removed, the ask and the declaration cut to the first miss, the skill
+  order reversed, the token-only instruction suppressed, the tokens stripped out
+  of what sends, the accepted rewrite skipped, the accepted span re-applied to
+  the draft it produced, and the declaration built from the draft as it stood
+  before the rewrite.
+
+- 3d79788: The line a shell reports its selected phase or scenario with, and the check
+  the navigation tools run against that line, are one module.
+
+  The sentence was spelled four times: once in the phone's shell, once in the
+  desktop's, once as a prefix constant plus a regex rebuilt from it in the
+  navigation tools, and a fourth time in a source-text guard that read the
+  phone's file looking for the interpolation. Four spellings of a wire between
+  two ends is a wire that can come apart, and it did — a release shipped the
+  phone without the phase line at all, and every agent-driven phase jump
+  answered that the selected phase was not verified while the canvas sat on
+  exactly the phase asked for.
+
+  `describeSelection` renders the phase and scenario lines; `namesSelection`
+  answers whether a context names a given id as the selected phase or scenario.
+  Both shells build their selection lines through the first and the navigation
+  tools verify through the second, so neither end can change how a selection is
+  reported without the other following. `selectionOf` resolves the nav item a
+  shell has into the id and reader-facing label the line wants, so the four
+  copies of that lookup across the two shells are one. A shell reporting no
+  selection still says so in the words the tools expect, and may qualify it
+  with one of a closed set of reasons — the phone's overview has no scenario
+  open by design, bare "none" reads as a fault, and the phone publishes no
+  view-level line for a model to read the difference from.
+
+  Deliberately narrow. The module owns those two sentences and the recognition,
+  nothing else; each shell keeps assembling the rest of its own context,
+  because the phone legitimately has no sidebar and no docked panel to report
+  and one imposed shape would make a surface answer for furniture it does not
+  have.
+
+  The source-text guard on the phase line moves rather than going away. Its
+  regex over the phone's rendered format is gone — the renderer holds the
+  wording now, asserted as a table over real rendered lines — but the claim
+  that each shell still calls the renderer for both kinds has no other test
+  that can fail, so the weakest honest form of it stands beside the renderer
+  until the phone's end-to-end slice drives a mounted shell's registered
+  context. The guard on the sheet's scrim stays where it is, because a class
+  string on a portal still has no unit that can reach it.
+
+- f40b682: The anchored phone framing is what puts a destination above the sheet, not the
+  sheet's measured height. **1.44.26** said an agent-driven jump "tells the
+  camera what the sheet covers so the destination lands in the visible strip".
+  The camera is told, and on the ordinary phone destination that number frames
+  nothing: the canvas floors its fit zoom, so a scenario board wider and
+  taller than the screen is framed from its top-left, and an axis the floor
+  pushed off screen solves for the TOP inset alone. The board is above the sheet
+  because it is anchored there, and it still runs on behind the panel.
+
+  The framing is right and is kept — a board taller than the strip the sheet
+  leaves has no framing that keeps both of its edges, and the edge worth keeping
+  is the one the board begins at; buying bottom clearance would pan that
+  beginning up out of the frame the fit reserves, to gain room at an edge
+  already hundreds of pixels off screen. So this corrects the story rather than
+  the geometry, at each of the places a reader meets it: the agent sheet's note
+  on the height it reports, the shell's note on what reaches the camera, the
+  fit-inset helper's doc, the anchoring comment in the camera hook — which now
+  owns the reasoning the rest point to — the agent-jump slice's header, test
+  name and assertion comments, the render walk's prose, and the
+  end-to-end-round record, whose own amendment reverses what the previous one
+  claimed.
+
+  What the occluded height does frame is now pinned at the phone's own floor,
+  either side of the line it draws: a board that fits the strip vertically is
+  centred INSIDE the strip — without the inset that board lands behind the sheet
+  entirely — and a board that does not is anchored, with the same framing
+  whether the sheet's height or 0 is supplied. The gap those cases close is that
+  the slice could only ever assert the height REACHED the fit, which is true and
+  is not a framing; read as one claim, it let a value with no effect on this
+  surface pass two review axes, a browser verification and a render walk.
+
+  **Upgrading a deployment:** nothing to change. No behaviour moved, and 1.44.26
+  needs no revisit beyond its wording — what shipped is what the app does, now
+  described correctly.
+
+- dd4d6ce: The caret case that could not fail is gone, and the gap it hid is written
+  where a reader meets it.
+
+  `agentComposerSkills.test.tsx` carried a case asserting that accepting a skill
+  completion leaves the caret at the end of the draft. It passed whatever the
+  composer did. Two facts, both established by running the probe rather than
+  reading it: in jsdom, assigning a textarea's `value` moves `selectionStart` to
+  the end of the new text on its own, with no React in the loop; and the comment
+  above the case — that focusing the field and setting its caret first is "the
+  path React's own selection restoration runs on" — was false, because
+  react-dom's `restoreSelection` acts only when the focused element changed
+  between commits, which it does not there.
+
+  **No better version of that case exists.** `findSkillLookup` is tail-anchored
+  by design — its span ends at `draft.length` on both branches — so the offset a
+  completion should produce and the offset the value setter produces by itself
+  are the same offset for every input. There is no distinguishing case to write.
+  This is not a test that is hard to write; it is one that cannot exist while
+  the lookup is tail-anchored.
+
+  The case is deleted rather than reworded, the false comment with it, and the
+  file's header now states the gap in its place: why no jsdom assertion can
+  separate the two offsets, and what covers the behaviour instead — a browser
+  check made by hand, typing `/sb:map notes then /sb:au` and pressing Tab to get
+  `/sb:map notes then /sb:audit ` with the caret at offset 29, focus kept and
+  the menu closed. That is the evidence; a green assertion was not.
+
+  Nothing else in the tree asserts a caret offset after a raw `value`
+  assignment. The field module's own test states the same gap already and keeps
+  no assertion for it, and the composer's decision record was corrected when the
+  field and its mirror became one module, so neither needed touching here.
+
+- c8e173d: The composer's field and the coloured mirror behind it are one module, so the
+  five facts the colour depends on are owned in one place instead of agreed
+  across two.
+
+  A textarea cannot colour a word inside itself, so a recognised skill token is
+  drawn by a mirrored copy of the draft sitting behind a field whose own text
+  has gone transparent. That picture holds only while the two copies agree on
+  the metrics that decide a line break, the trailing newline a block would
+  otherwise collapse, the single positioned box they both size against, the
+  scroll offset, and standing down while an IME composes. One of those lived
+  with the mirror; the other four were spelled in the chat panel's render body,
+  next to everything else a conversation surface does, and held together by a
+  comment asking the next reader not to break them.
+
+  `ComposerInkedField` now renders the field, the mirror and the input group
+  around them, resolves both class lists from one call, and reads the skill
+  tokens out of the draft itself. Callers hand it the draft, the write-back and
+  whatever a textarea takes; they cannot reach the box the two copies measure,
+  they cannot hand in token offsets read off some other string, and they cannot
+  put an add-on into the group, because the group is inside the module and takes
+  no children from outside. That last one was the live hazard: an add-on in the
+  group narrows the FIELD through the group's own `has-[>[data-align=...]]`
+  rules and leaves the mirror full width, so every line from the first wrap down
+  breaks somewhere else and the colour drifts off the caret — a failure no
+  shared metrics string can see or undo. It was prevented by a comment and is
+  now unexpressible from outside.
+
+  Nothing about the record changed: the field is still a real `<textarea>`, the
+  draft's text is still the only thing that says which skills a message runs,
+  and a coloured token still runs. Nothing visible moved either, and that was
+  measured rather than assumed — all four class lists the two copies wear are
+  byte-identical to before, and the composer's growth was measured in a browser
+  on both sides of the change: 38px empty, 98px over four wrapped lines, capped
+  at 122px, the mirror's rect within half a pixel of the field's at every step.
+
+- f1378bd: The path memory owns which path a scenario opens on, and there are now tests
+  that can fail when it does not.
+
+  The phone shows one path at a time and remembers, per scenario, which one the
+  reader was on. The rule — an explicit selection, else the remembered path,
+  else the scenario's happy path — was composed twice: once inline in the
+  phone's shell, which read storage, resolved the default and wrote the memory
+  back for itself, and once through the selection seam that lands `openScenario`
+  on the same answer for the desktop. Two copies of a two-step rule is how one
+  surface comes to open a scenario on a different path from the other while each
+  looks correct on its own.
+
+  The rule now lives in the module that owns the storage it reads, and the
+  module is named for what it does rather than for the first surface to need it:
+  `pathMemory.ts`, since both the phone and the desktop resolve through it. Its
+  interface is two resolutions and one write — `resolvePathIdToOpen`,
+  `resolvePathIdToShow`, `writeLastViewedPath` — named as the precedence pair
+  they are, so a caller cannot read one as "the remembered path" and add a
+  fallback of its own, which is exactly the composed rule this removes. The read
+  and the pure default rule stop being exported. The selection seam's
+  same-shaped wrapper around the module is gone too; its caller imports the
+  module. Behaviour is unchanged for a reader: the phone opens on the same path
+  it opened on before, and the stored key is untouched, so nobody's remembered
+  path is forgotten by the upgrade.
+
+  The coverage landed before the move and is the reason the move is safe. Three
+  cases drive the real shell at phone width by taps — a remembered path opens on
+  itself, a remembered path that has since been deleted falls back rather than
+  leaving the reader on a board with no path, and a choice survives as memory —
+  and each asserts both the reported reading line and the label the selector
+  shows, because the selector alone falls back to the first path and could not
+  fail for the deleted case. The module's own cases reach through storage rather
+  than around it, on a fixture that lists the variant path first: with the happy
+  path first, "opens on its happy path" also passes for a resolve that returns
+  whichever path is first, which is a guard that cannot fail for the reason it
+  claims. Every case was watched red against a deliberate break — including the
+  happy-path default swapped for the first path in the list, which the
+  variant-first fixture is there to catch.
+
+  The agent wiring in the shell is deliberately left where it is: it is already
+  three small modules with unit tests of their own, so pulling it out would move
+  code without concentrating anything.
+
+- 716c146: The phone's agent flow gets an end-to-end slice: the real phone shell is
+  driven at phone width from the cover through an agent-driven camera move, and
+  the sheet staying up, the fit inset reaching the camera, the selection
+  reported in the words the navigation tool verifies against, and the caret
+  coming back to the composer are all asserted. The browser half runs the same
+  flow at the same width over the built app. Three source-text guards the slice
+  now drives are gone; the two it cannot reach — the sheet's scrim, and the
+  landing view not being derived from an empty selection — stay, each saying why.
+- 7ee3941: The system prompt crosses to a provider as its stable part and its volatile
+  part, so the prompt is built once per call instead of twice.
+
+  The provider input used to carry the prompt as one string plus a character
+  index saying where its stable prefix ended — one provider's caching concept,
+  spelled as arithmetic, in the interface every provider shares. Only the
+  Anthropic adapter read the index, and it read it to cut the string back into
+  the two pieces the loop had just joined. The loop learned the number by
+  assembling the entire prompt a second time with an empty live context: once
+  per send, and again on the round-budget closing call. Every skill body a
+  message carried was rendered twice to measure something the assembly already
+  knew.
+
+  The input now carries `systemStable` and `systemVolatile`. The adapter that
+  caches puts its breakpoint between them and slices nothing; the two that do
+  not concatenate, through one shared function, so a prompt that reaches one of
+  them can never differ from the prompt that reaches the one that splits. The
+  prompt on the wire is byte-for-byte what it was.
+
+  What the arithmetic was protecting is now structural: a message carrying
+  several skill bodies has all of them inside the stable part, so the breakpoint
+  lands past every one rather than inside the second. An index could have landed
+  mid-skill, and a cache entry cut mid-skill matches nothing on the next round —
+  a failure that costs tokens on every round and never turns a test red. The
+  adapter can no longer cut, so that invariant belongs to the ASSEMBLY, and one
+  test at the loop pins it there: every skill body inside the stable part, the
+  live context once, last, exactly one blank line past the final body, and the
+  cut on that boundary.
+
+  `buildSystem` is now `buildStableSystem` — it builds the prompt's stable part,
+  not the prompt — and the volatile part has a name of its own, `buildVolatile`,
+  rather than being spelled out at each of the two call sites.
+
 ## 1.44.26
 
 **A skill is named in prose, anywhere in a message, and as many as the message
@@ -27,7 +693,7 @@ failed.
 
 - **A skill runs only under its official name.** `/sb:audit` runs; a bare
   `/audit` left in the prose does not, and the composer asks about it instead.
-  The short aliases still *match in the menu* — typing `/audit` offers
+  The short aliases still _match in the menu_ — typing `/audit` offers
   `/sb:audit`, and accepting rewrites the token — so muscle memory still
   works, but any deployment doc, onboarding copy or canned prompt that tells a
   reader to type `/audit` should say `/sb:audit`.
@@ -8573,8 +9239,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                                    ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                                    "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                                      ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                                      "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
