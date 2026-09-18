@@ -25,9 +25,12 @@ import { VIEW_SCREENSHOT_DIR } from './playwright.config'
  *      reached the camera. Whether the wash over that strip is thin enough to
  *      read the canvas through is a fact about a compositor, and this case
  *      asserts the overlay's weight and files the screenshot a person reads.
- *   3. **The destination is visibly inside it.** The slice asserts an inset;
- *      here the destination artboard has a box, the sheet has a box, and the
- *      first is above the second.
+ *   3. **The destination rendered above the sheet, legibly.** The board the
+ *      agent was asked for has a box, the sheet has a box, a strip-full of
+ *      the first is above the second, and cells with words in them are wholly
+ *      inside the strip. The FIT INSET itself is the slice's claim, not this
+ *      file's — see the note over that block for why no assertion here can
+ *      make it.
  *
  * ── HOW THE AGENT IS DRIVEN WITHOUT A MODEL ────────────────────────────────
  *
@@ -85,13 +88,29 @@ const STORAGE_PREFIX = process.env.RENDER_WALK_STORAGE_PREFIX ?? 'sb-'
 /** What a landed scenario jump answers with, from `lib/agent/uiBridge.ts`. */
 const CAMERA_SETTLED = 'Opened the scenario and settled its canvas camera.'
 
+/** The halves of a send this spec reads back off the intercepted request. */
+type SentRound = {
+  /** Every system block's text, joined — the role, the skills, the board. */
+  system: string
+  /** The tool specs, in the order the adapter serialised them. */
+  tools: Array<{ name?: unknown; input_schema?: unknown }>
+}
+
 /**
- * Answer the provider with one tool call and then one sentence.
+ * Answer the provider with one tool call and then one sentence, and keep
+ * what was SENT.
  *
  * Stateful by design: the loop sends again with the tool's result, and a
  * handler that replied `tool_use` twice would loop until the round cap.
+ *
+ * The rounds are collected because a canned answer only exercises the
+ * adapter's response half. A broken tools or system serialisation — a tool
+ * array the shape of nothing, an empty system block — is a 400 from the real
+ * provider and green here, so the caller asserts on the first round's body
+ * and the interception becomes a two-way check.
  */
 async function scriptTheModel(page: Page, scenarioId: string) {
+  const sent: SentRound[] = []
   let rounds = 0
   await page.route('https://api.anthropic.com/**', async (route) => {
     const cors = {
@@ -104,6 +123,14 @@ async function scriptTheModel(page: Page, scenarioId: string) {
       return
     }
     rounds += 1
+    const request = route.request().postDataJSON() as {
+      system?: Array<{ text?: string }>
+      tools?: Array<{ name?: unknown; input_schema?: unknown }>
+    }
+    sent.push({
+      system: (request.system ?? []).map((block) => block.text ?? '').join('\n'),
+      tools: request.tools ?? [],
+    })
     const body =
       rounds === 1
         ? {
@@ -127,6 +154,7 @@ async function scriptTheModel(page: Page, scenarioId: string) {
       body: JSON.stringify(body),
     })
   })
+  return sent
 }
 
 /**
@@ -217,14 +245,23 @@ test.describe('the phone agent jump', () => {
     await page.getByRole('button', { name: 'Close' }).click()
     await expect(page.locator('[data-slot="sheet-content"]')).toHaveCount(0)
 
-    await scriptTheModel(page, destination as string)
+    const sent = await scriptTheModel(page, destination as string)
 
     // The reader opens the ✦ sheet and asks for the move.
     await page.getByRole('button', { name: 'Ask the agent' }).click()
-    const sheet = page.locator('[data-slot="sheet-content"]')
+    // The ✦ sheet by its ROLE and by its OWN title, with the composer read
+    // out of it — not by "a bottom sheet is up somewhere". The index drawer
+    // is a bottom sheet too, and a dialog layered over this one (the session
+    // rename) takes the sheet under it out of the accessibility tree while a
+    // bare `[data-slot="sheet-content"]` still finds the node. That is a real
+    // failure this flow hit in jsdom, and this is the check the slice makes
+    // for it.
+    const sheet = page
+      .getByRole('dialog')
+      .filter({ has: page.locator('[data-slot="sheet-title"]:text-is("Agent")') })
     await expect(sheet).toBeVisible()
     await page.getByRole('button', { name: 'New session' }).click()
-    const composer = page.locator('textarea[data-agent-composer]')
+    const composer = sheet.locator('textarea[data-agent-composer]')
     await expect(composer).toBeEnabled()
     await composer.fill('Take me to the last phase.')
     const askedAt = Date.now()
@@ -250,12 +287,31 @@ test.describe('the phone agent jump', () => {
     await expect(sheet).toBeVisible()
     await expect(composer).toBeVisible()
 
-    // THE DESTINATION IS ON SCREEN, IN THE STRIP THE SHEET LEAVES. The fit
-    // inset the slice asserts as a number is this, in pixels a person could
-    // point at: the board the agent was asked for overlaps the visible strip,
-    // and cells of it with words in them are wholly inside it. A shell that
-    // threw the inset away aims the board at the middle of a screen whose
-    // bottom 60% is covered, and the strip comes up empty here.
+    // THE DESTINATION RENDERED ABOVE THE SHEET, LEGIBLY. That is all this
+    // block claims, and the narrower claim is deliberate.
+    //
+    // It used to say it caught a shell that had thrown the sheet's height
+    // away as a fit inset. It does not, and no assertion on this page could:
+    // the phone floors its fit zoom (`MOBILE_MIN_FIT_ZOOM`, and the note on
+    // `minFitZoom` in `ServiceOverviewView`), so a scenario board — 705 px
+    // wide against a 375 px screen — is framed from its top-left and
+    // overflows rather than being centred in whatever rectangle the insets
+    // leave. Zeroing `occludedBottomPx` in `getCanvasFocusFitInsets` and
+    // walking this flow again produces the destination's box to the pixel:
+    // x 20, y 124, 705 × 737, sheet top 325, both times. The inset is a real
+    // number with a real effect on boards the floor does not bind, and on
+    // this surface it buys nothing a box can see — so THE INSET IS PINNED BY
+    // THE JSDOM SLICE's fit assertion (`camera.fits.at(-1)` carrying
+    // `occludedBottomPx`), not here, and this case is not mutation-checked
+    // against that failure because it no longer claims to catch it.
+    //
+    // What is left is still worth a browser: that the destination the agent
+    // was asked for is the board on screen, that a strip-full of it sits
+    // above the sheet rather than a sliver, and that cells with words in them
+    // land wholly inside the visible strip — a fact about layout and a
+    // compositor that jsdom cannot answer either way.
+    const viewport = page.viewportSize()
+    expect(viewport, 'the phone project sets a viewport').toBeTruthy()
     const board = page.locator(`[data-focus-slide-id="${destination}"]`)
     await expect(board).toBeVisible()
     const boardBox = await board.boundingBox()
@@ -264,18 +320,18 @@ test.describe('the phone agent jump', () => {
     expect(sheetBox, 'the sheet has a box').toBeTruthy()
     expect(
       boardBox!.y,
-      'the destination reaches into the strip above the sheet',
+      'the destination rendered above the sheet',
     ).toBeLessThan(sheetBox!.y)
     expect(
       Math.min(boardBox!.y + boardBox!.height, sheetBox!.y) -
         Math.max(boardBox!.y, 0),
-      'and it is a strip-full of board, not a sliver of its edge',
+      'and a strip-full of it is up there, not a sliver of its edge',
     ).toBeGreaterThan(sheetBox!.y / 3)
     // Read cell by cell through locators rather than in one page-side pass:
     // this file is typechecked as a Node program, and a body full of DOM
-    // globals would have to be declared here for no gain.
-    const viewport = page.viewportSize()
-    expect(viewport, 'the phone project sets a viewport').toBeTruthy()
+    // globals would have to be declared here for no gain. Wholly inside in
+    // BOTH directions — the horizontal used to ask for overlap only, which
+    // scored a cell 90% off the side of the screen as legible.
     const cells = board.locator('[data-blueprint-cell]')
     let readable = 0
     for (let index = 0; index < (await cells.count()); index += 1) {
@@ -287,15 +343,37 @@ test.describe('the phone agent jump', () => {
         words.length > 0 &&
         box.y >= 0 &&
         box.y + box.height <= sheetBox!.y &&
-        box.x < viewport!.width &&
-        box.x + box.width > 0
+        box.x >= 0 &&
+        box.x + box.width <= viewport!.width
       )
         readable += 1
     }
     expect(
       readable,
-      'cells of the destination are legible above the sheet',
+      'cells of the destination are wholly on screen above the sheet',
     ).toBeGreaterThan(0)
+
+    // AND THE SEND WAS WELL FORMED. The canned answer above exercises only
+    // the adapter's response half; these two are the request half, which a
+    // real provider would answer with a 400 rather than a tool call.
+    expect(
+      sent.length,
+      'the loop sent a round, then a second carrying the tool result',
+    ).toBeGreaterThanOrEqual(2)
+    expect(
+      sent[0]!.tools.map((tool) => tool.name),
+      'the send carried the navigation tool specs',
+    ).toContain('open_scenario')
+    expect(
+      sent[0]!.tools.every(
+        (tool) => typeof tool.input_schema === 'object' && tool.input_schema,
+      ),
+      'each with a schema the provider could read',
+    ).toBe(true)
+    expect(
+      sent[0]!.system.length,
+      'and a system prompt with the role and the board in it',
+    ).toBeGreaterThan(500)
 
     // THE STRIP IS LEGIBLE THROUGH THE WASH. Not a judgement — two facts the
     // browser can answer: nothing is blurred behind the overlay, and the wash

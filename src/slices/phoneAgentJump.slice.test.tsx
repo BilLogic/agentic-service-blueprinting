@@ -588,6 +588,15 @@ beforeEach(() => {
   phoneScreen()
   globalThis.ResizeObserver =
     StillResizeObserver as unknown as typeof ResizeObserver
+  // EVERYTHING THIS FLOW WROTE TO STORAGE LAST CASE, GONE — before the
+  // settings below are written, so this clear cannot take them with it. The
+  // sessions are dealt with by name further down because their module keeps
+  // an in-memory snapshot beside its key; `mobile-paths` (which path the
+  // phone last showed for each scenario) and `slide-sheet-height` (how tall
+  // the reader dragged the sheet) are read straight off storage every time,
+  // so left standing they would open case two on case one's path at case
+  // one's height — the same cross-case inheritance as the session note below.
+  window.localStorage.clear()
   // The one key that makes the composer typeable. It never leaves this
   // process — nothing in this flow sends a message to a provider.
   saveAgentSettings({ provider: 'anthropic', keys: { anthropic: 'test-key' } })
