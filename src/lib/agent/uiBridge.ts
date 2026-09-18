@@ -1,5 +1,6 @@
 import { resolveActiveFocusCells } from '@/lib/canvasFocusCells'
 import { waitForCanvasNavigationOutcome } from '@/lib/canvasNavigationOutcome'
+import { namesSelection } from '@/lib/shellContext'
 
 /**
  * The agent's hands on the UI itself — camera and navigation, not data.
@@ -38,27 +39,17 @@ export function registerAgentUiBridge(next: AgentUiBridge): () => void {
  * or superseded flight looks like, so the viewport publishes its exact result.
  */
 const NAVIGATION_DEADLINE_MS = 1800
-const SELECTED_LINE: Record<'phase' | 'scenario', string> = {
-  phase: 'Selected phase',
-  scenario: 'Selected scenario',
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
 
 async function waitForNavigation(
   kind: 'phase' | 'scenario',
   id: string,
 ): Promise<boolean> {
-  const selectedLine = new RegExp(
-    `^${SELECTED_LINE[kind]}: .*\\(${escapeRegExp(id)}\\)$`,
-    'm',
-  )
   const deadline = performance.now() + NAVIGATION_DEADLINE_MS
   while (performance.now() < deadline) {
-    const context = collectAgentUiContext()
-    if (selectedLine.test(context)) return true
+    // Recognised by the module that renders the line, so a shell cannot
+    // change how it reports a selection out from under the check that reads
+    // it — the drift this used to have its own pattern for.
+    if (namesSelection(collectAgentUiContext(), kind, id)) return true
     await new Promise((done) => setTimeout(done, 25))
   }
   return false

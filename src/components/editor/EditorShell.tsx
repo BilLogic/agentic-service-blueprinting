@@ -64,7 +64,7 @@ import {
   SHELL_ENTRANCE_STEP_MS,
   prefersReducedMotion,
 } from '@/lib/motion'
-import { describeSidebar } from '@/lib/shellContext'
+import { describeSelection, describeSidebar } from '@/lib/shellContext'
 import { storageKey } from '@/lib/storageNamespace'
 import { cn } from '@/lib/utils'
 
@@ -385,12 +385,21 @@ function DesktopEditorShell() {
   const scenarioSlide = slides.find((slide) => slide.id === selectedScenarioId)
   const shellContext = [
     `View level: ${view}${view === 'home' ? ' (zoomed-out overview of all phases)' : ''}`,
-    phaseSlide
-      ? `Selected phase: "${getSlideDisplayLabel(phaseSlide, slides)}" (${phaseSlide.id})`
-      : 'Selected phase: none',
-    scenarioSlide
-      ? `Selected scenario: "${getSlideDisplayLabel(scenarioSlide, slides)}" (${scenarioSlide.id})`
-      : 'Selected scenario: none',
+    describeSelection(
+      'phase',
+      phaseSlide
+        ? { id: phaseSlide.id, label: getSlideDisplayLabel(phaseSlide, slides) }
+        : null,
+    ),
+    describeSelection(
+      'scenario',
+      scenarioSlide
+        ? {
+            id: scenarioSlide.id,
+            label: getSlideDisplayLabel(scenarioSlide, slides),
+          }
+        : null,
+    ),
     activeTab
       ? `Active tab: ${activeTab.kind} for slice ${activeTab.sliceId}`
       : 'Active tab: base blueprint view (no slice tab)',

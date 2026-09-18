@@ -41,6 +41,7 @@ import {
 } from '@/components/mobile/mobileAgentBridge'
 import { focusAgentComposer } from '@/lib/agent/composerFocus'
 import { waitForCanvasNavigationOutcome } from '@/lib/canvasNavigationOutcome'
+import { describeSelection } from '@/lib/shellContext'
 import { getMainSlides, getSlideDisplayLabel, getSubslides } from '@/types/nav'
 import type { NavItem } from '@/types/nav'
 import { useActiveServiceId } from '@/contexts/activeService'
@@ -262,20 +263,27 @@ export function MobileShell() {
   const shellContext = [
     'Mobile shell (view-only): the shared canvas, scoped to the selected phase',
     /*
-      The phase, in the same words the desktop shell reports it — and it has to
-      be here and not only there, because this is the line the navigation tools
-      VERIFY a selection against. Without it every agent-driven phase jump on
-      the phone answered "navigation started, but the selected phase was not
-      verified" while the canvas sat on exactly the phase asked for: a tool
-      cannot read a selection the shell never reports, and a model told its
-      navigation failed apologises for a move that landed.
+      The phase line is reported here and not only by the desktop shell,
+      because this is the line the navigation tools VERIFY a selection
+      against. Without it every agent-driven phase jump on the phone answered
+      "navigation started, but the selected phase was not verified" while the
+      canvas sat on exactly the phase asked for: a tool cannot read a
+      selection the shell never reports, and a model told its navigation
+      failed apologises for a move that landed. The wording comes from the
+      module the verifier reads with, so the two ends cannot drift apart
+      again.
     */
-    phase
-      ? `Selected phase: "${getSlideDisplayLabel(phase, slides)}" (${phase.id})`
-      : 'Selected phase: none',
-    scenario
-      ? `Selected scenario: "${getSlideDisplayLabel(scenario, slides)}" (${scenario.id})`
-      : `Selected scenario: none${view === 'home' ? ' (overview)' : ''}`,
+    describeSelection(
+      'phase',
+      phase ? { id: phase.id, label: getSlideDisplayLabel(phase, slides) } : null,
+    ),
+    describeSelection(
+      'scenario',
+      scenario
+        ? { id: scenario.id, label: getSlideDisplayLabel(scenario, slides) }
+        : null,
+      view === 'home' ? 'overview' : undefined,
+    ),
     paths.length > 0 && activePathId
       ? `Reading path: ${paths.find((path) => path.id === activePathId)?.name ?? activePathId}`
       : null,
