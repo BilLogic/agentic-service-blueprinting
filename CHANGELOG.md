@@ -1,5 +1,295 @@
 # Changelog
 
+## 1.44.26
+
+**A skill is named in prose, anywhere in a message, and as many as the message
+names.** The composer used to start a skill lookup only for a draft that was
+nothing but `/` and a word, so `check the onboarding journey /sb:audit` sent
+the sentence as plain text and ran nothing — the token was punctuation to the
+model. A slash now opens a lookup wherever it opens a word, the menu offers on
+prefix, Tab or Enter completes the token **in place** rather than moving it,
+the recognised token is coloured where it sits, and every skill a message
+names runs, in the order it was named, uncapped. A token that nearly names a
+skill is no longer silent: the composer asks once, and the model is told what
+was skipped so a near miss cannot pass for a plain sentence.
+
+**A dropped connection no longer discards a turn's work**, and the phone keeps
+the conversation while the canvas moves. A provider call that died at the
+network layer — WebKit says `Load failed` — used to end the turn and throw
+away every result it had gathered; it is retried first, and the status says
+whether the connection dropped or the provider refused, and on which round. On
+the phone, an agent-driven jump keeps the agent sheet open, tells the camera
+what the sheet covers so the destination lands in the visible strip, and
+reports its selected phase so a jump that landed is no longer reported as
+failed.
+
+**Upgrading a deployment:**
+
+- **A skill runs only under its official name.** `/sb:audit` runs; a bare
+  `/audit` left in the prose does not, and the composer asks about it instead.
+  The short aliases still *match in the menu* — typing `/audit` offers
+  `/sb:audit`, and accepting rewrites the token — so muscle memory still
+  works, but any deployment doc, onboarding copy or canned prompt that tells a
+  reader to type `/audit` should say `/sb:audit`.
+- **A stored user turn carries `skills: string[]`, not `skill: string`.** The
+  one-skill spelling is migrated at the read, so existing transcripts open
+  unchanged and need no backfill. Anything querying the payload directly —
+  `payload->>'skill'` over `agent_messages` in a dashboard or an export — must
+  read the array instead.
+- **A message can now cost several skill documents.** Skills per message are
+  uncapped by decision: four named skills load four SKILL.md files into the
+  first call of that turn. A deployment on a tight context or token budget
+  should know that ceiling moved.
+- **An identical read is answered once a turn.** A repeated board read comes
+  back as a pointer to the answer already in the conversation rather than a
+  second copy. A write clears the record; moving the camera clears only what
+  the canvas reports, so pointing at a cell never costs the agent its place.
+  Any custom tool that depends on re-reading the same payload twice in one
+  turn sees the pointer.
+- **On the phone, a tap on the visible canvas strip closes the agent sheet.**
+  The thin scrim above the sheet is constant — it never animates and never
+  clears — and it keeps the sheet's dismiss target, so panning the canvas
+  means closing the sheet first. Deliberate: the sheet does not arbitrate
+  canvas gestures.
+- Desktop chrome is untouched, `AgentDock` still has no backdrop, and no
+  environment, header or policy change is needed for any of this.
+
+### Patch Changes
+
+- 881d601: A provider call that dies at the network layer is retried before the reader
+  hears about it, and the status that does surface says whether the connection
+  dropped or the provider refused, and on which round.
+
+  A fetch that never completed — WebKit words it `Load failed`, which reached
+  the transcript as `Provider error: Load failed` — ended the whole turn and
+  took every tool result the round had already gathered with it. On a phone
+  that is routine rather than exotic: one radio blip mid-request and an audit
+  that had read four scenarios is gone with nothing to resume from.
+
+  The retry sits in `src/lib/agent/loop.ts`, at the one seam every provider
+  call goes through, so `src/lib/agent/providers/anthropic.ts`,
+  `google.ts` and `openai.ts` all get it without any of them knowing about it,
+  and a retried round re-sends the transcript as it stands — the earlier
+  rounds' tool results included. Two extra tries, a short backoff, and the
+  backoff is cut short by Stop so pressing it never looks ignored.
+
+  Only the failure a retry can fix is retried: a bare `TypeError` out of
+  `fetch`. A provider's own verdict still fails on the first attempt with its
+  status and detail intact, a body that will not parse fails under its own
+  name rather than as a network story, and an abort keeps the stopped status
+  it always had.
+
+  The request shape is unchanged — this is still a non-streaming loop.
+
+- d0d5174: An agent-driven jump on the phone reveals the canvas for as long as the camera
+  is actually moving, and a jump that lands is reported as landed.
+
+  The reveal was a flicker — a sixth of a second — and every scenario jump
+  answered "navigation was cancelled" while the URL and the canvas both showed
+  the move landing. Both came from the same place. A viewport can leave the tree
+  mid-flight without the destination changing: the path filter for a freshly
+  opened scenario arrives a beat after the selection, the board falls to its
+  no-paths state, and the canvas remounts and refits the SAME target. The dying
+  mount's cleanup published `cancelled` against the key it had just armed, so
+  every waiter — the tool's and the sheet's — was answered early, and the real
+  landing a few frames later reached nobody.
+
+  An unmount is no longer a verdict. `useZoomPanViewport` lets the flight go
+  instead of cancelling it, which leaves the waiters listening for the mount
+  that takes the camera over; a canvas that is gone for good publishes nothing
+  and each caller's own deadline says so honestly, rather than claiming a
+  cancellation the departing viewport is in no position to claim. Supersession,
+  a genuine cancel and the deadline all report exactly as before.
+
+  The sheet's scrim is now one state, and it never changes. It used to be
+  choreographed — cleared for the flight, restored on the verdict — which gave
+  the reader a backdrop that flashed on every jump and, worse, put opacity and
+  pass-through on different clocks: the wash eased over 150 ms while
+  `pointer-events` flipped in the frame the class landed, leaving a moment when
+  the backdrop was opaque yet passed taps through and a moment when it was
+  invisible yet swallowed them. A single thin wash held constant reveals the
+  canvas for the whole flight and has no states to fall out of step.
+
+  The phone also reports its selected phase to the agent's UI context, in the
+  same words the desktop shell uses. Without that line an agent-driven phase
+  jump could never be verified on a phone and answered "the selected phase was
+  not verified" while sitting on exactly the phase asked for.
+
+  Desktop chrome is untouched, and `AgentDock` still has no backdrop.
+
+- 325348e: A slash starts a skill lookup wherever it opens a word, so a skill can be
+  named inside a sentence rather than only at the head of one — and picking from
+  the menu keeps the sentence it was named in.
+
+  The composer opened its menu only when a slash was the draft's first
+  character, so "Hey can u /sb:aud" was dead text: no menu, no skill, and a
+  message that reads like an invocation sent as prose. A slash now opens a
+  lookup at the head of the draft or directly after whitespace — the CJK
+  sentence marks included, since a reader typing Japanese gets no space before
+  it — and the token runs to the end of the draft, so a space closes the menu
+  again. A slash that opens no word never opens it: a reference path, a URL,
+  `and/or`, a date, and a token with a path segment behind it are each pinned as
+  text. The lookup is deliberately tail-of-draft rather than caret-aware, which
+  keeps it derived from the text alone; the cost is that editing back into an
+  earlier token does not reopen the menu.
+
+  **Accepting a match completes the token where it sits, and colours it.** A
+  word-start token that names a skill is drawn in role ink exactly where the
+  reader typed it, and `/sb:aud` becomes `/sb:audit ` in place, the way a shell
+  completion behaves — the prose either side is not read, moved or trimmed. The
+  token is the invocation: the draft carries no skill field any more, and the
+  skills a message runs are parsed out of its text at send, in the order the
+  tokens appear. A coloured token will run; an uncoloured one is a word with a
+  slash on it.
+
+  This replaces the badge the first version shipped. Accepting used to lift the
+  token out of the prose and stand the skill in a row above the field, which
+  moved the reader's word to the front of their own message: `asdasd /sb:audit`
+  became `[/sb:audit] asdasd`, and the position they had typed it in was gone.
+  The badge row is deleted. The field stays a real `<textarea>` — selection,
+  IME, the mobile keyboard and native undo all come from the browser — so the
+  colour is drawn by a layer behind it that renders the same string with the
+  token in a span, sharing one class string with the field so the two cannot
+  wrap differently and one box sized by the field, so that an add-on placed in
+  the group later narrows both copies or neither. While an IME is composing, the field draws its own text.
+
+  Escape closes the menu and leaves every character typed.
+
+  **One canonical spelling invokes.** A bare alias — `/audit` for `/sb:audit` —
+  no longer resolves anything, in the composer or in a typed-through draft. It
+  stays as a search term, so a reader still types `aud` and finds `/sb:audit`
+  without the namespace, and as the source of the closest-match suggestion. A
+  reader who typed `/audit` to run the audit is offered it instead of running
+  it, which is the reversal, and it is what makes a lookup that fires
+  mid-sentence safe to have at all: every token that resolves is a message the
+  composer could silently turn into a skill run, and a sentence mentioning
+  `/audit` is far more often a sentence.
+
+- f930669: The canvas agent answers an identical read once a turn. A model that loops used to re-run the same board read round after round, and each repeat pushed another copy of the same payload into the conversation, crowding out the rounds that were left. The repeat now comes back as a pointer to the answer already in the conversation, naming the call and its arguments, and every suppressed call stays in the transcript so the loop is visible. A write clears the record, because a write can change anything a read described; moving the canvas clears only what the canvas reports, so pointing at a cell never costs the agent its place.
+- 5096095: A token that nearly names a skill asks the reader once — run the skill it
+  came close to, or send the sentence — and a sentence sent as prose tells the
+  agent that nothing ran.
+
+  `/audit` is not a skill name here; `/sb:audit` is. A draft carrying the near
+  miss sent as plain text: no skill loaded, and nothing on screen or in the
+  transcript said so. The agent then improvised. One session spent four rounds
+  re-reading the same scenario before the turn died, and the reader had no way
+  to know the flow they asked for was never loaded. The token was never the
+  defect; the silence was.
+
+  On send, a draft carrying a word-start slash token that matches a skill's
+  bare alias and no skill's official name now offers two choices and takes
+  neither by default. Accepting rewrites the token where it sits — "then /audit
+  the intake" becomes "then /sb:audit the intake", the same in-place completion
+  the menu performs, so the reader can see in their own sentence what they
+  agreed to — and the skill runs. Sending as text passes the sentence through
+  untouched and adds a paragraph to the system prompt: the token names no skill
+  here, the closest one is `/sb:audit`, nothing ran, and the model must not
+  describe it as having run or summarise what it would have produced. Editing
+  the draft withdraws the question.
+
+  **A token that resolves is never asked about.** It is coloured where it was
+  typed, and a coloured token runs — the colour is the whole of the promise, and
+  a prompt asking a reader to confirm what they can already see asks them to
+  read it twice. The confirm-once step for a resolved token is deleted.
+
+  **A spent round budget no longer loses the paragraphs.** The closing call the
+  loop makes after exhausting its rounds was built from the context alone, so
+  everything true of that send — the session tier, the no-database trial, the
+  mobile shell, and now this notice — was dropped at exactly the moment the
+  model is asked to answer from what it has. It is the same path the session
+  that motivated the notice took. All four paragraphs are threaded into the
+  closing call, and a spent budget is pinned in the loop's tests.
+
+- a982774: One message can carry as many skills as its text names, every one of their
+  instructions joined to the system prompt for that message and every one of
+  them recorded in the transcript.
+
+  A draft held one skill, so naming a second silently replaced the first:
+  "build this from my notes /sb:map then /sb:audit it" could not be asked in one
+  message even though the two flows compose. The skills a message runs are now
+  read out of its text at send — every word-start token that resolves, in the
+  order the tokens appear, each skill once however many times it is named, with
+  no ceiling. The reader is the one who knows how many flows their message is,
+  and the sentence they wrote is where they say so. A message that names none
+  behaves exactly as before, and a message that is nothing but tokens still
+  sends a usable instruction, naming the order it will work through them in.
+
+  The prompt names that order when there is more than one and asks for each flow
+  in full rather than a blend, and the sentence that translates a skill for this
+  surface is said once rather than per skill. A message carrying one skill
+  produces a byte-identical prompt to the previous release. The prompt-cache
+  breakpoint is measured through the same builder the prompt is assembled with,
+  so several skill bodies move it past all of them instead of cutting the prompt
+  mid-skill.
+
+  **The menu keeps offering after the first skill, and the notice names every
+  near miss.** A lookup used to refuse to open once the draft began with a
+  resolved skill — a head command owning its arguments, as it does in the tool
+  this composer mirrors — so `/sb:map notes then /sb:au` offered nothing and the
+  second skill had to be typed out in full. That guard is gone: what it was
+  protecting costs nothing without it, since a path typed for a skill to read
+  opens a lookup matching no skill and a lookup with no matches opens no menu.
+  For the same reason the near-miss notice now reads out every token in the
+  draft that nearly names a skill rather than the first: "check /audit then /map
+  this" names both, accepting one rewrites that token and asks again about the
+  next, and a sentence sent as prose tells the model about all of them. One
+  reported and the rest left out was the same silence with a smaller mouth.
+
+  **A turn read back from the database keeps its skills.** The transcript
+  records every skill a message invoked. Rows persisted by earlier releases name
+  one skill in a field of its own, and that is settled into the list this build
+  carries at the READ boundary — once, where the row arrives — rather than at
+  each place a row is drawn, so a reopened session shows what it was sent with
+  and nothing downstream has to remember the older shape.
+
+  Each body is several kilobytes, so a message carrying all four is a
+  substantially fuller prompt before board context loads. There is deliberately
+  no cap: if that degrades answers the evidence arrives as behaviour, and a
+  limit can be decided then.
+
+- 73dce7b: On the phone, an agent-driven jump leaves the agent sheet open. The sheet's
+  dimming clears while the camera flies, the destination is framed above the
+  sheet rather than behind it, and the caret returns to the composer once the
+  move settles.
+
+  Closing the sheet was the old way to make a jump visible, and it threw the
+  conversation away mid-run. The run does not stop when the surface does — it
+  continues in the session module — so a turn that failed after the jump had
+  nowhere at all to report the failure. That is the state a failed turn landed
+  in, with an agent working and no surface saying so.
+
+  The sheet's scrim is the reason closing looked necessary: it is the page
+  colour at 90% over the whole viewport plus a blur, so the canvas behind it is
+  washed out rather than merely covered. It now fades out for the duration of
+  the flight — blur and hit-testing with it, so a tap during the move reaches
+  the canvas instead of dismissing the sheet — and comes back when the move
+  settles. The camera is told what the sheet occupies, measured from the panel
+  itself, and frames the target inside the strip that leaves visible; cell
+  focus reads the same pair, having previously centred on the full viewport and
+  flown the cell behind the panel.
+
+  The flight signal is the canvas's existing published camera outcome, read one
+  way, with a deadline — a camera that never publishes is ordinary, since a
+  backgrounded tab suspends the frames a flight runs on, and a scrim with no
+  deadline would stay down for the rest of the session.
+
+  Phone only. The desktop dock sits beside the canvas rather than over it, dims
+  nothing and never closed itself. A jump with the sheet already closed behaves
+  exactly as before.
+
+- d0d5174: The phone's agent scrim stays still while the canvas moves. It was a heavy
+  wash that cleared for the length of a camera flight and came back after — a
+  state with two properties to keep in step, a deadline to restore it, and a
+  window at each end where the wash and its pass-through disagreed. A thin wash
+  that never moves says the same thing with none of it: the strip of canvas
+  above the sheet stays readable the whole time, so a jump the agent makes is
+  visible as it happens.
+
+  `agentFlightBackdropClass` and the flight flag behind it are gone, and the
+  flight watcher keeps one job — handing the caret back to the composer once the
+  canvas settles.
+
 ## 1.44.25
 
 **The theme is stamped by the app's own code, so a strict script policy no
@@ -8283,8 +8573,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                                  ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                                  "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                                    ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                                    "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
