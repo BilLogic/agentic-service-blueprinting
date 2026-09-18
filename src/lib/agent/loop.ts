@@ -815,7 +815,6 @@ export async function sendToAgent(input: {
         const admission = admitToolCall({
           mode,
           name: call.name,
-          definition: findToolDefinition(call.name),
           facts: {
             aborted: controller.signal.aborted,
             isWrite: isWrite(call),
@@ -858,28 +857,58 @@ export async function sendToAgent(input: {
             result: admission.refusal,
             isError: true,
           })
-          // One status row per round, however many calls bounced — six
-          // identical "Paused" rows read as a stutter, not a pause.
-          if (admission.ground === 'batch-limit' && !batchPauseAnnounced) {
-            batchPauseAnnounced = true
-            push(sessionId, { kind: 'status', text: BATCH_PAUSED_STATUS })
+          // WHAT EACH GROUND COSTS THE TRANSCRIPT, past the sentence the
+          // model just read — and a `switch` over every ground rather than
+          // an `if` per consequence, because the grounds are `admission.ts`'s
+          // to add. Asked with two `if`s over the wider union, a ground added
+          // there compiled here and was answered with a plain result row, its
+          // consequence silently missing; the `never` below makes that a
+          // typecheck failure at the one place the consequence belongs.
+          switch (admission.ground) {
+            case 'batch-limit':
+              // One status row per round, however many calls bounced — six
+              // identical "Paused" rows read as a stutter, not a pause.
+              if (!batchPauseAnnounced) {
+                batchPauseAnnounced = true
+                push(sessionId, { kind: 'status', text: BATCH_PAUSED_STATUS })
+              }
+              break
+            case 'repeat-read':
+              // A tool row rather than the status line the batch pause uses,
+              // and one apiece rather than one per round. A status row states
+              // a fact about the turn; these rows are calls the model made,
+              // and a reader scanning the tool rows for what the agent did
+              // has to see them there, in place, with the arguments that
+              // repeated — collapsed or filed elsewhere, the loop stops being
+              // visible as a loop, which is the thing a bad turn is read back
+              // for.
+              push(sessionId, {
+                kind: 'tool',
+                name: call.name,
+                summary: REPEAT_READ_SUPPRESSED,
+                isError: true,
+                args: detailText(call.args),
+                result: detailText(admission.refusal),
+              })
+              break
+            case 'not-enabled':
+            case 'no-search':
+            case 'sample-trial':
+            case 'mobile-reading':
+            case 'view-only':
+              // A tool this session was never offered: the sentence IS the
+              // whole consequence. It leaves no transcript row of its own
+              // because the reader is looking at a roster that never had the
+              // tool on it, and no budget moves because a withheld call could
+              // not have run.
+              break
+            default: {
+              // Unreachable, and the point: a new ground reaches here as a
+              // type error rather than as a refusal with no consequence.
+              const unconsidered: never = admission.ground
+              throw new Error(`unhandled admission ground: ${String(unconsidered)}`)
+            }
           }
-          // A tool row rather than the status line the batch pause uses, and
-          // one apiece rather than one per round. A status row states a fact
-          // about the turn; these rows are calls the model made, and a reader
-          // scanning the tool rows for what the agent did has to see them
-          // there, in place, with the arguments that repeated — collapsed or
-          // filed elsewhere, the loop stops being visible as a loop, which is
-          // the thing a bad turn is read back for.
-          if (admission.ground === 'repeat-read')
-            push(sessionId, {
-              kind: 'tool',
-              name: call.name,
-              summary: REPEAT_READ_SUPPRESSED,
-              isError: true,
-              args: detailText(call.args),
-              result: detailText(admission.refusal),
-            })
           continue
         }
         try {

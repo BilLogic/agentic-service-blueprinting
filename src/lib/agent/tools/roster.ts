@@ -1,5 +1,5 @@
 import type { ToolDefinition } from '@/lib/agent/tools/definition'
-import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
+import { TOOL_DEFINITIONS, findToolDefinition } from '@/lib/agent/tools/definitions'
 
 /**
  * The Roster: which tools one session is offered. Derived, never listed —
@@ -59,14 +59,20 @@ export type WithholdGround =
 
 /** One session's answer about one tool. */
 export type ToolStanding =
-  | { offered: true }
-  | { offered: false; ground: WithholdGround }
-
-const OFFERED: ToolStanding = { offered: true }
+  | { readonly offered: true }
+  | { readonly offered: false; readonly ground: WithholdGround }
 
 /**
- * One session's standing on one tool — and THE one place the gates' order
- * and membership are written down.
+ * The one "yes", handed to every caller rather than built per call — so it is
+ * frozen and its fields are `readonly`. A shared literal a caller can write
+ * through is a caller that can turn every later session's answer into a
+ * refusal, from anywhere, with nothing to say where it happened.
+ */
+const OFFERED: ToolStanding = Object.freeze({ offered: true as const })
+
+/**
+ * One session's standing on one tool — and THE one place the gates'
+ * membership, and the order they answer in, are written down.
  *
  * Two readers walk this: `sessionRoster` below walks every definition
  * through it to build the offer, and the loop's admission answer walks one
@@ -86,28 +92,49 @@ const OFFERED: ToolStanding = { offered: true }
  * one mobile may run, so it is not a write — which holds in the definitions
  * today and is nothing a reader of this function can see. Applying each gate
  * costs a comparison and stops the offer from depending on a claim about a
- * list somewhere else.
+ * list somewhere else. It also makes the offer strictly narrower in
+ * principle: a tool BOTH trial-or-mobile-available AND a write would now
+ * reach the write gate instead of being offered by the mode gate above it.
+ * That is a no-op only because `defineWriteTool` fixes every write's
+ * availability to neither, which `definition.test.ts` pins for this reason.
  *
- * `isWrite` is an ARGUMENT rather than a field read off `tool`, and it is the
- * one input the two readers do not share. The offer asks the definition
- * (`surface === 'write'`), because a list of tools is all an offer has. The
- * admission asks its own predicate, because `ui_command` is a write exactly
- * when its `command` argument names a mutating one, and no roster can hold an
- * argument. Same gate, same place in the order, two inputs.
+ * WHAT IS SINGLE-SOURCED HERE, and what is not. Both readers now ask ONE
+ * function, so which sentence a call tripping two conditions reads back is a
+ * function of this description rather than of which cascade was written
+ * first. The order itself is still CODE — five sequential `if`s — so WHERE a
+ * new gate goes is an edit a reader makes here, with the others in front of
+ * them, and no data list will make that choice for them. The claim is that
+ * the order has one home, not that it stopped mattering.
  *
- * `tool` is absent for a name no definition declares — a name a model
- * invented, or remembered from another deployment. Such a name states no
- * availability, so every mode gate withholds it; on a session whose mode
- * gates all pass it is admitted here and answered by the dispatcher, which
- * is the reader that knows a name resolving to nothing.
+ * `isWrite` is an ARGUMENT rather than a field read off the definition, and
+ * it is the one input the two readers do not share. The offer asks the
+ * definition (`surface === 'write'`), because a list of tools is all an offer
+ * has. The admission asks its own predicate, because `ui_command` is a write
+ * exactly when its `command` argument names a mutating one, and no roster can
+ * hold an argument. Same gate, same place in the order, two inputs.
+ *
+ * The definition is RESOLVED HERE from the name, rather than handed in beside
+ * it: a name and a definition are two views of one thing, and the two callers
+ * reached them from different places — one walking the definition list, one
+ * holding a name a model emitted — so a mismatched pair would have split the
+ * gates silently, availability read off one tool and the allow-list asked
+ * about another.
+ *
+ * A NAME NO DEFINITION DECLARES — invented, or remembered from another
+ * deployment — resolves to nothing, and that is not a ground of its own. With
+ * no allow-list narrowing the session it passes the first gate, and the mode
+ * gates only fire on a trial or a phone, where a tool with no availability to
+ * show is withheld. So on a desktop session such a name is ADMITTED here and
+ * answered by the dispatcher, which is the reader that knows a name resolving
+ * to nothing and has a sentence for it.
  */
 export function toolStanding(
   mode: RosterMode,
-  tool: ToolDefinition | undefined,
   name: string,
   isWrite: boolean,
 ): ToolStanding {
   if (!toolEnabled(name)) return { offered: false, ground: 'not-enabled' }
+  const tool = findToolDefinition(name)
   // Ranked search sits FIRST among the mode gates, not inside their order:
   // whether the deployment has a search function and whether this person's
   // key can reach its index are questions none of the others ask, and a
@@ -130,11 +157,8 @@ export function toolStanding(
  * has to apply the same ones in the same order and a second copy of them is
  * exactly what this module exists to prevent.
  */
-export function sessionRoster(
-  mode: RosterMode,
-  definitions: readonly ToolDefinition[] = TOOL_DEFINITIONS,
-): ToolDefinition[] {
-  return definitions.filter(
-    (tool) => toolStanding(mode, tool, tool.name, tool.surface === 'write').offered,
+export function sessionRoster(mode: RosterMode): ToolDefinition[] {
+  return TOOL_DEFINITIONS.filter(
+    (tool) => toolStanding(mode, tool.name, tool.surface === 'write').offered,
   )
 }

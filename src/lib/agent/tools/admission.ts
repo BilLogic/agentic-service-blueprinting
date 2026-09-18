@@ -1,4 +1,3 @@
-import type { ToolDefinition } from '@/lib/agent/tools/definition'
 import {
   toolStanding,
   type RosterMode,
@@ -84,19 +83,32 @@ export type AdmissionGround = 'stopped' | WithholdGround | 'batch-limit' | 'repe
  * cannot tell them apart by reading the sentence.
  */
 export type Admission =
-  | { admitted: true }
-  | { admitted: false; ground: AdmissionGround; refusal: string }
+  | { readonly admitted: true }
+  | {
+      readonly admitted: false
+      readonly ground: AdmissionGround
+      readonly refusal: string
+    }
 
-const ADMITTED: Admission = { admitted: true }
+/**
+ * The one "yes", handed to every caller rather than built per call — hence
+ * frozen, and `readonly` above. A shared literal a caller can write through
+ * is a caller that can turn every later call's answer into a refusal, from
+ * anywhere, with nothing in this module to say where it happened.
+ */
+const ADMITTED: Admission = Object.freeze({ admitted: true as const })
 
 /** The sentence each withholding ground answers a call with. */
 function withholdRefusal(ground: WithholdGround, name: string): string {
   switch (ground) {
     case 'not-enabled':
-      // Disabled by the deployment's config, or a name no definition
-      // declares: the tool exists in the template and not in this session, so
-      // the refusal says the second thing only — a model has no business
-      // learning that a deployment narrowed its roster.
+      // An ALLOW-LIST the deployment set does not list this name: the tool
+      // exists in the template and not in this session, so the refusal says
+      // the second thing only — a model has no business learning that a
+      // deployment narrowed its roster. It is not the answer to a name no
+      // definition declares: with no allow-list such a name is admitted and
+      // answered by the dispatcher, which is the reader that can tell an
+      // unknown name from a withheld one.
       return noSuchToolRefusal(name)
     case 'no-search':
       return NO_SEARCH_REFUSAL
@@ -120,17 +132,23 @@ function withholdRefusal(ground: WithholdGround, name: string): string {
  * always refused in the words the offer would have used. The batch count and
  * the repeat record come last because they are budgets, and a tool this
  * session does not have spends neither.
+ *
+ * These three phases are CODE order here, as the five gates are code order in
+ * `toolStanding`. What one-sourcing bought is that no second reader states
+ * them again: which sentence a call tripping two conditions reads back is a
+ * function of those two descriptions, not of which cascade ran first. Adding
+ * a ground still means choosing its place, in one of these two functions,
+ * with the rest of them in front of you.
  */
 export function admitToolCall(input: {
   mode: RosterMode
+  /** The name the model emitted; `toolStanding` resolves what it declares. */
   name: string
-  /** The definition this name resolves to, or `undefined` for one that does not. */
-  definition: ToolDefinition | undefined
   facts: CallFacts
 }): Admission {
-  const { mode, name, definition, facts } = input
+  const { mode, name, facts } = input
   if (facts.aborted) return { admitted: false, ground: 'stopped', refusal: STOPPED_REFUSAL }
-  const standing = toolStanding(mode, definition, name, facts.isWrite)
+  const standing = toolStanding(mode, name, facts.isWrite)
   if (!standing.offered)
     return {
       admitted: false,

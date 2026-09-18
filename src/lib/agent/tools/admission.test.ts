@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import type { ToolDefinition } from '@/lib/agent/tools/definition'
 import { TOOL_DEFINITIONS, findToolDefinition } from '@/lib/agent/tools/definitions'
 import { admitToolCall, type CallFacts } from '@/lib/agent/tools/admission'
 import { configureAgentTools, sessionRoster, type RosterMode } from '@/lib/agent/tools/roster'
@@ -17,16 +18,24 @@ import {
 /*
  * ONE ADMISSION ANSWER PER CALL.
  *
- * The offer and the admission are two readers of one description now, so the
- * first thing pinned here is that they cannot disagree: over every mode and
- * every definition, a tool the roster withholds is a tool the admission
- * refuses. That is the check the eight-block cascade could not have — it
- * re-stated the roster's conditions in its own order, and nothing compared
- * the two.
+ * The headline pin is `offeredByTheRules` below: an INDEPENDENT statement of
+ * what each mode should offer, read off each definition's own `availability`
+ * and `surface` fields, which both the offer and the admission are then held
+ * to. Independence is the whole point and it is worth saying how it is
+ * achieved, because the obvious version of this test cannot fail: comparing
+ * `admit(...)` against `sessionRoster(mode)` compares `toolStanding` to
+ * itself — `sessionRoster` IS the definitions filtered by it — and so proves
+ * only that the two call sites pass the same arguments, never that a gate
+ * still withholds what it withheld. The predicate below shares nothing with
+ * `toolStanding` but the four rules it is a statement of: it reads the
+ * definition fields rather than asking the function, and it is a conjunction
+ * rather than a cascade, so it also cannot import the order under test. Loosen
+ * any gate in `roster.ts` and it reds.
  *
  * The rest are the four facts the description cannot carry, each still
- * refusing in its own words, and the one gate that keeps its own predicate
- * because `ui_command` is a write by its ARGUMENTS.
+ * refusing in its own words; the one gate that keeps its own predicate
+ * because `ui_command` is a write by its ARGUMENTS; and WHICH sentence a call
+ * tripping two gates reads back, which is what the order buys.
  */
 
 afterEach(() => {
@@ -57,12 +66,28 @@ for (const sampleTrial of [false, true])
         MODES.push({ sampleTrial, mobileReading, allowWrites, searchOffered })
 
 const admit = (mode: RosterMode, name: string, facts: Partial<CallFacts> = {}) =>
-  admitToolCall({
-    mode,
-    name,
-    definition: findToolDefinition(name),
-    facts: { ...QUIET, ...facts },
-  })
+  admitToolCall({ mode, name, facts: { ...QUIET, ...facts } })
+
+/**
+ * WHAT A MODE SHOULD BE OFFERED, stated here and not asked of the code under
+ * test. Four rules, each read off the definition itself: ranked search exists
+ * only where the session has a search plan; the no-database trial and the
+ * mobile shell get exactly the tools whose own `availability` says they run
+ * there; a session that is not a service account gets no tool on the write
+ * surface.
+ *
+ * A CONJUNCTION, deliberately — every rule is evaluated for every tool, so
+ * this says which tools are offered without saying anything about the order
+ * the gates answer in. The order is pinned separately, by the sentence a call
+ * tripping two of them reads back, which is the only thing the order decides.
+ */
+const offeredByTheRules = (mode: RosterMode, tool: ToolDefinition): boolean =>
+  (mode.searchOffered || tool.name !== 'search_blueprint') &&
+  (!mode.sampleTrial || tool.availability.sample) &&
+  (!mode.mobileReading || tool.availability.mobile) &&
+  (mode.allowWrites || tool.surface !== 'write')
+
+const namesOf = (tools: readonly ToolDefinition[]) => new Set(tools.map((tool) => tool.name))
 
 /**
  * The same call, asserted refused, so the answer narrows to the half that
@@ -76,15 +101,48 @@ const refusalFor = (mode: RosterMode, name: string, facts: Partial<CallFacts> = 
 }
 
 describe('the offer and the admission answer from one description', () => {
-  it('refuses every tool the roster withholds, under every mode, and admits every tool it offers', () => {
+  it('admits exactly the calls the four rules allow, under every mode', () => {
     for (const mode of MODES) {
-      const offered = new Set(sessionRoster(mode).map((tool) => tool.name))
       for (const tool of TOOL_DEFINITIONS) {
         const answer = admit(mode, tool.name, { isWrite: tool.surface === 'write' })
         expect(answer.admitted, `${tool.name} under ${JSON.stringify(mode)}`).toBe(
-          offered.has(tool.name),
+          offeredByTheRules(mode, tool),
         )
       }
+    }
+    // Spot-checks by name, so a reader has something concrete beside the
+    // predicate: the write surface is the tier's and the shell's to withhold,
+    // and a database read is the trial's.
+    expect(admit(DESKTOP, 'upsert_cell', { isWrite: true }).admitted).toBe(true)
+    expect(
+      admit({ ...DESKTOP, allowWrites: false }, 'upsert_cell', { isWrite: true }).admitted,
+    ).toBe(false)
+    expect(
+      admit({ ...DESKTOP, mobileReading: true }, 'upsert_cell', { isWrite: true }).admitted,
+    ).toBe(false)
+    expect(admit({ ...DESKTOP, sampleTrial: true }, 'list_stakeholders').admitted).toBe(false)
+  })
+
+  it('offers exactly the tools those same rules allow, under every mode', () => {
+    for (const mode of MODES) {
+      expect(namesOf(sessionRoster(mode)), JSON.stringify(mode)).toEqual(
+        namesOf(TOOL_DEFINITIONS.filter((tool) => offeredByTheRules(mode, tool))),
+      )
+    }
+  })
+
+  it('so the offer and the admission cannot disagree about a tool', () => {
+    // Held to the same independent statement above, the two are equal to each
+    // other as a consequence — which is worth asserting directly, because it
+    // is the property the loop relies on, but is not on its own a check that
+    // either of them still refuses anything.
+    for (const mode of MODES) {
+      const offered = namesOf(sessionRoster(mode))
+      for (const tool of TOOL_DEFINITIONS)
+        expect(
+          admit(mode, tool.name, { isWrite: tool.surface === 'write' }).admitted,
+          `${tool.name} under ${JSON.stringify(mode)}`,
+        ).toBe(offered.has(tool.name))
     }
   })
 
@@ -210,6 +268,27 @@ describe('gate order is no longer load-bearing', () => {
     // sentence: piling further tripped conditions on top changes nothing.
     expect(refusalFor({ ...DESKTOP, searchOffered: false }, 'search_blueprint').refusal).toBe(
       NO_SEARCH_REFUSAL,
+    )
+  })
+
+  it('answers a call failing both mode gates in the trial\u2019s words, not the shell\u2019s', () => {
+    // THE ONE PAIR THE CASES ABOVE LEAVE UNPINNED. `set_canvas_mode` is
+    // available neither on the trial nor on the phone, so a session that is
+    // both trips the two gates at once and the order decides which sentence
+    // it reads: the trial's, because "no database is connected" is the fact a
+    // model can act on — a phone with a database still has the reading tools
+    // this one asks to be used instead. Without this case the two lines in
+    // `toolStanding` could be swapped and the whole suite would still pass.
+    const trialOnAPhone: RosterMode = { ...DESKTOP, sampleTrial: true, mobileReading: true }
+    expect(refusalFor(trialOnAPhone, 'set_canvas_mode').refusal).toBe(SAMPLE_TRIAL_REFUSAL)
+    expect(refusalFor(trialOnAPhone, 'set_canvas_mode').ground).toBe('sample-trial')
+    // And with each gate alone, so the case above is read as an ORDER and not
+    // as the trial gate answering for both.
+    expect(refusalFor({ ...DESKTOP, sampleTrial: true }, 'set_canvas_mode').ground).toBe(
+      'sample-trial',
+    )
+    expect(refusalFor({ ...DESKTOP, mobileReading: true }, 'set_canvas_mode').ground).toBe(
+      'mobile-reading',
     )
   })
 
