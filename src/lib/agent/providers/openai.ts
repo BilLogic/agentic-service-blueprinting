@@ -1,6 +1,7 @@
 import {
   ProviderError,
   readErrorDetail,
+  wholeSystem,
   type AgentMessage,
   type AgentProviderAdapter,
   type AgentTextPart,
@@ -76,7 +77,7 @@ export const openaiAdapter: AgentProviderAdapter = {
       signal: input.signal,
       body: JSON.stringify({
         model: input.model,
-        messages: toMessages(input.system, input.messages),
+        messages: toMessages(wholeSystem(input), input.messages),
         ...(input.tools.length > 0
           ? {
               tools: input.tools.map((tool) => ({

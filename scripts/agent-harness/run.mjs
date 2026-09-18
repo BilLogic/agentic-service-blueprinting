@@ -26,10 +26,16 @@
  *   startup; cases.mjs takes its write roster from the same bundle). role.md,
  *   canvas-adapter.md and the skill files are the SAME FILES the app loads
  *   (`?raw` there, readFileSync here). No copies, so no drift.
- * - MIRRORED BY HAND: the system-prompt ASSEMBLY (buildSystem + the tier /
- *   mobile injections), the provider glue, the batch limiter and the round
- *   cap follow src/lib/agent/loop.ts and providers/ by copy — edit both
- *   sides together. What remains harness-local in the tool RESULTS is the
+ * - MIRRORED BY HAND: the system-prompt ASSEMBLY (buildStableSystem +
+ *   buildLiveContext + the tier / mobile injections), the provider glue, the
+ *   batch limiter and the round cap follow src/lib/agent/loop.ts and
+ *   providers/ by copy — edit both sides together. The app splits that
+ *   assembly in two where it crosses the provider seam — a stable part it
+ *   builds without the context note, and a volatile part the context block
+ *   opens — because one provider caches the prefix. The harness calls no
+ *   provider that caches, so its `buildSystem` below keeps both in one
+ *   function and takes the context note as an argument; the STRING it
+ *   produces is the app's two parts joined, which is what parity means here. What remains harness-local in the tool RESULTS is the
  *   per-case mock (get_ui_state, and the injection cases' get_cell), the
  *   rehearsal note, the "no browser session store" answers, and the findings
  *   header that quotes a count=exact total the app's read never asks for.
@@ -178,7 +184,9 @@ const OWNER_TAG_COLUMNS = AGENT_CELL_FIELDS.filter((field) => field.editor.contr
 const isWriteCall = (name) => WRITE_TOOL_NAMES.has(name)
 
 // ---------------------------------------------------------------------------
-// System prompt (mirror of src/lib/agent/loop.ts buildSystem — see header)
+// System prompt (mirror of src/lib/agent/loop.ts buildStableSystem followed by
+// buildLiveContext, joined — the app splits them at the provider seam, this
+// has no seam to split at. See header.)
 // ---------------------------------------------------------------------------
 // The role and the vendored skill surface are APPLICATION source, read
 // wherever the application is — `<root>/src` in a tree that keeps its own copy
