@@ -26,16 +26,30 @@
  *   startup; cases.mjs takes its write roster from the same bundle). role.md,
  *   canvas-adapter.md and the skill files are the SAME FILES the app loads
  *   (`?raw` there, readFileSync here). No copies, so no drift.
- * - MIRRORED BY HAND: the system-prompt ASSEMBLY (buildSystem + the tier /
- *   mobile injections), the provider glue, the batch limiter and the round
- *   cap follow src/lib/agent/loop.ts and providers/ by copy — edit both
- *   sides together. What remains harness-local in the tool RESULTS is the
+ * - MIRRORED BY HAND: the system-prompt ASSEMBLY (buildStableSystem +
+ *   buildLiveContext + the tier / mobile injections), the provider glue, the
+ *   batch limiter and the round cap follow src/lib/agent/loop.ts and
+ *   providers/ by copy — edit both sides together. The app splits that
+ *   assembly in two where it crosses the provider seam — a stable part it
+ *   builds without the context note, and a volatile part the context block
+ *   opens — because one provider caches the prefix. The harness calls no
+ *   provider that caches, so its `buildSystem` below keeps both in one
+ *   function and takes the context note as an argument; the STRING it
+ *   produces is the app's two parts joined, which is what parity means here. What remains harness-local in the tool RESULTS is the
  *   per-case mock (get_ui_state, and the injection cases' get_cell), the
  *   rehearsal note, the "no browser session store" answers, and the findings
  *   header that quotes a count=exact total the app's read never asks for.
  *   Everything else — the writes, the refusals, and every database read's
  *   text — answers in the app's words, and `toolParity.test.mjs` fails if a
  *   sentence the app says turns up composed here again.
+ * - ROSTER FORK, stated so the refusals make sense: this harness offers the
+ *   whole spec table whatever the environment — every write with no database
+ *   configured (`HAS_DB` false), and ranked search with no index. The app
+ *   withholds both and has a refusal for each; a tool absent from a session's
+ *   roster does not exist for it. So two of the app's refusals cannot be said
+ *   here at all — the sample trial's, and the missing-search one — and
+ *   `refusals.ts` marks both app-only for exactly that reason. A ranked-search
+ *   call is answered by NO_SEARCH_HERE instead, which is true of this session.
  * - DELIBERATELY NOT MIRRORED: the loop's repeat-read guard, which answers a
  *   read already run this turn with a pointer to the earlier result instead
  *   of running it again. The gates copied above shape what a model DOES —
@@ -158,6 +172,7 @@ const {
   VIEW_ONLY_REFUSAL,
   WRITE_BATCH_LIMIT,
   AGENT_CELL_FIELDS,
+  noSuchToolRefusal,
   renderCanvasAdapter,
   rehearsalContext,
   runTool,
@@ -178,7 +193,9 @@ const OWNER_TAG_COLUMNS = AGENT_CELL_FIELDS.filter((field) => field.editor.contr
 const isWriteCall = (name) => WRITE_TOOL_NAMES.has(name)
 
 // ---------------------------------------------------------------------------
-// System prompt (mirror of src/lib/agent/loop.ts buildSystem — see header)
+// System prompt (mirror of src/lib/agent/loop.ts buildStableSystem followed by
+// buildLiveContext, joined — the app splits them at the provider seam, this
+// has no seam to split at. See header.)
 // ---------------------------------------------------------------------------
 // The role and the vendored skill surface are APPLICATION source, read
 // wherever the application is — `<root>/src` in a tree that keeps its own copy
@@ -509,6 +526,21 @@ let dryCounter = 0
  */
 const DRY_RUN_NOTE =
   'NOTE: rehearsal — this write was not applied and any ids above are placeholders; a re-read will not show it. Continue as if it landed; do not re-read to verify it and do not retry it.'
+/**
+ * HARNESS-LOCAL, and it has to be. The app's `NO_SEARCH_REFUSAL` tells the
+ * model the tool does not exist in the session, which is true exactly where
+ * the loop says it: the tool was filtered out of the roster and never
+ * offered. This harness OFFERS it — the roster it hands a provider is the
+ * whole spec table — so the app's sentence would be a lie about this session.
+ * (The roster fork itself is its own issue, not this sentence's business.)
+ *
+ * What IS true here is that nothing in this environment serves ranked search:
+ * there is no deployment index and no embedding key. The steer is the graded
+ * part — a case grades what a run does after being turned away — so this
+ * points at the same two reads the app's sentence points at.
+ */
+const NO_SEARCH_HERE =
+  'Ranked search is not served in this rehearsal environment (no search index). Use list_blueprint for what exists at a level, and get_blueprint for one scenario.'
 async function dispatch(caseDef, name, args, trace, turn = 0) {
   const mock = caseDef.mocks?.[name]
   const record = { name, args, isError: false, turn }
@@ -684,8 +716,24 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
       case 'focus_cell':
         record.result = CELL_CAMERA_SETTLED
         return record.result
+      // Ranked search is offered to the model here — the roster this
+      // harness hands a provider is the whole spec table — and nothing
+      // serves it. So this answers in a sentence that is true of THIS
+      // session, steering to the same two reads the app's refusal steers to;
+      // see NO_SEARCH_HERE on why the app's own wording cannot be used.
+      case 'search_blueprint':
+        record.result = NO_SEARCH_HERE
+        return record.result
+      // A name nothing above maps: a tool this environment cannot serve, or
+      // one the model invented. The name does not exist in this session
+      // either, so the app's own sentence is true here and this says it —
+      // the harness said "not on the allow-list" before, a second wording of
+      // the app's commonest refusal and the one a run is likeliest to be
+      // graded on recovering from. (Note that the app's allow-list refusal is
+      // a DIFFERENT sentence, for a name the tool layer knows; this gate has
+      // no counterpart to it, so it stays app-only.)
       default:
-        record.result = `Tool "${name}" is not on the allow-list.`
+        record.result = noSuchToolRefusal(name)
         return record.result
     }
   } catch (error) {

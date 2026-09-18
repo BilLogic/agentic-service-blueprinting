@@ -16,7 +16,8 @@ import { openaiAdapter } from '@/lib/agent/providers/openai'
 import type { ChatInput } from '@/lib/agent/providers/provider'
 
 const request: ChatInput = {
-  system: 'You are under test.',
+  systemStable: 'You are under test.',
+  systemVolatile: '',
   messages: [{ role: 'user', parts: [{ type: 'text', text: 'What phases are there?' }] }],
   tools: [],
   apiKey: 'test-key',

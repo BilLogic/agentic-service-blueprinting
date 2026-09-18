@@ -9,14 +9,19 @@ import { sourceOf } from '@/lib/sourceTree'
  * either, and the regression it guards (the wash made conditional again, so
  * it flashed on every agent jump with its opacity and its hit target on
  * different clocks) is invisible to any assertion about rendered state. A
- * source guard is the honest instrument here.
+ * source guard is the honest instrument here, and it failed silently for a
+ * whole release before there was one.
  *
- * The phase line this file used to guard beside it is now DRIVEN, in
- * `src/slices/phoneAgentJump.slice.test.tsx`: the agent jumps the real phone
- * shell to a phase, the shell's reported line is asserted in the words the
- * navigation tool matches, and the slice's second red strips that line and
- * requires the tool to answer that the selection was not verified. A guard on
- * the shell's own text held less than that and is gone.
+ * The phase line this file used to guard beside it has moved twice, and both
+ * moves stand. Its WORDING belongs to `describeSelection`, so the guard that
+ * a shell still calls it sits beside that renderer in
+ * `lib/shellContext.test.ts` — which is what still covers the DESKTOP shell,
+ * since nothing drives that one end to end. The PHONE's half is now driven:
+ * `src/slices/phoneAgentJump.slice.test.tsx` jumps the real shell to a phase,
+ * asserts the reported line in the words the navigation tool matches, and its
+ * second red strips the line and requires the tool to answer that the
+ * selection was not verified. Reading this file for an interpolation held
+ * less than either and is gone.
  */
 const SHEET = sourceOf('components/mobile/MobileAgentSheet.tsx')
 

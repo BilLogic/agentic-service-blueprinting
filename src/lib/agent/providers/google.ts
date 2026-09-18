@@ -1,6 +1,7 @@
 import {
   ProviderError,
   readErrorDetail,
+  wholeSystem,
   type AgentMessage,
   type AgentProviderAdapter,
   type AgentTextPart,
@@ -92,7 +93,7 @@ export const googleAdapter: AgentProviderAdapter = {
         headers: { 'content-type': 'application/json' },
         signal: input.signal,
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: input.system }] },
+          systemInstruction: { parts: [{ text: wholeSystem(input) }] },
           contents: toContents(input.messages),
           ...(input.tools.length > 0
             ? {
@@ -141,6 +142,11 @@ export const googleAdapter: AgentProviderAdapter = {
     }
     return {
       parts,
+      // Gemini's own finishReason is STOP even on a turn that asked for a
+      // tool, so it cannot answer the loop's question. The parts can, and
+      // they are the parts AFTER thought-only ones were dropped — reading
+      // the raw response would call a thought-only turn a tool turn and
+      // replay an empty assistant message, which every provider 400s.
       stopReason: parts.some((p) => p.type === 'tool_call') ? 'tool_use' : 'end',
     }
   },

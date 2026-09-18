@@ -50,12 +50,11 @@ import {
   autoNameSession,
   type AgentAttachment,
 } from '@/lib/agent/sessions'
+import { loadPersistedEvents, persistEvent } from '@/lib/agent/persistence'
 import {
-  isAgentPersistenceAttached,
-  loadPersistedEvents,
-  onAgentPersistenceAttached,
-  persistEvent,
-} from '@/lib/agent/persistence'
+  forgetAgentPersistenceWork,
+  whenAgentPersistenceReady,
+} from '@/lib/agent/persistenceReadiness'
 
 type Client = SupabaseClient<Database>
 
@@ -89,6 +88,13 @@ const ADAPTERS: Record<AgentProviderId, AgentProviderAdapter> = {
 const ROLE = roleDoc.trimEnd()
 
 /**
+ * The prompt's STABLE part — not the whole prompt: role, canvas adapter,
+ * deployment doctrine and every skill body this message carries. Everything
+ * here is byte-identical across a send's rounds while the roster holds, which
+ * is what lets a caching provider put its breakpoint at the end of it. The
+ * volatile remainder is `buildVolatile`; `wholeSystem` is the one written
+ * statement of how the two join.
+ *
  * The adapter comes out of the same record `get_reference` serves, rendered
  * against the same roster, not from a file import of its own. A deployment
  * that supplies a replacement `canvas-adapter` in `agent.references` means it
@@ -97,8 +103,7 @@ const ROLE = roleDoc.trimEnd()
  * rows with it. The deployment's doctrine, when it has one, follows the
  * adapter: an overlay on the template's prompt, never a replacement of it.
  */
-export function buildSystem(
-  contextNote: string,
+export function buildStableSystem(
   skills: readonly AgentSkillCommand[],
   roster: readonly ToolDefinition[],
 ): string {
@@ -123,8 +128,35 @@ export function buildSystem(
     invoked.length > 0
       ? `\n\nYou are the canvas agent, not an IDE agent: skip the skill's file/script/CLI mechanics and act through your tools, translated by the canvas-adapter above. The skill's judgment — what makes a good blueprint/slice, the order of questions, the quality bars — applies in full.`
       : '',
-    contextNote ? `\n\n--- current context ---\n${contextNote}` : '',
   ].join('')
+}
+
+/**
+ * The live context as the prompt carries it. Separate from
+ * `buildStableSystem` because it is the one part of the prompt that changes
+ * between two rounds of the same send: the agent's own navigation moves the
+ * canvas mid-run. Everything volatile has to sit behind everything stable, or
+ * a caching provider re-reads the whole prompt every round.
+ *
+ * The block carries its OWN leading `\n\n`: the two parts of the prompt are
+ * joined bare (`wholeSystem`), so every block that can begin the volatile part
+ * has to bring the separator that divides it from the last skill body.
+ */
+export function buildLiveContext(contextNote: string): string {
+  return contextNote ? `\n\n--- current context ---\n${contextNote}` : ''
+}
+
+/**
+ * The prompt's VOLATILE part, whole: the live UI context — the caller's note
+ * and whatever the canvas currently shows, read here rather than passed in
+ * because it moves between rounds — and then the notes true of this send
+ * only. That order is the rule, and it is written here once: it used to be
+ * spelled at both of the two call sites, which is how a caller comes to
+ * assemble it slightly differently from the other.
+ */
+export function buildVolatile(contextNote: string, sendNotes: string): string {
+  const liveContext = [contextNote, collectAgentUiContext()].filter(Boolean).join('\n')
+  return buildLiveContext(liveContext) + sendNotes
 }
 
 // ---------------------------------------------------------------------------
@@ -242,42 +274,6 @@ function push(sessionId: string, event: TranscriptEvent): void {
   emit()
 }
 
-const hydrated = new Set<string>()
-
-/** Sessions whose hydrate fired before persistence attached — replayed on
- *  the attach signal. */
-const pendingHydrates = new Set<string>()
-onAgentPersistenceAttached(() => {
-  const parked = [...pendingHydrates]
-  pendingHydrates.clear()
-  parked.forEach((sessionId) => void hydrateAgentTranscript(sessionId))
-})
-
-// Transcript-hydration-in-flight, per session, so the chat view can show
-// skeleton bubbles instead of the "Ready" empty state while a persisted
-// conversation is still on the wire.
-const hydratingTranscripts = new Set<string>()
-const transcriptHydrationListeners = new Set<() => void>()
-
-function notifyTranscriptHydration() {
-  transcriptHydrationListeners.forEach((listener) => listener())
-}
-
-export function useAgentTranscriptHydrating(sessionId: string): boolean {
-  return useSyncExternalStore(
-    (listener) => {
-      transcriptHydrationListeners.add(listener)
-      return () => transcriptHydrationListeners.delete(listener)
-    },
-    // Pending until the session's ONE hydrate attempt has at least begun
-    // its early-exit checks: an opened session whose hydrate has not run
-    // yet (client still resolving) must read as loading, not "Ready".
-    // Callers gate on canAgent, same as the sessions-list flag.
-    () => hydratingTranscripts.has(sessionId) || !hydrated.has(sessionId),
-    () => false,
-  )
-}
-
 /**
  * Restore a session's transcript from agent_messages, once per session per
  * page load. The provider-side conversation is rebuilt from the user and
@@ -285,31 +281,16 @@ export function useAgentTranscriptHydrating(sessionId: string): boolean {
  * material (providers reject orphaned tool calls, and Gemini signatures do
  * not survive a reload anyway).
  */
-export async function hydrateAgentTranscript(sessionId: string): Promise<void> {
-  if (hydrated.has(sessionId)) return
-  // Child effects run before parent effects: on a reload with a chat open,
-  // this fires before AgentPanel has attached persistence. Do NOT burn the
-  // one hydrate attempt — park the session id and retry on the attach
-  // signal; the pending flag keeps reading "loading" in the meantime.
-  if (!isAgentPersistenceAttached()) {
-    pendingHydrates.add(sessionId)
-    return
-  }
-  hydrated.add(sessionId)
-  // The pending flag above watches `hydrated` too — flush the change even
-  // on the early exits, or the skeleton outlives the load.
-  notifyTranscriptHydration()
+export function hydrateAgentTranscript(sessionId: string): void {
+  whenAgentPersistenceReady({ kind: 'transcript', id: sessionId }, () =>
+    readTranscript(sessionId),
+  )
+}
+
+async function readTranscript(sessionId: string): Promise<void> {
   const run = runFor(sessionId)
   if (run.events.length > 0 || run.running) return
-  hydratingTranscripts.add(sessionId)
-  notifyTranscriptHydration()
-  let events: TranscriptEvent[] | null
-  try {
-    events = await loadPersistedEvents(sessionId)
-  } finally {
-    hydratingTranscripts.delete(sessionId)
-    notifyTranscriptHydration()
-  }
+  const events = await loadPersistedEvents(sessionId)
   if (!events || events.length === 0) return
   if (run.events.length > 0 || run.running) return // a send raced the load
   run.events = events
@@ -343,11 +324,8 @@ export async function hydrateAgentTranscript(sessionId: string): Promise<void> {
 export function forgetAgentRun(sessionId: string): void {
   runs.delete(sessionId)
   snapshots.delete(sessionId)
-  hydrated.delete(sessionId)
-  pendingHydrates.delete(sessionId)
-  hydratingTranscripts.delete(sessionId)
+  forgetAgentPersistenceWork({ kind: 'transcript', id: sessionId })
   emit()
-  notifyTranscriptHydration()
 }
 
 /**
@@ -708,7 +686,8 @@ export async function sendToAgent(input: {
    * The paragraphs that are true of THIS send rather than of the session:
    * the tier, the no-database trial, the skill names the message nearly
    * typed and did not run, and the mobile shell. They sit after the cacheable
-   * prefix, so they are a function rather than part of `buildSystem` — and a
+   * prefix, so they are a function rather than part of `buildStableSystem` —
+   * and a
    * function rather than an expression spelled at each call site, because it
    * used to be spelled at one of two and the other went without: the closing
    * call below passed the context and nothing else, so on the round-budget
@@ -766,21 +745,18 @@ export async function sendToAgent(input: {
         allowWrites,
         searchOffered: searchPlan.offered,
       })
-      // The stable system prefix (role + adapter + doctrine + EVERY skill
-      // this message carries — everything before the live context) is
-      // byte-identical across this send's rounds while the roster holds; its
-      // length lets caching providers put a cache breakpoint there. It is
-      // measured through the same builder the prompt is assembled with, so a
-      // message carrying several skill bodies moves the breakpoint past all
-      // of them rather than cutting the prompt mid-skill.
-      const systemStableLength = buildSystem('', skills, roster).length
-      const liveContext = [contextNote, collectAgentUiContext()]
-        .filter(Boolean)
-        .join('\n')
+      // The prompt crosses the seam in its two parts rather than as one
+      // string: role + adapter + doctrine + EVERY skill body this message
+      // carries is stable across the send's rounds while the roster holds,
+      // and the live context and this send's notes are not. A caching
+      // provider puts its breakpoint between them. Handing over the parts
+      // rather than an index into a joined string is what keeps a message
+      // carrying several skill bodies from being cut mid-skill — there is
+      // no arithmetic left to get wrong, and the prompt is built once.
+      const systemStable = buildStableSystem(skills, roster)
       const result = await chatWithRetry(adapter, {
-        system:
-          buildSystem(liveContext, skills, roster) + sendNotes(mobileReading),
-        systemStableLength,
+        systemStable,
+        systemVolatile: buildVolatile(contextNote, sendNotes(mobileReading)),
         messages: run.messages,
         tools: roster.map(toolSpec),
         apiKey,
@@ -1026,13 +1002,8 @@ export async function sendToAgent(input: {
         })
         closingRound = true
         const closing = await chatWithRetry(adapter, {
-          system:
-            buildSystem(
-              [contextNote, collectAgentUiContext()].filter(Boolean).join('\n'),
-              skills,
-              roster,
-            ) + sendNotes(mobileReading),
-          systemStableLength,
+          systemStable,
+          systemVolatile: buildVolatile(contextNote, sendNotes(mobileReading)),
           messages: run.messages,
           tools: [],
           apiKey,

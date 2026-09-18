@@ -18,6 +18,13 @@ type AnthropicBlock =
 
 type AnthropicMessage = { role: 'user' | 'assistant'; content: AnthropicBlock[] }
 
+/** A system text block; the cached one carries the breakpoint. */
+type AnthropicSystemBlock = {
+  type: 'text'
+  text: string
+  cache_control?: { type: 'ephemeral' }
+}
+
 function toMessages(messages: AgentMessage[]): AnthropicMessage[] {
   return messages.map((message): AnthropicMessage => {
     switch (message.role) {
@@ -50,6 +57,26 @@ function toMessages(messages: AgentMessage[]): AnthropicMessage[] {
   })
 }
 
+/**
+ * The system field, as the two parts of the prompt make it: one text block
+ * each, the cache breakpoint on the stable one, and any empty part left out.
+ * The rule that an empty block is a 400 is stated here once, for both parts
+ * and for the case where neither has anything to say.
+ */
+function systemField(input: ChatInput): { system?: AnthropicSystemBlock[] } {
+  const blocks = (
+    [
+      {
+        type: 'text',
+        text: input.systemStable,
+        cache_control: { type: 'ephemeral' },
+      },
+      { type: 'text', text: input.systemVolatile },
+    ] satisfies AnthropicSystemBlock[]
+  ).filter((block) => block.text)
+  return blocks.length > 0 ? { system: blocks } : {}
+}
+
 export const anthropicAdapter: AgentProviderAdapter = {
   id: 'anthropic',
   async chat(input: ChatInput): Promise<ChatResult> {
@@ -67,29 +94,22 @@ export const anthropicAdapter: AgentProviderAdapter = {
       body: JSON.stringify({
         model: input.model,
         max_tokens: 4096,
-        // Prompt caching: the stable system prefix (role + adapter + skill,
-        // ~6-8k tokens) is identical across a session's rounds and would
-        // otherwise be re-paid up to MAX_ROUNDS× per send. Split it into
-        // its own block with a cache breakpoint; the volatile tail (live
-        // UI context) rides uncached behind it.
-        system:
-          input.systemStableLength && input.systemStableLength > 0
-            ? [
-                {
-                  type: 'text',
-                  text: input.system.slice(0, input.systemStableLength),
-                  cache_control: { type: 'ephemeral' },
-                },
-                ...(input.system.length > input.systemStableLength
-                  ? [
-                      {
-                        type: 'text',
-                        text: input.system.slice(input.systemStableLength),
-                      },
-                    ]
-                  : []),
-              ]
-            : input.system,
+        // Prompt caching: the stable part (role + adapter + doctrine +
+        // every skill body, ~6-8k tokens) is identical across a session's
+        // rounds and would otherwise be re-paid up to MAX_ROUNDS times per
+        // send. It arrives already separated, so the breakpoint goes
+        // BETWEEN the two parts and this adapter cuts nothing: an index
+        // into a single string could land mid-skill, and a cache entry cut
+        // mid-skill matches nothing on the next round.
+        //
+        // An empty part is dropped rather than sent, because an empty text
+        // block is a 400. That guards the TYPE, not any session this seam
+        // has: `buildStableSystem` unconditionally emits the role and the
+        // canvas-adapter header, so no real send arrives with an empty
+        // stable part — but `string` admits '' and a 400 is a bad way to
+        // find that out. Both parts empty leaves no blocks, and the field
+        // goes unsent rather than as an empty array.
+        ...systemField(input),
         messages: toMessages(input.messages),
         ...(input.tools.length > 0
           ? {

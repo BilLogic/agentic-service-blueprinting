@@ -4,6 +4,10 @@ import {
   loadPersistedSessions,
   persistSession,
 } from '@/lib/agent/persistence'
+import {
+  whenAgentPersistenceReady,
+  type AgentPersistenceWork,
+} from '@/lib/agent/persistenceReadiness'
 import { storageKey } from '@/lib/storageNamespace'
 
 /**
@@ -212,40 +216,20 @@ export function useAgentSessions(): AgentSession[] {
   return useSyncExternalStore(subscribe, () => snapshot)
 }
 
-// Hydration state, so the sessions list can show skeleton rows (the same
-// loading/empty distinction the sidebar's lists make) instead of flashing
-// "no sessions". Two facts, because the gap they cover differs:
-// `hydrating` is the DB merge on the wire; `hydratedOnce` covers the
-// window BEFORE the merge even starts (auth/client still resolving), which
-// is where the "still no skeleton" report came from — the panel mounted,
-// hydrate had not been called yet, and the flag read false.
-//
-// Its own subscription, because it moves on a schedule nothing else here
-// shares: once, on boot, and never again for the life of the page.
-let hydrating = false
-let hydratedOnce = false
-const hydrationListeners = new Set<() => void>()
-
-function setHydrating(next: boolean) {
-  if (hydrating === next) return
-  hydrating = next
-  hydrationListeners.forEach((listener) => listener())
-}
-
 /**
- * True until the first DB merge has COMPLETED — callers gate it on their
- * own "persistence is possible" fact (canAgent), else a signed-out panel
- * would show skeletons forever.
+ * The merge of the persisted list into this one, as a piece of work the
+ * readiness module schedules and answers for.
+ *
+ * The list used to keep its own pair of flags for the same question the
+ * transcript keeps one for — one for the merge on the wire, one for the
+ * window before it even starts — which is two spellings of a single fact and
+ * two chances to get the empty-versus-loading distinction wrong. There is one
+ * spelling now, and the sessions list subscribes to it the way the chat view
+ * does. The id is fixed because there is one list.
  */
-export function useAgentSessionsHydrating(): boolean {
-  return useSyncExternalStore(
-    (listener) => {
-      hydrationListeners.add(listener)
-      return () => hydrationListeners.delete(listener)
-    },
-    () => hydrating || !hydratedOnce,
-    () => false,
-  )
+export const AGENT_SESSION_LIST_WORK: AgentPersistenceWork = {
+  kind: 'session-list',
+  id: 'all',
 }
 
 export function createAgentSession(title = 'New session'): AgentSession {
@@ -264,27 +248,29 @@ export function createAgentSession(title = 'New session'): AgentSession {
 }
 
 /**
- * Merge the DB's sessions in (DB wins on shared ids, local-only rows stay).
- * Called once persistence attaches; a no-op when the DB is unreachable.
+ * Ask for the persisted list to be merged in, once persistence can be read.
+ *
+ * Safe to call before a client has attached, and that is the ordinary case on
+ * a reload: the merge is parked and runs when one lands. Asking twice does
+ * not merge twice.
  */
-export async function hydrateAgentSessions(): Promise<void> {
-  setHydrating(true)
-  try {
-    const persisted = await loadPersistedSessions()
-    if (!persisted) return
-    const byId = new Map(persisted.map((session) => [session.id, session]))
-    const localOnly = snapshot.filter((session) => !byId.has(session.id))
-    // Local-only sessions predate persistence — push them up so the merge
-    // converges instead of forking per browser.
-    localOnly.forEach(persistSession)
-    const merged = [...persisted, ...localOnly].sort((a, b) =>
-      b.createdAt.localeCompare(a.createdAt),
-    )
-    write(merged)
-  } finally {
-    hydratedOnce = true
-    setHydrating(false)
-  }
+export function hydrateAgentSessions(): void {
+  whenAgentPersistenceReady(AGENT_SESSION_LIST_WORK, mergePersistedSessions)
+}
+
+/** Merge the DB's sessions in (DB wins on shared ids, local-only rows stay). */
+async function mergePersistedSessions(): Promise<void> {
+  const persisted = await loadPersistedSessions()
+  if (!persisted) return
+  const byId = new Map(persisted.map((session) => [session.id, session]))
+  const localOnly = snapshot.filter((session) => !byId.has(session.id))
+  // Local-only sessions predate persistence — push them up so the merge
+  // converges instead of forking per browser.
+  localOnly.forEach(persistSession)
+  const merged = [...persisted, ...localOnly].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  )
+  write(merged)
 }
 
 /**

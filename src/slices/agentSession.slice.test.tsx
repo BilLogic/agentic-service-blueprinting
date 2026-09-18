@@ -365,6 +365,12 @@ describe('an agent session runs from the panel: a read, a write, the ledger, a r
     expect(screen.queryByText('Done — summary and function both read better now.')).toBeNull()
     forgetAgentRun(sessionId)
     fireEvent.click(screen.getByText(agentSessionsSnapshot()[0]!.title))
+    // WHILE THE READ IS ON THE WIRE the transcript is skeleton, not the
+    // "Ready" copy: a conversation that exists in the database must never be
+    // announced as an empty one on the way to being shown.
+    expect(
+      screen.getByRole('region', { name: 'Messages' }).querySelector('[data-slot="skeleton"]'),
+    ).toBeTruthy()
     // The hydrate is a load; the answer's return is its signal.
     await vi.waitFor(() =>
       expect(
