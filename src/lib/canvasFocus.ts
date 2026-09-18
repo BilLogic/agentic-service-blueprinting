@@ -47,6 +47,17 @@ export type CanvasFocusFitInsets = {
  * screen and is opaque. Without it the camera centres a target the reader
  * cannot see, because half the viewport it centred in is behind a panel.
  *
+ * What it does NOT do, and the claim has been made: it does not put an
+ * ordinary phone destination in the strip above the sheet. The phone floors
+ * its fit zoom, and a board the floor cannot fit into the strip is framed
+ * from its top-left, which reads the TOP inset alone — so that board starts
+ * above the sheet because it is anchored, not because this number was
+ * supplied, and it still runs on behind the panel. This inset frames a
+ * target that FITS the strip: a cell flight, which centres in it, and a fit
+ * whose board the floor binds by width while it fits vertically — where
+ * without it the whole board lands behind the sheet. See the anchoring note
+ * in `useZoomPanViewport`.
+ *
  * It lands differently in the two branches, and the difference is the
  * clearance each one keeps. Focus keeps 56px for the bottom controls, which
  * live INSIDE the strip the sheet covers, so the occlusion takes that

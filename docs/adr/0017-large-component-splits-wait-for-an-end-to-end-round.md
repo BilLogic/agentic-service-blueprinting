@@ -610,8 +610,25 @@ non-trivial length — so a serialisation a real provider would answer with a
 400 cannot pass on a canned reply. What it does NOT claim is the fit inset:
 the phone floors its fit zoom, so a scenario board wider than the screen is
 framed from its top-left and zeroing the inset leaves the destination's box
-identical to the pixel. That claim is the slice's, and the spec says so where
-a reader would otherwise assume the browser held it. It screenshots the
+identical to the pixel.
+
+**And the claim the pair still did not hold between them.** The slice's fit
+assertion says the sheet's measured height REACHED the camera; every prose
+note around it — the slice's own header, the shell's, this record's — said the
+inset put the destination in the strip above the sheet. Those are two claims,
+and only the first was tested, so a value with no effect on this surface read
+as a framing through both review axes, a browser verification and a render
+walk. It is the anchoring that puts the board above the sheet: on an axis the
+fit floor pushed off screen the camera solves for the TOP inset alone. That is
+the framing the phone wants — a board taller than the strip has no framing
+that keeps both edges, and the edge worth keeping is the one it begins at — so
+the code stood and the story was corrected. What the bottom inset frames is
+pinned separately, at the phone's own floor, in the camera hook's flight test:
+a board that fits the strip vertically is centred inside it, and one that does
+not is anchored with the bottom inset out of the solution. The lesson for this
+record is narrower than "add a browser case": a value arriving at a function
+is not an outcome, and a slice that can only see the arrival has to say so
+where its reader is standing. It screenshots the
 landed jump, which is the half a person reads. It landed in the same change as
 the slice, the way the annotation-drag pair did.
 

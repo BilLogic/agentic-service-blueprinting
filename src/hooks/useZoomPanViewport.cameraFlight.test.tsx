@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useZoomPanViewport } from '@/hooks/useZoomPanViewport'
 import type { CameraTransitionResult } from '@/lib/cameraTransition'
 import { awaitPublishedJump } from '@/lib/canvasJump'
+import { MOBILE_MIN_FIT_ZOOM } from '@/lib/canvasCameraPolicy'
 import type { FocusCellsResult } from '@/lib/canvasFocusCells'
 import { FOCUS_DIM_OPACITY } from '@/lib/canvasFocusDim'
 
@@ -68,6 +69,8 @@ function Harness({
   containerSize = { width: 1000, height: 600 },
   mountBoard = true,
   fitBottomInset = 0,
+  fitTopInset = 0,
+  minFitZoom,
 }: {
   resetKey: string
   target: Rect
@@ -81,13 +84,18 @@ function Harness({
   mountBoard?: boolean
   /** Height of a surface occluding the bottom edge (the phone's agent sheet). */
   fitBottomInset?: number
+  /** Height of a surface occluding the top edge (the phone's own top bar). */
+  fitTopInset?: number
+  /** Fit-zoom floor. Left unset, the fit is always the true fit. */
+  minFitZoom?: number
 }) {
   const camera = useZoomPanViewport({
     resetKey,
     fitSelector: '[data-target]',
     fitMargin: 0,
-    fitTopInset: 0,
+    fitTopInset,
     fitBottomInset,
+    minFitZoom,
     maxFitZoom: 4,
     animateFit: true,
     refitOnResize: false,
@@ -317,6 +325,117 @@ describe('viewport camera flights', () => {
     // rather than at 300, which is behind the surface.
     expect(camera.pan.y).toBeCloseTo(0)
     expect(camera.pan.y + 50 * camera.zoom).toBeCloseTo(150)
+  })
+
+  /*
+    THE FLOOR, AND WHAT THE BOTTOM INSET IS WORTH UNDER IT.
+
+    The pair above runs with no fit floor, so the true fit always wins and the
+    bottom inset always reads through `fitHeight`. The phone is not that
+    viewport: it floors its fit zoom (`MOBILE_MIN_FIT_ZOOM`), and a real
+    scenario board is far wider than 375px, so the floor wins — and on an axis
+    the floor pushed off screen the framing is ANCHORED, solving for
+    `insets.top` alone. The bottom inset is out of that solution entirely.
+
+    These two cases are the difference between "the sheet's height reached the
+    fit" and "the sheet's height moved the camera". That gap is not academic:
+    the phone slice asserts the measured height reaches the camera, which is
+    true and is not a framing, and the two claims were read as one through a
+    review, a browser verification and a render walk — during which mutating
+    the inset produced a pixel-identical destination box. Here the camera
+    itself is read, on both sides of the line the inset draws.
+
+    The framing is DELIBERATE, and these cases are where that is written down.
+    A board taller than the visible strip has no framing that keeps both of
+    its edges; the edge worth keeping is the beginning, so the anchored axis
+    ignores the bottom. Buying bottom clearance there would mean pushing the
+    board's top under the phone's own bar to gain room at an edge already
+    hundreds of pixels off screen.
+
+    Where the bottom inset does bite is the other case: a board the floor
+    binds by WIDTH while it still fits the strip vertically centres inside the
+    strip, and dropping the inset there puts the whole board behind the sheet.
+    It also decides which of these two branches a given board lands in, since
+    `overflowsY` is measured against the strip and not against the container
+    — so "inert on a floored fit" would itself be too strong a claim.
+  */
+  const PHONE = { width: 375, height: 812 }
+  /** The agent sheet's 60svh on that screen, and so the sheet's own top. */
+  const SHEET_OCCLUDED = Math.round(PHONE.height * 0.6)
+  const SHEET_TOP = PHONE.height - SHEET_OCCLUDED
+  /** The phone's own top bar, the inset the anchored axis DOES read. */
+  const TOP_BAR = 56
+
+  it('frames a short board inside the strip even when the floor binds its width, which is the framing the bottom inset buys', () => {
+    render(
+      <Harness
+        resetKey="floored-short"
+        // Wider than the phone by enough that the floor binds — and short
+        // enough that it still fits the strip the sheet leaves.
+        target={{ left: 0, top: 0, width: 1000, height: 200 }}
+        containerSize={PHONE}
+        fitTopInset={TOP_BAR}
+        fitBottomInset={SHEET_OCCLUDED}
+        minFitZoom={MOBILE_MIN_FIT_ZOOM}
+      />,
+    )
+    act(() => {
+      flushFrame(0)
+      flushFrame(16)
+    })
+
+    const camera = cameraState()
+    // The floor won on width; the vertical axis still fits, so it centres —
+    // in the 269px strip, not in the 756px below the top bar.
+    expect(camera.zoom).toBeCloseTo(MOBILE_MIN_FIT_ZOOM)
+    expect(camera.pan.y).toBeCloseTo(145.5)
+    expect(camera.pan.y + 200 * camera.zoom).toBeLessThan(SHEET_TOP)
+  })
+
+  it('leaves a board taller than the strip anchored to the top inset, where the bottom inset cannot help it', () => {
+    const framing = (fitBottomInset: number) => {
+      const view = render(
+        <Harness
+          resetKey="floored-tall"
+          // The ordinary phone destination: a scenario board wider than the
+          // screen and tall enough to overflow the strip at the floor
+          // whether or not the sheet is up, which is what puts both readings
+          // in the anchored branch and makes the comparison below fair.
+          target={{ left: 0, top: 0, width: 705, height: 2000 }}
+          containerSize={PHONE}
+          fitTopInset={TOP_BAR}
+          fitBottomInset={fitBottomInset}
+          minFitZoom={MOBILE_MIN_FIT_ZOOM}
+        />,
+      )
+      act(() => {
+        flushFrame(0)
+        flushFrame(16)
+      })
+      const camera = cameraState()
+      view.unmount()
+      return camera
+    }
+
+    const withSheet = framing(SHEET_OCCLUDED)
+    const withoutSheet = framing(0)
+
+    // Anchored to the top inset: the board starts just under the top bar,
+    // which is the reader's answer to "where does this board begin".
+    expect(withSheet.zoom).toBeCloseTo(MOBILE_MIN_FIT_ZOOM)
+    expect(withSheet.pan.y).toBeCloseTo(TOP_BAR)
+    // And it reaches BEHIND the sheet, because at the floor it cannot not:
+    // 2000px of board at 0.45 is 900px against a 269px strip. Saying this
+    // out loud is the point of the case — the sheet's height is what the
+    // camera is TOLD, and on this board it is not what frames it.
+    expect(withSheet.pan.y + 2000 * withSheet.zoom).toBeGreaterThan(SHEET_TOP)
+    // Identical with the sheet's height and with nothing: the inset is inert
+    // here by design, and a change that made it bite on this axis would buy
+    // clearance at an edge already off screen by pushing the board's
+    // beginning under the top bar.
+    expect(withoutSheet.zoom).toBeCloseTo(withSheet.zoom)
+    expect(withoutSheet.pan.y).toBeCloseTo(withSheet.pan.y)
+    expect(withoutSheet.pan.x).toBeCloseTo(withSheet.pan.x)
   })
 
   it('finishes a nearby recenter inside the distance-aware timing floor', () => {

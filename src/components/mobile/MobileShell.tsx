@@ -104,13 +104,24 @@ export function MobileShell() {
   /*
     What the agent sheet takes off the bottom of the canvas.
 
-    This is the whole reason an agent-driven jump no longer closes the sheet:
-    the occluded height goes to the canvas as a fit inset, so the destination
-    lands in the strip left above the panel rather than behind it, and the
-    reader watches the move happen without the conversation going anywhere.
-    The height is measured rather than assumed — see the sheet's own note —
-    and the sheet reports 0 the moment it unmounts, so a closed sheet costs
-    the camera nothing.
+    The sheet stays up across an agent-driven jump, and this is the height the
+    canvas is told to frame inside so the reader watches the move happen
+    without the conversation going anywhere. The height is measured rather
+    than assumed — see the sheet's own note — and the sheet reports 0 the
+    moment it unmounts, so a closed sheet costs the camera nothing.
+
+    Be precise about what it buys, because the looser claim was written here
+    and believed: it does NOT put the ordinary phone destination in the strip
+    above the sheet. A scenario board is wider and taller than this screen, so
+    the canvas's fit floor wins and the board is framed from its top-left,
+    which solves for the TOP inset alone — the destination is visible above
+    the sheet because it is anchored there, and it carries on behind the panel
+    either way. This number frames the targets that FIT the visible strip: a
+    cell the agent focuses, centred in it, and a board the floor binds by
+    width while it fits vertically, which without this inset would sit behind
+    the sheet entirely. Both framings are pinned in the camera hook's flight
+    test; the phone's agent-jump slice asserts only that this measured height
+    reaches the camera, which is a different claim.
   */
   const [agentSheetOccludedPx, setAgentSheetOccludedPx] = useState(0)
   const closeNavDrawer = useCallback(() => setNavOpen(false), [])

@@ -1039,6 +1039,21 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
         neither does a reader who has zoomed in past it — that overflow is
         their own doing, and yanking their view to a corner on the next
         resize would be the surprise.
+
+        An anchored axis reads the inset it anchors TO and nothing else: the
+        vertical one solves for `insets.top`, so a bottom-occluding surface
+        (the phone's agent sheet) does not move it. That is deliberate and it
+        is the honest description of what the phone does — a board taller than
+        the strip the sheet leaves has no framing that keeps both of its
+        edges, and the edge worth keeping is the one the board begins at.
+        Buying bottom clearance here would push the beginning up under the top
+        bar to gain room at an edge already far off screen. The bottom inset
+        earns its keep in the centring branch above, where a board that fits
+        the strip vertically is centred INSIDE the strip rather than in the
+        container — which is also what decides which of the two branches a
+        given board takes, since `overflowsY` is measured against `fitHeight`.
+        Both are pinned in `useZoomPanViewport.cameraFlight.test.tsx`; read
+        them before concluding the sheet's height frames the destination.
       */
       const overflowsX = floored && bounds.width * nextZoom > fitWidth + 0.5
       const overflowsY = floored && bounds.height * nextZoom > fitHeight + 0.5
