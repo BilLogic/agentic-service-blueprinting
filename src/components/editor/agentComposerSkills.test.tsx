@@ -231,7 +231,7 @@ describe('a token that nearly names a skill', () => {
     // through the same check, so the second one asks in its turn.
     //
     // The sequence itself is pinned as a pure assertion in
-    // `src/lib/agent/sendPlan.test.ts`, where a returned question can be read
+    // `src/lib/agent/sendDecision.test.ts`, where a returned question can be read
     // without a click. What this adds is the wiring: the panel renders the
     // question it got back rather than sending on it.
     const composer = openComposer()
