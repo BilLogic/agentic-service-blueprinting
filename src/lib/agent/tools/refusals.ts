@@ -18,12 +18,30 @@
 /** Writes a model may land in one send before the loop asks it to check in. */
 export const WRITE_BATCH_LIMIT = 8
 
-/** Disabled by the deployment's allowlist, or a name the model invented. */
+/**
+ * Disabled by the deployment's allowlist, or a name the model invented.
+ *
+ * Shared with the eval harness, whose dispatch answers a name it maps to
+ * nothing with this sentence instead of one of its own. An invented name is
+ * the commonest thing a model gets wrong, so it is the refusal a run is most
+ * likely to be graded on recovering from — and a harness that refused it in
+ * its own words would grade a recovery from a sentence no session says.
+ */
 export function noSuchToolRefusal(name: string): string {
   return `There is no ${name} tool in this session.`
 }
 
-/** No database: the trial reads the bundled sample and has no write tool at all. */
+/**
+ * No database: the trial reads the bundled sample and has no write tool at all.
+ *
+ * APP-ONLY, deliberately. The harness has no sample-trial session: it
+ * rehearses every write as a dry run against a recording client whether or
+ * not a database is configured, so no gate of its own ever reaches for this
+ * sentence. Shared anyway, it would be a seam nothing crosses — and a shared
+ * sentence with no second reader cannot be pinned by a test that watches for
+ * a copy, because there is no copy to watch for. Share it the day a case
+ * declares a trial session.
+ */
 export const SAMPLE_TRIAL_REFUSAL =
   'No database is connected — this session reads the bundled sample blueprint and has no write tools. Describe the change instead; authoring needs a connected database.'
 
@@ -31,7 +49,16 @@ export const SAMPLE_TRIAL_REFUSAL =
 export const MOBILE_SHELL_REFUSAL =
   'The mobile shell is view-only — only the reading and navigation tools exist here. Editing happens on desktop; describe the change instead.'
 
-/** Ranked search is not on this session's roster; the tool "does not exist". */
+/**
+ * Ranked search is not on this session's roster; the tool "does not exist".
+ *
+ * Shared with the harness, which offers a model the whole spec table and so
+ * hands it the very name this sentence exists for. The steer is the point:
+ * this refusal names the two reads to use instead, and what a run does after
+ * being turned away is what the eval grades — so a harness refusing in
+ * shorter words of its own would grade a recovery from a prompt the app
+ * never gives.
+ */
 export const NO_SEARCH_REFUSAL =
   'There is no search_blueprint tool in this session. Use list_blueprint for what exists at a level, and get_blueprint for one scenario.'
 
@@ -42,7 +69,11 @@ export const VIEW_ONLY_REFUSAL =
 /** The batch etiquette, enforced: after the limit, writes bounce with the check-in instruction. */
 export const BATCH_LIMIT_REFUSAL = `Batch limit: ${WRITE_BATCH_LIMIT} writes already landed this turn. Stop now, summarize what you did, and let the user say "continue" before the next batch.`
 
-/** The status row the transcript shows once per round when the batch limit bites. */
+/**
+ * The status row the transcript shows once per round when the batch limit
+ * bites. App-only: it is a row of the transcript, not a tool result, and the
+ * harness renders no transcript — it records a trace and grades the text.
+ */
 export const BATCH_PAUSED_STATUS = `Paused after ${WRITE_BATCH_LIMIT} writes — reply "continue" for the next batch.`
 
 /**
@@ -58,10 +89,23 @@ export const BATCH_PAUSED_STATUS = `Paused after ${WRITE_BATCH_LIMIT} writes —
  * WHICH earlier result it is being sent back to. It labels the call; it
  * never carries the payload — and the sentence still says the match was on
  * the exact arguments when the rendering comes back empty.
+ *
+ * APP-ONLY, deliberately, and the harness's own header says so at greater
+ * length: the gates it does mirror shape what a model DOES — how many writes
+ * land, how many rounds it gets — while this one shapes only what a model
+ * SEES TWICE, and no case in the suite repeats a read. Shared today it would
+ * be machinery no case exercises, free to drift from the loop unnoticed,
+ * which is the failure the shared sentences exist to prevent. Share it with
+ * the case that first needs it.
  */
 export function repeatReadRefusal(name: string, args: string): string {
   return `${name}${args ? ` (${args})` : ''} already ran this turn with these exact arguments — its result is earlier in this conversation and is not repeated here. Read it there, or call with different arguments.`
 }
 
-/** How a transcript row marks a repeat the loop answered instead of running. */
+/**
+ * How a transcript row marks a repeat the loop answered instead of running.
+ * App-only for both reasons at once: it labels a transcript row rather than
+ * answering a tool call, and it belongs to the repeat-read guard the harness
+ * deliberately does not mirror.
+ */
 export const REPEAT_READ_SUPPRESSED = 'Suppressed — already run this turn'

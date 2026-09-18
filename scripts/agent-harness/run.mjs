@@ -155,9 +155,11 @@ const {
   MOBILE_READ_TOOL_NAMES,
   BATCH_LIMIT_REFUSAL,
   MOBILE_SHELL_REFUSAL,
+  NO_SEARCH_REFUSAL,
   VIEW_ONLY_REFUSAL,
   WRITE_BATCH_LIMIT,
   AGENT_CELL_FIELDS,
+  noSuchToolRefusal,
   renderCanvasAdapter,
   rehearsalContext,
   runTool,
@@ -684,8 +686,23 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
       case 'focus_cell':
         record.result = CELL_CAMERA_SETTLED
         return record.result
+      // Ranked search is offered to the model here — the roster this
+      // harness hands a provider is the whole spec table — and nothing
+      // serves it: there is no deployment function to rank against. The app
+      // turns the same call away, and this answers it in the app's words, so
+      // the recovery a case grades is the recovery the app's own sentence
+      // asks for rather than one a harness-local wording invented.
+      case 'search_blueprint':
+        record.result = NO_SEARCH_REFUSAL
+        return record.result
+      // A name nothing above maps: a tool this environment cannot serve, or
+      // one the model invented. The app answers that with one sentence for
+      // both, saying only that the name does not exist HERE, and so does
+      // this — the harness said "not on the allow-list" before, which is a
+      // second wording of the app's commonest refusal and the one a run is
+      // likeliest to be graded on recovering from.
       default:
-        record.result = `Tool "${name}" is not on the allow-list.`
+        record.result = noSuchToolRefusal(name)
         return record.result
     }
   } catch (error) {
