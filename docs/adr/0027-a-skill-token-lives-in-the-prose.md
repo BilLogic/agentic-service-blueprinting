@@ -57,7 +57,8 @@ otherwise send as prose with nobody told.
 **The field stays a real `<textarea>`.** The colour comes from a mirrored
 layer behind it that renders the same string with each resolved token in a
 span, sharing one class string with the field so the two cannot wrap
-differently.
+differently — and one containing block, a wrapper sized by the field, so that
+an add-on placed in the group later narrows both copies or neither.
 
 ## Consequences
 
@@ -72,10 +73,16 @@ wrapping differently and the colour drifting off the text — is bounded by the
 one shared metrics string, which the composer's tests assert both copies still
 wear.
 
-**The layer must be kept honest.** Every property that decides a line break
-belongs to that shared string, and a metric added to the field alone is a
-shimmer nobody sees in review. That is what the metrics test is for, and why
-it iterates the string rather than naming properties.
+**The layer must be kept honest, and the test does half of it.** Every
+property that decides a line break belongs to that shared string. The metrics
+test iterates the string and asserts both copies still wear every token in it,
+so what it catches is a metric DROPPED from either copy — the likelier edit,
+since either class list can be touched on its own. What it cannot see is a
+metric ADDED to the field and not to the string: a fresh `tracking-` or `px-`
+on the textarea is a property the layer is never told about, and a test that
+iterates the string has no list of properties to notice it is missing one.
+That half is caught in review or not at all, and it is the first thing to look
+for when this composer is edited.
 
 **While an IME composes, the field draws its own text.** The field's text is
 transparent only while the layer is drawing, or a preedit string would be

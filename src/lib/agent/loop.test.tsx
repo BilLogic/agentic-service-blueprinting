@@ -339,6 +339,24 @@ describe('the loop, provider → tool → result → provider', () => {
     expect(closing.tools).toEqual([])
     expect(closing.system).toContain('This app has NO database connected')
   })
+
+  it('still says the session is view-only on the closing call', async () => {
+    // The tier paragraph is the other one the closing call used to drop, and
+    // it is the one with teeth: a viewer whose turn spends its budget would
+    // be asked to answer with no write tools in hand and nothing in the
+    // prompt saying so, which is how a model comes to claim an edit it could
+    // not have made. A connected client, so this is the tier speaking rather
+    // than the trial paragraph that subsumes it.
+    provider.turns = Array.from({ length: 12 }, () => ({
+      parts: [call('r', 'list_blueprint', { granularity: ['phase'] })],
+      stopReason: 'tool_use' as const,
+    }))
+    await send({ client, text: 'walk me through the intake', allowWrites: false })
+    const closing = provider.inputs.at(-1)!
+    expect(closing.tools).toEqual([])
+    expect(closing.system).toContain('This session is VIEW-ONLY')
+    expect(closing.system).toContain('never imply you made it')
+  })
 })
 
 /**

@@ -135,6 +135,20 @@ describe('the composer opens a skill lookup wherever a slash opens a word', () =
     expect((composer as HTMLTextAreaElement).value).toBe('Hey can u /sb:audit ')
   })
 
+  it('leaves the caret at the end of the completed draft', () => {
+    // No caret write goes with the completion, and this is the property that
+    // makes that safe: a lookup's span reaches the end of the draft, so the
+    // end is where the reader was already typing. The field is focused and
+    // its caret set BEFORE the pick on purpose — that is the path React's own
+    // selection restoration runs on, and a restore to the pre-completion
+    // offset would leave the caret inside the word it just finished.
+    const composer = openComposer() as HTMLTextAreaElement
+    composer.focus()
+    composer.setSelectionRange(17, 17)
+    pick(composer, 'Hey can u /sb:aud', '/sb:audit')
+    expect(composer.selectionStart).toBe(composer.value.length)
+  })
+
   it('finds a skill by the segment after its namespace', () => {
     const composer = openComposer()
     type(composer, 'first /aud')
@@ -184,6 +198,24 @@ describe('a token that names a skill is coloured where it sits', () => {
       expect(composer.className.split(' '), metric).toContain(metric)
       expect(ink.className.split(' '), metric).toContain(metric)
     }
+  })
+
+  it('shares one positioned box with the field, and not the whole group', () => {
+    // The containing-block guard. `absolute inset-0` measures the nearest
+    // POSITIONED ancestor, and the layer only wraps like the field while that
+    // ancestor is sized by the field. Against InputGroup the two coincided
+    // by accident — the field was its only child, in the slot the badge addon
+    // had just left — and an addon put back there narrows the field through
+    // the group's own `has-[>[data-align=inline-start]]` rules while leaving
+    // the layer full width: every line from the first wrap down breaks
+    // elsewhere, which the shared metrics string cannot see or prevent.
+    const composer = openComposer()
+    type(composer, 'Hey can u /sb:audit the intake')
+    const box = skillInk()!.parentElement!
+    expect(box.className.split(' ')).toContain('relative')
+    // The field is inside that same box, and the box is not the group.
+    expect(box.contains(composer)).toBe(true)
+    expect(box.dataset.slot).toBeUndefined()
   })
 
   it('follows the field when a long message scrolls', () => {
