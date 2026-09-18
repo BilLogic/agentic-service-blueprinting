@@ -1,5 +1,46 @@
 # Changelog
 
+## 1.44.29
+
+**A past session reads back with its words intact.** `get_session` already
+spelled out `user`, `assistant`, `tool` and `declined`; everything else fell
+through to a line that printed the kind and dropped the text. A `status` event
+therefore reached the model as the bare word "status:" — a record that says
+something happened and not what it said, the same grievance the declined row
+was added to close. Status now shows its text. Every kind the transcript has
+carries words, so every kind is written out, and a sixth kind fails the build
+and the suite instead of inheriting a catch-all.
+
+### Upgrading a deployment
+
+- **Nothing to configure, and no migration.**
+- **If an agent reads a past session**, a `status` event now carries its text.
+  Kinds that already spelled themselves out are unchanged.
+
+### Patch Changes
+
+- d6a30d5: A past session reads back with its words intact
+
+  `get_session` renders one line per transcript event for an agent catching up on
+  an earlier conversation. `user`, `assistant`, `tool` and `declined` spelled
+  themselves out; everything else fell through to a final line that printed the
+  kind and nothing else. A `status` event therefore reached the model as the
+  single word "status:" with its text dropped — a record saying something
+  happened and not what it said, which is the grievance the declined row was
+  added to close.
+
+  `status` now shows its text. The if-chain is a switch with no default: every
+  kind the transcript has carries words, so every kind is written out and there
+  is nothing left for a fallback to be right about. The bare-kind line is still
+  the right answer for a kind that genuinely says nothing, but it would be
+  written as a case of its own — a stated choice rather than a catch-all standing
+  in for one.
+
+  A sixth event kind can no longer lose its text quietly. The renderer declares a
+  `string` return and has no default, so an unhandled kind leaves a path that
+  returns nothing and the build says so; the new suite's fixtures are total maps
+  over the kinds, which fail to compile for the same reason.
+
 ## 1.44.28
 
 **Nothing here changes what the app does with a blueprint.** Four of the five
@@ -9464,8 +9505,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                                        ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                                        "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                                          ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                                          "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
