@@ -136,7 +136,9 @@ export function AgentChatView({
   // Same canAgent gate as the sessions list: without persistence the
   // "not yet hydrated" half of the flag would be a forever-skeleton.
   const transcriptHydrating =
-    useAgentPersistenceWorkPending(session.id) && canAgent && !isSampleTrial
+    useAgentPersistenceWorkPending({ kind: 'transcript', id: session.id }) &&
+    canAgent &&
+    !isSampleTrial
   const changeCount = useAgentChangeCount(session.id)
   const [renaming, setRenaming] = useState(false)
   // The near misses the reader has been asked about — `/audit`, which names

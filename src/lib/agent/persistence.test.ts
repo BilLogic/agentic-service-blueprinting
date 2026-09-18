@@ -15,6 +15,7 @@
  * answering "nothing persisted" to a question it could not ask.
  */
 import { beforeEach, expect, it } from 'vitest'
+import { renderHook } from '@testing-library/react'
 import {
   deletePersistedSession,
   loadPersistedEvents,
@@ -23,10 +24,12 @@ import {
   persistSession,
 } from '@/lib/agent/persistence'
 import {
-  agentPersistenceWorkPending,
   attachAgentPersistence,
+  forgetAgentPersistenceWork,
+  useAgentPersistenceWorkPending,
 } from '@/lib/agent/persistenceReadiness'
 import {
+  AGENT_SESSION_LIST_WORK,
   agentSessionsSnapshot,
   createAgentSession,
   deleteAgentSession,
@@ -37,6 +40,7 @@ import { forgetAgentRun, hydrateAgentTranscript } from '@/lib/agent/loop'
 
 beforeEach(() => {
   attachAgentPersistence(null)
+  forgetAgentPersistenceWork(AGENT_SESSION_LIST_WORK)
   agentSessionsSnapshot().forEach((session) => deleteAgentSession(session.id))
 })
 
@@ -56,8 +60,14 @@ it('leaves the localStorage list intact through a merge with nothing to merge', 
   createAgentSession('Kept locally')
   const kept = agentSessionsSnapshot()[0]!
   renameAgentSession(kept.id, 'Renamed locally')
+  // A client that cannot answer anything: the merge is scheduled, the read
+  // it makes fails on the spot, and the list the person can see must not be
+  // emptied or reordered by that.
+  attachAgentPersistence({} as Parameters<typeof attachAgentPersistence>[0])
 
-  await hydrateAgentSessions()
+  hydrateAgentSessions()
+  await Promise.resolve()
+  await Promise.resolve()
 
   expect(agentSessionsSnapshot().map((session) => session.title)).toEqual([
     'Renamed locally',
@@ -74,5 +84,8 @@ it('parks the transcript read rather than spending it on a question it cannot as
   // read either, so the client that lands a moment later still gets to
   // answer. Spending it here is the reopened session that comes back a
   // skeleton for the rest of the page's life.
-  expect(agentPersistenceWorkPending(session.id)).toBe(true)
+  const { result } = renderHook(() =>
+    useAgentPersistenceWorkPending({ kind: 'transcript', id: session.id }),
+  )
+  expect(result.current).toBe(true)
 })

@@ -10,6 +10,11 @@ tree already had and the deployment's copy (BilLogic/plus-uno-blueprint
 ADR 0005) listed. Amended 2026-09-14 (#802): the list loses
 `agent/panelState.ts`, folded with `agent/attachments.ts` into
 `agent/sessions.ts` — one store for one thing, not three for the parts of it.
+Amended 2026-09-18 ([#921](https://github.com/BilLogic/agentic-service-blueprinting/issues/921)):
+the list gains `agent/persistenceReadiness.ts`, which answers whether the
+persisted agent rows can be read yet — condition 2, and it takes the sessions
+list's own hydration flags with it, so the question has one answer rather than
+two.
 **Context** [#163](https://github.com/BilLogic/agentic-service-blueprinting/issues/163)
 
 ## Context
@@ -32,6 +37,7 @@ Two conditions send state here, and either one is sufficient:
 
 The live instances each carry their reason in their own header comment:
 `agent/placement.ts`, `agent/settings.ts`, `agent/sessions.ts`,
+`agent/persistenceReadiness.ts`,
 `contexts/activeService.ts`, `contexts/canvasModeContext.ts`,
 `contexts/shellBootStore.ts`, `contexts/sidebarCollapsedContext.ts`,
 `lib/canvasChromeResize.ts`,

@@ -249,7 +249,9 @@ function push(sessionId: string, event: TranscriptEvent): void {
  * not survive a reload anyway).
  */
 export function hydrateAgentTranscript(sessionId: string): void {
-  whenAgentPersistenceReady(sessionId, () => readTranscript(sessionId))
+  whenAgentPersistenceReady({ kind: 'transcript', id: sessionId }, () =>
+    readTranscript(sessionId),
+  )
 }
 
 async function readTranscript(sessionId: string): Promise<void> {
@@ -289,7 +291,7 @@ async function readTranscript(sessionId: string): Promise<void> {
 export function forgetAgentRun(sessionId: string): void {
   runs.delete(sessionId)
   snapshots.delete(sessionId)
-  forgetAgentPersistenceWork(sessionId)
+  forgetAgentPersistenceWork({ kind: 'transcript', id: sessionId })
   emit()
 }
 

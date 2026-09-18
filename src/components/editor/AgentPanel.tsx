@@ -2,8 +2,12 @@ import { useEffect } from 'react'
 import { AgentChatView } from '@/components/editor/agent/AgentChatView'
 import { AgentSessionsView } from '@/components/editor/agent/AgentSessionsView'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { attachAgentPersistence } from '@/lib/agent/persistenceReadiness'
 import {
+  attachAgentPersistence,
+  forgetAgentPersistenceWork,
+} from '@/lib/agent/persistenceReadiness'
+import {
+  AGENT_SESSION_LIST_WORK,
   closeAgentSession,
   createAgentSession,
   hydrateAgentSessions,
@@ -31,10 +35,21 @@ export function AgentPanel() {
   // Persistence rides the authenticated client: locally everything lands in
   // agent_sessions/agent_messages (viewers included — chat is their whole
   // surface); anonymous visitors stay on localStorage.
+  //
+  // The merge is ASKED FOR unconditionally and scheduled by the readiness
+  // module, the same way the chat view asks for its transcript: with no
+  // client it parks and the list stays local, and the ask is not spent on a
+  // question there was nothing to answer it with. Forgetting it on the way
+  // out is what keeps a client change honest — a different client is a
+  // different database's answer, and the merge that ran against the old one
+  // is not the answer for the new one.
   useEffect(() => {
     attachAgentPersistence(canAgent ? client : null)
-    if (canAgent && client) void hydrateAgentSessions()
-    return () => attachAgentPersistence(null)
+    hydrateAgentSessions()
+    return () => {
+      attachAgentPersistence(null)
+      forgetAgentPersistenceWork(AGENT_SESSION_LIST_WORK)
+    }
   }, [canAgent, client])
 
   return openSession ? (

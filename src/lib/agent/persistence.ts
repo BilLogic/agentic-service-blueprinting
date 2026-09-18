@@ -1,9 +1,7 @@
 import type { Json } from '@/types/database'
 import type { AgentSession } from '@/lib/agent/sessions'
 import type { TranscriptEvent } from '@/lib/agent/loop'
-import { attachedAgentClient } from '@/lib/agent/persistenceReadiness'
-
-type Client = NonNullable<ReturnType<typeof attachedAgentClient>>
+import { throughAgentPersistence } from '@/lib/agent/persistenceReadiness'
 
 /**
  * Best-effort DB persistence for agent sessions and transcripts.
@@ -15,32 +13,17 @@ type Client = NonNullable<ReturnType<typeof attachedAgentClient>>
  * in-memory/localStorage stores. That degradation is deliberate: the agent
  * surface never exists without write access anyway.
  *
- * Whether there is a client to read through, and when there will be, is not
- * asked here — `persistenceReadiness.ts` owns that answer and the parking of
- * work until it is yes. What is left is the spelling of the rows, which is
- * why the non-fatal case is stated ONCE, in `withClient`, rather than as a
- * guard at the head of every call: repeating it was five chances to write
- * the fifth one differently.
+ * Whether there is a client to read through, when there will be, and what
+ * happens to a query aimed at a tab that has none is not asked here —
+ * `persistenceReadiness.ts` owns that answer, and hands every call in this
+ * file the client through `throughAgentPersistence`. What is left is the
+ * spelling of the rows. The non-fatal case is therefore stated nowhere in
+ * this file rather than at the head of every call: repeating it was five
+ * chances to write the fifth one differently.
  */
-
-/**
- * Run `query` against the attached client, or answer `null`.
- *
- * `null` is the everyday answer on a deployment with no database and the
- * one every caller already treats as "nothing persisted", so a detached tab
- * takes the same path as a query that came back empty — no throw, no branch
- * at the call site.
- */
-function withClient<T>(
-  query: (client: Client) => PromiseLike<T>,
-): Promise<T | null> {
-  const client = attachedAgentClient()
-  if (!client) return Promise.resolve(null)
-  return Promise.resolve(query(client)).catch(() => null)
-}
 
 export function persistSession(session: AgentSession): void {
-  void withClient((client) =>
+  void throughAgentPersistence((client) =>
     client.from('agent_sessions').upsert({
       id: session.id,
       title: session.title,
@@ -51,20 +34,20 @@ export function persistSession(session: AgentSession): void {
 }
 
 export function deletePersistedSession(id: string): void {
-  void withClient((client) =>
+  void throughAgentPersistence((client) =>
     client.from('agent_sessions').delete().eq('id', id),
   )
 }
 
 export async function loadPersistedSessions(): Promise<AgentSession[] | null> {
-  const result = await withClient((client) =>
+  const rows = await throughAgentPersistence((client) =>
     client
       .from('agent_sessions')
       .select('id, title, created_at, updated_at')
       .order('created_at', { ascending: false }),
   )
-  if (!result || result.error || !result.data) return null
-  return result.data.map((row) => ({
+  if (!rows) return null
+  return rows.map((row) => ({
     id: row.id,
     title: row.title,
     createdAt: row.created_at,
@@ -78,7 +61,7 @@ export function persistEvent(
   seq: number,
   event: TranscriptEvent,
 ): void {
-  void withClient((client) =>
+  void throughAgentPersistence((client) =>
     client.from('agent_messages').upsert(
       {
         session_id: sessionId,
@@ -116,15 +99,15 @@ function asTranscriptEvent(stored: StoredEvent): TranscriptEvent {
 export async function loadPersistedEvents(
   sessionId: string,
 ): Promise<TranscriptEvent[] | null> {
-  const result = await withClient((client) =>
+  const rows = await throughAgentPersistence((client) =>
     client
       .from('agent_messages')
       .select('payload')
       .eq('session_id', sessionId)
       .order('seq', { ascending: true }),
   )
-  if (!result || result.error || !result.data) return null
-  return result.data
+  if (!rows) return null
+  return rows
     .map((row) => row.payload as unknown as StoredEvent)
     .filter((event) => event && typeof event.kind === 'string')
     .map(asTranscriptEvent)
