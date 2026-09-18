@@ -109,12 +109,15 @@ const client = {} as unknown as SupabaseClient<Database>
  * its own run mid-flight — stop, below — names the session itself.
  */
 let sessions = 0
-const send = (input: {
-  client: SupabaseClient<Database> | null
-  text: string
-  /** Pass one to send TWICE on the same session — the only case that needs it. */
-  sessionId?: string
-}) => {
+const send = (
+  input: Omit<
+    Parameters<typeof sendToAgent>[0],
+    'sessionId' | 'offlineBoard' | 'settings' | 'contextNote'
+  > & {
+    /** Pass one to send TWICE on the same session — the only case that needs it. */
+    sessionId?: string
+  },
+) => {
   const sessionId = input.sessionId ?? `loop-test-${(sessions += 1)}`
   return sendToAgent({
     ...input,
@@ -259,6 +262,73 @@ describe('the loop, provider → tool → result → provider', () => {
       isError: true,
     })
     expect(events.map((event) => event.kind)).toEqual(['user', 'assistant'])
+  })
+
+  it('tells the model a near-miss token named no skill and ran nothing', async () => {
+    provider.turns = [{ parts: [{ type: 'text', text: 'Noted.' }], stopReason: 'end' }]
+    await send({
+      client,
+      text: 'then /audit the intake',
+      unrunSkill: { token: 'audit', label: '/sb:audit' },
+    })
+    const system = provider.inputs[0]!.system
+    expect(system).toContain('/sb:audit')
+    expect(system).toContain('is NOT a skill name')
+    expect(system).toContain('NO skill ran')
+    expect(system).toContain('Do not describe /sb:audit as having run')
+    // A notice, not an invocation: the skill body stays out of the prompt.
+    expect(system).not.toContain('--- active skill')
+  })
+
+  it('still says nothing ran on the closing call, after the round budget is spent', async () => {
+    // Every round asks for a tool, so the loop spends its budget and then
+    // makes ONE no-tools closing call — which is the path the session that
+    // motivated the notice actually took, and the path that used to drop it.
+    provider.turns = Array.from({ length: 12 }, () => ({
+      parts: [call('r', 'list_blueprint', { granularity: ['phase'] })],
+      stopReason: 'tool_use' as const,
+    }))
+    await send({
+      client,
+      text: 'then /audit the intake',
+      unrunSkill: { token: 'audit', label: '/sb:audit' },
+    })
+    // The closing call is the one that was sent no tools.
+    const closing = provider.inputs.at(-1)!
+    expect(closing.tools).toEqual([])
+    expect(closing.system).toContain('is NOT a skill name')
+    expect(closing.system).toContain('Do not describe /sb:audit as having run')
+  })
+
+  it('still says the session has no database on the closing call', async () => {
+    // The same line dropped the tier, trial and mobile paragraphs too — a
+    // trial that spent its budget was told mid-run that it had a database.
+    provider.turns = Array.from({ length: 12 }, () => ({
+      parts: [call('r', 'list_blueprint', { granularity: ['phase'] })],
+      stopReason: 'tool_use' as const,
+    }))
+    await send({ client: null, text: 'walk me through the sample' })
+    const closing = provider.inputs.at(-1)!
+    expect(closing.tools).toEqual([])
+    expect(closing.system).toContain('This app has NO database connected')
+  })
+
+  it('still says the session is view-only on the closing call', async () => {
+    // The tier paragraph is the other one the closing call used to drop, and
+    // it is the one with teeth: a viewer whose turn spends its budget would
+    // be asked to answer with no write tools in hand and nothing in the
+    // prompt saying so, which is how a model comes to claim an edit it could
+    // not have made. A connected client, so this is the tier speaking rather
+    // than the trial paragraph that subsumes it.
+    provider.turns = Array.from({ length: 12 }, () => ({
+      parts: [call('r', 'list_blueprint', { granularity: ['phase'] })],
+      stopReason: 'tool_use' as const,
+    }))
+    await send({ client, text: 'walk me through the intake', allowWrites: false })
+    const closing = provider.inputs.at(-1)!
+    expect(closing.tools).toEqual([])
+    expect(closing.system).toContain('This session is VIEW-ONLY')
+    expect(closing.system).toContain('never imply you made it')
   })
 })
 

@@ -165,13 +165,21 @@ export function findSkillLookup(draft: string): SkillLookup | null {
  * No caret write goes with this. Setting a textarea's value leaves the caret
  * at the end of the text, and a lookup's span reaches the end of the draft,
  * so the end is where the reader was already typing.
+ *
+ * A span the prose continues after keeps the space it already has rather than
+ * gaining a second: the near-miss offer rewrites a token in mid-sentence
+ * through here, and "then /audit the intake" would otherwise come back as
+ * "then /sb:audit  the intake" — a visible hole in the reader's own sentence,
+ * from the one caller whose span does not reach the end of the draft.
  */
 export function completeSkillToken(
   draft: string,
   span: { start: number; end: number },
   command: AgentSkillCommand,
 ): string {
-  return `${draft.slice(0, span.start)}${command.label} ${draft.slice(span.end)}`
+  const after = draft.slice(span.end)
+  const gap = /^\s/.test(after) ? '' : ' '
+  return `${draft.slice(0, span.start)}${command.label}${gap}${after}`
 }
 
 /** A token that resolves to a skill: which skill, and where in the draft. */
@@ -194,6 +202,10 @@ export type SkillTokenSpan = {
  * load-bearing rather than belt-and-braces: forbidding only the slash lets
  * the match BACKTRACK to a shorter token — "sb:audi" — which satisfies it and
  * leaves the walk reading tokens the reader never typed.
+ *
+ * Both readers of the draft go through here — the spans that get coloured and
+ * run, and the near-miss offer at the foot of this file — so a token grammar
+ * one of them accepts is a token grammar the other accepts too.
  */
 const TOKEN_ENDS_HERE = `(?![/${SKILL_TOKEN_INNER}])`
 const SKILL_TOKEN_ANYWHERE = new RegExp(
@@ -250,4 +262,48 @@ export function draftWithoutSkillTokens(draft: string): string {
       draft,
     )
     .trim()
+}
+
+/** The bare spelling a token missed by: never resolved, only suggested. */
+function findSkillByAlias(token: string): AgentSkillCommand | undefined {
+  const t = token.toLowerCase()
+  return AGENT_SKILL_COMMANDS.find((entry) => entry.aliases.includes(t))
+}
+
+/**
+ * A near miss: the token as typed and the skill it nearly named, with the
+ * span to rewrite if the reader takes the offer.
+ */
+export type UnrunSkillToken = {
+  /** The token as typed, without its slash. */
+  token: string
+  /** The closest skill — the one whose bare alias the token spelled. */
+  command: AgentSkillCommand
+  /** Half-open, over the `/token` including its slash. */
+  start: number
+  end: number
+}
+
+/**
+ * The first token in the draft that nearly names a skill and therefore runs
+ * nothing: a word-start token matching a skill's bare alias and no skill's
+ * official name. `/audit` is the case — it looks like an invocation, it is
+ * not one, and a message carrying it would otherwise send as prose with
+ * nobody told, which is the failure this exists for. One real session spent
+ * four rounds re-reading the same scenario while the agent improvised the
+ * flow it had never been given.
+ *
+ * A token that DOES resolve is not a near miss and never comes back from
+ * here. It is coloured in the field and it runs — that is the whole of the
+ * promise the colour makes, and a prompt asking a reader to confirm what
+ * they can already see would be asking them to read it twice.
+ */
+export function findUnrunSkillToken(draft: string): UnrunSkillToken | null {
+  for (const { token, start, end } of wordStartTokens(draft)) {
+    if (findSkillByToken(token)) continue
+    const command = findSkillByAlias(token)
+    if (!command?.content) continue
+    return { token, command, start, end }
+  }
+  return null
 }

@@ -5,6 +5,7 @@ import {
   draftWithoutSkillTokens,
   findSkillLookup,
   findSkillTokens,
+  findUnrunSkillToken,
   skillMatchesQuery,
 } from '@/lib/agent/skills'
 import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
@@ -93,6 +94,16 @@ describe('the skill lookup a draft carries', () => {
     ).toBe('/sb:audit ')
   })
 
+  it('keeps a mid-sentence space rather than doubling it', () => {
+    // The near-miss offer's span, which is the only one that does not reach
+    // the end of the draft: a second space here is a hole in the sentence.
+    const audit = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:audit')!
+    const draft = 'then /audit the intake'
+    expect(completeSkillToken(draft, { start: 5, end: 11 }, audit)).toBe(
+      'then /sb:audit the intake',
+    )
+  })
+
   it('closes its own lookup, so the menu does not reopen on the completion', () => {
     const audit = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:audit')!
     const draft = 'Hey can u /sb:aud'
@@ -139,6 +150,42 @@ describe('the skills a draft names', () => {
     expect(draftWithoutSkillTokens('Hey can u /sb:audit the intake')).toBe(
       'Hey can u  the intake',
     )
+  })
+})
+
+describe('a near-miss token that would send as prose', () => {
+  it('names the closest skill for a bare alias rather than resolving it', () => {
+    const unrun = findUnrunSkillToken('then /audit the intake')
+    expect(unrun).toEqual({
+      token: 'audit',
+      command: AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:audit'),
+      start: 5,
+      end: 11,
+    })
+  })
+
+  it('reports the span, so accepting rewrites the token where it sits', () => {
+    const draft = 'Hey can u /audit the goal setting'
+    const unrun = findUnrunSkillToken(draft)
+    expect(draft.slice(unrun!.start, unrun!.end)).toBe('/audit')
+  })
+
+  it('stays quiet where there is nothing to say', () => {
+    // A token that RESOLVES is not a near miss. It is coloured in the field
+    // and it runs, so there is no silence to break and no question to ask —
+    // this is the confirm-once prompt's deletion, pinned.
+    expect(findUnrunSkillToken('/sb:audit the intake')).toBeNull()
+    expect(findUnrunSkillToken('Hey can u /sb:audit the goal setting')).toBeNull()
+    // A token naming nothing is a word with a slash on it.
+    expect(findUnrunSkillToken('Hey can u /frobnicate this')).toBeNull()
+    // The same strings the lookup refuses to fire on.
+    expect(findUnrunSkillToken('look at src/lib')).toBeNull()
+    expect(findUnrunSkillToken('do this and/or that')).toBeNull()
+    expect(findUnrunSkillToken('on 2026/09/17')).toBeNull()
+    // This walk is NOT tail-anchored, so the path cases it has to refuse are
+    // its own to refuse: a token with a path behind it, and a URL.
+    expect(findUnrunSkillToken('check /audit/notes.md')).toBeNull()
+    expect(findUnrunSkillToken('see http://example.test')).toBeNull()
   })
 })
 

@@ -9,14 +9,33 @@
  * on a token typed mid-sentence, and whether picking from it keeps the
  * sentence the token was sitting in.
  *
+ * Beside it: the colour a resolved token takes where it was typed, and the
+ * notice a NEAR MISS gets — `/audit`, which names no skill and runs nothing.
+ * The sentence the model is told lives in the loop's own test; what is
+ * asserted here is the choice the reader is given, and that neither branch is
+ * taken for them.
+ *
  * The panel is the real `AgentPanel` over the real sessions store. What is
- * faked is the Supabase provider (a signed-in author, no trial) and the
- * viewport probe, the same two seams the agent-session slice fakes and for
- * the same reasons. Nothing here sends, so there is no provider adapter and
- * no database.
+ * faked is the Supabase provider (a signed-in author, no trial), the viewport
+ * probe, and the provider adapter — the same seams the agent-session slice
+ * fakes and for the same reasons. There is no database and no network.
  */
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ChatInput, ChatResult } from '@/lib/agent/providers/provider'
+
+/** The scripted model: one answer per send, and it keeps what it was sent. */
+const provider = vi.hoisted(() => ({ inputs: [] as ChatInput[] }))
+
+vi.mock('@/lib/agent/providers/anthropic', () => ({
+  anthropicAdapter: {
+    id: 'anthropic',
+    chat: async (input: ChatInput): Promise<ChatResult> => {
+      provider.inputs.push(input)
+      return { parts: [{ type: 'text', text: 'Noted.' }], stopReason: 'end' }
+    },
+  },
+}))
 
 vi.mock('@/contexts/SupabaseProvider', () => ({
   useSupabase: () => ({
@@ -55,9 +74,10 @@ const type = (composer: HTMLElement, value: string) =>
   fireEvent.change(composer, { target: { value } })
 
 /**
- * The menu's row for a skill — scoped to the popover, because a picked
- * skill's badge carries the same label and an unscoped text query would find
- * whichever the DOM happened to hold first, passing on the wrong node.
+ * The menu's row for a skill — scoped to the popover, because the token in
+ * the field and the layer drawing it behind carry the same label, and an
+ * unscoped text query would find whichever the DOM happened to hold first,
+ * passing on the wrong node.
  */
 const menuOption = (label: string) => {
   const menu = screen.queryByLabelText('Agent skills')
@@ -92,6 +112,7 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
+  provider.inputs = []
   closeAgentSession()
   agentSessionsSnapshot().forEach((session) => deleteAgentSession(session.id))
   // The composer is disabled without a key, and a disabled field types nothing.
@@ -227,6 +248,59 @@ describe('a token that names a skill is coloured where it sits', () => {
   })
 })
 
+describe('a token that nearly names a skill', () => {
+  const NEAR = 'then /audit the intake'
+
+  it('asks once, and sends nothing until the reader chooses', () => {
+    const composer = openComposer()
+    type(composer, NEAR)
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(screen.getByText(/closest match is \/sb:audit/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Run /sb:audit' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Send as text' })).toBeTruthy()
+    // Neither branch taken for them: nothing has gone to the model.
+    expect(provider.inputs).toEqual([])
+  })
+
+  it('completes the token in place when the offer is taken', async () => {
+    const composer = openComposer()
+    type(composer, NEAR)
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Run /sb:audit' }))
+    await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
+    const sent = provider.inputs[0]!
+    expect(sent.system).toContain('--- active skill: /sb:audit')
+    // The official name stands where the reader's near miss stood, and the
+    // sentence either side of it is untouched — accepting an offer moves a
+    // word no more than accepting from the menu does.
+    expect(JSON.stringify(sent.messages)).toContain('then /sb:audit the intake')
+  })
+
+  it('sends the prose unchanged when asked to, and says nothing ran', async () => {
+    const composer = openComposer()
+    type(composer, NEAR)
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send as text' }))
+    await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
+    const sent = provider.inputs[0]!
+    expect(JSON.stringify(sent.messages)).toContain(NEAR)
+    expect(sent.system).toContain('is NOT a skill name')
+    expect(sent.system).not.toContain('--- active skill')
+  })
+
+  it('asks nothing about a token that resolves — it runs', async () => {
+    const composer = openComposer()
+    type(composer, 'Hey can u /sb:audit the goal setting scenario')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    // Straight through, with the skill loaded. The prompt that used to stand
+    // here asked a reader to confirm what the colour in the field already
+    // told them.
+    await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
+    expect(screen.queryByRole('button', { name: 'Send as text' })).toBeNull()
+    expect(provider.inputs[0]!.system).toContain('--- active skill: /sb:audit')
+  })
+})
+
 describe("the menu's keyboard behaviour", () => {
   it('walks the matches with the arrows and accepts the highlighted one', () => {
     const composer = openComposer()
@@ -238,6 +312,18 @@ describe("the menu's keyboard behaviour", () => {
     // Accepted and completed: the menu is shut and the token is in the text.
     expect(menuOption('/sb:slice')).toBeNull()
     expect((composer as HTMLTextAreaElement).value).toBe('/sb:slice ')
+  })
+
+  it('takes the item the arrows left on focus, not the first one', () => {
+    // The gesture in full: a populated list, the highlight walked two down,
+    // and Tab taking THAT row. A Tab handler that reached for the first match
+    // instead would pass every other case in this block.
+    const composer = openComposer()
+    type(composer, '/')
+    fireEvent.keyDown(composer, { key: 'ArrowDown' })
+    fireEvent.keyDown(composer, { key: 'ArrowDown' })
+    fireEvent.keyDown(composer, { key: 'Tab' })
+    expect((composer as HTMLTextAreaElement).value).toBe('/sb:audit ')
   })
 
   it('accepts on Tab, and wraps round the ends with ArrowUp', () => {

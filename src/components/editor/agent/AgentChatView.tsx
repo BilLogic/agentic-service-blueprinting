@@ -75,8 +75,10 @@ import {
   draftWithoutSkillTokens,
   findSkillLookup,
   findSkillTokens,
+  findUnrunSkillToken,
   skillMatchesQuery,
   type AgentSkillCommand,
+  type UnrunSkillToken,
 } from '@/lib/agent/skills'
 import {
   clearAgentDraft,
@@ -136,6 +138,13 @@ export function AgentChatView({
     useAgentTranscriptHydrating(session.id) && canAgent && !isSampleTrial
   const changeCount = useAgentChangeCount(session.id)
   const [renaming, setRenaming] = useState(false)
+  // A near miss the reader has been asked about — `/audit`, which names no
+  // skill — waiting on the one choice only they can make: spell it properly
+  // and run it, or send the sentence as prose. A token that DOES resolve
+  // never lands here; it is coloured and it runs. Component state rather than
+  // the draft store, because it is a question being asked right now and not
+  // something the message carries.
+  const [unrunSkill, setUnrunSkill] = useState<UnrunSkillToken | null>(null)
   // The slash menu is a portalled popover; this is what it anchors to (and
   // what --anchor-width measures).
   const composerRowRef = useRef<HTMLDivElement>(null)
@@ -247,20 +256,27 @@ export function AgentChatView({
   // itself is in skills.ts, with the spans it works on.
   const pickSkill = (command: AgentSkillCommand) => {
     if (!command.content || !slashLookup) return
+    setUnrunSkill(null)
     setDraft(completeSkillToken(draft, slashLookup, command))
   }
 
-  const send = () => {
-    let text = draft.trim()
+  /**
+   * The send itself, once the one open question about the message is settled:
+   * whether a near-miss token the reader was offered is going as prose. What
+   * skills run is not a question here — the text answers it, at the moment it
+   * is read, in the order the tokens appear.
+   */
+  const dispatch = (draftText: string, unrun: UnrunSkillToken | null) => {
+    let text = draftText.trim()
     // The text decides, and it decides at send: every resolved token runs, in
     // the order it appears. The token stays in what goes to the model, because
     // it is what the reader wrote — "/sb:audit the intake" reads as the
     // instruction it is.
-    const skill = skillTokens[0]?.command ?? null
+    const skill = findSkillTokens(draftText)[0]?.command ?? null
     const attached = takePendingAgentAttachment()
     // A draft that is nothing but a skill name is a complete instruction with
     // no sentence in it, and the bare token reads poorly as a message.
-    if (skill && !draftWithoutSkillTokens(draft))
+    if (skill && !draftWithoutSkillTokens(draftText))
       text = `Run ${skill.label} from the top of its flow.`
     if (!text && attached) text = 'Here are my canvas annotations.'
     // The trial runs with NO client on purpose — sample reads, no writes.
@@ -269,6 +285,7 @@ export function AgentChatView({
       if (attached) setPendingAgentAttachment(attached)
       return
     }
+    setUnrunSkill(null)
     clearAgentDraft(session.id)
     void sendToAgent({
       client,
@@ -278,9 +295,33 @@ export function AgentChatView({
       contextNote,
       text,
       skill,
+      unrunSkill: unrun
+        ? { token: unrun.token, label: unrun.command.label }
+        : null,
       attachment: attached,
       allowWrites: canAgentWrite,
     })
+  }
+
+  const send = () => {
+    // Asked ALREADY, and pressed again: the reader has read the question and
+    // means the message, so it goes as prose — with the model told.
+    if (unrunSkill) {
+      dispatch(draft, unrunSkill)
+      return
+    }
+    // A near miss is never silent. `/audit` names no skill, so it takes no
+    // colour and it runs nothing, and a message carrying it would otherwise
+    // send as prose with nobody told — which reads to the model as an audit
+    // it was never given. So it asks, once. A token that resolved needs no
+    // question: it is coloured in the field the reader is looking at, and the
+    // colour says it will run.
+    const nearMiss = findUnrunSkillToken(draft)
+    if (nearMiss) {
+      setUnrunSkill(nearMiss)
+      return
+    }
+    dispatch(draft, null)
   }
 
   return (
@@ -469,6 +510,43 @@ export function AgentChatView({
             ) : null}
           </div>
         ) : null}
+        {unrunSkill ? (
+          /* The one thing that must not happen silently: a token that LOOKS
+             like an invocation, spells only a skill's bare name, and runs
+             nothing. Two choices and no default — running a skill off a
+             spelling that does not invoke is as wrong as dropping one the
+             reader meant. Accepting rewrites the token where it sits, so the
+             reader can see in the text what they agreed to. */
+          <div
+            role="status"
+            className="mb-2 flex flex-col gap-2 rounded-lg border border-muted bg-muted/40 p-2"
+          >
+            <p className="text-xs text-muted-foreground">
+              {`“/${unrunSkill.token}” is not a skill name — the closest match is ${unrunSkill.command.label}.`}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="xs"
+                variant="default"
+                onClick={() =>
+                  dispatch(
+                    completeSkillToken(draft, unrunSkill, unrunSkill.command),
+                    null,
+                  )
+                }
+              >
+                Run {unrunSkill.command.label}
+              </Button>
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => dispatch(draft, unrunSkill)}
+              >
+                Send as text
+              </Button>
+            </div>
+          </div>
+        ) : null}
         {/* The slash menu: type "/" to see the four skills — the same
             SKILL.md files IDE agents run, minus their file mechanics.
             PORTALLED, anchored to the composer row. Two reasons, both
@@ -607,6 +685,9 @@ export function AgentChatView({
                 onCompositionEnd={() => setComposing(false)}
                 onChange={(event) => {
                   const value = event.target.value
+                  // The question was about the draft as it stood; editing it is
+                  // an answer to neither choice, so it goes away.
+                  if (unrunSkill) setUnrunSkill(null)
                   // A dismissal answers for the draft that was on screen; the
                   // next keystroke is a new draft, and the menu is free again.
                   if (slashDismissed) setSlashDismissed(false)
