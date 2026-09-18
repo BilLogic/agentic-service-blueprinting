@@ -379,6 +379,32 @@ sidebar is still `skeletoning` without the two contradicting each other. **Not
 the board's *Status*** above, the six-value word for how far along a cell or a
 path is: that one is stored in a column, this one only ever describes a read.
 
+## The camera
+
+Three words for a camera move that somebody is waiting on. They belong to the
+move itself rather than to any one caller: the canvas publishes them, and the
+desktop navigation tools, the agent's cell focus and the phone's ✦ sheet all
+read the same words. Where the halves they cross meet is
+`docs/adr/0028-a-jump-is-awaited-through-one-module.md`.
+
+**Jump** — one camera move toward a named target, awaited by whoever asked for
+it. The target is a scenario, a phase or a cell. The awaiting is what
+separates a jump from any other camera move: a reader's own pan answers to
+nobody, while a jump is asked for and answered.
+
+**Flight** — the camera's own move between two transforms, run by the
+viewport: the thing a jump verdict is a claim about. A jump is asked for and
+answered; a flight is the movement itself, and a jump may involve none at all
+— a cell the board does not hold is answered without anything having flown.
+
+**Jump verdict** — a jump's one settled answer, in four words: `landed`,
+`cancelled`, `superseded`, `unanswered`. The first three are the canvas's own
+claim about a flight it owned; `unanswered` is what silence is called, and
+belongs to the deadline alone. **Not a check's verdict** — that word is how a
+check's run came out, four values of its own, defined in
+`docs/engineering/checks.md`. And not a status: a jump verdict is said once,
+about one camera move, and describes a move rather than a thing on the board.
+
 ## The writing vocabulary
 
 Five words for how a document is written and reached, shared with the

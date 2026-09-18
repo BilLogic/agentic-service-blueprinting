@@ -1,4 +1,5 @@
 import type { AgentUiBridge } from '@/lib/agent/uiBridge'
+import { awaitPublishedJump } from '@/lib/canvasJump'
 
 /**
  * The agent's navigation hands on mobile, pure and in a leaf module so the
@@ -14,7 +15,7 @@ export function makeMobileAgentBridge({
   selectScenario,
   openAgent,
   isAgentOpen = () => false,
-  watchCameraFlight = () => {},
+  watchCameraFlight = (_targetId, commit) => commit(),
 }: {
   selectPhase: (phaseId: string) => void
   selectScenario: (scenarioId: string) => void
@@ -30,11 +31,14 @@ export function makeMobileAgentBridge({
   isAgentOpen?: () => boolean
   /**
    * Watch the camera for this target so the open sheet can hand the caret
-   * back once the move has landed. Called BEFORE the selection commits,
-   * because the outcome is published by the fit the selection triggers and a
-   * watcher attached afterwards can miss it.
+   * back once the move has landed. It is handed the selection rather than
+   * called beside it: the verdict is published by the fit the selection
+   * triggers, so the jump has to be listening before that selection commits.
+   *
+   * Defaults to committing the selection and watching nothing, which is what a
+   * shell with no sheet to hand a caret back to wants.
    */
-  watchCameraFlight?: (targetId: string) => void
+  watchCameraFlight?: (targetId: string, commit: () => void) => void
 }): AgentUiBridge {
   /*
     A jump with the sheet CLOSED has no composer to hand the caret back to.
@@ -44,8 +48,11 @@ export function makeMobileAgentBridge({
     in a test.
   */
   const jump = (targetId: string, select: (id: string) => void) => {
-    if (isAgentOpen()) watchCameraFlight(targetId)
-    select(targetId)
+    if (!isAgentOpen()) {
+      select(targetId)
+      return
+    }
+    watchCameraFlight(targetId, () => select(targetId))
   }
   return {
     selectPhase: (phaseId) => jump(phaseId, selectPhase),
@@ -56,29 +63,9 @@ export function makeMobileAgentBridge({
   }
 }
 
-/**
- * How long the watcher waits for a verdict before handing the caret back
- * anyway.
- *
- * A camera that never publishes an outcome is an ordinary state, not a bug —
- * a phase whose scenario never rendered, a background tab whose
- * `requestAnimationFrame` is suspended mid-flight. Without a deadline the
- * watcher's promise stays pending and the reader never gets the caret back,
- * so they are left typing into nothing after a jump they asked for in words.
- * Set past the agent tool's own 1800 ms wait so the hand-back does not race
- * the sentence the agent is about to write.
- */
-export const AGENT_CAMERA_FLIGHT_DEADLINE_MS = 2000
-
 export type AgentCameraFlightWatch = {
-  /** The canvas's verdict for this semantic target, and a way to stop listening. */
-  awaitOutcome: (targetId: string) => {
-    promise: Promise<unknown>
-    cancel: () => void
-  }
-  /** Once, when the move has settled or the deadline says to stop waiting. */
+  /** Once, when the move has settled or the deadline says nobody answered. */
   onSettled: () => void
-  deadlineMs?: number
 }
 
 /**
@@ -93,32 +80,21 @@ export type AgentCameraFlightWatch = {
  * reader is actually watching.
  *
  * Stateful because jumps supersede: a second target arriving mid-flight owns
- * the caret from then on, and the first flight's late verdict must not pull
- * focus back to the composer while the canvas is still moving.
+ * the caret from then on, and the first flight's verdict — which arrives the
+ * moment the second selection supersedes it — must leave the caret alone
+ * while the canvas is still moving.
+ *
+ * The handshake itself belongs to `canvasJump`: arming, the deadline, the
+ * detach and the four verdict words all live there. Which word it answered in
+ * is deliberately NOT passed on: the caret goes back to the composer for
+ * every one of them, and a parameter nothing reads is a parameter the next
+ * reader has to check before they can trust the branch they are writing.
  */
-export function makeAgentCameraFlightWatcher({
-  awaitOutcome,
-  onSettled,
-  deadlineMs = AGENT_CAMERA_FLIGHT_DEADLINE_MS,
-}: AgentCameraFlightWatch) {
+export function makeAgentCameraFlightWatcher({ onSettled }: AgentCameraFlightWatch) {
   let generation = 0
-  return function watch(targetId: string): Promise<void> {
+  return function watch(targetId: string, commit: () => void): Promise<void> {
     const token = ++generation
-    // Listen BEFORE the selection commits: the outcome is published from the
-    // fit the selection triggers, and a waiter attached afterwards can miss it.
-    const outcome = awaitOutcome(targetId)
-    // The loser of the race is cleaned up either way: a verdict that arrives
-    // first leaves a live 2s timer behind, and every superseded jump leaves
-    // another, so a reader jumping around the board accumulates them.
-    let deadline: ReturnType<typeof setTimeout> | undefined
-    return Promise.race([
-      outcome.promise,
-      new Promise<void>((done) => {
-        deadline = setTimeout(done, deadlineMs)
-      }),
-    ]).then(() => {
-      clearTimeout(deadline)
-      outcome.cancel()
+    return awaitPublishedJump(targetId, commit).then(() => {
       if (token !== generation) return
       onSettled()
     })
