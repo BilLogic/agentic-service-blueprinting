@@ -16,10 +16,11 @@ import {
   RenameSessionDialog,
 } from '@/components/editor/agent/SessionDialogs'
 import { useSupabase } from '@/contexts/SupabaseProvider'
+import { useAgentPersistenceWorkPending } from '@/lib/agent/persistenceReadiness'
 import {
+  AGENT_SESSION_LIST_WORK,
   deleteAgentSession,
   renameAgentSession,
-  useAgentSessionsHydrating,
   usePendingAgentAttachment,
   type AgentSession,
 } from '@/lib/agent/sessions'
@@ -72,7 +73,10 @@ export function AgentSessionsView({
   // The no-database trial passes canAgent with NO client — persistence can
   // never attach there, so it must not wait for it either.
   const { canAgent, isSampleTrial } = useSupabase()
-  const hydrating = useAgentSessionsHydrating() && canAgent && !isSampleTrial
+  const hydrating =
+    useAgentPersistenceWorkPending(AGENT_SESSION_LIST_WORK) &&
+    canAgent &&
+    !isSampleTrial
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [todayOpen, setTodayOpen] = useState(true)
