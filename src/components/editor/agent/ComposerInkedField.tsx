@@ -2,13 +2,52 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  type KeyboardEventHandler,
+  type ComponentPropsWithoutRef,
   type ReactNode,
   type Ref,
 } from 'react'
 import { InputGroup, InputGroupTextarea } from '@/components/ui/input-group'
-import { composerInkedFieldClasses } from '@/components/editor/agent/composerFieldMetrics'
-import type { SkillTokenSpan } from '@/lib/agent/skills'
+import { COMPOSER_FIELD_METRICS } from '@/components/editor/agent/composerFieldMetrics'
+import { findSkillTokens, type SkillTokenSpan } from '@/lib/agent/skills'
+import { cn } from '@/lib/utils'
+
+/**
+ * The agreement, resolved ONCE for both copies of the draft, and reachable
+ * from nowhere else.
+ *
+ * This is why the two class lists cannot drift apart: there is no second place
+ * either of them is built, and no second place either of them can be READ, so
+ * a metric cannot be spelled onto the field by an edit that never learns the
+ * mirror exists and a second mirror cannot be assembled outside this module
+ * from the same call.
+ *
+ * `mirroring` is the transparency toggle. The field hands the drawing over
+ * only while the mirror is actually up: transparent text with nothing behind
+ * it is an empty composer, and a preedit string an IME is still composing
+ * lives in the field and nowhere else.
+ *
+ * `relative` on the field is not cosmetic either: the mirror is absolutely
+ * positioned and would paint over a static sibling however early it sits in
+ * the tree, hiding the caret the reader is aiming with. The selection band is
+ * translucent for the same stacking reason — an opaque one would cover the
+ * only copy of the text a reader can see.
+ */
+function composerFieldClasses(mirroring: boolean): {
+  field: string
+  mirror: string
+} {
+  return {
+    field: cn(
+      COMPOSER_FIELD_METRICS,
+      'relative selection:bg-primary/25',
+      mirroring && 'text-transparent caret-foreground',
+    ),
+    mirror: cn(
+      COMPOSER_FIELD_METRICS,
+      'pointer-events-none absolute inset-0 overflow-hidden select-none',
+    ),
+  }
+}
 
 /**
  * The reader's prose, drawn behind the field, with every token that names a
@@ -48,7 +87,7 @@ import type { SkillTokenSpan } from '@/lib/agent/skills'
  * Enter leaves the two with different scroll heights and the scroll sync below
  * lands a line off at the bottom of a long draft.
  */
-function SkillInk({
+function ComposerMirror({
   draft,
   tokens,
   className,
@@ -72,12 +111,7 @@ function SkillInk({
   }
   parts.push(draft.slice(at))
   return (
-    <div
-      aria-hidden
-      data-slot="composer-skill-ink"
-      className={className}
-      ref={ref}
-    >
+    <div aria-hidden data-slot="composer-mirror" className={className} ref={ref}>
       {parts}
       {'\n'}
     </div>
@@ -85,7 +119,46 @@ function SkillInk({
 }
 
 /**
- * THE COMPOSER'S FIELD, with the ink that colours a skill token in it.
+ * The two facts this module owns outright and a caller supplies: the draft,
+ * and where a keystroke writes back to.
+ *
+ * The tokens are NOT among them, and that is deliberate. They are read out of
+ * the draft in here, because tokens handed in alongside it are a second
+ * record of the same fact and the two can be computed from different strings
+ * — spans at offsets the field's text does not have, so the mirror colours
+ * the wrong characters and the colour drifts off the caret. That is the exact
+ * failure this module exists to make unexpressible, and a caller that wants
+ * the same tokens for a menu of its own calls the same pure function.
+ */
+type ComposerInkedFieldOwnProps = {
+  draft: string
+  onDraftChange: (text: string) => void
+}
+
+/**
+ * The textarea props this module SPENDS rather than passes on. Every one of
+ * them is a rung of the illusion, so leaving it reachable is leaving a way to
+ * break it from outside: `value`/`onChange` are the draft seam above,
+ * `className` carries the metrics both copies wear, `ref`/`onScroll` and the
+ * composition pair are the scroll sync and the IME stand-down, `rows` is the
+ * one-line floor the growth starts from, and `aria-label` is the name the
+ * focus seam and every reader find the field by. Omitted from the passthrough
+ * so overriding one is a compile error rather than a comment nobody reads.
+ */
+type ComposerFieldOwnedProps =
+  | 'aria-label'
+  | 'children'
+  | 'className'
+  | 'onChange'
+  | 'onCompositionEnd'
+  | 'onCompositionStart'
+  | 'onScroll'
+  | 'ref'
+  | 'rows'
+  | 'value'
+
+/**
+ * THE COMPOSER'S FIELD, with the mirror that colours a skill token in it.
  *
  * One module, because the illusion is one fact split five ways and every one
  * of the five is a way for it to break. A textarea cannot colour a word
@@ -99,10 +172,11 @@ function SkillInk({
  * a comment asking the next reader not to break them.
  *
  * What the narrow interface buys is that the comment is no longer the
- * mechanism. Callers hand in the draft, the tokens read out of it and the
- * handlers; they cannot reach the box the two copies measure, and they cannot
- * put an add-on into the input group, because the group is in here and takes
- * no children from outside. That was the live hazard: an add-on in the group
+ * mechanism. Callers hand in the draft, the write-back and whatever a
+ * textarea takes; they cannot reach the box the two copies measure, they
+ * cannot hand in tokens read off some other string, and they cannot put an
+ * add-on into the input group, because the group is in here and takes no
+ * children from outside. That was the live hazard: an add-on in the group
  * narrows the FIELD through the group's own `has-[>[data-align=...]]` rules
  * and leaves the mirror full width, so every line from the first wrap down
  * breaks somewhere else and the colour drifts off the caret — a failure no
@@ -121,70 +195,72 @@ function SkillInk({
  * `max-h-30` caps the growth at roughly six lines and the field scrolls from
  * there, which is what the scroll sync exists for.
  *
- * The metrics and the two class lists they spread onto live in
- * `composerFieldMetrics.ts` beside this file — the pure half of the same
- * module, so the agreement can be pinned without a tree.
+ * The metrics string itself lives in `composerFieldMetrics.ts` beside this
+ * file, and it is the one thing that crosses out: a test needs the list of
+ * properties the two copies must agree on, and a file exporting a constant
+ * beside a component is what the fast-refresh rule refuses. The pair of class
+ * lists it spreads onto is built above and goes nowhere.
  */
 export function ComposerInkedField({
   draft,
-  tokens,
   onDraftChange,
-  onKeyDown,
-  placeholder,
-  disabled,
-}: {
-  draft: string
-  tokens: readonly SkillTokenSpan[]
-  onDraftChange: (text: string) => void
-  onKeyDown?: KeyboardEventHandler<HTMLTextAreaElement>
-  placeholder: string
-  disabled?: boolean
-}) {
+  ...passthrough
+}: Omit<
+  ComponentPropsWithoutRef<typeof InputGroupTextarea>,
+  keyof ComposerInkedFieldOwnProps | ComposerFieldOwnedProps
+> &
+  ComposerInkedFieldOwnProps &
+  // A composer with no prompt in it is a box; the primitive's own type says
+  // what a placeholder is, so only its being required is stated here.
+  Required<
+    Pick<ComponentPropsWithoutRef<typeof InputGroupTextarea>, 'placeholder'>
+  >) {
   const fieldRef = useRef<HTMLTextAreaElement>(null)
-  const inkRef = useRef<HTMLDivElement>(null)
+  const mirrorRef = useRef<HTMLDivElement>(null)
+  // The skills this message names, read out of the draft and nowhere else —
+  // the same reading the panel's menu makes, from the same function, so there
+  // is no second string the offsets could belong to.
+  const tokens = findSkillTokens(draft)
   // The mirror's overflow is hidden, so it is scrolled from here rather than
   // by the reader: a message past six lines scrolls the field, and a mirror
   // left at the top would show the first line's colour against the sixth
   // line's text.
-  const syncInkScroll = () => {
+  const syncMirrorScroll = () => {
     const field = fieldRef.current
-    const ink = inkRef.current
-    if (!field || !ink) return
-    ink.scrollTop = field.scrollTop
-    ink.scrollLeft = field.scrollLeft
+    const mirror = mirrorRef.current
+    if (!field || !mirror) return
+    mirror.scrollTop = field.scrollTop
+    mirror.scrollLeft = field.scrollLeft
   }
   // A keystroke at the bottom of a scrolled field moves its scrollTop without
   // ever firing a scroll event in time to matter, so the sync also runs after
   // the write that caused it — before paint, or the colour lags a frame behind
   // the caret on every character typed.
-  useLayoutEffect(syncInkScroll, [draft])
+  useLayoutEffect(syncMirrorScroll, [draft])
   // Composition text lives in the field, and the field's own text is
   // transparent while the mirror behind it is doing the drawing — so an IME
   // preedit string would be invisible for as long as it is being composed.
   // While composing, the field shows its own text and the mirror stands down.
   const [composing, setComposing] = useState(false)
-  const inking = tokens.length > 0 && !composing
-  const classes = composerInkedFieldClasses(inking)
+  const mirroring = tokens.length > 0 && !composing
+  const classes = composerFieldClasses(mirroring)
   return (
     <InputGroup className="h-auto min-h-8 flex-1">
-      {/* The mirror and the field share ONE positioned box, and the box is
-          sized by the field: that is what keeps the two copies of the draft
-          wrapping alike. The mirror is `absolute inset-0`, so it measures its
-          nearest positioned ancestor, and only a box the field sizes wraps
-          the way the field wraps. Against the input group itself the two
-          coincided by accident — the field was its sole child, in the slot a
-          badge add-on had just left — and the group is one add-on away from
-          narrowing the field alone. */}
+      {/* ONE positioned box, sized by the field: that is what keeps the two
+          copies wrapping alike, since the mirror is `absolute inset-0` and
+          measures its nearest positioned ancestor. The module docblock above
+          says what goes wrong when that ancestor is the group instead. */}
       <div className="relative min-w-0 flex-1">
-        {inking ? (
-          <SkillInk
-            ref={inkRef}
+        {mirroring ? (
+          <ComposerMirror
+            ref={mirrorRef}
             draft={draft}
             tokens={tokens}
             className={classes.mirror}
           />
         ) : null}
         <InputGroupTextarea
+          {...passthrough}
           ref={fieldRef}
           // The seam `focusAgentComposer` finds this by. The phone's shell
           // gives the caret back here after an agent-driven camera move, so
@@ -193,14 +269,11 @@ export function ComposerInkedField({
           rows={1}
           className={classes.field}
           value={draft}
-          onScroll={syncInkScroll}
+          onScroll={syncMirrorScroll}
           onCompositionStart={() => setComposing(true)}
           onCompositionEnd={() => setComposing(false)}
           onChange={(event) => onDraftChange(event.target.value)}
-          onKeyDown={onKeyDown}
-          placeholder={placeholder}
           aria-label="Message the agent"
-          disabled={disabled}
         />
       </div>
     </InputGroup>

@@ -21,6 +21,8 @@ one mark and a table; see the end. Amended again 2026-09-14 (#792): the cell's
 four surfaces wear the shared panel header; see the cell-panel amendment.
 Amended again 2026-09-14 (#802): the agent panel's split left three stores the
 views wrote from below, and they are one session module now; see the end.
+Amended again 2026-09-18 (#931): the chat view's composer is a module that
+owns the five facts the token colour depends on; see the end.
 **Context** `src/components/editor/CanvasAnnotationLayer.tsx`,
 `src/components/blueprint/BlueprintCellDetailPanel.tsx`,
 `src/components/editor/AgentPanel.tsx`
@@ -502,3 +504,66 @@ stay: the deletion test says the complexity does not vanish but doubles —
 removing them copies the ledger count's icon, its title and its pluralized
 screen-reader text into both call sites, and unpins the path
 `src/lib/monoRegisters.ts` names as the one place that writes that face.
+
+## Amended 2026-09-18: the chat view's composer is one module
+
+The agent amendments above record a chat view that came out of the panel split
+at 647 lines, the largest module the split produced. A quarter of what it held
+was not a conversation surface at all: a textarea cannot colour a word inside
+itself, so a recognised skill token is drawn by a mirrored copy of the draft
+sitting behind a field whose own text has gone transparent, and that picture
+holds only while the two copies agree on five things — the metrics that decide
+a line break, the trailing newline a block would otherwise collapse, the one
+positioned box they both size against, the scroll offset, and standing down
+while an IME composes. One of those lived with the mirror. The other four were
+spelled in the chat view's render body, next to everything else a conversation
+surface does, held together by a comment asking the next reader not to break
+them.
+
+**`src/components/editor/agent/ComposerInkedField.tsx` — extracted
+2026-09-18.** It renders the input group, the field and the mirror, resolves
+both class lists from one call that goes nowhere else, and reads the tokens out
+of the draft itself. The chat view hands it the draft, the write-back and what
+a textarea takes; 219 lines of it came out. What the interface buys over the
+comment is that the hazard the comment was guarding is no longer expressible:
+an add-on placed in the input group narrows the FIELD through the group's own
+`has-[>[data-align=...]]` rules and leaves the mirror full width, so every line
+from the first wrap down breaks somewhere else and the colour drifts off the
+caret — and the group is now inside the module and takes no children, so there
+is no `children`, no slot, no render prop and no ref onto the group for a
+caller to reach it through. An add-on added later lands beside the box that
+sizes both copies, which narrows both or neither.
+
+**What the instrument could and could not say, stated plainly.** There is no
+end-to-end slice over this surface, and the two jsdom files that cover it are
+not a substitute for one: jsdom lays nothing out, so every geometric fact in
+here — a wrap position, a line box, a half-pixel — is pinned as the CLASS a
+browser would need and not as a measurement. What that does catch, and was
+watched go red: a metric dropped from either copy, the two class lists spread
+onto the wrong nodes, the mirror measuring a box other than the one the field
+sizes, the scroll sync missing the keystroke that fires no scroll event, and
+the mirror failing to stand down for an IME. What it cannot catch is a metric
+ADDED to the field and never told to the shared string, which is
+[27](0027-a-skill-token-lives-in-the-prose.md)'s standing note, and where an
+in-place completion leaves the caret — assigning a textarea's `value` moves
+`selectionStart` to the end by itself, and a lookup's span always reaches the
+end of the draft, so no input distinguishes the module's behaviour from the
+value setter's own. A test of it would pass whatever the code did; there is
+none, deliberately.
+
+**Nothing visible moved, and it was measured rather than asserted.** All four
+class lists the two copies wear — field and mirror, mirroring and not — are
+byte-identical to `origin/main`, checked string for string rather than eyeballed.
+And because the classes being identical says nothing about the box they land
+in, the growth was measured in a browser on both sides: 38px with the composer
+empty, 98px over four wrapped lines, capped at 122px, the mirror's rect within
+half a pixel of the field's at every step, and `scrollTop` 16 on both once the
+draft passed the cap. Same numbers on `origin/main` and on the branch.
+
+**One thing was deliberately left narrow.** `composerFieldMetrics.ts` stays a
+second file beside the module for one exported string, the list of properties
+the two copies must agree on, because a test needs that list and the
+fast-refresh rule refuses a constant exported beside a component. The pair of
+class lists it spreads onto is built inside the module and exported nowhere:
+the agreement is assertable off the two rendered nodes, so a second mirror
+cannot be assembled outside the module from the same call.

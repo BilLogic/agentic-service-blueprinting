@@ -69,7 +69,6 @@ import {
   completeSkillToken,
   draftWithoutSkillTokens,
   findSkillLookup,
-  findSkillTokens,
   findUnrunSkillTokens,
   skillsInDraft,
   skillMatchesQuery,
@@ -121,11 +120,6 @@ export function AgentChatView({
   // longer eats what you were typing.
   const draft = useAgentDraft(session.id).text
   const setDraft = (text: string) => setAgentDraft(session.id, { text })
-  // The skills this message names, read out of the text and nowhere else.
-  // There is no picked-versus-mentioned distinction to keep, because nothing
-  // outside the draft records a pick: a token that resolves is coloured, and a
-  // coloured token runs.
-  const skillTokens = findSkillTokens(draft)
   const attachment = usePendingAgentAttachment()
   const { events, running } = useAgentRun(session.id)
   // Same canAgent gate as the sessions list: without persistence the
@@ -649,14 +643,13 @@ export function AgentChatView({
               geometry every other input in the app has), and the recognised
               token is COLOURED where it was typed. Both of those, and the
               five-way agreement the colour depends on, are ComposerInkedField's
-              — this panel hands it the draft, the tokens read out of that
-              draft and the keys, and cannot reach the box the field and its
-              ink measure. The badge row that used to sit in an add-on here is
-              gone: it lifted the token out of the prose and stood it at the
-              front of the message. */}
+              — this panel hands it the draft and the keys, and cannot reach
+              the box the field and its mirror measure nor hand in token
+              offsets read off some other string. The badge row that used to
+              sit in an add-on here is gone: it lifted the token out of the
+              prose and stood it at the front of the message. */}
           <ComposerInkedField
             draft={draft}
-            tokens={skillTokens}
             onDraftChange={(value) => {
               // The question was about the draft as it stood; editing it is
               // an answer to neither choice, so it goes away.

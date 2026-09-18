@@ -1,18 +1,22 @@
 // @vitest-environment jsdom
+import { createElement } from 'react'
+import { cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
+import { ComposerInkedField } from '@/components/editor/agent/ComposerInkedField'
 import { focusAgentComposer } from '@/lib/agent/composerFocus'
-import { sourceOf } from '@/lib/sourceTree'
 
 /**
  * The helper finds the composer by attribute, so the attribute is half the
  * contract and lives in another file. Both halves are pinned here: the
- * behaviour against a hand-built field, and the fact that the module rendering
- * the composer's field still writes the attribute the selector looks for.
- * Renaming it would otherwise break the phone's "keep typing after a jump"
- * criterion with a green suite.
+ * behaviour against a hand-built field for the cases a real composer cannot
+ * be put in (no composer at all, a textarea that is not one), and the round
+ * trip against the real module, which is what says the two halves still meet.
+ * Renaming the attribute would otherwise break the phone's "keep typing after
+ * a jump" criterion with a green suite.
  */
 
 afterEach(() => {
+  cleanup()
   document.body.innerHTML = ''
 })
 
@@ -61,9 +65,27 @@ describe('focusAgentComposer', () => {
     expect(focusAgentComposer()).toBe(false)
   })
 
-  it('looks for the attribute the field module actually writes', () => {
-    expect(
-      sourceOf('components/editor/agent/ComposerInkedField.tsx'),
-    ).toContain('data-agent-composer')
+  it('lands the caret on the field the composer module actually renders', () => {
+    // The contract asserted as behaviour rather than as a string grepped out
+    // of a source file. The attribute is the selector's half of a seam whose
+    // other half is a component in another tree, so the only honest guard is
+    // to render that component and ask for the caret: this goes red for the
+    // failure a reader would meet — the phone's jump leaving them with no
+    // caret to keep typing at — and stays green through a rename of the file
+    // or of the symbol inside it.
+    // `createElement` rather than JSX only because this guard sits in the
+    // library's tree, where the files are `.ts`.
+    render(
+      createElement(ComposerInkedField, {
+        draft: '',
+        onDraftChange: () => {},
+        placeholder: 'Message the agent…',
+      }),
+    )
+    const rendered = document.querySelector('textarea')
+
+    expect(focusAgentComposer()).toBe(true)
+    expect(document.activeElement).toBe(rendered)
+    expect(rendered?.hasAttribute('data-agent-composer')).toBe(true)
   })
 })

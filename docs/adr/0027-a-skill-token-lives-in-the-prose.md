@@ -74,19 +74,32 @@ hand-rolled editable surface spends months on: IME composition, the mobile
 keyboard, selection, and native undo. The mirrored layer is the cheap
 approximation of the same picture, and its known failure mode — the two copies
 wrapping differently and the colour drifting off the text — is bounded by the
-one shared metrics string, which the composer's tests assert both copies still
-wear.
+one shared metrics string, which the composer's tests assert both RENDERED
+copies still wear.
 
 **The layer must be kept honest, and the test does half of it.** Every
 property that decides a line break belongs to that shared string. The metrics
-test iterates the string and asserts both copies still wear every token in it,
-so what it catches is a metric DROPPED from either copy — the likelier edit,
-since either class list can be touched on its own. What it cannot see is a
-metric ADDED to the field and not to the string: a fresh `tracking-` or `px-`
-on the textarea is a property the layer is never told about, and a test that
-iterates the string has no list of properties to notice it is missing one.
-That half is caught in review or not at all, and it is the first thing to look
-for when this composer is edited.
+test iterates the string and asserts that both RENDERED copies still wear
+every token in it, so what it catches is a metric DROPPED from either copy —
+the likelier edit, since either class list can be touched on its own — and
+also the control at the end of the chain quietly not applying the list it was
+handed. A second case asserts that each of the two nodes wears the list that
+is ITS own: the two lists are built by one call and spread onto two nodes, and
+an assertion made against the call's return value alone would pass with them
+swapped, caret covered by an opaque copy of the draft. What neither can see is
+a metric ADDED to the field and not to the string: a fresh `tracking-` or
+`px-` on the textarea is a property the layer is never told about, and a test
+that iterates the string has no list of properties to notice it is missing
+one. That half is caught in review or not at all, and it is the first thing to
+look for when this composer is edited.
+
+**Where the completion leaves the caret is not guarded in jsdom, and cannot
+be.** Assigning a textarea's `value` moves `selectionStart` to the end of the
+new text by itself, and a lookup's span always reaches the end of the draft,
+so the offset a completion should produce and the offset the value setter
+produces on its own are the same offset for every input there is. A test of it
+passes whatever the code does. It is a browser case or it is nothing, and the
+gap is stated here rather than papered over with a green assertion.
 
 **While an IME composes, the field draws its own text.** The field's text is
 transparent only while the layer is drawing, or a preedit string would be

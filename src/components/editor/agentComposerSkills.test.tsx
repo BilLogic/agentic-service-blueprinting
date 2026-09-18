@@ -93,8 +93,8 @@ const menuOption = (label: string) => {
  * The mirrored copy of the draft, drawn behind the field. It is `aria-hidden`,
  * so it is queried the one way a hidden node can be: by the slot it declares.
  */
-const skillInk = () =>
-  document.querySelector<HTMLElement>('[data-slot="composer-skill-ink"]')
+const composerMirror = () =>
+  document.querySelector<HTMLElement>('[data-slot="composer-mirror"]')
 
 /** Pick a skill through the menu, the way a reader does. */
 const pick = (composer: HTMLElement, typed: string, label: string) => {
@@ -274,9 +274,9 @@ describe('one message carrying several skills', () => {
   it('colours every token it resolves, wherever each one sits', () => {
     const composer = openComposer()
     type(composer, 'build this from my notes /sb:map then /sb:audit it')
-    const ink = skillInk()!
-    expect(within(ink).getByText('/sb:map')).toBeTruthy()
-    expect(within(ink).getByText('/sb:audit')).toBeTruthy()
+    const drawn = composerMirror()!
+    expect(within(drawn).getByText('/sb:map')).toBeTruthy()
+    expect(within(drawn).getByText('/sb:audit')).toBeTruthy()
     // And the prose between them is nobody's collateral.
     expect((composer as HTMLTextAreaElement).value).toBe(
       'build this from my notes /sb:map then /sb:audit it',
