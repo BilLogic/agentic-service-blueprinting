@@ -109,12 +109,17 @@ export { REFERENCE_NAMES } from '@/lib/agent/tools/referenceNames'
  * rehearsal of the same gates answers in the loop's words. run.mjs carried
  * its own copy of each before, and a copy is a sentence the loop can change
  * without the harness noticing.
+ *
+ * Exactly the refusals whose gate the harness HAS, and whose statement is
+ * true of its session. `refusals.ts` holds that rule and says at each
+ * app-only sentence which half of it fails; do not restate it here.
  */
 export {
   BATCH_LIMIT_REFUSAL,
   MOBILE_SHELL_REFUSAL,
   VIEW_ONLY_REFUSAL,
   WRITE_BATCH_LIMIT,
+  noSuchToolRefusal,
 } from '@/lib/agent/tools/refusals'
 /**
  * The rehearsal seam: the app's own call gate and a context whose client
