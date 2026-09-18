@@ -2,34 +2,23 @@ import { describe, expect, it } from 'vitest'
 import { sourceOf } from '@/lib/sourceTree'
 
 /**
- * TWO CLAIMS OF THE PHONE'S AGENT SURFACE THAT ONLY THE SOURCE CAN HOLD.
+ * THE ONE CLAIM OF THE PHONE'S AGENT SURFACE THAT ONLY THE SOURCE CAN HOLD.
  *
- * Both are about text the shell hands to somebody else — the navigation
- * tools' verifier, and the browser's compositor — and both failed silently
- * for a whole release. Neither is reachable from a unit under test: the phase
- * line is interpolated inside the shell's own context array, and the scrim is
- * a class string on a portal that only a real layout resolves. A source guard
- * is the honest instrument here, and it catches the exact regression that
- * happened: the line deleted, and the scrim made conditional again.
+ * The scrim is a class string on a portal, and its constancy is a fact about
+ * what a compositor does with it — nothing that runs under jsdom resolves
+ * either, and the regression it guards (the wash made conditional again, so
+ * it flashed on every agent jump with its opacity and its hit target on
+ * different clocks) is invisible to any assertion about rendered state. A
+ * source guard is the honest instrument here.
+ *
+ * The phase line this file used to guard beside it is now DRIVEN, in
+ * `src/slices/phoneAgentJump.slice.test.tsx`: the agent jumps the real phone
+ * shell to a phase, the shell's reported line is asserted in the words the
+ * navigation tool matches, and the slice's second red strips that line and
+ * requires the tool to answer that the selection was not verified. A guard on
+ * the shell's own text held less than that and is gone.
  */
-const SHELL = sourceOf('components/mobile/MobileShell.tsx')
 const SHEET = sourceOf('components/mobile/MobileAgentSheet.tsx')
-
-describe('the phone reports its selection the way the tools read it', () => {
-  it('emits a phase line in the shape the navigation verifier matches', () => {
-    expect(SHELL).toContain('Selected phase: none')
-
-    // The verifier's own pattern, from `waitForNavigation` in uiBridge: the
-    // id in parentheses at the end of its own line. A phase line that reads
-    // well but drops the id verifies nothing, and the tool then tells the
-    // model a landed jump failed.
-    const selectedLine = /^Selected phase: .*\(p-1\)$/m
-    const rendered = `Selected phase: "Discover" (p-1)`
-    expect(selectedLine.test(rendered)).toBe(true)
-    expect(SHELL).toContain('`Selected phase: "${getSlideDisplayLabel(')
-    expect(SHELL).toContain('(${phase.id})`')
-  })
-})
 
 describe('the sheet scrim is one constant state', () => {
   const overlay = SHEET.match(/overlayClassName="([^"]*)"/)

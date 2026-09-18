@@ -53,6 +53,7 @@
     "slice:annotation-drag": "vitest run src/slices/annotationDrag.slice.test.tsx",
     "slice:cell-edit": "vitest run src/slices/cellEditRevert.slice.test.tsx",
     "slice:agent-session": "vitest run src/slices/agentSession.slice.test.tsx",
+    "slice:phone-agent-jump": "vitest run src/slices/phoneAgentJump.slice.test.tsx",
     "slice:cell-edit:postgrest": "node scripts/run-slice-over-postgrest.mjs --prove",
     "version": "changeset version && node scripts/check-version-agreement.mjs --write",
     "preview": "vite preview",

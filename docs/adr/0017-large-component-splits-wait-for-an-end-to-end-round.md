@@ -21,6 +21,9 @@ one mark and a table; see the end. Amended again 2026-09-14 (#792): the cell's
 four surfaces wear the shared panel header; see the cell-panel amendment.
 Amended again 2026-09-14 (#802): the agent panel's split left three stores the
 views wrote from below, and they are one session module now; see the end.
+Amended again 2026-09-18 (#922): the phone's agent flow has a slice too — not
+because this record named the shell, but because the risk it was written about
+came true there twice; see the end.
 **Context** `src/components/editor/CanvasAnnotationLayer.tsx`,
 `src/components/blueprint/BlueprintCellDetailPanel.tsx`,
 `src/components/editor/AgentPanel.tsx`
@@ -502,3 +505,61 @@ stay: the deletion test says the complexity does not vanish but doubles —
 removing them copies the ledger count's icon, its title and its pluralized
 screen-reader text into both call sites, and unpins the path
 `src/lib/monoRegisters.ts` names as the one place that writes that face.
+
+## Amended 2026-09-18: the phone's agent flow is covered, unnamed
+
+**The phone agent jump — covered.** `src/slices/phoneAgentJump.slice.test.tsx`
+drives the real `MobileShell` at 375×812 from the cover through to an
+agent-driven camera move: the reader taps off the cover into the first
+scenario, opens the ✦ sheet, and the agent jumps the camera to another
+scenario and then to another phase through the real `open_scenario` and
+`open_phase` definitions — the same `dispatchTool` call the loop makes, so the
+sentence the slice compares is the sentence a model reads. Four things are
+asserted, and each is what a reader would see or what the tool would answer:
+the sheet stays up across the jump, the height it occludes reaches the camera
+as a fit inset, the selection comes back in the words `waitForNavigation`
+matches, and the caret returns to the composer once the camera settles. CI
+runs it as `npm run slice:phone-agent-jump` (and inside `npm test`).
+
+**This component was never named here, and the slice is not owed to a rule.**
+`MobileShell.tsx` is not one of the three this record held, so nothing formally
+blocked a split of it. What happened instead is that the risk this record was
+written about came true on that surface twice in one batch — the sheet closing
+on an agent-driven jump, which took the conversation away mid-run, and a
+missing phase line that made every landed phone phase jump answer "the selected
+phase was not verified" — and neither was reachable from what the phone had:
+a cover spec in the render walk, a unit test that drives the agent's hands with
+no shell around them, and two guards that read the shell's own source text.
+Both defects are now red cases in the slice, each injected at a seam the flow
+routes through rather than by editing the shell, and each has been watched fail
+the assertions the green case makes. The shell's path memory can be split now
+on the same terms the other three were.
+
+What stands in for the canvas is `ServiceOverviewView`, for the reason the
+annotation-drag slice stubs its board: jsdom lays nothing out, so the real
+viewport has no rectangle to fit to and no verdict to publish. The stand-in
+reads the same fit inset the shell hands the real board and publishes the same
+outcome under the same key (`cameraOutcomeKey`, from `cameraTargetId`) through
+the shipped `publishCanvasNavigationOutcome`. The sheet's own height is
+stamped for the same reason — a zero inset would let the "lands above the
+sheet" assertion pass on a shell that had thrown the inset away. Mocked
+besides: the Supabase provider, for the single `canAgent` the ✦ affordances
+hang off, and the viewport probe jsdom has no `matchMedia` for.
+
+**What it does not cover.** No frames run. On a real phone the verdict arrives
+about 366 ms after the selection — a 200 ms fade, one canvas remount, then the
+fit — and here the fade is the shipped timer while the fit is one timeout
+standing in for a chain of `requestAnimationFrame` steps jsdom never
+schedules. So the order and the choreography are covered and the wall clock is
+not: that a fit lands inside the tool's 1800 ms deadline or the watcher's
+2000 ms one, that the strip above the sheet is legible through the scrim, and
+that the destination is visibly inside it are the render walk's to answer at
+that width.
+
+**Two source-text guards went with it.** `mobileAgentSurface.test.ts`'s phase
+line — now driven, and required to go red — and `mobileCoverLanding.test.ts`
+entire, whose two claims (the cover is the landing screen with the drawer shut,
+and the phone's cover CTA opens the first scenario through the shared seam) the
+slice's first three taps drive. The scrim guard in the first file stays: its
+subject is a class string on a portal and what a compositor does with it, and
+nothing that runs under jsdom resolves either.

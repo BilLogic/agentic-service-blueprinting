@@ -91,6 +91,16 @@ jobs:
       # read-back to go red. Also part of `npm test`; named here for the same
       # reason the one above is.
       - run: npm run slice:annotation-drag
+      # The phone agent-jump slice: the real phone shell, at phone width, from
+      # the cover through to an agent-driven camera move — the sheet stays up
+      # across the jump, the height it occludes reaches the camera as a fit
+      # inset, the selection comes back in the words the navigation tool
+      # verifies against, and the caret returns to the composer once the
+      # camera settles. Its two reds restore the defects that shipped on this
+      # surface — the sheet closing on a jump, and the shell dropping its
+      # phase line — and require the flow to go red for each. Also part of
+      # `npm test`; named here for the same reason the three above are.
+      - run: npm run slice:phone-agent-jump
       # The write tools post their
       # arguments BY NAME, and PostgREST resolves an RPC by matching those
       # names to a function's parameters. A key the function does not have is
