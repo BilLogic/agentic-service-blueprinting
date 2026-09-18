@@ -6,9 +6,10 @@ import { sourceOf } from '@/lib/sourceTree'
 /**
  * The helper finds the composer by attribute, so the attribute is half the
  * contract and lives in another file. Both halves are pinned here: the
- * behaviour against a hand-built field, and the fact that the chat view still
- * writes the attribute the selector looks for. Renaming it would otherwise
- * break the phone's "keep typing after a jump" criterion with a green suite.
+ * behaviour against a hand-built field, and the fact that the module rendering
+ * the composer's field still writes the attribute the selector looks for.
+ * Renaming it would otherwise break the phone's "keep typing after a jump"
+ * criterion with a green suite.
  */
 
 afterEach(() => {
@@ -60,9 +61,9 @@ describe('focusAgentComposer', () => {
     expect(focusAgentComposer()).toBe(false)
   })
 
-  it('looks for the attribute the chat view actually writes', () => {
-    expect(sourceOf('components/editor/agent/AgentChatView.tsx')).toContain(
-      'data-agent-composer',
-    )
+  it('looks for the attribute the field module actually writes', () => {
+    expect(
+      sourceOf('components/editor/agent/ComposerInkedField.tsx'),
+    ).toContain('data-agent-composer')
   })
 })
