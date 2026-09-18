@@ -4,7 +4,7 @@ import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useZoomPanViewport } from '@/hooks/useZoomPanViewport'
 import type { CameraTransitionResult } from '@/lib/cameraTransition'
-import { waitForCanvasNavigationOutcome } from '@/lib/canvasNavigationOutcome'
+import { awaitPublishedJump } from '@/lib/canvasJump'
 import type { FocusCellsResult } from '@/lib/canvasFocusCells'
 import { FOCUS_DIM_OPACITY } from '@/lib/canvasFocusDim'
 
@@ -956,9 +956,10 @@ describe('viewport camera flights', () => {
     })
 
     target.left = 500
-    const navigation = waitForCanvasNavigationOutcome('next')
-    view.rerender(
-      <Harness resetKey="next" target={target} cameraOutcomeKey="next" />,
+    const navigation = awaitPublishedJump('next', () =>
+      view.rerender(
+        <Harness resetKey="next" target={target} cameraOutcomeKey="next" />,
+      ),
     )
     act(() => panCamera(75, 20))
     act(() => {
@@ -971,9 +972,7 @@ describe('viewport camera flights', () => {
       moving: false,
       pan: { x: 75, y: 20 },
     })
-    return expect(navigation.promise).resolves.toMatchObject({
-      kind: 'cancelled',
-    })
+    return expect(navigation).resolves.toBe('cancelled')
   })
 
   it('reports a pending semantic destination as superseded', async () => {
@@ -984,15 +983,16 @@ describe('viewport camera flights', () => {
       flushFrame(16)
     })
 
-    const first = waitForCanvasNavigationOutcome('first')
-    view.rerender(
-      <Harness resetKey="first" target={target} cameraOutcomeKey="first" />,
+    const first = awaitPublishedJump('first', () =>
+      view.rerender(
+        <Harness resetKey="first" target={target} cameraOutcomeKey="first" />,
+      ),
     )
     view.rerender(
       <Harness resetKey="second" target={target} cameraOutcomeKey="second" />,
     )
 
-    await expect(first.promise).resolves.toMatchObject({ kind: 'superseded' })
+    await expect(first).resolves.toBe('superseded')
   })
 
   /*
@@ -1005,6 +1005,11 @@ describe('viewport camera flights', () => {
     phone's sheet washed back over a canvas still in the air; the landing that
     followed reached nobody. An unmount is not a verdict: it lets go, and the
     mount that takes the camera over is what answers.
+
+    THIS IS THE ONLY GUARD ON THAT HAND-OFF. The jump module's own unit suite
+    cannot reach it — from there, letting go is indistinguishable from any
+    other silence, because it IS the absence of a call — so this case must not
+    be retired on the strength of a unit test that reads like it.
   */
   it('hands a flight to the next mount instead of cancelling it on unmount', async () => {
     const target = { left: 0, top: 0, width: 1000, height: 600 }
@@ -1016,14 +1021,15 @@ describe('viewport camera flights', () => {
       flushFrame(16)
     })
 
-    const waiting = waitForCanvasNavigationOutcome('scen-1')
+    const waiting = awaitPublishedJump('scen-1', () =>
+      view.rerender(
+        <Harness resetKey="flight" target={target} cameraOutcomeKey="scen-1" />,
+      ),
+    )
     let outcome: unknown
-    void waiting.promise.then((result) => {
+    void waiting.then((result) => {
       outcome = result
     })
-    view.rerender(
-      <Harness resetKey="flight" target={target} cameraOutcomeKey="scen-1" />,
-    )
     act(() => view.unmount())
     await act(async () => {
       await Promise.resolve()
@@ -1039,7 +1045,7 @@ describe('viewport camera flights', () => {
       await Promise.resolve()
     })
 
-    await expect(waiting.promise).resolves.toMatchObject({ kind: 'completed' })
+    await expect(waiting).resolves.toBe('landed')
   })
 
   it('reports cancellation to a caller waiting on a camera fit', async () => {
