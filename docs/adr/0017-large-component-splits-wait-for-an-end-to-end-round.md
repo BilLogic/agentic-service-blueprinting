@@ -601,10 +601,17 @@ endpoint intercepted and answered with one canned round — a `tool_use` for
 `open_scenario` naming a scenario read off the drawer, then a text turn — so
 everything after the response body is the shipped loop, tools, bridge, shell
 and viewport. It answers the three claims jsdom cannot: the transcript carries
-the tool's SETTLED sentence rather than its timeout one, which is the 1800 ms
-deadline measured on a real clock; the destination artboard reaches into the
-strip the sheet leaves with legible cells wholly inside it; and the scrim over
-that strip carries no blur and is a minority of the colour. It screenshots the
+the tool's SETTLED sentence rather than its timeout one, which is a real
+clock's answer to the deadlines the flow races; the destination artboard
+renders above the sheet with cells wholly inside the strip it leaves; and the
+scrim over that strip carries no blur and is a minority of the colour. It also
+asserts on the intercepted REQUEST — the tool specs and a system prompt of
+non-trivial length — so a serialisation a real provider would answer with a
+400 cannot pass on a canned reply. What it does NOT claim is the fit inset:
+the phone floors its fit zoom, so a scenario board wider than the screen is
+framed from its top-left and zeroing the inset leaves the destination's box
+identical to the pixel. That claim is the slice's, and the spec says so where
+a reader would otherwise assume the browser held it. It screenshots the
 landed jump, which is the half a person reads. It landed in the same change as
 the slice, the way the annotation-drag pair did.
 
@@ -626,8 +633,8 @@ annotation-drag slice stubs its board: jsdom lays nothing out, so the real
 viewport has no rectangle to fit to and no verdict to publish. The stand-in
 reads the same fit inset the shell hands the real board, ARMS on the same key
 the real one arms on (`cameraOutcomeKey`, from `cameraTargetId`) rather than
-once per mount, and publishes through the shipped
-`publishCanvasNavigationOutcome`. Arming on the key is what lets the slice see
+once per mount, and publishes through the shipped `settleJump`
+([28](0028-a-jump-is-awaited-through-one-module.md)). Arming on the key is what lets the slice see
 a jump the board does not remount for. The sheet's own height is stamped for
 the same reason a stub board is: a zero inset would let the "lands above the
 sheet" assertion pass on a shell that had thrown the inset away. Mocked

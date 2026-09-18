@@ -19,8 +19,9 @@
  * jump is dispatched through the real `open_scenario` / `open_phase`
  * definitions — the same `dispatchTool` call the loop makes, so the string
  * this file compares is the string a model would read. The verdict the
- * watcher and the tool both wait on travels through the real
- * `canvasNavigationOutcome` module.
+ * watcher and the tool both wait on travels through the real `canvasJump`
+ * module, which is where the arming, the deadline and the four verdict words
+ * live.
  *
  * WHY THIS FLOW HAS A SLICE AT ALL. Two defects shipped on this surface in
  * one batch and nothing could have caught either. The sheet used to close on
@@ -39,8 +40,8 @@
  * THE CLOCK IS TURNED BY HAND. Every timer in this flow is faked and advanced
  * explicitly (`letTheClockRun`), for the reason the annotation-drag slice
  * fakes its frames: the shipped choreography is a race between the shell's
- * 200 ms fade, the camera's fit, the tool's 1800 ms verification deadline and
- * the caret watcher's 2000 ms one, and a test that leaned on the wall clock
+ * 200 ms fade, the camera's fit, `canvasJump`'s 2000 ms camera deadline and
+ * the tool's own 1800 ms selection poll, and a test that leaned on the wall clock
  * to order them would be green on a quiet machine and red on a loaded runner
  * — a failure that says nothing about the code. Faked, the ORDER is what is
  * asserted and the machine's load cannot reach it.
@@ -54,7 +55,8 @@
  * reads it: it takes `occludedBottomPx` as the fit inset, it ARMS on
  * `cameraOutcomeKey` changing (the key `useZoomPanViewport` arms on, handed
  * down from `cameraTargetId`) rather than once per mount, and it publishes
- * that key's outcome through the shipped `publishCanvasNavigationOutcome`.
+ * that key's verdict through the shipped `settleJump`, in the word the
+ * shipped `verdictOfFlight` reads a completed flight into.
  * Arming on the key rather than the mount is what lets this file see a jump
  * whose destination does NOT remount the board — a phase whose first scenario
  * is already on screen, which the shell keys the board by and therefore keeps
@@ -92,10 +94,14 @@
  * jsdom never schedules, and the deadlines the tool and the watcher race are
  * never actually raced — the clock only moves when this file moves it. So the
  * ORDER and the choreography are covered and the DURATION is not: that a fit
- * lands inside the tool's 1800 ms deadline or the watcher's 2000 ms one on a
- * real device, that the strip above the sheet is legible through the scrim,
- * and that the destination is visibly inside it are answered in a browser by
- * `render-walk/mobile-agent-jump.spec.ts`, at this same 375×812.
+ * lands inside the tool's 1800 ms selection poll or `canvasJump`'s 2000 ms
+ * camera deadline on a real device, that the strip above the sheet is legible
+ * through the scrim, and that the destination renders above the sheet at all
+ * are answered in a browser by `render-walk/mobile-agent-jump.spec.ts`, at
+ * this same 375×812. THE FIT INSET is this file's claim and stays here: the
+ * phone floors its fit zoom, so a board wider than the screen is framed from
+ * its top-left and the inset moves nothing a browser can measure — see the
+ * note over that block in the spec.
  */
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
@@ -242,9 +248,7 @@ vi.mock('@/components/editor/ServiceOverviewView', async () => {
   const { createElement, useEffect, useRef } = await import('react')
   const { useEditor } = await import('@/contexts/EditorContext')
   const { MOTION_FADE_MS } = await import('@/lib/motion')
-  const { publishCanvasNavigationOutcome } = await import(
-    '@/lib/canvasNavigationOutcome'
-  )
+  const { settleJump, verdictOfFlight } = await import('@/lib/canvasJump')
   return {
     ServiceOverviewView: ({
       soloScenarioId,
@@ -276,10 +280,7 @@ vi.mock('@/components/editor/ServiceOverviewView', async () => {
           })
           onInitialFitReady?.()
           if (cameraTargetId)
-            publishCanvasNavigationOutcome(cameraTargetId, {
-              kind: 'completed',
-              transform: { pan: { x: 0, y: 0 }, zoom: 1 },
-            })
+            settleJump(cameraTargetId, verdictOfFlight('completed'))
         }, MOTION_FADE_MS + 16)
         return () => clearTimeout(settle)
         // eslint-disable-next-line react-hooks/exhaustive-deps -- armed on the destination key and on the board drawn, which is what the real viewport's reset key carries; the callback is stable
