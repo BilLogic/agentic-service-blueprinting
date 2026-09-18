@@ -2,17 +2,31 @@
  * The sentences the loop answers a tool call with when it will not run it,
  * the status row it shows when the batch limit bites, and the one limit
  * both quote. Next to the tool definitions because they are the tool
- * layer's other answers: what a call gets back when no definition runs. In
- * one module because two readers speak them: the app's loop, and the eval
- * harness, which rehearses the same gates under Node and used to carry its
- * own copy of each sentence that drifted the moment the loop's was edited.
- * The harness bundles this file through its surface entry, so the words it
- * grades against are the words the app says.
+ * layer's other answers: what a call gets back when no definition runs.
  *
  * Each refusal says the second thing only — that the tool does not exist in
  * THIS session, or what to do instead — never the first: a model has no
  * business learning why a deployment narrowed its roster or which provider
  * key a person holds.
+ *
+ * WHY SOME OF THESE ARE ONE MODULE, AND THE RULE FOR WHICH.
+ *
+ * A refusal is the prompt an eval case grades a recovery from. Reworded on
+ * one side only, the Node eval harness goes on grading a run against words
+ * no session says — and it passes while doing it, because the sentence it
+ * judges against is its own. So a refusal that BOTH readers' gates can say
+ * lives here once and crosses to the harness through its surface entry
+ * (`scripts/agent-harness/app-surface.entry.ts`), where it is pinned.
+ *
+ * THE TEST FOR SHARING, one rule for every sentence below: share it when the
+ * harness has a gate of its own whose answer is this same statement, and the
+ * statement is TRUE of the harness's session. Otherwise it is APP-ONLY, and
+ * says at its definition which half fails — no gate on the far side, or a
+ * gate whose session this sentence would lie about. Two things are NOT the
+ * test: whether a model could reach the refusal (a model can call any name on
+ * the roster, so every refusal is reachable), and what today's cases happen to
+ * call (a suite grows). A sentence exported with no gate to say it is a seam
+ * no test can guard, because there is no copy to watch for.
  */
 
 /** Writes a model may land in one send before the loop asks it to check in. */
@@ -21,58 +35,97 @@ export const WRITE_BATCH_LIMIT = 8
 /**
  * Disabled by the deployment's allowlist, or a name the model invented.
  *
- * Shared with the eval harness, whose dispatch answers a name it maps to
- * nothing with this sentence instead of one of its own. An invented name is
- * the commonest thing a model gets wrong, so it is the refusal a run is most
- * likely to be graded on recovering from — and a harness that refused it in
- * its own words would grade a recovery from a sentence no session says.
+ * SHARED with the eval harness, whose dispatch answers a name it maps to
+ * nothing with this sentence: the name does not exist in that session either,
+ * so the statement is true on both sides. An invented name is the commonest
+ * thing a model gets wrong, so it is the refusal a run is most likely to be
+ * graded on recovering from.
+ *
+ * NOT the same sentence as `notOnAllowListRefusal`, and do not merge them:
+ * this one answers a name that is nothing here — unknown, or withheld — and
+ * says only that. That one answers a name the tool layer KNOWS and the
+ * allow-list still refuses, and carries the doctrine that goes with a fixed
+ * surface.
  */
 export function noSuchToolRefusal(name: string): string {
   return `There is no ${name} tool in this session.`
 }
 
 /**
+ * A call the dispatcher resolved to no definition on a session that HAS a
+ * database: the surface is fixed, and the commonest name a model reaches for
+ * off it is a delete.
+ *
+ * Lives here rather than inline in `registry.ts` so one module owns the
+ * refusals, which is what this file is for. APP-ONLY: the harness's dispatch
+ * has no allow-list gate — a name it cannot map falls to `noSuchToolRefusal`
+ * — so there is no gate on the far side to say this. See `noSuchToolRefusal`
+ * on why the two are different sentences.
+ *
+ * The wording is pinned by `definitions/writes.test.ts`; it moved bytes
+ * intact.
+ */
+export function notOnAllowListRefusal(name: string): string {
+  return `Tool "${name}" is not on the allow-list. Available tools are fixed; deletes do not exist here — removal is human-only.`
+}
+
+/**
  * No database: the trial reads the bundled sample and has no write tool at all.
  *
- * APP-ONLY, deliberately. The harness has no sample-trial session: it
- * rehearses every write as a dry run against a recording client whether or
- * not a database is configured, so no gate of its own ever reaches for this
- * sentence. Shared anyway, it would be a seam nothing crosses — and a shared
- * sentence with no second reader cannot be pinned by a test that watches for
- * a copy, because there is no copy to watch for. Share it the day a case
- * declares a trial session.
+ * APP-ONLY, and not because the harness lacks the trigger — it has one
+ * (`HAS_DB`, the same "no database configured" state). The harness's ROSTER
+ * forks: with no database it still offers the write tools and rehearses them
+ * as dry runs, where the app withholds them and answers this. So the gate
+ * this sentence belongs to has no counterpart there, and exporting it would
+ * paper over the roster fork rather than pin a sentence. That fork is
+ * recorded on its own issue; share this the day the harness's roster narrows
+ * with its database.
  */
 export const SAMPLE_TRIAL_REFUSAL =
   'No database is connected — this session reads the bundled sample blueprint and has no write tools. Describe the change instead; authoring needs a connected database.'
 
-/** The mobile shell is view-only for every tier. */
+/**
+ * The mobile shell is view-only for every tier. SHARED: the harness's mobile
+ * cases gate on the same roster and the statement is true of that session.
+ */
 export const MOBILE_SHELL_REFUSAL =
   'The mobile shell is view-only — only the reading and navigation tools exist here. Editing happens on desktop; describe the change instead.'
 
 /**
  * Ranked search is not on this session's roster; the tool "does not exist".
  *
- * Shared with the harness, which offers a model the whole spec table and so
- * hands it the very name this sentence exists for. The steer is the point:
- * this refusal names the two reads to use instead, and what a run does after
- * being turned away is what the eval grades — so a harness refusing in
- * shorter words of its own would grade a recovery from a prompt the app
- * never gives.
+ * APP-ONLY, because of the gate it belongs to: the loop says this only when
+ * `!searchPlan.offered` — when the tool was never put in front of the model.
+ * A tool absent from the roster does not exist for that session, so the
+ * sentence is true exactly there. The harness OFFERS `search_blueprint` (the
+ * roster it hands a provider is the whole spec table), so on its session this
+ * sentence would be false, and a false sentence is worse than a second
+ * wording of a true one. The harness answers that call with a statement that
+ * is true of ITS environment — nothing there serves ranked search — and
+ * steers to the same two reads, which is the part a case grades.
  */
 export const NO_SEARCH_REFUSAL =
   'There is no search_blueprint tool in this session. Use list_blueprint for what exists at a level, and get_blueprint for one scenario.'
 
-/** A signed-in viewer who is not a service account. */
+/**
+ * A signed-in viewer who is not a service account. SHARED: the harness runs
+ * view-only cases and refuses writes on the same ground.
+ */
 export const VIEW_ONLY_REFUSAL =
   'This session is view-only (not a service account) — no write tools exist here. Describe the change for a service account instead.'
 
-/** The batch etiquette, enforced: after the limit, writes bounce with the check-in instruction. */
+/**
+ * The batch etiquette, enforced: after the limit, writes bounce with the
+ * check-in instruction. SHARED: the harness enforces the same limit, from the
+ * same constant.
+ */
 export const BATCH_LIMIT_REFUSAL = `Batch limit: ${WRITE_BATCH_LIMIT} writes already landed this turn. Stop now, summarize what you did, and let the user say "continue" before the next batch.`
 
 /**
  * The status row the transcript shows once per round when the batch limit
- * bites. App-only: it is a row of the transcript, not a tool result, and the
- * harness renders no transcript — it records a trace and grades the text.
+ * bites. APP-ONLY: it is a row of the transcript, not an answer to a tool
+ * call, and the harness renders no transcript — it records a trace and grades
+ * the text. No gate on the far side can say it.
  */
 export const BATCH_PAUSED_STATUS = `Paused after ${WRITE_BATCH_LIMIT} writes — reply "continue" for the next batch.`
 
@@ -90,13 +143,11 @@ export const BATCH_PAUSED_STATUS = `Paused after ${WRITE_BATCH_LIMIT} writes —
  * never carries the payload — and the sentence still says the match was on
  * the exact arguments when the rendering comes back empty.
  *
- * APP-ONLY, deliberately, and the harness's own header says so at greater
- * length: the gates it does mirror shape what a model DOES — how many writes
- * land, how many rounds it gets — while this one shapes only what a model
- * SEES TWICE, and no case in the suite repeats a read. Shared today it would
- * be machinery no case exercises, free to drift from the loop unnoticed,
- * which is the failure the shared sentences exist to prevent. Share it with
- * the case that first needs it.
+ * APP-ONLY: the harness implements no repeat-read guard at all, so it has no
+ * gate that could answer with this — its header says why it mirrors the gates
+ * that shape what a model DOES and not this one, which shapes what a model
+ * SEES TWICE. Share it the day the harness grows the guard, not the day a
+ * case happens to repeat a read.
  */
 export function repeatReadRefusal(name: string, args: string): string {
   return `${name}${args ? ` (${args})` : ''} already ran this turn with these exact arguments — its result is earlier in this conversation and is not repeated here. Read it there, or call with different arguments.`
@@ -104,8 +155,8 @@ export function repeatReadRefusal(name: string, args: string): string {
 
 /**
  * How a transcript row marks a repeat the loop answered instead of running.
- * App-only for both reasons at once: it labels a transcript row rather than
- * answering a tool call, and it belongs to the repeat-read guard the harness
- * deliberately does not mirror.
+ * APP-ONLY for the reason `BATCH_PAUSED_STATUS` is: it labels a transcript
+ * row rather than answering a tool call, and the harness renders no
+ * transcript.
  */
 export const REPEAT_READ_SUPPRESSED = 'Suppressed — already run this turn'

@@ -110,17 +110,13 @@ export { REFERENCE_NAMES } from '@/lib/agent/tools/referenceNames'
  * its own copy of each before, and a copy is a sentence the loop can change
  * without the harness noticing.
  *
- * Every refusal the harness can reach is here. The two it cannot — the
- * sample trial's, which needs a session tier the harness has no flag for,
- * and the repeat read's, which the harness deliberately does not mirror —
- * stay app-only, and `refusals.ts` says at each why. A sentence exported
- * across this seam with no reader on the far side is a seam no test can
- * guard.
+ * Exactly the refusals whose gate the harness HAS, and whose statement is
+ * true of its session. `refusals.ts` holds that rule and says at each
+ * app-only sentence which half of it fails; do not restate it here.
  */
 export {
   BATCH_LIMIT_REFUSAL,
   MOBILE_SHELL_REFUSAL,
-  NO_SEARCH_REFUSAL,
   VIEW_ONLY_REFUSAL,
   WRITE_BATCH_LIMIT,
   noSuchToolRefusal,

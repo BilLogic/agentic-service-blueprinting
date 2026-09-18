@@ -55,6 +55,52 @@ const harness = read('scripts/agent-harness/run.mjs')
 const bundler = read('scripts/agent-harness/surface.mjs')
 const surfaceEntry = read('scripts/agent-harness/app-surface.entry.ts')
 
+/**
+ * A binding the runner takes from the bundled surface. Asserts the NAME is in
+ * a destructured list, not the list's ORDER: a pin that spells the whole list
+ * reds a correct harness the moment someone adds a binding or a formatter
+ * rewraps it.
+ */
+function destructuredFromSurface(binding) {
+  assert.match(
+    harness,
+    new RegExp(`\\{[^}]*\\b${binding}\\b[^}]*\\}\\s*=\\s*surface`),
+    `run.mjs no longer takes ${binding} from the bundled surface`,
+  )
+}
+
+/**
+ * ONE SHARED REFUSAL, four pins — the shape every shared sentence gets, so the
+ * next one is one line here and no sentence ends up guarded more loosely than
+ * its neighbours.
+ *
+ *   `binding` the export name: `refusals.ts` must own it, the entry must
+ *             re-export it, and run.mjs must destructure it.
+ *   `copy`    a pattern over the WORDS of the sentence, which must not appear
+ *             in run.mjs. Over the words, not the template syntax: a builder
+ *             can be re-spelled as a concatenation, a `%s` format or a
+ *             single-name literal, and a regex pinned to `${…}` sees none of
+ *             those.
+ *   `use`     where the harness's own gate answers with it. An import the
+ *             dispatch never reaches is a sentence that only looks shared.
+ *             Matched on the assignment alone — the binding in a result
+ *             position — never on the `case` label above it or the whitespace
+ *             between, which a reformat or an added `if` would move.
+ *
+ * WHY, once: see the header of `src/lib/agent/tools/refusals.ts`, which owns
+ * the rule for what is shared and what is app-only. It is not restated here.
+ */
+function sharedRefusal({ binding, copy, use }) {
+  assert.match(
+    surfaceEntry,
+    new RegExp(`export\\s*\\{[^}]*\\b${binding}\\b[^}]*\\}\\s*from\\s*'@/lib/agent/tools/refusals'`),
+    `app-surface.entry.ts no longer re-exports ${binding} from refusals.ts`,
+  )
+  destructuredFromSurface(binding)
+  assert.doesNotMatch(harness, copy, `run.mjs carries its own copy of ${binding}: ${copy}`)
+  assert.match(harness, use, `run.mjs no longer answers its own gate with ${binding}`)
+}
+
 test('harness imports the app tool specs instead of forking them', () => {
   // The wiring: surface.mjs bundles the surface entry, the entry derives
   // the rosters from the definitions, and the runner destructures them from the
@@ -93,11 +139,19 @@ test('harness imports the app tool specs instead of forking them', () => {
     /export\s*\{\s*REFERENCE_NAMES\s*\}\s*from\s*'@\/lib\/agent\/tools\/referenceNames'/,
     'app-surface.entry.ts no longer re-exports REFERENCE_NAMES from referenceNames.ts',
   )
-  assert.match(
-    harness,
-    /\{\s*TOOL_SPECS,\s*TOOL_DEFINITIONS,\s*WRITE_TOOL_NAMES,\s*MOBILE_READ_TOOL_NAMES,\s*BATCH_LIMIT_REFUSAL,\s*MOBILE_SHELL_REFUSAL,\s*NO_SEARCH_REFUSAL,\s*VIEW_ONLY_REFUSAL,\s*WRITE_BATCH_LIMIT,\s*AGENT_CELL_FIELDS,\s*noSuchToolRefusal,\s*renderCanvasAdapter,\s*rehearsalContext,\s*runTool,?\s*\}\s*=\s*surface/,
-    'run.mjs no longer destructures the rosters, refusals and rehearsal seam from the bundled surface',
-  )
+  for (const binding of [
+    'TOOL_SPECS',
+    'TOOL_DEFINITIONS',
+    'WRITE_TOOL_NAMES',
+    'MOBILE_READ_TOOL_NAMES',
+    'WRITE_BATCH_LIMIT',
+    'AGENT_CELL_FIELDS',
+    'renderCanvasAdapter',
+    'rehearsalContext',
+    'runTool',
+  ])
+    destructuredFromSurface(binding)
+  // The refusals are destructured too, each with its own pins below.
   // A dry-run write answers in the TOOL's words: its own `run`, through the
   // app's own call seam, against the rehearsal context. The harness composed
   // a sentence per write before, which is a sentence the tool can change
@@ -125,45 +179,58 @@ test('harness imports the app tool specs instead of forking them', () => {
   for (const copy of [/accepted, ref dry-/, /Recorded \$\{args\.severity/]) {
     assert.doesNotMatch(harness, copy, `run.mjs composes a write result of its own: ${copy}`)
   }
-  // The refusals the harness answers gates with are the loop's, re-exported
-  // from refusals.ts — not sentences of the harness's own.
-  //
-  // WHAT THIS PROTECTS, since re-spelling one reads as harmless: a refusal is
-  // the prompt a case grades a recovery from. Reworded on one side only, the
-  // harness goes on grading a run against words no session says, and it
-  // passes while doing it — the eval's own sentence is the one it is judging
-  // against. So every refusal the harness can REACH crosses this seam: the
-  // batch limit, the mobile shell, the view-only tier, the missing search and
-  // the missing tool. The two it cannot reach — the sample trial's, which
-  // needs a session tier no case declares, and the repeat read's, which the
-  // harness's header deliberately does not mirror — stay app-only and say so
-  // at their definitions, because a sentence shared with no reader is a seam
-  // no test can guard.
-  assert.match(
+  // THE REFUSALS. Each shared sentence gets the same four pins, through the
+  // one helper above; `src/lib/agent/tools/refusals.ts` owns the rule for
+  // which sentences are shared and why, and this test does not restate it.
+  sharedRefusal({
+    binding: 'BATCH_LIMIT_REFUSAL',
+    copy: /Batch limit:/,
+    use: /record\.result = BATCH_LIMIT_REFUSAL/,
+  })
+  sharedRefusal({
+    binding: 'MOBILE_SHELL_REFUSAL',
+    copy: /mobile shell is view-only/,
+    use: /record\.result = MOBILE_SHELL_REFUSAL/,
+  })
+  sharedRefusal({
+    binding: 'VIEW_ONLY_REFUSAL',
+    copy: /view-only \(not a service account\)/,
+    use: /record\.result = VIEW_ONLY_REFUSAL/,
+  })
+  sharedRefusal({
+    binding: 'noSuchToolRefusal',
+    // The one shared sentence BUILDER, so the copy that matters is the one a
+    // regex over `${…}` cannot see. These words in run.mjs are a copy however
+    // the name is spliced in: a template, a concatenation, a format string, or
+    // one name hard-coded.
+    copy: /There is no .{0,40} tool in this session/,
+    use: /record\.result = noSuchToolRefusal\(name\)/,
+  })
+  // AND ONE THAT IS NOT SHARED, pinned from the other side. The app says
+  // `NO_SEARCH_REFUSAL` only where the tool was never offered; this harness
+  // offers `search_blueprint`, so the app's sentence would be false of its
+  // session. So the entry must not publish it, run.mjs must not spell it, and
+  // the harness must answer that call with a sentence of its own that still
+  // steers to the two reads a case grades the recovery on.
+  assert.doesNotMatch(
     surfaceEntry,
-    /export\s*\{\s*BATCH_LIMIT_REFUSAL,\s*MOBILE_SHELL_REFUSAL,\s*NO_SEARCH_REFUSAL,\s*VIEW_ONLY_REFUSAL,\s*WRITE_BATCH_LIMIT,\s*noSuchToolRefusal,?\s*\}\s*from\s*'@\/lib\/agent\/tools\/refusals'/,
-    'app-surface.entry.ts no longer re-exports the refusals from refusals.ts',
+    /\bNO_SEARCH_REFUSAL\b/,
+    'app-surface.entry.ts publishes NO_SEARCH_REFUSAL again — it is false of a session that offers search_blueprint',
   )
-  for (const copy of [
-    /view-only \(not a service account\)/,
-    /mobile shell is view-only/,
-    /Batch limit:/,
+  assert.doesNotMatch(
+    harness,
     /no search_blueprint tool in this session/,
-    /There is no \$\{[^}]*\} tool in this session/,
-  ]) {
-    assert.doesNotMatch(harness, copy, `run.mjs carries its own copy of a loop refusal: ${copy}`)
-  }
-  // And each is USED where the gate it answers fires — an import the
-  // dispatch never reaches is a shared sentence that only looks shared.
-  assert.match(
-    harness,
-    /case 'search_blueprint':\s*\n\s*record\.result = NO_SEARCH_REFUSAL/,
-    'run.mjs no longer answers a ranked-search call with the loop’s refusal',
+    'run.mjs says the app’s missing-search sentence, which is untrue of a session that offers the tool',
   )
   assert.match(
     harness,
-    /default:\s*\n\s*record\.result = noSuchToolRefusal\(name\)/,
-    'run.mjs no longer answers an unmapped tool name with the loop’s refusal',
+    /record\.result = NO_SEARCH_HERE/,
+    'run.mjs no longer answers a ranked-search call with its own true refusal',
+  )
+  assert.match(
+    harness,
+    /const NO_SEARCH_HERE =\s*'[^']*list_blueprint[^']*get_blueprint/,
+    'the harness’s ranked-search refusal no longer steers to list_blueprint and get_blueprint',
   )
   // And no fork crept back: a local spec array would re-declare tool
   // objects (`name: '...'` entries) and a local write set would shadow the
