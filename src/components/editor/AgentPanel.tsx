@@ -41,20 +41,17 @@ export function AgentPanel() {
   // client it parks and the list stays local, and the ask is not spent on a
   // question there was nothing to answer it with.
   //
-  // FORGETTING THE LIST WORK ON THE WAY OUT BUYS TWO THINGS, AND NOT A THIRD.
-  // It re-arms the ask, so the client that attaches next gets its own merge
-  // rather than being told the list was already hydrated by a database it has
-  // never seen. And it re-arms the outstanding answer, so a merge still on
-  // the wire from the previous client cannot mark this one's ask settled and
-  // drop the list's skeleton for a read that has not come back.
-  //
-  // What it does NOT do is stop the old flight. That merge is not cancelled:
-  // it resumes with the previous database's rows, writes them into the list,
-  // and pushes the local-only rows it computed back up through whichever
-  // client is attached by then. Re-arming the ask is bookkeeping, not a
-  // cancel, and an account switch mid-merge can still land the previous
-  // account's sessions — tracked as its own change, since fixing it means
-  // making the flight itself abortable and testing a cross-account path.
+  // FORGETTING THE LIST WORK ON THE WAY OUT BUYS THREE THINGS. It re-arms the
+  // ask, so the client that attaches next gets its own merge rather than being
+  // told the list was already hydrated by a database it has never seen. It
+  // re-arms the outstanding answer, so a merge still on the wire from the
+  // previous client cannot mark this one's ask settled and drop the list's
+  // skeleton for a read that has not come back. And — the one that matters to
+  // the person, not the surface — it supersedes that merge's flight, which the
+  // merge itself consults before it writes: a read that comes back after the
+  // switch publishes nothing and upserts nothing, so the signed-out account's
+  // sessions never land over the new account's list and its rows are never
+  // pushed into the new account's table.
   //
   // The transcript work is deliberately NOT forgotten here. Its handle is per
   // session id, and a session id minted under one account does not name a row
