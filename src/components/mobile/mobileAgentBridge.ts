@@ -29,19 +29,19 @@ export function makeMobileAgentBridge({
    */
   isAgentOpen?: () => boolean
   /**
-   * Watch the camera for this target so the open sheet can stand its scrim
-   * down for the flight. Called BEFORE the selection commits, because the
-   * outcome is published by the fit the selection triggers and a watcher
-   * attached afterwards can miss it.
+   * Watch the camera for this target so the open sheet can hand the caret
+   * back once the move has landed. Called BEFORE the selection commits,
+   * because the outcome is published by the fit the selection triggers and a
+   * watcher attached afterwards can miss it.
    */
   watchCameraFlight?: (targetId: string) => void
 }): AgentUiBridge {
   /*
-    A jump with the sheet CLOSED has no scrim to clear and no composer to hand
-    the caret back to. Arming a watcher for it would leave a 2s timer and a
-    `setFlying` pair firing at a sheet nobody can see; the gate lives here, in
-    the module that is the agent's hands, so the path is pinned by a unit test
-    rather than by a shell nothing renders in a test.
+    A jump with the sheet CLOSED has no composer to hand the caret back to.
+    Arming a watcher for it would leave a 2s timer running for a sheet nobody
+    can see; the gate lives here, in the module that is the agent's hands, so
+    the path is pinned by a unit test rather than by a shell nothing renders
+    in a test.
   */
   const jump = (targetId: string, select: (id: string) => void) => {
     if (isAgentOpen()) watchCameraFlight(targetId)
@@ -57,39 +57,16 @@ export function makeMobileAgentBridge({
 }
 
 /**
- * The sheet's scrim, in the two states the flight puts it in.
+ * How long the watcher waits for a verdict before handing the caret back
+ * anyway.
  *
- * The wash and the pass-through are ONE state and the transition is what used
- * to pull them apart. Both read the same flag in the same render, but only
- * one of them is animatable: the scrim's own `transition-opacity` eased the
- * colour over 150 ms while `pointer-events` flipped in the frame the class
- * landed. That left a window at each end of the clear with the two
- * disagreeing — a fully opaque scrim already passing taps through, then an
- * invisible one that had gone back to swallowing them. An invisible surface
- * eating a tap aimed at a cell is the exact hazard the pass-through exists to
- * remove, so a fade that reopens it is not a fade worth keeping.
- *
- * Naming `pointer-events` in the transition beside `opacity`, with discrete
- * transitions allowed, keeps the fade AND keeps the pair in step: a discrete
- * property switches at the midpoint of the same 150 ms, so taps pass through
- * only once the scrim is already more gone than there, and are taken again
- * only once it is more there than gone. Neither extreme is ever reachable,
- * and the transition is declared in BOTH states — a scrim that only named it
- * while cleared would fade back in with its pass-through already surrendered.
- *
- * `backdrop-blur-none` needs the same `supports-` prefix the blur was written
- * with, or tailwind-merge keeps both and the blur outlives the wash.
- */
-/**
- * How long the sheet will hold its scrim down waiting for a verdict.
- *
- * The wash MUST come back. A camera that never publishes an outcome is an
- * ordinary state, not a bug — a phase whose scenario never rendered, a
- * background tab whose `requestAnimationFrame` is suspended mid-flight — and
- * a backdrop with no deadline would stay cleared for the rest of the session,
- * leaving the conversation floating over a live canvas it no longer owns.
- * Set past the agent tool's own 1800 ms wait so the sheet is still standing
- * aside when the agent reports what happened.
+ * A camera that never publishes an outcome is an ordinary state, not a bug —
+ * a phase whose scenario never rendered, a background tab whose
+ * `requestAnimationFrame` is suspended mid-flight. Without a deadline the
+ * watcher's promise stays pending and the reader never gets the caret back,
+ * so they are left typing into nothing after a jump they asked for in words.
+ * Set past the agent tool's own 1800 ms wait so the hand-back does not race
+ * the sentence the agent is about to write.
  */
 export const AGENT_CAMERA_FLIGHT_DEADLINE_MS = 2000
 
@@ -99,7 +76,6 @@ export type AgentCameraFlightWatch = {
     promise: Promise<unknown>
     cancel: () => void
   }
-  /** True while the camera is moving — the sheet's scrim reads it. */
   /** Once, when the move has settled or the deadline says to stop waiting. */
   onSettled: () => void
   deadlineMs?: number
@@ -117,8 +93,8 @@ export type AgentCameraFlightWatch = {
  * reader is actually watching.
  *
  * Stateful because jumps supersede: a second target arriving mid-flight owns
- * the scrim from then on, and the first flight's late verdict must not put
- * the wash back over a canvas that is still moving.
+ * the caret from then on, and the first flight's late verdict must not pull
+ * focus back to the composer while the canvas is still moving.
  */
 export function makeAgentCameraFlightWatcher({
   awaitOutcome,

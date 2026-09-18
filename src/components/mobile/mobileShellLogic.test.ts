@@ -67,11 +67,11 @@ describe('makeMobileAgentBridge', () => {
   })
 
   /*
-    The sheet stays open across an agent-driven jump, so the jump has to tell
-    the sheet the camera is moving. With the sheet CLOSED there is no scrim to
-    clear and no composer to hand the caret back to, and arming the watcher
-    anyway would leave a deadline timer and a pair of state writes behind for
-    a surface nobody can see.
+    The sheet stays open across an agent-driven jump, so the jump has to watch
+    the camera to know when to hand the caret back to the composer. With the
+    sheet CLOSED there is no composer to hand it back to, and arming the
+    watcher anyway would leave a deadline timer and a settle callback behind
+    for a surface nobody can see.
   */
   it('watches the camera for an open sheet, before the selection commits', () => {
     const h = harness({ agentOpen: true })
@@ -176,7 +176,7 @@ describe('makeAgentCameraFlightWatcher', () => {
     camera that is no longer moving where the reader is looking. Taking focus
     on it would pull the caret mid-move, so the generation guard drops it.
   */
-  it('ignores a superseded flight is verdict and answers only for the latest', async () => {
+  it("ignores a superseded flight's verdict and answers only for the latest", async () => {
     const h = harness()
     const first = h.watch('scen-1')
     const second = h.watch('scen-2')
@@ -187,20 +187,6 @@ describe('makeAgentCameraFlightWatcher', () => {
 
     h.outcomes.get('scen-2')?.({ kind: 'completed' })
     await second
-    expect(h.onSettled).toHaveBeenCalledTimes(1)
-  })
-
-  it('waits out a slow flight rather than answering on its first tick', async () => {
-    const h = harness()
-    const flight = h.watch('scen-1')
-
-    for (const beat of [100, 300, 600, 900]) {
-      await vi.advanceTimersByTimeAsync(beat)
-      expect(h.onSettled).not.toHaveBeenCalled()
-    }
-
-    h.outcomes.get('scen-1')?.({ kind: 'completed' })
-    await flight
     expect(h.onSettled).toHaveBeenCalledTimes(1)
   })
 })

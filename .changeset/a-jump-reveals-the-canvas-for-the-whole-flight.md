@@ -22,14 +22,14 @@ and each caller's own deadline says so honestly, rather than claiming a
 cancellation the departing viewport is in no position to claim. Supersession,
 a genuine cancel and the deadline all report exactly as before.
 
-The sheet's scrim is now one state in one render. Its opacity and its
-pass-through used to fall out of step because only one of them animates: the
-wash eased over 150 ms while `pointer-events` flipped in the frame the class
-landed, leaving a moment when the backdrop was opaque yet passed taps through
-and a moment when it was invisible yet swallowed them — the exact hazard the
-pass-through was added to remove. Both properties now transition together on
-one clock, so taps reach the canvas only once the wash is more gone than
-there.
+The sheet's scrim is now one state, and it never changes. It used to be
+choreographed — cleared for the flight, restored on the verdict — which gave
+the reader a backdrop that flashed on every jump and, worse, put opacity and
+pass-through on different clocks: the wash eased over 150 ms while
+`pointer-events` flipped in the frame the class landed, leaving a moment when
+the backdrop was opaque yet passed taps through and a moment when it was
+invisible yet swallowed them. A single thin wash held constant reveals the
+canvas for the whole flight and has no states to fall out of step.
 
 The phone also reports its selected phase to the agent's UI context, in the
 same words the desktop shell uses. Without that line an agent-driven phase

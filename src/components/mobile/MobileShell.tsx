@@ -102,15 +102,14 @@ export function MobileShell() {
   const [navSurface, setNavSurface] = useState<MobileNavSurface>('blueprints')
   const [agentOpen, setAgentOpen] = useState(false)
   /*
-    What the agent sheet takes off the bottom of the canvas, and whether the
-    camera is in the air.
+    What the agent sheet takes off the bottom of the canvas.
 
-    These two are the whole reason an agent-driven jump no longer closes the
-    sheet. The occluded height goes to the canvas as a fit inset, so the
-    destination lands in the strip above the panel rather than behind it; the
-    flight flag goes to the sheet, which fades its scrim out for the duration
-    of the move. The sheet is measured rather than assumed — see its own
-    note — and it reports 0 the moment it unmounts, so a closed sheet costs
+    This is the whole reason an agent-driven jump no longer closes the sheet:
+    the occluded height goes to the canvas as a fit inset, so the destination
+    lands in the strip left above the panel rather than behind it, and the
+    reader watches the move happen without the conversation going anywhere.
+    The height is measured rather than assumed — see the sheet's own note —
+    and the sheet reports 0 the moment it unmounts, so a closed sheet costs
     the camera nothing.
   */
   const [agentSheetOccludedPx, setAgentSheetOccludedPx] = useState(0)
@@ -212,13 +211,16 @@ export function MobileShell() {
     closing — which took the conversation away mid-run, in the one moment a
     reader most needs it: the session keeps going in the module whether or not
     a surface is showing it, so a turn that failed after the jump had nowhere
-    to report the failure. Now the sheet's scrim clears for the flight instead,
-    and the camera is told what the sheet covers.
+    to report the failure. Now the sheet stays and the camera is told what the
+    sheet covers, so the destination lands in the strip the reader can see
+    through the sheet's thin, unchanging scrim.
 
-    The watcher reads the canvas's published verdict and nothing reads back.
-    The canvas keeps its own clock: it reports where it got to and is never
-    told when to be there, so the scrim waits on the camera and the camera
-    waits on nothing.
+    What the flight is still watched for is the caret: the composer gives focus
+    up for the move and takes it back once the camera has settled, so the
+    keyboard does not fight the jump. The watcher reads the canvas's published
+    verdict and nothing reads back. The canvas keeps its own clock — it reports
+    where it got to and is never told when to be there, so the caret waits on
+    the camera and the camera waits on nothing.
   */
   const agentOpenRef = useRef(agentOpen)
   useEffect(() => {
