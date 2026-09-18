@@ -429,6 +429,15 @@ absent means every tool) and by each tool's own availability for the session's
 mode. A tool absent from the roster does not exist for that session — it is
 never offered, so it is never refused.
 
+**Admission** — the one answer a tool call gets: run it, or refuse it with
+this sentence. Derived from the same description the roster is derived from,
+so the offer and the admission cannot disagree about a declarable fact, plus
+the facts only the run holds — the abort signal, the write-batch count for
+this send, the repeat-read record for this turn, and whether this call writes
+(`ui_command` writes when its argument names a mutating control, which no
+roster can hold). **Not the roster**: the roster answers about a tool, an
+admission about a call.
+
 **Scope** — which service(s) one agent call covers: the active service,
 handed to the session in its context and the same default the interface has;
 the whole deployment, when a call names it (`service: "all"`); or none, when

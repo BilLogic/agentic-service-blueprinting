@@ -15,9 +15,17 @@ export { TOOL_DEFINITIONS }
  */
 export { renderCanvasAdapter } from '@/lib/agent/tools/references'
 /**
- * The two rosters the harness gates on, derived here from the definitions
- * the way the app's roster derives them: a write is a tool on the write
- * surface, and the mobile roster is every tool whose availability says so.
+ * The app's own roster, so the harness OFFERS what a session would be
+ * offered instead of mirroring two of its gates by hand. The harness declares
+ * the mode; `sessionRoster` decides the membership and the order.
+ */
+export { sessionRoster } from '@/lib/agent/tools/roster'
+/**
+ * The two rosters the harness's DISPATCH gates on, derived here from the
+ * definitions the way the app's roster derives them: a write is a tool on the
+ * write surface, and the mobile roster is every tool whose availability says
+ * so. Still needed past the offer, because a model can call a name it was
+ * never offered.
  */
 export const WRITE_TOOL_NAMES = new Set(
   TOOL_DEFINITIONS.filter((tool) => tool.surface === 'write').map((tool) => tool.name),
@@ -117,6 +125,7 @@ export { REFERENCE_NAMES } from '@/lib/agent/tools/referenceNames'
 export {
   BATCH_LIMIT_REFUSAL,
   MOBILE_SHELL_REFUSAL,
+  NO_SEARCH_REFUSAL,
   VIEW_ONLY_REFUSAL,
   WRITE_BATCH_LIMIT,
   noSuchToolRefusal,

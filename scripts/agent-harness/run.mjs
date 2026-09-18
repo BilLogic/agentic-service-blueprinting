@@ -42,14 +42,17 @@
  *   Everything else — the writes, the refusals, and every database read's
  *   text — answers in the app's words, and `toolParity.test.mjs` fails if a
  *   sentence the app says turns up composed here again.
- * - ROSTER FORK, stated so the refusals make sense: this harness offers the
- *   whole spec table whatever the environment — every write with no database
- *   configured (`HAS_DB` false), and ranked search with no index. The app
- *   withholds both and has a refusal for each; a tool absent from a session's
- *   roster does not exist for it. So two of the app's refusals cannot be said
- *   here at all — the sample trial's, and the missing-search one — and
- *   `refusals.ts` marks both app-only for exactly that reason. A ranked-search
- *   call is answered by NO_SEARCH_HERE instead, which is true of this session.
+ * - ROSTER: ONE-SOURCED, with ONE widening declared. The offer is
+ *   `sessionRoster` — the app's own — handed the mode this environment is in,
+ *   so the harness cannot grade a model in a state no reader can reach. It
+ *   used to offer the whole spec table whatever the environment, which forked
+ *   twice over: ranked search with no index behind it (a refusal the app has
+ *   and this could not say, so it said one of its own) and every write with no
+ *   database. The search half is now derived away — `searchOffered: false` is
+ *   the truth here, so the tool is absent and the app's own missing-search
+ *   refusal is true on both sides and shared. The write half is the widening,
+ *   and it is deliberate: see `harnessMode` below for what it buys and what it
+ *   costs.
  * - DELIBERATELY NOT MIRRORED: the loop's repeat-read guard, which answers a
  *   read already run this turn with a pointer to the earlier result instead
  *   of running it again. The gates copied above shape what a model DOES —
@@ -169,6 +172,7 @@ const {
   MOBILE_READ_TOOL_NAMES,
   BATCH_LIMIT_REFUSAL,
   MOBILE_SHELL_REFUSAL,
+  NO_SEARCH_REFUSAL,
   VIEW_ONLY_REFUSAL,
   WRITE_BATCH_LIMIT,
   AGENT_CELL_FIELDS,
@@ -176,6 +180,7 @@ const {
   renderCanvasAdapter,
   rehearsalContext,
   runTool,
+  sessionRoster,
 } = surface
 
 /**
@@ -526,21 +531,6 @@ let dryCounter = 0
  */
 const DRY_RUN_NOTE =
   'NOTE: rehearsal — this write was not applied and any ids above are placeholders; a re-read will not show it. Continue as if it landed; do not re-read to verify it and do not retry it.'
-/**
- * HARNESS-LOCAL, and it has to be. The app's `NO_SEARCH_REFUSAL` tells the
- * model the tool does not exist in the session, which is true exactly where
- * the loop says it: the tool was filtered out of the roster and never
- * offered. This harness OFFERS it — the roster it hands a provider is the
- * whole spec table — so the app's sentence would be a lie about this session.
- * (The roster fork itself is its own issue, not this sentence's business.)
- *
- * What IS true here is that nothing in this environment serves ranked search:
- * there is no deployment index and no embedding key. The steer is the graded
- * part — a case grades what a run does after being turned away — so this
- * points at the same two reads the app's sentence points at.
- */
-const NO_SEARCH_HERE =
-  'Ranked search is not served in this rehearsal environment (no search index). Use list_blueprint for what exists at a level, and get_blueprint for one scenario.'
 async function dispatch(caseDef, name, args, trace, turn = 0) {
   const mock = caseDef.mocks?.[name]
   const record = { name, args, isError: false, turn }
@@ -716,13 +706,14 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
       case 'focus_cell':
         record.result = CELL_CAMERA_SETTLED
         return record.result
-      // Ranked search is offered to the model here — the roster this
-      // harness hands a provider is the whole spec table — and nothing
-      // serves it. So this answers in a sentence that is true of THIS
-      // session, steering to the same two reads the app's refusal steers to;
-      // see NO_SEARCH_HERE on why the app's own wording cannot be used.
+      // Ranked search is NOT offered here: nothing in this environment
+      // serves it, the mode says so, and the derived roster withholds the
+      // tool. So only a model reaching for a remembered name lands here, and
+      // the app's own sentence is true of this session word for word — the
+      // tool does not exist in it — including the steer to the two reads,
+      // which is the part a case grades the recovery on.
       case 'search_blueprint':
-        record.result = NO_SEARCH_HERE
+        record.result = NO_SEARCH_REFUSAL
         return record.result
       // A name nothing above maps: a tool this environment cannot serve, or
       // one the model invented. The name does not exist in this session
@@ -964,17 +955,46 @@ const chat = PROVIDER ? CHAT[PROVIDER.id] : null
 // harness grades a budget the app does not have.
 const MAX_ROUNDS = 12
 
+/**
+ * The mode this environment is in, as the app's roster asks for it.
+ *
+ * Three of the four are read off the case, so a mobile case is offered the
+ * mobile roster and a view-only case no write — the same narrowing a session
+ * gets, from the same function, rather than from a filter spelled here that
+ * had to be kept in step with `roster.ts` by hand.
+ *
+ * `searchOffered: false` is a FACT, not a choice: there is no deployment
+ * index here and no embedding key, which is exactly the state the app
+ * withholds `search_blueprint` in.
+ *
+ * `sampleTrial: false` IS a choice, and the one place this harness declares
+ * itself something its environment is not. With no database configured the
+ * app reads the bundled sample and has no write tool at all; this harness
+ * rehearses every write as a dry run against a client that records instead of
+ * writing, so a roster narrowed by the missing database would offer nothing
+ * for the write half of the suite to call. The cost is stated rather than
+ * hidden: no case here can reach the app's no-database refusal, which is why
+ * `refusals.ts` keeps that sentence app-only. The day the harness stops
+ * rehearsing, this becomes `!HAS_DB` and that sentence is shareable.
+ */
+function harnessMode(caseDef) {
+  return {
+    sampleTrial: false,
+    mobileReading: Boolean(caseDef.mobile),
+    allowWrites: caseDef.allowWrites !== false,
+    searchOffered: false,
+  }
+}
+
 async function runCaseLLM(caseDef) {
   const trace = []
   const replies = [] // final text per user turn
   const messages = []
-  // One pass, mirroring loop.ts: no tool available on mobile is a write,
-  // so the mobile gate subsumes the tier filter.
-  const offered = TOOL_SPECS.filter((spec) =>
-    caseDef.mobile
-      ? MOBILE_READ_TOOL_NAMES.has(spec.name)
-      : caseDef.allowWrites !== false || !WRITE_TOOL_NAMES.has(spec.name),
-  )
+  // The offer is the APP'S roster, handed the mode this case runs in, then
+  // read off the app's own spec table so the order is the order a session
+  // sees. The two gates this used to spell by hand are gone with it.
+  const roster = new Set(sessionRoster(harnessMode(caseDef)).map((tool) => tool.name))
+  const offered = TOOL_SPECS.filter((spec) => roster.has(spec.name))
   // The tier / mobile injections are the app's, verbatim (loop.ts). The
   // mobile paragraph subsumes the tier one, so only one may speak.
   const system =

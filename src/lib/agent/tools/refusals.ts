@@ -73,13 +73,15 @@ export function notOnAllowListRefusal(name: string): string {
  * No database: the trial reads the bundled sample and has no write tool at all.
  *
  * APP-ONLY, and not because the harness lacks the trigger — it has one
- * (`HAS_DB`, the same "no database configured" state). The harness's ROSTER
- * forks: with no database it still offers the write tools and rehearses them
- * as dry runs, where the app withholds them and answers this. So the gate
- * this sentence belongs to has no counterpart there, and exporting it would
- * paper over the roster fork rather than pin a sentence. That fork is
- * recorded on its own issue; share this the day the harness's roster narrows
- * with its database.
+ * (`HAS_DB`, the same "no database configured" state). The harness derives
+ * its offer from `sessionRoster` like the app, and then declares one fact
+ * against its environment: it says it is NOT a trial, because its write half
+ * rehearses every write as a dry run and a roster narrowed by the missing
+ * database would offer no write to rehearse. So the gate this sentence
+ * belongs to has no counterpart there — the harness never enters the state
+ * it answers — and exporting it would publish a sentence with nothing to say
+ * it. The widening is stated beside the harness's own mode, not here. Share
+ * this the day the harness stops rehearsing and starts refusing.
  */
 export const SAMPLE_TRIAL_REFUSAL =
   'No database is connected — this session reads the bundled sample blueprint and has no write tools. Describe the change instead; authoring needs a connected database.'
@@ -94,15 +96,16 @@ export const MOBILE_SHELL_REFUSAL =
 /**
  * Ranked search is not on this session's roster; the tool "does not exist".
  *
- * APP-ONLY, because of the gate it belongs to: the loop says this only when
- * `!searchPlan.offered` — when the tool was never put in front of the model.
- * A tool absent from the roster does not exist for that session, so the
- * sentence is true exactly there. The harness OFFERS `search_blueprint` (the
- * roster it hands a provider is the whole spec table), so on its session this
- * sentence would be false, and a false sentence is worse than a second
- * wording of a true one. The harness answers that call with a statement that
- * is true of ITS environment — nothing there serves ranked search — and
- * steers to the same two reads, which is the part a case grades.
+ * SHARED, and only just: the sentence is true exactly where the tool was
+ * never put in front of the model, and until the harness derived its offer
+ * from `sessionRoster` the harness handed a provider the whole spec table —
+ * `search_blueprint` included, with no index behind it. On that session this
+ * sentence was a lie, so the harness said a true one of its own and the two
+ * readers disagreed about what was OFFERED rather than about wording. The
+ * harness now declares `searchOffered: false`, which is the truth of an
+ * environment with no deployment index and no embedding key, so the tool is
+ * absent from its roster too and this sentence is true on both sides. The
+ * steer to the two reads is the part a case grades, and it is now one steer.
  */
 export const NO_SEARCH_REFUSAL =
   'There is no search_blueprint tool in this session. Use list_blueprint for what exists at a level, and get_blueprint for one scenario.'
@@ -128,6 +131,22 @@ export const BATCH_LIMIT_REFUSAL = `Batch limit: ${WRITE_BATCH_LIMIT} writes alr
  * the text. No gate on the far side can say it.
  */
 export const BATCH_PAUSED_STATUS = `Paused after ${WRITE_BATCH_LIMIT} writes — reply "continue" for the next batch.`
+
+/**
+ * The reader pressed Stop, and this call had not been dispatched when the
+ * loop next looked.
+ *
+ * Here rather than inline in the loop because it is an answer to a tool call
+ * and this module is where those live; the loop's own business is what it
+ * does AROUND the sentence, which is answer every call the round had not
+ * reached and only then bail. That matters more than the wording: every
+ * provider rejects the next send of a transcript holding an unanswered tool
+ * call, so a stop that stranded the parts would poison the session for good.
+ *
+ * APP-ONLY: the harness has no Stop — it runs a case to its end or fails —
+ * so there is no gate on the far side to say this.
+ */
+export const STOPPED_REFUSAL = 'Stopped by the user before this call ran.'
 
 /**
  * A read whose name and arguments the turn has already dispatched. The

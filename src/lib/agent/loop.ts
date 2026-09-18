@@ -18,19 +18,12 @@ import type { OfflineBoard } from '@/data/blueprintFallbacks'
 import { agentSearchPlan } from '@/lib/agent/searchPlan'
 import { toolSpec } from '@/lib/agent/tools/definition'
 import { findToolDefinition } from '@/lib/agent/tools/definitions'
-import { sessionRoster, toolEnabled } from '@/lib/agent/tools/roster'
+import { sessionRoster, type RosterMode } from '@/lib/agent/tools/roster'
+import { admitToolCall } from '@/lib/agent/tools/admission'
 import { UI_SURFACE_READ_TOOLS } from '@/lib/agent/tools/definitions/ui'
 import {
-  MOBILE_SHELL_REFUSAL,
-  NO_SEARCH_REFUSAL,
-  SAMPLE_TRIAL_REFUSAL,
-  VIEW_ONLY_REFUSAL,
-  BATCH_LIMIT_REFUSAL,
   BATCH_PAUSED_STATUS,
   REPEAT_READ_SUPPRESSED,
-  WRITE_BATCH_LIMIT,
-  noSuchToolRefusal,
-  repeatReadRefusal,
 } from '@/lib/agent/tools/refusals'
 import { isMobileViewport } from '@/hooks/useMobileShell'
 import { collectAgentUiContext } from '@/lib/agent/uiBridge'
@@ -790,16 +783,23 @@ export async function sendToAgent(input: {
       // keep a roster the shell on screen no longer matches. UX gate only;
       // the server-side RPC tier enforcement is the real wall.
       const mobileReading = isMobileViewport()
-      // One pass, and the gates' ORDER is part of the contract — it lives
-      // in `sessionRoster`, with the definitions it derives from. The same
-      // list is what the prompt's adapter renders and what each tool call
-      // is served against.
-      const roster = sessionRoster({
+      // The session facts a roster is derived from, named once and used
+      // twice: `sessionRoster` turns them into the offer, and every call's
+      // admission answer turns the same four into its verdict. Spelled at one
+      // of the two before, and re-stated per gate at the other, which is how
+      // the offer and the admission came to disagree about which sentence a
+      // call tripping two conditions reads back.
+      const mode: RosterMode = {
         sampleTrial,
         mobileReading,
         allowWrites,
         searchOffered: searchPlan.offered,
-      })
+      }
+      // One pass, and the gates' ORDER is part of the contract — it lives in
+      // `toolStanding`, with the definitions it derives from. The same list
+      // is what the prompt's adapter renders and what each tool call is
+      // served against.
+      const roster = sessionRoster(mode)
       // The prompt crosses the seam in its two parts rather than as one
       // string: role + adapter + doctrine + EVERY skill body this message
       // carries is stable across the send's rounds while the roster holds,
@@ -860,131 +860,81 @@ export async function sendToAgent(input: {
             readsThisSend.delete(key)
       }
       for (const call of calls) {
-        // Off-roster calls: a model can still emit a name it invented or
-        // remembered from another session, so each gate the roster applied
-        // is applied again to the call, in the roster's words.
-        const called = findToolDefinition(call.name)
-        if (controller.signal.aborted) {
-          // Stopping mid-batch must not strand the assistant's tool_use
-          // parts without results: every provider rejects the NEXT send of
-          // a transcript containing an unanswered tool call, which would
-          // poison the session permanently. Answer everything not yet
-          // dispatched with a stopped marker, commit the results turn,
-          // THEN bail.
-          for (const pending of calls) {
-            const answered = results.parts.some(
-              (part) =>
-                part.type === 'tool_result' && part.toolCallId === pending.id,
-            )
-            if (answered) continue
-            results.parts.push({
-              type: 'tool_result',
-              toolCallId: pending.id,
-              name: pending.name,
-              result: 'Stopped by the user before this call ran.',
-              isError: true,
-            })
+        // ONE ANSWER PER CALL. A model can still emit a name it invented or
+        // remembered from another session, so every gate the roster applied
+        // is applied again to the call — but by the roster's own module, in
+        // the roster's order and in the roster's words, rather than by a
+        // second cascade here that had to be kept in step by hand. What this
+        // loop still owns is the live half handed over as `facts`, and what
+        // happens AROUND three of the refusals.
+        const admission = admitToolCall({
+          mode,
+          name: call.name,
+          definition: findToolDefinition(call.name),
+          facts: {
+            aborted: controller.signal.aborted,
+            isWrite: isWrite(call),
+            writesThisSend,
+            repeatRead:
+              isRead(call) && readsThisSend.has(callKey(call))
+                ? { args: refusalArgs(call) }
+                : false,
+          },
+        })
+        if (!admission.admitted) {
+          if (admission.ground === 'stopped') {
+            // Stopping mid-batch must not strand the assistant's tool_use
+            // parts without results: every provider rejects the NEXT send of
+            // a transcript containing an unanswered tool call, which would
+            // poison the session permanently. Answer everything not yet
+            // dispatched with the stopped marker, commit the results turn,
+            // THEN bail.
+            for (const pending of calls) {
+              const answered = results.parts.some(
+                (part) =>
+                  part.type === 'tool_result' && part.toolCallId === pending.id,
+              )
+              if (answered) continue
+              results.parts.push({
+                type: 'tool_result',
+                toolCallId: pending.id,
+                name: pending.name,
+                result: admission.refusal,
+                isError: true,
+              })
+            }
+            run.messages.push(results)
+            throw new DOMException('stopped', 'AbortError')
           }
-          run.messages.push(results)
-          throw new DOMException('stopped', 'AbortError')
-        }
-        if (!toolEnabled(call.name)) {
-          // Disabled by the deployment's config: the tool exists in the
-          // template and not in this session, so the refusal says the
-          // second thing only — the model has no business learning the first.
           results.parts.push({
             type: 'tool_result',
             toolCallId: call.id,
             name: call.name,
-            result: noSuchToolRefusal(call.name),
-            isError: true,
-          })
-          continue
-        }
-        if (sampleTrial && !called?.availability.sample) {
-          results.parts.push({
-            type: 'tool_result',
-            toolCallId: call.id,
-            name: call.name,
-            result: SAMPLE_TRIAL_REFUSAL,
-            isError: true,
-          })
-          continue
-        }
-        if (mobileReading && !called?.availability.mobile) {
-          results.parts.push({
-            type: 'tool_result',
-            toolCallId: call.id,
-            name: call.name,
-            result: MOBILE_SHELL_REFUSAL,
-            isError: true,
-          })
-          continue
-        }
-        if (call.name === 'search_blueprint' && !searchPlan.offered) {
-          // Not on this session's roster, so only a model inventing a name
-          // gets here. The refusal says the tool does not exist rather than
-          // explaining the index list — the person's provider choice is not
-          // the model's business, and a hint would invite it to ask them to
-          // change keys.
-          results.parts.push({
-            type: 'tool_result',
-            toolCallId: call.id,
-            name: call.name,
-            result: NO_SEARCH_REFUSAL,
-            isError: true,
-          })
-          continue
-        }
-        if (isWrite(call) && !allowWrites) {
-          results.parts.push({
-            type: 'tool_result',
-            toolCallId: call.id,
-            name: call.name,
-            result: VIEW_ONLY_REFUSAL,
-            isError: true,
-          })
-          continue
-        }
-        if (isWrite(call) && writesThisSend >= WRITE_BATCH_LIMIT) {
-          results.parts.push({
-            type: 'tool_result',
-            toolCallId: call.id,
-            name: call.name,
-            result: BATCH_LIMIT_REFUSAL,
+            result: admission.refusal,
             isError: true,
           })
           // One status row per round, however many calls bounced — six
           // identical "Paused" rows read as a stutter, not a pause.
-          if (!batchPauseAnnounced) {
+          if (admission.ground === 'batch-limit' && !batchPauseAnnounced) {
             batchPauseAnnounced = true
             push(sessionId, { kind: 'status', text: BATCH_PAUSED_STATUS })
           }
-          continue
-        }
-        if (isRead(call) && readsThisSend.has(callKey(call))) {
-          results.parts.push({
-            type: 'tool_result',
-            toolCallId: call.id,
-            name: call.name,
-            result: repeatReadRefusal(call.name, refusalArgs(call)),
-            isError: true,
-          })
-          // A tool row rather than the status line the batch pause uses,
-          // and one apiece rather than one per round. A status row states a
-          // fact about the turn; these rows are calls the model made, and a
-          // reader scanning the tool rows for what the agent did has to see
-          // them there, in place, with the arguments that repeated —
-          // collapsed or filed elsewhere, the loop stops being visible as a
-          // loop, which is the thing a bad turn is read back for.
-          push(sessionId, {
-            kind: 'tool',
-            name: call.name,
-            summary: REPEAT_READ_SUPPRESSED,
-            isError: true,
-            args: detailText(call.args),
-            result: detailText(repeatReadRefusal(call.name, refusalArgs(call))),
-          })
+          // A tool row rather than the status line the batch pause uses, and
+          // one apiece rather than one per round. A status row states a fact
+          // about the turn; these rows are calls the model made, and a reader
+          // scanning the tool rows for what the agent did has to see them
+          // there, in place, with the arguments that repeated — collapsed or
+          // filed elsewhere, the loop stops being visible as a loop, which is
+          // the thing a bad turn is read back for.
+          if (admission.ground === 'repeat-read')
+            push(sessionId, {
+              kind: 'tool',
+              name: call.name,
+              summary: REPEAT_READ_SUPPRESSED,
+              isError: true,
+              args: detailText(call.args),
+              result: detailText(admission.refusal),
+            })
           continue
         }
         try {

@@ -88,8 +88,11 @@ import { ProviderError, wholeSystem } from '@/lib/agent/providers/provider'
 import { PACKAGE_OFFLINE_BOARD } from '@/data/blueprintFallbacks'
 import type { AgentSettings } from '@/lib/agent/settings'
 import {
+  BATCH_LIMIT_REFUSAL,
+  BATCH_PAUSED_STATUS,
   REPEAT_READ_SUPPRESSED,
   SAMPLE_TRIAL_REFUSAL,
+  WRITE_BATCH_LIMIT,
   noSuchToolRefusal,
   repeatReadRefusal,
 } from '@/lib/agent/tools/refusals'
@@ -649,6 +652,75 @@ describe('a read the turn already ran', () => {
  * The clock is faked throughout: the backoff between tries is real time the
  * suite should not spend waiting.
  */
+/*
+ * The live half of an admission answer, at the loop rather than at the seam.
+ *
+ * `admission.test.ts` pins the answer itself — which gate refuses a call and
+ * in whose words. These two are about what the loop does AROUND two of those
+ * answers, which is the part no seam can hold: a batch pause shows one status
+ * row however many calls bounced, and a stop has to end the turn rather than
+ * dispatch the rest of the round.
+ */
+describe('a write batch the send has already spent', () => {
+  it('lands the limit, bounces the rest, and says "paused" once for the round', async () => {
+    setActiveService({ id: 'svc-1', slug: 'rooftop-retrofit', name: 'Rooftop Retrofit' })
+    const overBudget = 3
+    provider.turns = [
+      {
+        parts: Array.from({ length: WRITE_BATCH_LIMIT + overBudget }, (_unused, index) =>
+          call(`b${index}`, 'create_phase', { name: `Phase ${index}` }),
+        ),
+        stopReason: 'tool_use',
+      },
+      { parts: [{ type: 'text', text: 'Paused after the batch.' }], stopReason: 'end' },
+    ]
+
+    const events = await send({ client, text: 'Add a dozen phases' })
+
+    // Exactly the limit landed; the writes past it changed nothing.
+    expect(phasesCreated).toHaveLength(WRITE_BATCH_LIMIT)
+    expect(answerTo(`b${WRITE_BATCH_LIMIT - 1}`).isError).toBeUndefined()
+    for (let index = WRITE_BATCH_LIMIT; index < WRITE_BATCH_LIMIT + overBudget; index += 1)
+      expect(answerTo(`b${index}`)).toMatchObject({
+        result: BATCH_LIMIT_REFUSAL,
+        isError: true,
+      })
+    // One row for the pause, not one per bounced call: three identical
+    // "Paused" rows read as a stutter rather than a pause.
+    expect(events.filter((event) => event.kind === 'status')).toEqual([
+      { kind: 'status', text: BATCH_PAUSED_STATUS },
+    ])
+  })
+})
+
+describe('a stop that lands before the round\'s calls dispatch', () => {
+  it('runs none of them and ends the turn', async () => {
+    setActiveService({ id: 'svc-1', slug: 'rooftop-retrofit', name: 'Rooftop Retrofit' })
+    const sessionId = 'loop-stop-mid-batch'
+    provider.turns = [
+      () => {
+        // Pressed while the provider was still answering, so the loop reaches
+        // its calls with the signal already up.
+        stopAgent(sessionId)
+        return {
+          parts: [call('s1', 'create_phase', { name: 'One' }), call('s2', 'create_phase', { name: 'Two' })],
+          stopReason: 'tool_use',
+        }
+      },
+      { parts: [{ type: 'text', text: 'Should never be asked for.' }], stopReason: 'end' },
+    ]
+
+    const events = await send({ client, text: 'Add two phases', sessionId })
+
+    expect(phasesCreated).toEqual([])
+    expect(provider.inputs).toHaveLength(1)
+    expect(events.at(-1)).toEqual({
+      kind: 'status',
+      text: 'Stopped. Whatever already landed is in the change sheet, revertible.',
+    })
+  })
+})
+
 describe('a provider call that drops at the network layer', () => {
   // Every case here either waits out a backoff or must be shown not to
   // start one, so the clock is faked for all of them; `afterEach` restores

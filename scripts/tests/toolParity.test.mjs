@@ -206,31 +206,47 @@ test('harness imports the app tool specs instead of forking them', () => {
     copy: /There is no .{0,40} tool in this session/,
     use: /record\.result = noSuchToolRefusal\(name\)/,
   })
-  // AND ONE THAT IS NOT SHARED, pinned from the other side. The app says
-  // `NO_SEARCH_REFUSAL` only where the tool was never offered; this harness
-  // offers `search_blueprint`, so the app's sentence would be false of its
-  // session. So the entry must not publish it, run.mjs must not spell it, and
-  // the harness must answer that call with a sentence of its own that still
-  // steers to the two reads a case grades the recovery on.
+  // AND THE ONE THAT BECAME SHAREABLE. The app says `NO_SEARCH_REFUSAL` only
+  // where the tool was never offered. The harness used to hand a provider the
+  // whole spec table, `search_blueprint` included with no index behind it, so
+  // the app's sentence was false of its session and it said a true one of its
+  // own — the two readers disagreeing about the OFFER rather than the
+  // wording. The offer is derived now (pinned below), the tool is absent from
+  // that roster too, and the sentence is true on both sides. The harness's
+  // own wording must be gone with it, or a case grades a recovery from a
+  // steer no session gives.
+  sharedRefusal({
+    binding: 'NO_SEARCH_REFUSAL',
+    // The first half of this sentence is `noSuchToolRefusal`'s, already
+    // pinned above; the steer is the half only this one carries, and the half
+    // a case grades.
+    copy: /Use list_blueprint for what exists at a level/,
+    use: /record\.result = NO_SEARCH_REFUSAL/,
+  })
   assert.doesNotMatch(
+    harness,
+    /NO_SEARCH_HERE/,
+    'run.mjs keeps a local ranked-search refusal beside the shared one',
+  )
+  // THE OFFER IS DERIVED, not mirrored. The harness declares the mode its
+  // environment is in and the app's own `sessionRoster` decides membership
+  // and order; the two gates run.mjs used to spell over the spec table are
+  // the fork this replaced, and a filter naming them again is that fork back.
+  assert.match(
     surfaceEntry,
-    /\bNO_SEARCH_REFUSAL\b/,
-    'app-surface.entry.ts publishes NO_SEARCH_REFUSAL again — it is false of a session that offers search_blueprint',
+    /export\s*\{\s*sessionRoster\s*\}\s*from\s*'@\/lib\/agent\/tools\/roster'/,
+    'app-surface.entry.ts no longer re-exports sessionRoster from roster.ts',
+  )
+  destructuredFromSurface('sessionRoster')
+  assert.match(
+    harness,
+    /sessionRoster\(harnessMode\(caseDef\)\)/,
+    'run.mjs no longer derives the offer from the app roster for the case’s mode',
   )
   assert.doesNotMatch(
     harness,
-    /no search_blueprint tool in this session/,
-    'run.mjs says the app’s missing-search sentence, which is untrue of a session that offers the tool',
-  )
-  assert.match(
-    harness,
-    /record\.result = NO_SEARCH_HERE/,
-    'run.mjs no longer answers a ranked-search call with its own true refusal',
-  )
-  assert.match(
-    harness,
-    /const NO_SEARCH_HERE =\s*'[^']*list_blueprint[^']*get_blueprint/,
-    'the harness’s ranked-search refusal no longer steers to list_blueprint and get_blueprint',
+    /TOOL_SPECS\.filter\([^)]*MOBILE_READ_TOOL_NAMES/,
+    'run.mjs filters the spec table by its own mode gates again — the roster fork is back',
   )
   // And no fork crept back: a local spec array would re-declare tool
   // objects (`name: '...'` entries) and a local write set would shadow the
