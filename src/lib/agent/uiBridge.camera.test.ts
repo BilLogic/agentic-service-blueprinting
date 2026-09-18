@@ -12,6 +12,7 @@ import {
   publishCanvasNavigationOutcome,
   waitForCanvasNavigationOutcome,
 } from '@/lib/canvasNavigationOutcome'
+import { describeSelection } from '@/lib/shellContext'
 
 const cleanups: Array<() => void> = []
 
@@ -144,6 +145,17 @@ describe('agent cell panel bridge', () => {
 describe('agent navigation bridge', () => {
   const transform = { pan: { x: 0, y: 0 }, zoom: 1 }
 
+  /*
+    The shell context these cases hand the bridge, rendered by the module the
+    bridge recognises it with. Hand-written, these lines were a fifth spelling
+    of the wire — and one of the cases below is RECOGNITION coverage, so a
+    re-spelled fixture would have been the verifier tested against a format
+    nothing publishes. Deriving them means a change to the sentence reaches
+    this file the way it reaches a shell.
+  */
+  const IDLE_CAMERA = 'Canvas camera: 100%, idle.'
+  const context = (...lines: string[]) => [...lines, IDLE_CAMERA].join('\n')
+
   function installShell(
     lines: () => string,
     completion: 'completed' | 'cancelled' | 'superseded' | null = null,
@@ -167,8 +179,11 @@ describe('agent navigation bridge', () => {
 
   it('waits for the viewport completion outcome instead of trusting idle', async () => {
     vi.useFakeTimers()
-    installShell(
-      () => 'Selected phase: "P" (p1)\nSelected scenario: "S" (s1)\nCanvas camera: 100%, idle.',
+    installShell(() =>
+      context(
+        describeSelection('phase', { id: 'p1', label: 'P' }),
+        describeSelection('scenario', { id: 's1', label: 'S' }),
+      ),
     )
     let settled: string | null = null
     void agentOpenScenario('s1').then((message) => {
@@ -185,7 +200,10 @@ describe('agent navigation bridge', () => {
     'does not claim a %s semantic flight landed',
     async (completion) => {
     vi.useFakeTimers()
-      installShell(() => 'Selected scenario: "S" (s1)\nCanvas camera: 100%, idle.', completion)
+      installShell(
+        () => context(describeSelection('scenario', { id: 's1', label: 'S' })),
+        completion,
+      )
       const settled = agentOpenScenario('s1')
       await vi.advanceTimersByTimeAsync(0)
       await expect(settled).resolves.toContain(completion)
@@ -220,9 +238,8 @@ describe('agent navigation bridge', () => {
       }),
     )
     cleanups.push(
-      registerAgentUiContext(
-        'shell',
-        () => 'Selected scenario: "S" (s1)\nCanvas camera: 100%, idle.',
+      registerAgentUiContext('shell', () =>
+        context(describeSelection('scenario', { id: 's1', label: 'S' })),
       ),
     )
     const settled = agentOpenScenario('s1')
@@ -236,7 +253,13 @@ describe('agent navigation bridge', () => {
   it('does not read the phase line as the scenario selection', async () => {
     vi.useFakeTimers()
     installShell(
-      () => 'Selected phase: "P" (s1)\nSelected scenario: none\nCanvas camera: 100%, idle.',
+      () =>
+        context(
+          // The scenario's id, on the PHASE line: the verifier must not read
+          // one selection's line as the other's.
+          describeSelection('phase', { id: 's1', label: 'P' }),
+          describeSelection('scenario', null),
+        ),
       'completed',
     )
     const pending = agentOpenScenario('s1')
