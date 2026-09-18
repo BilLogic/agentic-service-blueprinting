@@ -67,11 +67,11 @@ describe('makeMobileAgentBridge', () => {
   })
 
   /*
-    The sheet stays open across an agent-driven jump, so the jump has to tell
-    the sheet the camera is moving. With the sheet CLOSED there is no scrim to
-    clear and no composer to hand the caret back to, and arming the watcher
-    anyway would leave a deadline timer and a pair of state writes behind for
-    a surface nobody can see.
+    The sheet stays open across an agent-driven jump, so the jump has to watch
+    the camera to know when to hand the caret back to the composer. With the
+    sheet CLOSED there is no composer to hand it back to, and arming the
+    watcher anyway would leave a deadline timer and a settle callback behind
+    for a surface nobody can see.
   */
   it('watches the camera for an open sheet, before the selection commits', () => {
     const h = harness({ agentOpen: true })
@@ -123,10 +123,11 @@ describe('makeMobileAgentBridge', () => {
 })
 
 /*
-  The sheet stays open across an agent-driven jump and stands its scrim down
-  instead. What the watcher owes: the wash comes back exactly once the canvas
-  says it landed, it comes back even when nothing ever says so, and a second
-  jump mid-flight owns the scrim from then on.
+  The sheet stays open across an agent-driven jump and its scrim never moves,
+  so the watcher has one job left: give the caret back once the canvas has
+  settled. What it owes is that the hand-back happens once, happens even when
+  no verdict ever arrives, and belongs to the LATEST jump — a first flight's
+  late verdict must not steal focus while a second is still moving.
 */
 describe('makeAgentCameraFlightWatcher', () => {
   beforeEach(() => vi.useFakeTimers())
@@ -135,63 +136,57 @@ describe('makeAgentCameraFlightWatcher', () => {
   function harness() {
     const outcomes = new Map<string, (value: unknown) => void>()
     const cancels: string[] = []
-    const setFlying = vi.fn()
     const onSettled = vi.fn()
     const watch = makeAgentCameraFlightWatcher({
       awaitOutcome: (targetId) => ({
         promise: new Promise((resolve) => outcomes.set(targetId, resolve)),
         cancel: () => cancels.push(targetId),
       }),
-      setFlying,
       onSettled,
     })
-    return { watch, outcomes, cancels, setFlying, onSettled }
+    return { watch, outcomes, cancels, onSettled }
   }
 
-  it('clears the scrim for the flight and restores it on the canvas verdict', async () => {
+  it('hands the caret back when the canvas says it landed', async () => {
     const h = harness()
     const flight = h.watch('scen-1')
-    expect(h.setFlying).toHaveBeenLastCalledWith(true)
     expect(h.onSettled).not.toHaveBeenCalled()
 
     h.outcomes.get('scen-1')?.({ kind: 'completed' })
     await flight
-
-    expect(h.setFlying).toHaveBeenLastCalledWith(false)
-    // The caret goes back so the reader keeps typing without a tap.
     expect(h.onSettled).toHaveBeenCalledTimes(1)
+    // The waiter is detached either way, or every jump leaves one attached.
     expect(h.cancels).toEqual(['scen-1'])
   })
 
-  it('restores the scrim on the deadline when no verdict ever arrives', async () => {
+  it('hands the caret back on the deadline when no verdict ever arrives', async () => {
     const h = harness()
-    const flight = h.watch('phase-1')
-    expect(h.setFlying).toHaveBeenLastCalledWith(true)
+    const flight = h.watch('scen-1')
 
     await vi.advanceTimersByTimeAsync(AGENT_CAMERA_FLIGHT_DEADLINE_MS - 1)
-    expect(h.setFlying).not.toHaveBeenCalledWith(false)
+    expect(h.onSettled).not.toHaveBeenCalled()
 
     await vi.advanceTimersByTimeAsync(1)
     await flight
-    expect(h.setFlying).toHaveBeenLastCalledWith(false)
     expect(h.onSettled).toHaveBeenCalledTimes(1)
   })
 
-  it('lets a superseding jump keep the scrim down through the first verdict', async () => {
+  /*
+    A verdict for a flight that has been superseded is a verdict about a
+    camera that is no longer moving where the reader is looking. Taking focus
+    on it would pull the caret mid-move, so the generation guard drops it.
+  */
+  it("ignores a superseded flight's verdict and answers only for the latest", async () => {
     const h = harness()
     const first = h.watch('scen-1')
     const second = h.watch('scen-2')
 
     h.outcomes.get('scen-1')?.({ kind: 'superseded' })
     await first
-    // The canvas is still moving towards the second target: the stale verdict
-    // must not put the wash back over it.
-    expect(h.setFlying).not.toHaveBeenCalledWith(false)
     expect(h.onSettled).not.toHaveBeenCalled()
 
     h.outcomes.get('scen-2')?.({ kind: 'completed' })
     await second
-    expect(h.setFlying).toHaveBeenLastCalledWith(false)
     expect(h.onSettled).toHaveBeenCalledTimes(1)
   })
 })

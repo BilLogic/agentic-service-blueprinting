@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button'
  * title floated on a 16 px gutter one step off everything under it.
  *
  * The sheet does not get out of the way for an agent-driven camera move —
- * it stands ITS SCRIM down and reports the height it occludes, and the shell
+ * it keeps a thin scrim that never moves and reports the height it occludes, and the shell
  * does the rest. Closing was the old answer, and it threw the conversation
  * away mid-run: the session keeps going in the module with no surface left
  * to report it, so a turn that failed had nowhere to say so.
@@ -31,24 +31,14 @@ import { Button } from '@/components/ui/button'
 export function MobileAgentSheet({
   open,
   onOpenChange,
-  backdropCleared = false,
   onOccludedHeightChange,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   /**
-   * Fade the scrim out, drop its blur and stop it hit-testing. The canvas
-   * behind this sheet is moving and the reader is meant to watch it — a
-   * 90%-opaque page colour over `inset-0` does not merely cover the canvas,
-   * it washes it out. Tap-to-dismiss comes back with the scrim; the sheet's
-   * own ✕ never went away.
-   */
-  backdropCleared?: boolean
-  /**
-   * The height this sheet takes off the bottom of the screen, measured
-   * rather than recomputed from the `svh` class below — the two would drift,
-   * and a camera inset that disagrees with the panel's real edge frames the
-   * target just behind it. 0 once the sheet is gone.
+   * The height this sheet covers, measured from its own node and handed up so
+   * the camera can aim above it. Measured rather than read off the `60svh`
+   * class, which would drift the moment either one is retuned.
    */
   onOccludedHeightChange?: (px: number) => void
 }) {
@@ -82,18 +72,24 @@ export function MobileAgentSheet({
         side="bottom"
         showCloseButton={false}
         ref={measureRef}
-        // The scrim's own `transition-opacity duration-150` carries the fade
-        // both ways. `backdrop-blur-none` needs the same `supports-` prefix
-        // the blur was written with, or tailwind-merge keeps both and the
-        // blur outlives the wash. `pointer-events-none` is not optional: a
-        // scrim faded to nothing still hit-tests and still dismisses, so
-        // without it the reader spends the flight looking at a sharp canvas
-        // whose every tap closes the sheet instead of reaching a cell.
-        overlayClassName={
-          backdropCleared
-            ? 'pointer-events-none opacity-0 supports-backdrop-filter:backdrop-blur-none'
-            : undefined
-        }
+        // A THIN scrim that never moves. The sheet's own surface is opaque,
+        // so this wash only ever covers the strip of canvas above it — and at
+        // this weight that strip stays readable, which is the whole point: a
+        // camera move the agent makes is visible AS it happens, with no state
+        // to clear and restore and nothing to fall out of phase.
+        //
+        // The heavier wash it replaces is why the sheet used to close on a
+        // jump: at 90% over a blur the canvas behind was unreadable, so the
+        // only way to show the move was to take the conversation away.
+        //
+        // The strip is WATCHABLE, not touchable. The wash keeps the overlay's
+        // hit target, so a tap on the visible canvas dismisses the sheet — the
+        // standard way out of a bottom sheet, and the reason no pass-through
+        // is set here. Panning the canvas with the sheet up means closing it
+        // first, which is deliberate: a gesture that both moved the camera and
+        // left the sheet open would need the overlay to distinguish a tap from
+        // a drag, and the sheet has no business arbitrating canvas gestures.
+        overlayClassName="bg-background/40 supports-backdrop-filter:backdrop-blur-none"
         // min-h + max-h pin the size in BOTH directions: the sheet variant's
         // own data-[side=bottom] h-auto survives tailwind-merge (different
         // variant prefix), so a bare h-[60svh] loses to it — content-hungry

@@ -8,7 +8,10 @@ import {
   registerAgentUiContext,
 } from '@/lib/agent/uiBridge'
 import { registerActiveFocusCells } from '@/lib/canvasFocusCells'
-import { publishCanvasNavigationOutcome } from '@/lib/canvasNavigationOutcome'
+import {
+  publishCanvasNavigationOutcome,
+  waitForCanvasNavigationOutcome,
+} from '@/lib/canvasNavigationOutcome'
 
 const cleanups: Array<() => void> = []
 
@@ -188,6 +191,47 @@ describe('agent navigation bridge', () => {
       await expect(settled).resolves.toContain(completion)
     },
   )
+
+  /*
+    The phone listens on the SAME semantic key as this tool: its sheet keeps a
+    watcher of its own so the backdrop can stand down for the flight, and that
+    watcher lets go of its listener the moment a verdict arrives. Letting go
+    settles the watcher's OWN waiter as cancelled — right for it, and never an
+    answer for anybody else — so a landing has to survive a second listener
+    detaching from the same key. The agent read it as failure either way while
+    the fault was upstream, and this pins the shared channel so a future
+    change to it cannot quietly bring the false report back.
+  */
+  it('reports a landing even while a second listener lets go of the same key', async () => {
+    vi.useFakeTimers()
+    let sheetWatcher: { cancel: () => void } | null = null
+    cleanups.push(
+      registerAgentUiBridge({
+        selectPhase: () => {},
+        selectScenario: (id) => {
+          // What the phone's shell does, in the order it does it: listen
+          // before the selection commits, release on the verdict.
+          const watcher = waitForCanvasNavigationOutcome(id)
+          sheetWatcher = watcher
+          void watcher.promise.then(() => watcher.cancel())
+        },
+        openAgentSurface: () => {},
+        setSidebarCollapsed: () => {},
+      }),
+    )
+    cleanups.push(
+      registerAgentUiContext(
+        'shell',
+        () => 'Selected scenario: "S" (s1)\nCanvas camera: 100%, idle.',
+      ),
+    )
+    const settled = agentOpenScenario('s1')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(sheetWatcher).not.toBeNull()
+    publishCanvasNavigationOutcome('s1', { kind: 'completed', transform })
+    await vi.advanceTimersByTimeAsync(0)
+    await expect(settled).resolves.toContain('settled its canvas camera')
+  })
 
   it('does not read the phase line as the scenario selection', async () => {
     vi.useFakeTimers()

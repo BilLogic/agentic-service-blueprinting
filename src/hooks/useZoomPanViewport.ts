@@ -653,6 +653,34 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
     cancelFitAnimation()
   }, [cancelFitAnimation, resolveSemanticOutcome])
 
+  /**
+   * Let go of the flight without answering for it.
+   *
+   * An unmount is not a verdict. This viewport can vanish mid-flight while
+   * the destination the reader asked for is unchanged: the path filter for a
+   * freshly opened scenario resolves a beat after the selection, so the board
+   * is briefly replaced by its no-paths state and the canvas remounts and
+   * refits the SAME semantic target. Publishing `cancelled` from the cleanup
+   * answered every waiter against the key the next mount was about to LAND —
+   * an agent was told its navigation failed while the camera flew exactly
+   * where it asked, and the phone's sheet put its wash back over a canvas
+   * still in the air after about a sixth of a second.
+   *
+   * Dropping the key without publishing leaves those waiters listening, so
+   * the remount's own outcome reaches them. A canvas that is gone for good
+   * publishes nothing and each waiter's own deadline says so — an honest
+   * "not verified", rather than a cancellation this viewport is in no
+   * position to claim once it no longer owns the camera.
+   */
+  const relinquishCameraNavigation = useCallback(() => {
+    pendingSemanticOutcomeKeyRef.current = null
+    semanticOutcomeGenerationRef.current += 1
+    navigationGenerationRef.current += 1
+    pendingFitRef.current = false
+    fitSettlingRef.current = false
+    cancelFitAnimation()
+  }, [cancelFitAnimation])
+
   const supersedeCameraNavigation = useCallback(() => {
     resolveSemanticOutcome({
       kind: 'superseded',
@@ -1571,8 +1599,8 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
   )
 
   useEffect(() => {
-    return () => cancelCameraNavigation()
-  }, [cancelCameraNavigation])
+    return () => relinquishCameraNavigation()
+  }, [relinquishCameraNavigation])
 
   useEffect(() => {
     const content = contentRef.current

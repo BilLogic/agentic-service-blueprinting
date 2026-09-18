@@ -995,6 +995,53 @@ describe('viewport camera flights', () => {
     await expect(first.promise).resolves.toMatchObject({ kind: 'superseded' })
   })
 
+  /*
+    The one ordering this ticket exists for. A viewport can leave the tree
+    mid-flight while the destination the reader asked for has not changed —
+    the freshly opened scenario's path filter arrives a beat after the
+    selection, the board falls to its no-paths state, and the canvas remounts
+    and refits the SAME target. The dying mount used to answer every waiter
+    with `cancelled`, so the agent was told its navigation failed and the
+    phone's sheet washed back over a canvas still in the air; the landing that
+    followed reached nobody. An unmount is not a verdict: it lets go, and the
+    mount that takes the camera over is what answers.
+  */
+  it('hands a flight to the next mount instead of cancelling it on unmount', async () => {
+    const target = { left: 0, top: 0, width: 1000, height: 600 }
+    const view = render(
+      <Harness resetKey="initial" target={target} cameraOutcomeKey="scen-1" />,
+    )
+    act(() => {
+      flushFrame(0)
+      flushFrame(16)
+    })
+
+    const waiting = waitForCanvasNavigationOutcome('scen-1')
+    let outcome: unknown
+    void waiting.promise.then((result) => {
+      outcome = result
+    })
+    view.rerender(
+      <Harness resetKey="flight" target={target} cameraOutcomeKey="scen-1" />,
+    )
+    act(() => view.unmount())
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(outcome).toBeUndefined()
+
+    render(
+      <Harness resetKey="remount" target={target} cameraOutcomeKey="scen-1" />,
+    )
+    await act(async () => {
+      flushFrame(32)
+      flushFrame(48)
+      await Promise.resolve()
+    })
+
+    await expect(waiting.promise).resolves.toMatchObject({ kind: 'completed' })
+  })
+
   it('reports cancellation to a caller waiting on a camera fit', async () => {
     const target = { left: 0, top: 0, width: 1000, height: 600 }
     render(<Harness resetKey="initial" target={target} />)

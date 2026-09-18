@@ -29,19 +29,19 @@ export function makeMobileAgentBridge({
    */
   isAgentOpen?: () => boolean
   /**
-   * Watch the camera for this target so the open sheet can stand its scrim
-   * down for the flight. Called BEFORE the selection commits, because the
-   * outcome is published by the fit the selection triggers and a watcher
-   * attached afterwards can miss it.
+   * Watch the camera for this target so the open sheet can hand the caret
+   * back once the move has landed. Called BEFORE the selection commits,
+   * because the outcome is published by the fit the selection triggers and a
+   * watcher attached afterwards can miss it.
    */
   watchCameraFlight?: (targetId: string) => void
 }): AgentUiBridge {
   /*
-    A jump with the sheet CLOSED has no scrim to clear and no composer to hand
-    the caret back to. Arming a watcher for it would leave a 2s timer and a
-    `setFlying` pair firing at a sheet nobody can see; the gate lives here, in
-    the module that is the agent's hands, so the path is pinned by a unit test
-    rather than by a shell nothing renders in a test.
+    A jump with the sheet CLOSED has no composer to hand the caret back to.
+    Arming a watcher for it would leave a 2s timer running for a sheet nobody
+    can see; the gate lives here, in the module that is the agent's hands, so
+    the path is pinned by a unit test rather than by a shell nothing renders
+    in a test.
   */
   const jump = (targetId: string, select: (id: string) => void) => {
     if (isAgentOpen()) watchCameraFlight(targetId)
@@ -57,15 +57,16 @@ export function makeMobileAgentBridge({
 }
 
 /**
- * How long the sheet will hold its scrim down waiting for a verdict.
+ * How long the watcher waits for a verdict before handing the caret back
+ * anyway.
  *
- * The wash MUST come back. A camera that never publishes an outcome is an
- * ordinary state, not a bug — a phase whose scenario never rendered, a
- * background tab whose `requestAnimationFrame` is suspended mid-flight — and
- * a backdrop with no deadline would stay cleared for the rest of the session,
- * leaving the conversation floating over a live canvas it no longer owns.
- * Set past the agent tool's own 1800 ms wait so the sheet is still standing
- * aside when the agent reports what happened.
+ * A camera that never publishes an outcome is an ordinary state, not a bug —
+ * a phase whose scenario never rendered, a background tab whose
+ * `requestAnimationFrame` is suspended mid-flight. Without a deadline the
+ * watcher's promise stays pending and the reader never gets the caret back,
+ * so they are left typing into nothing after a jump they asked for in words.
+ * Set past the agent tool's own 1800 ms wait so the hand-back does not race
+ * the sentence the agent is about to write.
  */
 export const AGENT_CAMERA_FLIGHT_DEADLINE_MS = 2000
 
@@ -75,8 +76,6 @@ export type AgentCameraFlightWatch = {
     promise: Promise<unknown>
     cancel: () => void
   }
-  /** True while the camera is moving — the sheet's scrim reads it. */
-  setFlying: (flying: boolean) => void
   /** Once, when the move has settled or the deadline says to stop waiting. */
   onSettled: () => void
   deadlineMs?: number
@@ -94,12 +93,11 @@ export type AgentCameraFlightWatch = {
  * reader is actually watching.
  *
  * Stateful because jumps supersede: a second target arriving mid-flight owns
- * the scrim from then on, and the first flight's late verdict must not put
- * the wash back over a canvas that is still moving.
+ * the caret from then on, and the first flight's late verdict must not pull
+ * focus back to the composer while the canvas is still moving.
  */
 export function makeAgentCameraFlightWatcher({
   awaitOutcome,
-  setFlying,
   onSettled,
   deadlineMs = AGENT_CAMERA_FLIGHT_DEADLINE_MS,
 }: AgentCameraFlightWatch) {
@@ -109,7 +107,6 @@ export function makeAgentCameraFlightWatcher({
     // Listen BEFORE the selection commits: the outcome is published from the
     // fit the selection triggers, and a waiter attached afterwards can miss it.
     const outcome = awaitOutcome(targetId)
-    setFlying(true)
     // The loser of the race is cleaned up either way: a verdict that arrives
     // first leaves a live 2s timer behind, and every superseded jump leaves
     // another, so a reader jumping around the board accumulates them.
@@ -123,7 +120,6 @@ export function makeAgentCameraFlightWatcher({
       clearTimeout(deadline)
       outcome.cancel()
       if (token !== generation) return
-      setFlying(false)
       onSettled()
     })
   }
