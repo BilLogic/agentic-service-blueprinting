@@ -30,11 +30,16 @@ type Client = SupabaseClient<Database>
  * raw client handed out over there — is how a second, contradictory answer
  * gets written.
  *
- * This is a module store because code with no hooks available to it must read
- * the same fact a component subscribes to: the loop and the persistence
- * writer are plain functions that park work, while the chat view renders
- * skeleton or empty state off whether that work is outstanding. A value both
- * a component and a bare function must agree on has nowhere else to live.
+ * This is a module store because the answer has to survive a mount point
+ * changing. The chat has two postures — docked in the sidebar, floating over
+ * the canvas — rendered from two places, and a drag unmounts one panel and
+ * mounts the other mid-gesture. Held in component state, which handle had
+ * been claimed and which had settled would die in that gap: the conversation
+ * would re-ask a read it has already spent and render its skeleton again on
+ * the far side of the drag. Bare functions with no hooks available do park
+ * work here — the loop, the persistence writer — but the outstanding answer
+ * itself is only ever read through the hook below, so that is not the
+ * condition this store is here for.
  *
  * A deployment with no database never attaches anything, and that is a
  * supported posture rather than a failure: the work simply never runs, the
@@ -69,6 +74,15 @@ let attached: Client | null = null
  * The parked work, insertion-ordered because a `Map` is and because order is
  * the part a caller can observe: two sessions parked in sequence hydrate in
  * that sequence, not in whatever order a `Set` of promises happens to settle.
+ *
+ * UNBOUNDED ON PURPOSE. This map only grows in the one posture where nothing
+ * ever attaches, and there it holds one closure over a session id per surface
+ * opened in the life of the tab — a handful, and nothing that retains a row,
+ * a component or a listener. A cap here would have to evict something, and
+ * every entry is an ask a mounted surface is waiting on: dropping one leaves
+ * that surface outstanding forever, which is a skeleton bubbling in an open
+ * conversation. A bounded map that eats a live read is worse than an
+ * unbounded map of closures.
  */
 const parked = new Map<string, () => void | Promise<void>>()
 
@@ -103,16 +117,6 @@ function notifyPending(handle: string) {
 function eraOf(handle: string): number {
   return eras.get(handle) ?? 0
 }
-
-/**
- * How many parked pieces of work a tab may hold before the oldest is dropped.
- *
- * With no database nothing ever attaches, so nothing ever drains this map,
- * and every conversation opened in a long-lived tab would leave its closure
- * here for the life of the page. A dropped handle is not a lost read: it was
- * never claimed, so the next ask — which a reopen makes — parks it again.
- */
-const PARK_LIMIT = 32
 
 /**
  * Attach (or detach) the client the persisted agent reads and writes ride.
@@ -164,10 +168,6 @@ export function whenAgentPersistenceReady(
   const handle = handleOf(work)
   if (claimed.has(handle) || parked.has(handle)) return
   if (!attached) {
-    if (parked.size >= PARK_LIMIT) {
-      const oldest = parked.keys().next().value
-      if (oldest !== undefined) parked.delete(oldest)
-    }
     parked.set(handle, read)
     notifyPending(handle)
     return
@@ -209,11 +209,14 @@ export function useAgentPersistenceWorkPending(
 /**
  * Forget this work entirely, parked work included, so the next ask runs again.
  *
- * Two callers need it. A client change is a different database's answer, and
- * the merge that ran against the old one is not the answer for the new one.
- * And it is the seam that lets a test prove a read rather than a memory: drop
- * what the tab already knows, and the next open is where another browser
- * starts from.
+ * Two callers need it. A client change is a different database's answer, so
+ * the ask has to be re-armed: the next client gets its own read, and a flight
+ * still on the wire from the previous one cannot settle it. Re-arming is all
+ * this does — the abandoned flight is not cancelled and its own writes still
+ * land, which is why a caller that switches clients mid-read has a problem
+ * this seam does not solve. And it is the seam that lets a test prove a read
+ * rather than a memory: drop what the tab already knows, and the next open is
+ * where another browser starts from.
  */
 export function forgetAgentPersistenceWork(work: AgentPersistenceWork): void {
   const handle = handleOf(work)

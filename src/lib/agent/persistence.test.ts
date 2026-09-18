@@ -15,7 +15,7 @@
  * answering "nothing persisted" to a question it could not ask.
  */
 import { beforeEach, expect, it } from 'vitest'
-import { renderHook } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import {
   deletePersistedSession,
   loadPersistedEvents,
@@ -65,9 +65,17 @@ it('leaves the localStorage list intact through a merge with nothing to merge', 
   // emptied or reordered by that.
   attachAgentPersistence({} as Parameters<typeof attachAgentPersistence>[0])
 
+  // Wait for the merge itself, not for a guessed number of microtask ticks.
+  // The chain is four deep — the readiness helper's own promise, the query,
+  // the outcome, the merge — and a tick count that is one short asserts
+  // against a list nothing has touched yet, which passes whatever the merge
+  // would have done. The outstanding answer flips exactly when the parked
+  // work settles, so subscribing to it is waiting for the real thing.
+  const { result } = renderHook(() =>
+    useAgentPersistenceWorkPending(AGENT_SESSION_LIST_WORK),
+  )
   hydrateAgentSessions()
-  await Promise.resolve()
-  await Promise.resolve()
+  await waitFor(() => expect(result.current).toBe(false))
 
   expect(agentSessionsSnapshot().map((session) => session.title)).toEqual([
     'Renamed locally',

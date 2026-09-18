@@ -128,11 +128,14 @@ describe('work parked before persistence attaches', () => {
     expect(ran).toEqual(['transcript', 'session-list'])
   })
 
-  it('drops the oldest parked work rather than growing without bound', () => {
-    // With no database nothing ever attaches and nothing ever drains the
-    // parked map, so a long-lived tab would keep a closure per conversation
-    // it ever opened. Dropping one is not losing a read: it was never
-    // claimed, so the reopen that asks again parks it again.
+  it('runs every parked ask when the client lands, however many parked', () => {
+    // There used to be a cap here, evicting the oldest parked entry. The
+    // oldest is the wrong one to drop: child effects park before their
+    // panel's, so it is the open conversation's transcript, and dropping it
+    // leaves that surface outstanding for the life of the page — a skeleton
+    // bubbling in a chat nobody is going to re-ask for. The map is unbounded
+    // instead; what it holds is one closure per surface opened in a tab with
+    // no database behind it.
     const ran: string[] = []
     const ids = Array.from({ length: 40 }, (_, index) => `s${index}`)
     ids.forEach((id) =>
@@ -143,12 +146,7 @@ describe('work parked before persistence attaches', () => {
 
     attachAgentPersistence(CLIENT)
 
-    expect(ran).toEqual(ids.slice(-32))
-    // And the one that was dropped is still askable.
-    whenAgentPersistenceReady(work('s0'), () => {
-      ran.push('s0 again')
-    })
-    expect(ran.at(-1)).toBe('s0 again')
+    expect(ran).toEqual(ids)
     ids.forEach((id) => forgetAgentPersistenceWork(work(id)))
   })
 })
