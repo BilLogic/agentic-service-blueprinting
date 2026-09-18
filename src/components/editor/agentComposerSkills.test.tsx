@@ -21,6 +21,21 @@
  * wiring — that the panel hands that module the tokens it read out of the
  * draft, so a resolved token is coloured on the surface a reader is typing on.
  *
+ * WHERE THE COMPLETION LEAVES THE CARET IS NOT ASSERTED HERE, and no jsdom
+ * assertion can be. A case that claimed to guard it stood in this file and
+ * could not fail: assigning a textarea's `value` moves `selectionStart` to
+ * the end of the new text on its own, with no React in the loop, and
+ * `findSkillLookup` is tail-anchored — its span ends at `draft.length` on
+ * both branches — so the offset the completion should produce and the offset
+ * the value setter produces by itself are the same offset for every input
+ * there is. Focusing the field and setting its caret first does not reach
+ * react-dom's selection restoration either; that runs only when the focused
+ * element changed between commits, which it does not here. The behaviour is
+ * covered by a browser check made by hand: typing `/sb:map notes then /sb:au`
+ * and pressing Tab gives `/sb:map notes then /sb:audit ` with the caret at
+ * offset 29, focus kept and the menu closed. Re-run that by hand when the
+ * completion path changes; a green jsdom assertion here would be a lie.
+ *
  * The panel is the real `AgentPanel` over the real sessions store. What is
  * faked is the Supabase provider (a signed-in author, no trial), the viewport
  * probe, and the provider adapter — the same seams the agent-session slice
@@ -145,20 +160,6 @@ describe('the composer opens a skill lookup wherever a slash opens a word', () =
     // the prose into a badge above the field, which put the reader's word at
     // the front of their own message.
     expect((composer as HTMLTextAreaElement).value).toBe('Hey can u /sb:audit ')
-  })
-
-  it('leaves the caret at the end of the completed draft', () => {
-    // No caret write goes with the completion, and this is the property that
-    // makes that safe: a lookup's span reaches the end of the draft, so the
-    // end is where the reader was already typing. The field is focused and
-    // its caret set BEFORE the pick on purpose — that is the path React's own
-    // selection restoration runs on, and a restore to the pre-completion
-    // offset would leave the caret inside the word it just finished.
-    const composer = openComposer() as HTMLTextAreaElement
-    composer.focus()
-    composer.setSelectionRange(17, 17)
-    pick(composer, 'Hey can u /sb:aud', '/sb:audit')
-    expect(composer.selectionStart).toBe(composer.value.length)
   })
 
   it('finds a skill by the segment after its namespace', () => {
