@@ -36,8 +36,9 @@ test('the list is eighteen references, four skill bodies, the render walk and th
   assert.equal(skills.length, 4)
   // The runner a deployment names on the command line, the config it stages
   // and hands to Playwright, and the specs that travel beside it — the view
-  // walk, the annotation-drag case, and the phone cover walk.
-  assert.equal(renderWalk.length, 5)
+  // walk, the annotation-drag case, the phone cover walk, and the phone
+  // agent-jump case.
+  assert.equal(renderWalk.length, 6)
   assert.equal(composition.length, 10)
   assert.equal(
     CONSUMER_IMPORTS.length - skills.length - renderWalk.length - composition.length,

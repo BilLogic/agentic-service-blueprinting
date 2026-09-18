@@ -1,5 +1,5 @@
 ---
-summary: The browser render walk — Chromium over the built distribution in no-database mode, every phase, every scenario, every path and every layout the scenario offers, plus the annotation-drag case that draws, drags and captures a mark with real mouse moves, failing on a console error and filing one screenshot per view; what it borrows from the app's markup, how this repository runs it, and how a deployment enrols by running the runner that ships beside them out of its own node_modules.
+summary: The browser render walk — Chromium over the built distribution in no-database mode, every phase, every scenario, every path and every layout the scenario offers, plus the annotation-drag case that draws, drags and captures a mark with real mouse moves and the phone agent-jump case that moves the camera from the ✦ sheet with the provider answered from the spec, failing on a console error and filing one screenshot per view; what it borrows from the app's markup, how this repository runs it, and how a deployment enrols by running the runner that ships beside them out of its own node_modules.
 ---
 
 # The browser render walk
@@ -42,13 +42,47 @@ per phase**, screenshotting each under `render-walk-output/views/mobile/`. It
 fails on a console error the same way the desktop walk does, so a blank phone
 canvas is a red check rather than a screenshot nobody looks at.
 
-The desktop project ignores that spec; the mobile project runs only that spec.
-`npm run check:render-walk` runs both.
+The desktop project ignores the phone specs; the mobile project runs only
+those. `npm run check:render-walk` runs both projects.
+
+## The phone agent-jump case
+
+`mobile-agent-jump.spec.ts` runs in the phone project, at the same 375×812.
+
+It is the browser half of `npm run slice:phone-agent-jump`. That slice runs
+the whole flow in jsdom in well under a second, with the clock turned by hand
+and a dozen lines standing in for the viewport, so three of its claims are not
+its to make: that the fit lands inside the navigation tool's 1800 ms deadline
+on a real device, that the strip of canvas the sheet leaves is legible through
+its wash, and that the destination is visibly inside that strip. This case is
+those three.
+
+The agent is driven without a model. The provider endpoint is intercepted and
+answered with one canned round — a `tool_use` for `open_scenario` naming a
+scenario read off this board's own drawer, then one text turn — and
+everything after the response body is the shipped code: the loop, the tool
+registry, the navigation tool, the phone's bridge, the shell and the real
+viewport. The key is a string this spec seeds into `localStorage` and reaches
+no network, because no request leaves the page. That seed is the one thing in
+this directory that has to know an installation's storage prefix, which is
+`sb-` here and `RENDER_WALK_STORAGE_PREFIX` for a deployment that renamed its
+namespace.
+
+What it asserts: the sheet is still up with the conversation in it after the
+jump; the tool's own answer in the transcript is the settled sentence rather
+than its timeout one, which IS the deadline measured on a real clock; the
+destination artboard reaches into the strip above the sheet and cells of it
+with words in them are wholly inside it; and the wash over that strip carries
+no blur and is a minority of the colour. It screenshots the landed jump to
+`render-walk-output/views/mobile/agent-jump.png`, which is the half a person
+reads.
+
+The console-error rule below covers this case too, self-test included.
 
 ## The annotation-drag case
 
 `annotation-drag.spec.ts` runs beside the walk under the same config, so
-`npm run check:render-walk` is two cases rather than one.
+`npm run check:render-walk` is four cases rather than one.
 
 It is the browser half of `npm run slice:annotation-drag`. That slice runs the
 whole annotation-drag flow in jsdom in a few hundred milliseconds, and stubs
@@ -268,6 +302,9 @@ from here. It is listed so a rename knows what it breaks:
 | `[data-canvas-annotation-layer]` and `[data-annotation-id]` inside it | the annotation scratch layer and one mark on it — read by the annotation-drag case |
 | `aria-label="Rectangle"`, `aria-label="Rectangle — Shapes tools"` | the annotation toolbar's Shapes slot: the face, and the face once the family holds the tool |
 | `aria-label="Save or send these marks"`, and the `Save N marks` menu item | the capture menu's trigger and its download item |
+| `[data-slot="sheet-content"]` and `[data-slot="sheet-overlay"]` | the bottom sheet's panel and its scrim — read by the phone agent-jump case for the strip it leaves |
+| `aria-label="Ask the agent"`, `New session`, `textarea[data-agent-composer]`, `aria-label="Send"` | the phone's ✦ affordance and the agent panel's session, composer and send controls |
+| the `Messages` region, and a tool row's own name inside it | the transcript, and the expandable row a tool call is disclosed from |
 | the `Jump to…` dialog, opened by ⌘K | the top nav's Jump to… palette; the walk presses Enter on its first row |
 
 Renaming one of these does not fail a type check or a lint rule; it fails this

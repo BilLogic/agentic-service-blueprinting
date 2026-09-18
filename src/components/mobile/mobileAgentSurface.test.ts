@@ -2,17 +2,26 @@ import { describe, expect, it } from 'vitest'
 import { sourceOf } from '@/lib/sourceTree'
 
 /**
- * A CLAIM OF THE PHONE'S AGENT SURFACE THAT ONLY THE SOURCE CAN HOLD.
+ * THE ONE CLAIM OF THE PHONE'S AGENT SURFACE THAT ONLY THE SOURCE CAN HOLD.
  *
- * The scrim is a class string on a portal that only a real layout resolves,
- * so no unit can reach it, and it failed silently for a whole release. A
- * source guard is the honest instrument here, and it catches the exact
- * regression that happened: the wash made conditional again.
+ * The scrim is a class string on a portal, and its constancy is a fact about
+ * what a compositor does with it — nothing that runs under jsdom resolves
+ * either, and the regression it guards (the wash made conditional again, so
+ * it flashed on every agent jump with its opacity and its hit target on
+ * different clocks) is invisible to any assertion about rendered state. A
+ * source guard is the honest instrument here, and it failed silently for a
+ * whole release before there was one.
  *
- * The phase line the shell reports used to be guarded here too, by reading
- * this file for its interpolation. Its wording belongs to
- * `describeSelection` now, so both the wording and the guard that this shell
- * still calls it sit beside that renderer, in `lib/shellContext.test.ts`.
+ * The phase line this file used to guard beside it has moved twice, and both
+ * moves stand. Its WORDING belongs to `describeSelection`, so the guard that
+ * a shell still calls it sits beside that renderer in
+ * `lib/shellContext.test.ts` — which is what still covers the DESKTOP shell,
+ * since nothing drives that one end to end. The PHONE's half is now driven:
+ * `src/slices/phoneAgentJump.slice.test.tsx` jumps the real shell to a phase,
+ * asserts the reported line in the words the navigation tool matches, and its
+ * second red strips the line and requires the tool to answer that the
+ * selection was not verified. Reading this file for an interpolation held
+ * less than either and is gone.
  */
 const SHEET = sourceOf('components/mobile/MobileAgentSheet.tsx')
 
