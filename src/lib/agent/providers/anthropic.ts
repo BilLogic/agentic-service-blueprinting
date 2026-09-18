@@ -18,6 +18,13 @@ type AnthropicBlock =
 
 type AnthropicMessage = { role: 'user' | 'assistant'; content: AnthropicBlock[] }
 
+/** A system text block; the cached one carries the breakpoint. */
+type AnthropicSystemBlock = {
+  type: 'text'
+  text: string
+  cache_control?: { type: 'ephemeral' }
+}
+
 function toMessages(messages: AgentMessage[]): AnthropicMessage[] {
   return messages.map((message): AnthropicMessage => {
     switch (message.role) {
@@ -50,6 +57,26 @@ function toMessages(messages: AgentMessage[]): AnthropicMessage[] {
   })
 }
 
+/**
+ * The system field, as the two parts of the prompt make it: one text block
+ * each, the cache breakpoint on the stable one, and any empty part left out.
+ * The rule that an empty block is a 400 is stated here once, for both parts
+ * and for the case where neither has anything to say.
+ */
+function systemField(input: ChatInput): { system?: AnthropicSystemBlock[] } {
+  const blocks = (
+    [
+      {
+        type: 'text',
+        text: input.systemStable,
+        cache_control: { type: 'ephemeral' },
+      },
+      { type: 'text', text: input.systemVolatile },
+    ] satisfies AnthropicSystemBlock[]
+  ).filter((block) => block.text)
+  return blocks.length > 0 ? { system: blocks } : {}
+}
+
 export const anthropicAdapter: AgentProviderAdapter = {
   id: 'anthropic',
   async chat(input: ChatInput): Promise<ChatResult> {
@@ -74,20 +101,15 @@ export const anthropicAdapter: AgentProviderAdapter = {
         // BETWEEN the two parts and this adapter cuts nothing: an index
         // into a single string could land mid-skill, and a cache entry cut
         // mid-skill matches nothing on the next round.
-        // An empty stable part would be an empty text block, which the
-        // provider rejects, so a prompt with nothing stable crosses whole.
-        system: input.systemStable
-          ? [
-              {
-                type: 'text',
-                text: input.systemStable,
-                cache_control: { type: 'ephemeral' },
-              },
-              ...(input.systemVolatile
-                ? [{ type: 'text', text: input.systemVolatile }]
-                : []),
-            ]
-          : input.systemVolatile,
+        //
+        // An empty part is dropped rather than sent, because an empty text
+        // block is a 400. That guards the TYPE, not any session this seam
+        // has: `buildStableSystem` unconditionally emits the role and the
+        // canvas-adapter header, so no real send arrives with an empty
+        // stable part — but `string` admits '' and a 400 is a bad way to
+        // find that out. Both parts empty leaves no blocks, and the field
+        // goes unsent rather than as an empty array.
+        ...systemField(input),
         messages: toMessages(input.messages),
         ...(input.tools.length > 0
           ? {

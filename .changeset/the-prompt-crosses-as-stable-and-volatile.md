@@ -25,5 +25,12 @@ What the arithmetic was protecting is now structural: a message carrying
 several skill bodies has all of them inside the stable part, so the breakpoint
 lands past every one rather than inside the second. An index could have landed
 mid-skill, and a cache entry cut mid-skill matches nothing on the next round —
-a failure that costs tokens on every round and never turns a test red. It is
-pinned by a test at the adapter and another at the loop.
+a failure that costs tokens on every round and never turns a test red. The
+adapter can no longer cut, so that invariant belongs to the ASSEMBLY, and one
+test at the loop pins it there: every skill body inside the stable part, the
+live context once, last, exactly one blank line past the final body, and the
+cut on that boundary.
+
+`buildSystem` is now `buildStableSystem` — it builds the prompt's stable part,
+not the prompt — and the volatile part has a name of its own, `buildVolatile`,
+rather than being spelled out at each of the two call sites.

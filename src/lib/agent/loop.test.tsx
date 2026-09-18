@@ -96,6 +96,10 @@ import {
 import { configureAgentTools } from '@/lib/agent/tools/roster'
 import { NO_UI_STATE } from '@/lib/agent/tools/definitions/ui'
 
+/** The live UI note, and the block the prompt carries it in. */
+const CONTEXT_NOTE = 'Phase 2 is open; the Await lane is selected.'
+const CONTEXT_BLOCK = '\n\n--- current context ---\n'
+
 const SETTINGS: AgentSettings = { provider: 'anthropic', models: {}, keys: { anthropic: 'test-key' } }
 
 /** Nothing here reads the database; the write is captured before it would. */
@@ -117,6 +121,8 @@ const send = (
   > & {
     /** Pass one to send TWICE on the same session — the only case that needs it. */
     sessionId?: string
+    /** The live UI note; empty unless a case is about where it lands. */
+    contextNote?: string
   },
 ) => {
   const sessionId = input.sessionId ?? `loop-test-${(sessions += 1)}`
@@ -125,7 +131,7 @@ const send = (
     sessionId,
     offlineBoard: PACKAGE_OFFLINE_BOARD,
     settings: SETTINGS,
-    contextNote: '',
+    contextNote: input.contextNote ?? '',
   }).then(
     () => renderHook(() => useAgentRun(sessionId)).result.current.events,
   )
@@ -331,6 +337,52 @@ describe('the loop, provider → tool → result → provider', () => {
     expect(system).toBe(sent.systemStable + sent.systemVolatile)
     // The turn reads back with both, not just the first.
     expect(events[0]).toMatchObject({ kind: 'user', skills: ['sb:map', 'sb:audit'] })
+  })
+
+  it('assembles what the single builder used to: every skill body, then the live context, once, one blank line past the last of them', async () => {
+    // The claim the whole seam rests on is that splitting the prompt in two
+    // did not CHANGE the prompt. The old single builder emitted the context
+    // block last — after every skill body, one blank line past it — so that
+    // is what the two parts joined have to spell, byte for byte. A
+    // separator lost or doubled, a context block said twice, or one that
+    // drifts ahead of a skill body is a different prompt to the model and a
+    // cache entry that matches nothing on the next round.
+    provider.turns = [{ parts: [{ type: 'text', text: 'On it.' }], stopReason: 'end' }]
+    const map = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:map')!
+    const audit = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:audit')!
+    await send({
+      client,
+      text: 'build this from my notes, then check it',
+      skills: [map, audit],
+      contextNote: CONTEXT_NOTE,
+    })
+    const sent = provider.inputs[0]!
+    const system = wholeSystem(sent)
+
+    // Said once. Twice would be two contexts for the model to reconcile.
+    expect(system.split(CONTEXT_BLOCK)).toHaveLength(2)
+    const seam = system.indexOf(CONTEXT_BLOCK)
+
+    // Past the last BYTE of the last skill body, not merely past its header.
+    const lastSkillByte = system.lastIndexOf(audit.content!.trimEnd().slice(-60))
+    expect(lastSkillByte).toBeGreaterThan(-1)
+    expect(seam).toBeGreaterThan(lastSkillByte)
+    expect(seam).toBeGreaterThan(system.lastIndexOf('--- active skill:'))
+
+    // Exactly one blank line at the join. The block brings its own '\n\n'
+    // and the part before it ends on a non-newline, so a separator added on
+    // either side of the seam shows up here as a third newline.
+    expect(system.slice(seam, seam + 4)).toBe('\n\n--')
+    expect(system[seam - 1]).not.toBe('\n')
+
+    // The context is the prompt's LAST word — nothing stable trails it.
+    expect(system.endsWith(CONTEXT_NOTE)).toBe(true)
+
+    // And the cut falls exactly on that boundary: the stable part ends where
+    // the context block begins, so the volatile part is the context block and
+    // carries the separator itself. The two parts are joined bare.
+    expect(sent.systemVolatile).toBe(CONTEXT_BLOCK + CONTEXT_NOTE)
+    expect(sent.systemStable).toHaveLength(seam)
   })
 
   it('still says nothing ran on the closing call, after the round budget is spent', async () => {

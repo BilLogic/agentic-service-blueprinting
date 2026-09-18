@@ -62,42 +62,37 @@ describe('the adapter that caches', () => {
     ])
   })
 
-  it('puts the breakpoint past EVERY skill body a message carries, never mid-skill', async () => {
-    // The invariant the old character index was protecting: a message may
-    // name several skills, and each body is thousands of tokens. A
-    // breakpoint that lands inside the second body caches a prefix that
-    // never recurs, so every round pays for the whole prompt again.
-    const twoSkills = [
-      'ROLE and adapter.',
-      '\n\n--- active skill: /sb:map ---\nMAP BODY, last line.',
-      '\n\n--- active skill: /sb:audit ---\nAUDIT BODY, last line.',
-    ].join('')
-    const body = await sentBody(
-      anthropicAdapter,
-      request({ systemStable: twoSkills }),
-    )
-    const blocks = body.system as Array<{ text: string; cache_control?: unknown }>
-    const cached = blocks.filter((block) => block.cache_control)
-    expect(cached).toHaveLength(1)
-    expect(cached[0]!.text).toContain('MAP BODY, last line.')
-    expect(cached[0]!.text).toContain('AUDIT BODY, last line.')
-    // Nothing of a skill leaks past the breakpoint into the uncached tail.
-    expect(blocks[1]!.text).not.toContain('BODY')
-  })
-
-  it('sends one plain prompt when nothing is stable — an empty block is a 400', async () => {
-    const body = await sentBody(
-      anthropicAdapter,
-      request({ systemStable: '', systemVolatile: VOLATILE }),
-    )
-    expect(body.system).toBe(VOLATILE)
-  })
+  // The invariant the old character index protected — that the breakpoint
+  // lands past every skill body and never inside one — is no longer an
+  // adapter invariant: the adapter has no index and cannot cut. It is now a
+  // fact about the ASSEMBLY, and it is pinned there, in loop.test.tsx.
 
   it('sends one block when nothing is volatile, rather than an empty second one', async () => {
     const body = await sentBody(anthropicAdapter, request({ systemVolatile: '' }))
     expect(body.system).toEqual([
       { type: 'text', text: STABLE, cache_control: { type: 'ephemeral' } },
     ])
+  })
+
+  // The two below guard the TYPE's empty cases, not any session this seam
+  // has: `buildStableSystem` unconditionally emits the role and the
+  // canvas-adapter header, so no real send arrives with an empty stable part.
+  // `string` admits '' though, and an empty text block is a 400 — a bad way
+  // to discover the type was wider than the sessions.
+  it('drops an empty stable part rather than sending an empty block (type-level case: no session has one)', async () => {
+    const body = await sentBody(
+      anthropicAdapter,
+      request({ systemStable: '', systemVolatile: VOLATILE }),
+    )
+    expect(body.system).toEqual([{ type: 'text', text: VOLATILE }])
+  })
+
+  it('leaves the system field unsent when BOTH parts are empty (type-level case: no session has one)', async () => {
+    const body = await sentBody(
+      anthropicAdapter,
+      request({ systemStable: '', systemVolatile: '' }),
+    )
+    expect(body).not.toHaveProperty('system')
   })
 })
 
