@@ -6,10 +6,11 @@ A past session reads back with its words intact
 
 `get_session` renders one line per transcript event for an agent catching up on
 an earlier conversation. `user`, `assistant`, `tool` and `declined` spelled
-themselves out; everything else fell through to a final `return
-`${event.kind}:``. A `status` event therefore reached the model as the single
-word "status:" with its text dropped — a record saying something happened and
-not what it said, which is the grievance the declined row was added to close.
+themselves out; everything else fell through to a final line that printed the
+kind and nothing else. A `status` event therefore reached the model as the
+single word "status:" with its text dropped — a record saying something
+happened and not what it said, which is the grievance the declined row was
+added to close.
 
 `status` now shows its text. The if-chain is a switch with no default: every
 kind the transcript has carries words, so every kind is written out and there
