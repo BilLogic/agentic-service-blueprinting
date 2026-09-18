@@ -146,6 +146,13 @@ export function AgentChatView({
   // therefore about the screen telling the truth, not about a module
   // invariant.
   const [misses, setMisses] = useState<readonly SkillNearMiss[]>([])
+  // Where the caret goes once a completion has been written into the field,
+  // handed to the field and cleared the moment it lands. A completion that
+  // reaches the end of the draft would get the same offset from the value
+  // assignment alone; the near-miss rewrite, which is the one that happens
+  // mid-sentence, would not, and its reader was thrown to the end of a
+  // sentence they were standing in the middle of.
+  const [caret, setCaret] = useState<number | null>(null)
   // The slash menu is a portalled popover; this is what it anchors to (and
   // what --anchor-width measures).
   const composerRowRef = useRef<HTMLDivElement>(null)
@@ -233,7 +240,9 @@ export function AgentChatView({
   const pickSkill = (command: AgentSkillCommand) => {
     if (!command.content || !slashLookup) return
     setMisses([])
-    setDraft(completeSkillToken(draft, slashLookup, command))
+    const completed = completeSkillToken(draft, slashLookup, command)
+    setDraft(completed.text)
+    setCaret(completed.caret)
   }
 
   /**
@@ -273,6 +282,10 @@ export function AgentChatView({
       // the question it goes with — one update, so the reader never sees a
       // notice describing text the field has already left behind.
       if (decision.draft !== draft) setDraft(decision.draft)
+      // The accepted token is mid-sentence by construction — it has the rest
+      // of the draft behind it — so the caret the rewrite reports is the one
+      // thing the field cannot work out for itself.
+      if (decision.caret !== null) setCaret(decision.caret)
       setMisses(decision.misses)
       return
     }
@@ -641,6 +654,8 @@ export function AgentChatView({
               prose and stood it at the front of the message. */}
           <ComposerInkedField
             draft={draft}
+            caret={caret}
+            onCaretPlaced={() => setCaret(null)}
             onDraftChange={(value) => {
               // The question was about the draft as it stood; editing it is
               // an answer to neither choice, so it goes away.

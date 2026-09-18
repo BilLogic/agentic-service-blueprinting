@@ -98,12 +98,14 @@ describe('the skill lookup a draft carries', () => {
     const draft = 'Hey can u /sb:aud'
     // The token gains its ending and a space, and does not move: the badge
     // this replaced took it out of the sentence and stood it at the front.
-    expect(completeSkillToken(draft, findSkillLookup(draft)!, audit)).toBe(
-      'Hey can u /sb:audit ',
-    )
-    expect(
-      completeSkillToken('/aud', findSkillLookup('/aud')!, audit),
-    ).toBe('/sb:audit ')
+    expect(completeSkillToken(draft, findSkillLookup(draft)!, audit)).toEqual({
+      text: 'Hey can u /sb:audit ',
+      caret: 'Hey can u /sb:audit '.length,
+    })
+    expect(completeSkillToken('/aud', findSkillLookup('/aud')!, audit)).toEqual({
+      text: '/sb:audit ',
+      caret: '/sb:audit '.length,
+    })
   })
 
   it('keeps a mid-sentence space rather than doubling it', () => {
@@ -111,16 +113,21 @@ describe('the skill lookup a draft carries', () => {
     // the end of the draft: a second space here is a hole in the sentence.
     const audit = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:audit')!
     const draft = 'then /audit the intake'
-    expect(completeSkillToken(draft, { start: 5, end: 11 }, audit)).toBe(
-      'then /sb:audit the intake',
-    )
+    expect(completeSkillToken(draft, { start: 5, end: 11 }, audit)).toEqual({
+      text: 'then /sb:audit the intake',
+      // And the caret comes back pointing at the far side of the name that
+      // was written, not at the end of the sentence it sits in. This is the
+      // only span with prose behind it, so it is the only one where those
+      // two are different offsets — 14 against 25.
+      caret: 'then /sb:audit'.length,
+    })
   })
 
   it('closes its own lookup, so the menu does not reopen on the completion', () => {
     const audit = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:audit')!
     const draft = 'Hey can u /sb:aud'
     const completed = completeSkillToken(draft, findSkillLookup(draft)!, audit)
-    expect(findSkillLookup(completed)).toBeNull()
+    expect(findSkillLookup(completed.text)).toBeNull()
   })
 })
 

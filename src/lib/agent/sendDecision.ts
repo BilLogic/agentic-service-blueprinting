@@ -107,6 +107,19 @@ export type SendDecision =
        * wrong-string bug that passes every hand test.
        */
       draft: string
+      /**
+       * Where the caret belongs in that rewritten draft: just past the name
+       * the reader accepted. Null when nothing was rewritten — the first
+       * press of Send asks about a draft it did not touch, and moving the
+       * caret of a draft nobody edited would take the reader out of their
+       * own sentence for nothing.
+       *
+       * It travels with the draft rather than being derived by the caller,
+       * for the reason the draft does: this is the arm that knows WHICH
+       * token was rewritten, and a caller recomputing the offset from the
+       * text it got back would be guessing at that.
+       */
+      caret: number | null
       misses: readonly SkillNearMiss[]
     }
   | {
@@ -167,14 +180,18 @@ export function decideSend(draft: string, answer: SendAnswer): SendDecision {
   const misses = findSkillNearMisses(draft)
   const [first] = misses
   if (answer.kind === 'accepted' && first) {
-    return decideSend(completeSkillToken(draft, first, first.command), {
-      kind: 'unasked',
-    })
+    const completed = completeSkillToken(draft, first, first.command)
+    const next = decideSend(completed.text, { kind: 'unasked' })
+    // The rewrite's caret survives the re-check, because the re-check is
+    // about the NEXT token and says nothing about where the reader is. When
+    // the recursion commits instead there is no draft left to put a caret
+    // in — the field is cleared by the send.
+    return next.kind === 'ask' ? { ...next, caret: completed.caret } : next
   }
   // An accept with nothing left to accept falls through to the walk below:
   // the draft may have moved under a stale answer, and the draft is the
   // record.
   if (answer.kind === 'declared') return commit(draft, misses)
-  if (first) return { kind: 'ask', draft, misses }
+  if (first) return { kind: 'ask', draft, caret: null, misses }
   return commit(draft, [])
 }

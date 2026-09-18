@@ -79,6 +79,8 @@ describe('focusAgentComposer', () => {
       createElement(ComposerInkedField, {
         draft: '',
         onDraftChange: () => {},
+        caret: null,
+        onCaretPlaced: () => {},
         placeholder: 'Message the agent…',
       }),
     )

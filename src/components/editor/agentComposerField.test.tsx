@@ -15,13 +15,11 @@
  * file drives the module directly, with the draft held by a harness that
  * completes a token the way accepting from the menu does.
  *
- * ONE GAP, stated rather than guarded. Where an in-place completion leaves
- * the caret is not asserted anywhere in jsdom, and cannot be: assigning a
- * textarea's `value` moves `selectionStart` to the end of the new text all by
- * itself, and a lookup's span always reaches the end of the draft, so a
- * completion's caret and the value setter's own semantics land on the same
- * offset for every input there is. A test of it passes whatever the module
- * does. It belongs to a browser case.
+ * THE CARET the module is handed is this harness's to supply, the way a
+ * draft is: the field takes a one-shot offset and clears it. Where that
+ * offset comes from and what it is worth to assert are the panel's, in
+ * `agentComposerSkills.test.tsx` — only the near-miss rewrite produces an
+ * offset a jsdom assertion can tell apart from the value setter's own.
  */
 import { useState } from 'react'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
@@ -48,10 +46,13 @@ import {
  */
 function Harness() {
   const [draft, setDraft] = useState('')
+  const [caret, setCaret] = useState<number | null>(null)
   return (
     <ComposerInkedField
       draft={draft}
       onDraftChange={setDraft}
+      caret={caret}
+      onCaretPlaced={() => setCaret(null)}
       onKeyDown={(event) => {
         if (event.key !== 'Tab') return
         event.preventDefault()
@@ -61,7 +62,10 @@ function Harness() {
           (candidate) =>
             candidate.content && skillMatchesQuery(candidate, lookup.query),
         )
-        if (command) setDraft(completeSkillToken(draft, lookup, command))
+        if (!command) return
+        const completed = completeSkillToken(draft, lookup, command)
+        setDraft(completed.text)
+        setCaret(completed.caret)
       }}
       placeholder="Message the agent…"
     />
