@@ -64,7 +64,7 @@ import { VIEW_SCREENSHOT_DIR } from './playwright.config'
  */
 
 /**
- * The browser globals the two page-side callbacks below touch.
+ * The browser globals the page-side callbacks below touch.
  *
  * `render-walk/` is typechecked in this repository's NODE program — these
  * files are Node programs that DRIVE a browser — so the DOM lib is out of
@@ -81,6 +81,19 @@ declare function getComputedStyle(node: unknown): {
   webkitBackdropFilter: string
   backgroundColor: string
   opacity: string
+}
+declare const document: {
+  createRange(): {
+    selectNodeContents(node: unknown): void
+    getClientRects(): ArrayLike<{
+      left: number
+      right: number
+      top: number
+      bottom: number
+      width: number
+      height: number
+    }>
+  }
 }
 
 const MOBILE_SCREENSHOT_DIR = join(VIEW_SCREENSHOT_DIR, 'mobile')
@@ -336,20 +349,41 @@ test.describe('the phone agent jump', () => {
         Math.max(boardBox!.y, 0),
       'and a strip-full of it is up there, not a sliver of its edge',
     ).toBeGreaterThan(sheetBox!.y / 3)
-    // Read cell by cell through locators rather than in one page-side pass:
-    // this file is typechecked as a Node program, and a body full of DOM
-    // globals would have to be declared here for no gain. Wholly inside in
-    // BOTH directions — the horizontal used to ask for overlap only, which
-    // scored a cell 90% off the side of the screen as legible.
+    // Wholly inside in BOTH directions — the horizontal used to ask for
+    // overlap only, which scored a cell 90% off the side of the screen as
+    // legible, and that tightening is kept.
+    //
+    // What is measured is the WORDS, not the cell that holds them. A cell's
+    // box carries its padding and its row's height, and both of those belong
+    // to the destination BOARD rather than to the camera that framed it: a
+    // deployment whose first row is a little taller would score zero on a
+    // jump that put a perfectly readable strip on screen, which is a fact
+    // about the board's own spacing and nothing this case is asking about.
+    // A range over the cell's contents answers where the text actually
+    // landed, and it does so whatever markup the cell is built from — they
+    // differ. The horizontal protection survives the move unharmed, because
+    // words carried off the side of the screen go off it with their cell.
     const cells = board.locator('[data-blueprint-cell]')
     let readable = 0
     for (let index = 0; index < (await cells.count()); index += 1) {
       const cell = cells.nth(index)
-      const box = await cell.boundingBox()
-      if (!box) continue
       const words = (await cell.innerText()).trim()
+      if (words.length === 0) continue
+      const box = await cell.evaluate((node) => {
+        const range = document.createRange()
+        range.selectNodeContents(node)
+        const rects = Array.from(range.getClientRects()).filter(
+          (rect) => rect.width > 0 && rect.height > 0,
+        )
+        if (rects.length === 0) return null
+        const left = Math.min(...rects.map((rect) => rect.left))
+        const right = Math.max(...rects.map((rect) => rect.right))
+        const top = Math.min(...rects.map((rect) => rect.top))
+        const bottom = Math.max(...rects.map((rect) => rect.bottom))
+        return { x: left, y: top, width: right - left, height: bottom - top }
+      })
+      if (!box) continue
       if (
-        words.length > 0 &&
         box.y >= 0 &&
         box.y + box.height <= sheetBox!.y &&
         box.x >= 0 &&
