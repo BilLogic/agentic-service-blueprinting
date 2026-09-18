@@ -50,12 +50,11 @@ import {
   autoNameSession,
   type AgentAttachment,
 } from '@/lib/agent/sessions'
+import { loadPersistedEvents, persistEvent } from '@/lib/agent/persistence'
 import {
-  isAgentPersistenceAttached,
-  loadPersistedEvents,
-  onAgentPersistenceAttached,
-  persistEvent,
-} from '@/lib/agent/persistence'
+  forgetAgentPersistenceWork,
+  whenAgentPersistenceReady,
+} from '@/lib/agent/persistenceReadiness'
 
 type Client = SupabaseClient<Database>
 
@@ -275,42 +274,6 @@ function push(sessionId: string, event: TranscriptEvent): void {
   emit()
 }
 
-const hydrated = new Set<string>()
-
-/** Sessions whose hydrate fired before persistence attached — replayed on
- *  the attach signal. */
-const pendingHydrates = new Set<string>()
-onAgentPersistenceAttached(() => {
-  const parked = [...pendingHydrates]
-  pendingHydrates.clear()
-  parked.forEach((sessionId) => void hydrateAgentTranscript(sessionId))
-})
-
-// Transcript-hydration-in-flight, per session, so the chat view can show
-// skeleton bubbles instead of the "Ready" empty state while a persisted
-// conversation is still on the wire.
-const hydratingTranscripts = new Set<string>()
-const transcriptHydrationListeners = new Set<() => void>()
-
-function notifyTranscriptHydration() {
-  transcriptHydrationListeners.forEach((listener) => listener())
-}
-
-export function useAgentTranscriptHydrating(sessionId: string): boolean {
-  return useSyncExternalStore(
-    (listener) => {
-      transcriptHydrationListeners.add(listener)
-      return () => transcriptHydrationListeners.delete(listener)
-    },
-    // Pending until the session's ONE hydrate attempt has at least begun
-    // its early-exit checks: an opened session whose hydrate has not run
-    // yet (client still resolving) must read as loading, not "Ready".
-    // Callers gate on canAgent, same as the sessions-list flag.
-    () => hydratingTranscripts.has(sessionId) || !hydrated.has(sessionId),
-    () => false,
-  )
-}
-
 /**
  * Restore a session's transcript from agent_messages, once per session per
  * page load. The provider-side conversation is rebuilt from the user and
@@ -318,31 +281,16 @@ export function useAgentTranscriptHydrating(sessionId: string): boolean {
  * material (providers reject orphaned tool calls, and Gemini signatures do
  * not survive a reload anyway).
  */
-export async function hydrateAgentTranscript(sessionId: string): Promise<void> {
-  if (hydrated.has(sessionId)) return
-  // Child effects run before parent effects: on a reload with a chat open,
-  // this fires before AgentPanel has attached persistence. Do NOT burn the
-  // one hydrate attempt — park the session id and retry on the attach
-  // signal; the pending flag keeps reading "loading" in the meantime.
-  if (!isAgentPersistenceAttached()) {
-    pendingHydrates.add(sessionId)
-    return
-  }
-  hydrated.add(sessionId)
-  // The pending flag above watches `hydrated` too — flush the change even
-  // on the early exits, or the skeleton outlives the load.
-  notifyTranscriptHydration()
+export function hydrateAgentTranscript(sessionId: string): void {
+  whenAgentPersistenceReady({ kind: 'transcript', id: sessionId }, () =>
+    readTranscript(sessionId),
+  )
+}
+
+async function readTranscript(sessionId: string): Promise<void> {
   const run = runFor(sessionId)
   if (run.events.length > 0 || run.running) return
-  hydratingTranscripts.add(sessionId)
-  notifyTranscriptHydration()
-  let events: TranscriptEvent[] | null
-  try {
-    events = await loadPersistedEvents(sessionId)
-  } finally {
-    hydratingTranscripts.delete(sessionId)
-    notifyTranscriptHydration()
-  }
+  const events = await loadPersistedEvents(sessionId)
   if (!events || events.length === 0) return
   if (run.events.length > 0 || run.running) return // a send raced the load
   run.events = events
@@ -376,11 +324,8 @@ export async function hydrateAgentTranscript(sessionId: string): Promise<void> {
 export function forgetAgentRun(sessionId: string): void {
   runs.delete(sessionId)
   snapshots.delete(sessionId)
-  hydrated.delete(sessionId)
-  pendingHydrates.delete(sessionId)
-  hydratingTranscripts.delete(sessionId)
+  forgetAgentPersistenceWork({ kind: 'transcript', id: sessionId })
   emit()
-  notifyTranscriptHydration()
 }
 
 /**
