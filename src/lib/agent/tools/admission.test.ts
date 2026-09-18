@@ -64,6 +64,17 @@ const admit = (mode: RosterMode, name: string, facts: Partial<CallFacts> = {}) =
     facts: { ...QUIET, ...facts },
   })
 
+/**
+ * The same call, asserted refused, so the answer narrows to the half that
+ * carries a sentence. A case reading `.refusal` off the union would be a case
+ * that cannot tell an admission from a refusal it mistyped.
+ */
+const refusalFor = (mode: RosterMode, name: string, facts: Partial<CallFacts> = {}) => {
+  const answer = admit(mode, name, facts)
+  if (answer.admitted) throw new Error(`${name} was admitted; this case expects a refusal`)
+  return answer
+}
+
 describe('the offer and the admission answer from one description', () => {
   it('refuses every tool the roster withholds, under every mode, and admits every tool it offers', () => {
     for (const mode of MODES) {
@@ -89,18 +100,18 @@ describe('the offer and the admission answer from one description', () => {
   })
 
   it('answers each withholding ground in the roster’s own words', () => {
-    expect(admit({ ...DESKTOP, searchOffered: false }, 'search_blueprint').refusal).toBe(
+    expect(refusalFor({ ...DESKTOP, searchOffered: false }, 'search_blueprint').refusal).toBe(
       NO_SEARCH_REFUSAL,
     )
-    expect(admit({ ...DESKTOP, sampleTrial: true }, 'list_stakeholders').refusal).toBe(
+    expect(refusalFor({ ...DESKTOP, sampleTrial: true }, 'list_stakeholders').refusal).toBe(
       SAMPLE_TRIAL_REFUSAL,
     )
-    expect(admit({ ...DESKTOP, mobileReading: true }, 'set_canvas_mode').refusal).toBe(
+    expect(refusalFor({ ...DESKTOP, mobileReading: true }, 'set_canvas_mode').refusal).toBe(
       MOBILE_SHELL_REFUSAL,
     )
-    expect(admit({ ...DESKTOP, allowWrites: false }, 'create_phase', { isWrite: true }).refusal).toBe(
-      VIEW_ONLY_REFUSAL,
-    )
+    expect(
+      refusalFor({ ...DESKTOP, allowWrites: false }, 'create_phase', { isWrite: true }).refusal,
+    ).toBe(VIEW_ONLY_REFUSAL)
   })
 
   it('leaves a name no definition declares to the dispatcher when every mode gate passes', () => {
@@ -110,7 +121,7 @@ describe('the offer and the admission answer from one description', () => {
     expect(admit(DESKTOP, 'delete_everything').admitted).toBe(true)
     // On a trial or a phone it has no availability to show, so the mode gates
     // withhold it rather than letting it reach a database that is not there.
-    expect(admit({ ...DESKTOP, sampleTrial: true }, 'delete_everything').refusal).toBe(
+    expect(refusalFor({ ...DESKTOP, sampleTrial: true }, 'delete_everything').refusal).toBe(
       SAMPLE_TRIAL_REFUSAL,
     )
   })
@@ -139,7 +150,7 @@ describe('the write gate keeps its own predicate', () => {
 
   it('spends the write budget on the same predicate that refused the viewer', () => {
     expect(
-      admit(DESKTOP, 'ui_command', { isWrite: true, writesThisSend: WRITE_BATCH_LIMIT }).refusal,
+      refusalFor(DESKTOP, 'ui_command', { isWrite: true, writesThisSend: WRITE_BATCH_LIMIT }).refusal,
     ).toBe(BATCH_LIMIT_REFUSAL)
     expect(
       admit(DESKTOP, 'ui_command', { isWrite: false, writesThisSend: WRITE_BATCH_LIMIT }).admitted,
@@ -194,10 +205,10 @@ describe('gate order is no longer load-bearing', () => {
       searchOffered: false,
     }
     expect(sessionRoster(everything).map((tool) => tool.name)).not.toContain('search_blueprint')
-    expect(admit(everything, 'search_blueprint').refusal).toBe(NO_SEARCH_REFUSAL)
+    expect(refusalFor(everything, 'search_blueprint').refusal).toBe(NO_SEARCH_REFUSAL)
     // And the same call with only the search plan missing reads back the same
     // sentence: piling further tripped conditions on top changes nothing.
-    expect(admit({ ...DESKTOP, searchOffered: false }, 'search_blueprint').refusal).toBe(
+    expect(refusalFor({ ...DESKTOP, searchOffered: false }, 'search_blueprint').refusal).toBe(
       NO_SEARCH_REFUSAL,
     )
   })
@@ -207,7 +218,7 @@ describe('gate order is no longer load-bearing', () => {
     // budgets belong to calls that could have run.
     const viewer = { ...DESKTOP, allowWrites: false }
     expect(
-      admit(viewer, 'create_phase', {
+      refusalFor(viewer, 'create_phase', {
         isWrite: true,
         writesThisSend: WRITE_BATCH_LIMIT,
         repeatRead: { args: 'name: Handover' },
@@ -217,7 +228,7 @@ describe('gate order is no longer load-bearing', () => {
 
   it('says the run stopped whatever else the call also tripped', () => {
     expect(
-      admit(
+      refusalFor(
         { sampleTrial: true, mobileReading: true, allowWrites: false, searchOffered: false },
         'search_blueprint',
         { aborted: true, isWrite: true, writesThisSend: 99, repeatRead: { args: 'q: x' } },
