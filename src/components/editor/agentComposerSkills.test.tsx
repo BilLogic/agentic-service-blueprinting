@@ -223,6 +223,11 @@ describe('a token that nearly names a skill', () => {
     // right: a message with two near misses asked about `/audit`, completed
     // it, and sent with `/map` still naming nothing. Accepting goes back
     // through the same check, so the second one asks in its turn.
+    //
+    // The sequence itself is pinned as a pure assertion in
+    // `src/lib/agent/sendPlan.test.ts`, where a returned question can be read
+    // without a click. What this adds is the wiring: the panel renders the
+    // question it got back rather than sending on it.
     const composer = openComposer()
     type(composer, 'check /audit then /map this')
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
@@ -256,6 +261,43 @@ describe('a token that nearly names a skill', () => {
     expect(wholeSystem(sent)).toContain('"/audit" and "/map"')
     expect(wholeSystem(sent)).toContain('/sb:audit and /sb:map')
     expect(wholeSystem(sent)).not.toContain('--- active skill')
+  })
+
+  it('drops the question when the reader edits the draft it was about', async () => {
+    // The question was about the draft as it stood, and its misses carry
+    // offsets into that exact string. Left standing across an edit, the next
+    // press of Send would declare a miss the sentence may no longer hold —
+    // and an accept would rewrite a span that has moved.
+    const composer = openComposer()
+    type(composer, NEAR)
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(screen.getByRole('button', { name: 'Send as text' })).toBeTruthy()
+    type(composer, 'then /audit the intake please')
+    expect(screen.queryByRole('button', { name: 'Send as text' })).toBeNull()
+    // And the next press asks again rather than sending the edited prose on
+    // an answer given about an older draft.
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(screen.getByText(/closest match is \/sb:audit/)).toBeTruthy()
+    expect(provider.inputs).toEqual([])
+  })
+
+  it('drops the question when a pick from the menu rewrites the draft', () => {
+    // A notice and the menu can be on screen together: this draft has a miss
+    // to answer for AND a token at its tail to complete. Completing the tail
+    // moves the text under the question, so the question goes with it — a
+    // stale miss answered after a pick rewrites the wrong span.
+    const composer = openComposer()
+    type(composer, 'then /audit the /sb:ma')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(screen.getByRole('button', { name: 'Send as text' })).toBeTruthy()
+    fireEvent.click(menuOption('/sb:map')!)
+    expect((composer as HTMLTextAreaElement).value).toBe(
+      'then /audit the /sb:map ',
+    )
+    expect(screen.queryByRole('button', { name: 'Send as text' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(screen.getByText(/closest match is \/sb:audit/)).toBeTruthy()
+    expect(provider.inputs).toEqual([])
   })
 
   it('asks nothing about a token that resolves — it runs', async () => {
