@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { AgentChatView } from '@/components/editor/agent/AgentChatView'
 import { AgentSessionsView } from '@/components/editor/agent/AgentSessionsView'
 import { useSupabase } from '@/contexts/SupabaseProvider'
-import { attachAgentPersistence } from '@/lib/agent/persistence'
+import { attachAgentPersistence } from '@/lib/agent/persistenceReadiness'
 import {
   closeAgentSession,
   createAgentSession,
