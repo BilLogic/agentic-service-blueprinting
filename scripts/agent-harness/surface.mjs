@@ -64,5 +64,4 @@ async function loadAppSurface() {
 }
 
 export const surface = await loadAppSurface()
-export const { TOOL_SPECS, TOOL_DEFINITIONS, WRITE_TOOL_NAMES, MOBILE_READ_TOOL_NAMES, renderCanvasAdapter } =
-  surface
+export const { TOOL_SPECS, TOOL_DEFINITIONS, WRITE_TOOL_NAMES, renderCanvasAdapter } = surface
