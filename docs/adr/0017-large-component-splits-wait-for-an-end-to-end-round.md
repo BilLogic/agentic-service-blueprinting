@@ -672,3 +672,21 @@ a path, never asserts the `Reading path:` line, and runs with an empty storage
 namespace, so the only branch it executes is the absent-memory default and it
 asserts nothing about even that. That split wants its own pins, and its own
 flow driven end to end, on the terms the first paragraph of this record sets.
+
+**The path memory was split afterwards, on coverage it brought itself.**
+The paragraph above held: the slice licensed nothing about which path a
+scenario opens on. So that split landed its own pins first and was watched
+pass against unchanged code before anything moved — four cases driving the
+real shell at phone width by taps, through the cover, the index and a
+scenario with a path fork, asserting both the reported reading line and the
+label the selector shows: a remembered path opens on itself, an absent memory
+opens on the happy path, a remembered path that has since been deleted falls
+back rather than leaving the reader on a board with no path, and a choice the
+reader makes survives as memory. Every one of them, and every case in the
+module's own file, was watched red against a deliberate break — the remembered
+branch removed, the happy-path default swapped for the last path, the
+existence check dropped, the precedence inverted, the write made to forget,
+and the shell made to stop asking the module at all. That is what stood in
+for the end-to-end round this record asks for, and it is the standard the next
+split of this shell is held to: not a flow that mounts the surface, but a
+flow that exercises the seam being moved.
