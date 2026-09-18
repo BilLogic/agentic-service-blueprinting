@@ -9,11 +9,17 @@
  * on a token typed mid-sentence, and whether picking from it keeps the
  * sentence the token was sitting in.
  *
- * Beside it: the colour a resolved token takes where it was typed, and the
- * notice a NEAR MISS gets — `/audit`, which names no skill and runs nothing.
- * The sentence the model is told lives in the loop's own test; what is
- * asserted here is the choice the reader is given, and that neither branch is
- * taken for them.
+ * Beside it: the notice a NEAR MISS gets — `/audit`, which names no skill and
+ * runs nothing. The sentence the model is told lives in the loop's own test;
+ * what is asserted here is the choice the reader is given, and that neither
+ * branch is taken for them.
+ *
+ * The field and the mirrored copy of the draft behind it are one module and
+ * are asserted through its interface, in `agentComposerField.test.tsx`: the
+ * metrics both copies wear, the one positioned box they measure, the scroll
+ * sync, the transparency and the IME stand-down. What stays here is the
+ * wiring — that the panel hands that module the tokens it read out of the
+ * draft, so a resolved token is coloured on the surface a reader is typing on.
  *
  * The panel is the real `AgentPanel` over the real sessions store. What is
  * faked is the Supabase provider (a signed-in author, no trial), the viewport
@@ -50,7 +56,6 @@ vi.mock('@/contexts/SupabaseProvider', () => ({
 vi.mock('@/hooks/useMobileShell', () => ({ isMobileViewport: () => false }))
 
 import { AgentPanel } from '@/components/editor/AgentPanel'
-import { COMPOSER_FIELD_METRICS } from '@/components/editor/agent/ComposerSkillInk'
 import { PathSelectionProvider } from '@/contexts/PathSelectionContext'
 import {
   agentSessionsSnapshot,
@@ -75,7 +80,7 @@ const type = (composer: HTMLElement, value: string) =>
 
 /**
  * The menu's row for a skill — scoped to the popover, because the token in
- * the field and the layer drawing it behind carry the same label, and an
+ * the field and the mirror drawing it behind carry the same label, and an
  * unscoped text query would find whichever the DOM happened to hold first,
  * passing on the wrong node.
  */
@@ -85,8 +90,8 @@ const menuOption = (label: string) => {
 }
 
 /**
- * The layer that draws the prose behind the field. It is `aria-hidden`, so it
- * is queried the one way a hidden node can be: by the slot it declares.
+ * The mirrored copy of the draft, drawn behind the field. It is `aria-hidden`,
+ * so it is queried the one way a hidden node can be: by the slot it declares.
  */
 const skillInk = () =>
   document.querySelector<HTMLElement>('[data-slot="composer-skill-ink"]')
@@ -169,82 +174,6 @@ describe('the composer opens a skill lookup wherever a slash opens a word', () =
     expect(menuOption('/sb:audit')).toBeTruthy()
     type(composer, 'Hey can u /aud ')
     expect(menuOption('/sb:audit')).toBeNull()
-  })
-})
-
-describe('a token that names a skill is coloured where it sits', () => {
-  it('draws the whole draft behind the field, with the token in role ink', () => {
-    const composer = openComposer()
-    type(composer, 'Hey can u /sb:audit the intake')
-    const ink = skillInk()!
-    // The layer carries the SAME string, so the caret and the colour agree.
-    // The trailing newline is the one the block would otherwise collapse.
-    expect(ink.textContent).toBe('Hey can u /sb:audit the intake\n')
-    expect(within(ink).getByText('/sb:audit').className).toContain(
-      'text-text-primary',
-    )
-    // And the field hands the drawing over while the layer is doing it.
-    expect(composer.className).toContain('text-transparent')
-  })
-
-  it('wears the same metrics as the field, down to the last one', () => {
-    // The shimmer guard. Two copies of one string wrap alike only while they
-    // agree on every property that decides a line break, so the agreement is
-    // one string and this asserts both of them still wear it.
-    const composer = openComposer()
-    type(composer, 'Hey can u /sb:audit the intake')
-    const ink = skillInk()!
-    for (const metric of COMPOSER_FIELD_METRICS.split(' ')) {
-      expect(composer.className.split(' '), metric).toContain(metric)
-      expect(ink.className.split(' '), metric).toContain(metric)
-    }
-  })
-
-  it('shares one positioned box with the field, and not the whole group', () => {
-    // The containing-block guard. `absolute inset-0` measures the nearest
-    // POSITIONED ancestor, and the layer only wraps like the field while that
-    // ancestor is sized by the field. Against InputGroup the two coincided
-    // by accident — the field was its only child, in the slot the badge addon
-    // had just left — and an addon put back there narrows the field through
-    // the group's own `has-[>[data-align=inline-start]]` rules while leaving
-    // the layer full width: every line from the first wrap down breaks
-    // elsewhere, which the shared metrics string cannot see or prevent.
-    const composer = openComposer()
-    type(composer, 'Hey can u /sb:audit the intake')
-    const box = skillInk()!.parentElement!
-    expect(box.className.split(' ')).toContain('relative')
-    // The field is inside that same box, and the box is not the group.
-    expect(box.contains(composer)).toBe(true)
-    expect(box.dataset.slot).toBeUndefined()
-  })
-
-  it('follows the field when a long message scrolls', () => {
-    const composer = openComposer()
-    type(composer, 'Hey can u /sb:audit the intake')
-    composer.scrollTop = 40
-    fireEvent.scroll(composer)
-    expect(skillInk()!.scrollTop).toBe(40)
-  })
-
-  it('leaves the field drawing its own text when no token resolves', () => {
-    const composer = openComposer()
-    // A bare alias resolves nothing, so nothing is coloured and nothing runs.
-    type(composer, 'then /audit the intake')
-    expect(skillInk()).toBeNull()
-    expect(composer.className).not.toContain('text-transparent')
-  })
-
-  it('stands down while an IME is composing', () => {
-    const composer = openComposer()
-    type(composer, 'Hey can u /sb:audit')
-    expect(skillInk()).toBeTruthy()
-    // A preedit string lives in the field, and transparent text would make
-    // it invisible for as long as it is being composed.
-    fireEvent.compositionStart(composer)
-    expect(skillInk()).toBeNull()
-    expect(composer.className).not.toContain('text-transparent')
-    fireEvent.compositionEnd(composer)
-    expect(skillInk()).toBeTruthy()
   })
 })
 
