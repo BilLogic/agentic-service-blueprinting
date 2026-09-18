@@ -133,6 +133,21 @@ function ComposerMirror({
 type ComposerInkedFieldOwnProps = {
   draft: string
   onDraftChange: (text: string) => void
+  /**
+   * Where to put the caret once this draft is on screen, or null to leave it
+   * where the browser put it. A one-shot request, not a stored position: the
+   * field reports back through `onCaretPlaced` and expects the caller to
+   * clear it, so the next keystroke is not yanked back to an old offset.
+   *
+   * It exists because a controlled textarea gets its text through an
+   * assignment to `value`, which drops the caret at the end of the new text.
+   * That is the right place for a completion whose token reaches the end of
+   * the draft and the wrong one for a token rewritten mid-sentence, where
+   * the reader had prose after the word they just completed.
+   */
+  caret: number | null
+  /** Called once the request above has been carried out. */
+  onCaretPlaced: () => void
 }
 
 /**
@@ -204,6 +219,8 @@ type ComposerFieldOwnedProps =
 export function ComposerInkedField({
   draft,
   onDraftChange,
+  caret,
+  onCaretPlaced,
   ...passthrough
 }: Omit<
   ComponentPropsWithoutRef<typeof InputGroupTextarea>,
@@ -237,6 +254,23 @@ export function ComposerInkedField({
   // the write that caused it — before paint, or the colour lags a frame behind
   // the caret on every character typed.
   useLayoutEffect(syncMirrorScroll, [draft])
+  // A caret write has to come AFTER the commit that wrote the text, which is
+  // what makes it a layout effect rather than something a click handler does
+  // for itself: React assigns `value` during the commit, and that assignment
+  // moves the caret to the end of the new text however carefully a handler
+  // placed it beforehand.
+  //
+  // Focus goes with it, and not as a courtesy — the gesture that needs a
+  // caret is a press on a button, so the field has just lost focus, and a
+  // caret in an unfocused textarea is a position nobody is typing at.
+  useLayoutEffect(() => {
+    if (caret === null) return
+    const field = fieldRef.current
+    if (!field) return
+    field.focus()
+    field.setSelectionRange(caret, caret)
+    onCaretPlaced()
+  })
   // Composition text lives in the field, and the field's own text is
   // transparent while the mirror behind it is doing the drawing — so an IME
   // preedit string would be invisible for as long as it is being composed.

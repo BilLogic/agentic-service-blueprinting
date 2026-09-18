@@ -91,6 +91,16 @@ describe('accepting one offer re-checks the draft it produced', () => {
     // about, so the field can show what was agreed to before it asks again.
     expect(next.draft).toBe('check /sb:audit then /map this')
     expect(next.misses.map((miss) => miss.token)).toEqual(['map'])
+    // And where the reader is standing in it: just past the name they
+    // accepted, not at the end of a sentence they were half-way through.
+    expect(next.caret).toBe('check /sb:audit'.length)
+  })
+
+  it('moves no caret when the question is about a draft it did not touch', () => {
+    // The first press asks about the reader's own text. A caret offset here
+    // would be this module telling the field to move a caret nobody asked it
+    // to move, in a string nobody rewrote.
+    expect(asking(firstPress(DRAFT)).caret).toBeNull()
   })
 
   it('sends both skills in order once the second offer is taken too', () => {

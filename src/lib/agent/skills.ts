@@ -165,24 +165,37 @@ export function findSkillLookup(draft: string): SkillLookup | null {
  * mid-word. Without it the menu reopens on the completed token and the next
  * Enter picks the same skill again instead of sending.
  *
- * No caret write goes with this. Setting a textarea's value leaves the caret
- * at the end of the text, and a lookup's span reaches the end of the draft,
- * so the end is where the reader was already typing.
- *
  * A span the prose continues after keeps the space it already has rather than
  * gaining a second: the near-miss offer rewrites a token in mid-sentence
  * through here, and "then /audit the intake" would otherwise come back as
  * "then /sb:audit  the intake" — a visible hole in the reader's own sentence,
  * from the one caller whose span does not reach the end of the draft.
+ *
+ * THE CARET COMES BACK WITH THE TEXT, at the far side of what was just
+ * written — the completed name and the space that closes it. It is returned
+ * rather than left to the field because assigning a textarea's `value` puts
+ * the caret at the end of the new text, and "the end" is the right answer
+ * only while the span reaches it. For the tail-anchored callers it does, and
+ * the two offsets coincide; for the near-miss rewrite, which is the one span
+ * with prose behind it, they differ, and the reader who accepted an offer
+ * about a word in the middle of their sentence was thrown to the end of it.
+ *
+ * One return value rather than a caret function beside this one: the offset
+ * is `span.start` plus what this wrote, gap included, and a second function
+ * deriving it would have to spell the gap rule again and could come to
+ * disagree with the string it is describing.
  */
 export function completeSkillToken(
   draft: string,
   span: { start: number; end: number },
   command: AgentSkillCommand,
-): string {
+): { text: string; caret: number } {
   const after = draft.slice(span.end)
   const gap = /^\s/.test(after) ? '' : ' '
-  return `${draft.slice(0, span.start)}${command.label}${gap}${after}`
+  return {
+    text: `${draft.slice(0, span.start)}${command.label}${gap}${after}`,
+    caret: span.start + command.label.length + gap.length,
+  }
 }
 
 /** A token that resolves to a skill: which skill, and where in the draft. */

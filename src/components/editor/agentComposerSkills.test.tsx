@@ -21,20 +21,27 @@
  * wiring — that the panel hands that module the tokens it read out of the
  * draft, so a resolved token is coloured on the surface a reader is typing on.
  *
- * WHERE THE COMPLETION LEAVES THE CARET IS NOT ASSERTED HERE, and no jsdom
- * assertion can be. A case that claimed to guard it stood in this file and
- * could not fail: assigning a textarea's `value` moves `selectionStart` to
- * the end of the new text on its own, with no React in the loop, and
- * `findSkillLookup` is tail-anchored — its span ends at `draft.length` on
- * both branches — so the offset the completion should produce and the offset
- * the value setter produces by itself are the same offset for every input
- * there is. Focusing the field and setting its caret first does not reach
- * react-dom's selection restoration either; that runs only when the focused
- * element changed between commits, which it does not here. The behaviour is
- * covered by a browser check made by hand: typing `/sb:map notes then /sb:au`
- * and pressing Tab gives `/sb:map notes then /sb:audit ` with the caret at
- * offset 29, focus kept and the menu closed. Re-run that by hand when the
- * completion path changes; a green jsdom assertion here would be a lie.
+ * WHERE THE COMPLETION LEAVES THE CARET is asserted here for the one
+ * completion whose answer differs from the value setter's, and the
+ * distinction is worth keeping straight, because a case that could not fail
+ * once stood in this file. Assigning a textarea's `value` moves
+ * `selectionStart` to the end of the new text on its own, with no React in
+ * the loop. `findSkillLookup` is tail-anchored — its span ends at
+ * `draft.length` on both branches — so for a pick from the MENU the offset
+ * the completion should produce and the offset the setter produces by itself
+ * are the same offset for every input there is, and an assertion about it
+ * passes whatever the code does.
+ *
+ * The NEAR-MISS rewrite is the one span with prose behind it, and there the
+ * two offsets differ: accepting in `check /audit then /map this` should leave
+ * the caret at 15 and the setter leaves it at 30. That assertion can fail,
+ * and did — it is the defect that put this pin here.
+ *
+ * The tail case is pinned below all the same, and what it is worth is stated
+ * where it sits: its caret offset cannot distinguish a deliberate write from
+ * the setter's, but it can catch a deliberate write to the WRONG offset, now
+ * that there is one — and the focus half of it is a real assertion either
+ * way, since nothing in jsdom focuses that field for us.
  *
  * The panel is the real `AgentPanel` over the real sessions store. What is
  * faked is the Supabase provider (a signed-in author, no trial), the viewport
@@ -162,6 +169,24 @@ describe('the composer opens a skill lookup wherever a slash opens a word', () =
     expect((composer as HTMLTextAreaElement).value).toBe('Hey can u /sb:audit ')
   })
 
+  it('leaves the caret at the end of a completion that reaches the end', () => {
+    // The tail-anchored answer, unchanged: the lookup's span runs to
+    // `draft.length`, so "after the token just completed" and "the end of
+    // the draft" are the same place and the reader carries on typing there.
+    //
+    // WHAT THIS CAN CATCH, plainly: not the absence of a caret write —
+    // assigning `value` lands on 20 by itself — but a caret write that
+    // computes the wrong offset, which is now a thing the code can do. The
+    // focus assertion is not hedged: nothing here focuses the field, so it
+    // is red unless the completion path puts the reader back in it.
+    const composer = openComposer() as HTMLTextAreaElement
+    pick(composer, 'Hey can u /sb:aud', '/sb:audit')
+    expect(composer.value).toBe('Hey can u /sb:audit ')
+    expect(composer.selectionStart).toBe('Hey can u /sb:audit '.length)
+    expect(composer.selectionEnd).toBe('Hey can u /sb:audit '.length)
+    expect(document.activeElement).toBe(composer)
+  })
+
   it('finds a skill by the segment after its namespace', () => {
     const composer = openComposer()
     type(composer, 'first /aud')
@@ -253,6 +278,26 @@ describe('a token that nearly names a skill', () => {
     expect(wholeSystem(sent)).toContain('--- active skill: /sb:audit')
     expect(wholeSystem(sent)).toContain('--- active skill: /sb:map')
     expect(wholeSystem(sent)).not.toContain('NOT skill name')
+  })
+
+  it('keeps the reader where they were when a mid-sentence offer is taken', () => {
+    // The one completion that does not reach the end of the draft, and the
+    // only place a caret assertion in jsdom means anything. The reader was
+    // standing at `/audit`, in the middle of their own sentence; accepting
+    // used to hand the field back with the caret after `this`, because
+    // nothing wrote a caret and assigning `value` drops it at the end.
+    const composer = openComposer() as HTMLTextAreaElement
+    type(composer, 'check /audit then /map this')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Run /sb:audit' }))
+    // The token is rewritten in place and the prose behind it is untouched.
+    expect(composer.value).toBe('check /sb:audit then /map this')
+    // Immediately after the name they accepted — 15, not the draft's 30.
+    expect(composer.selectionStart).toBe('check /sb:audit'.length)
+    expect(composer.selectionEnd).toBe('check /sb:audit'.length)
+    // And in the field: the answer was given on a button, so the caret is
+    // worth nothing unless the focus comes back with it.
+    expect(document.activeElement).toBe(composer)
   })
 
   it('tells the model about every miss when the prose goes as it stands', async () => {
