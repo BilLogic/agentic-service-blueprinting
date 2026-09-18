@@ -408,6 +408,14 @@ export async function getSession(sessionId: string): Promise<string> {
     if (event.kind === 'assistant') return `assistant: ${event.text}`
     if (event.kind === 'tool')
       return `tool ${event.name}${event.isError ? ' (error)' : ''}: ${event.summary}`
+    // Spelled out rather than left to the bare-kind fallback below, because
+    // this is the one row whose whole point is that a later reader — a
+    // person scrolling, or this model reading a past session — does not have
+    // to infer from prose that a skill was named and ran nothing.
+    if (event.kind === 'declined')
+      return `declined: ${event.misses
+        .map((miss) => `"/${miss.token}" (nearly ${miss.label})`)
+        .join(', ')} — sent as text, so no skill ran`
     return `${event.kind}:`
   })
   const header = known

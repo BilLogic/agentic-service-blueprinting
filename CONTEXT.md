@@ -490,6 +490,21 @@ only record of which skills a message runs.
 
 **Send** — one message the reader commits: its text, and the skills it names.
 
+**near miss** — a word-start token in a draft that names no skill but spells
+a skill's bare alias: `/audit` where the skill is `/sb:audit`. It invokes
+nothing, so the reader is asked before the message goes, and the question has
+exactly two answers — spell it properly and run it, or send the sentence as
+text.
+
+**declined skill** — a skill a message named and did not run, because the
+reader took the second answer. Said three times, all three saying the same
+thing: the notice in the composer before the send, a paragraph in that send's
+prompt, and a transcript row of its own that outlives the tab. **Not an
+error**: declining is one of the offer's two answers, so the row states what
+happened in the past tense and stops. And not the other answer's mirror — a
+skill that RAN leaves no such row, because the badge on the turn and the
+skill's body in its prompt are already the evidence.
+
 **Turn** — a send and everything the agent does answering it, until the loop
 stops, exhausts its rounds or fails. The unit a write batch and a repeated
 read are both counted against.

@@ -191,6 +191,36 @@ export type TranscriptEvent =
       result?: string
     }
   | { kind: 'status'; text: string }
+  | {
+      /**
+       * A skill this message NAMED AND DID NOT RUN: the reader typed a
+       * near-miss token, was offered the real name, and chose to send their
+       * sentence as prose.
+       *
+       * A row of its own rather than a field on the user turn. The grievance
+       * this closes is that nothing on screen OR IN THE TRANSCRIPT said the
+       * skill had not run — and the reader's answer is an event in the
+       * session, not a property of the words they typed: the same text sent
+       * again with the offer accepted means something else entirely. Read
+       * back, it also has to be findable by an agent walking the history,
+       * which a decoration inside somebody else's bubble is not.
+       *
+       * Only the DECLINE is recorded. Running the skill writes no row,
+       * because the invocation is its own evidence twice over — the badge on
+       * the user turn and the skill's body in that turn's prompt — and a row
+       * announcing what ran beside a turn that already says so is a second
+       * place for the two to disagree.
+       */
+      kind: 'declined'
+      /**
+       * Every miss the message declared, in the order its tokens appear —
+       * the same list the model is told about, and a list for the same
+       * reason: a message carries as many skills as its text names, so one
+       * recorded with the rest left out is the original silence with a
+       * smaller mouth.
+       */
+      misses: readonly DeclaredMiss[]
+    }
 
 type SessionRun = {
   events: TranscriptEvent[]
@@ -597,6 +627,15 @@ export async function sendToAgent(input: {
       ? { attachmentLabel: attachment.label, attachmentPayload: attachment.payload }
       : {}),
   })
+  // The message's own record that a skill was named and ran nothing — after
+  // the turn it is about, because it is a fact about that turn and reads as
+  // one only underneath it. Written HERE rather than at the composer for the
+  // same reason the model's paragraph is: this is the one point every send
+  // goes through, and the row and the paragraph have to agree about what the
+  // reader declined. A copy, not the caller's array — the row outlives the
+  // send by the length of the session.
+  if (declaredMisses.length > 0)
+    push(sessionId, { kind: 'declined', misses: [...declaredMisses] })
   // First message names the session — a list of "New session" rows says
   // nothing. Explicit renames always win (autoNameSession only replaces
   // the default title).
