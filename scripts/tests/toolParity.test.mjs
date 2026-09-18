@@ -10,9 +10,9 @@ import { toolSources, toolsOnSurface } from '../tool-sources.mjs'
  * The eval harness must run against the app's tool surface. The spec
  * DECLARATIONS are one-sourced — `surface.mjs` bundles `app-surface.entry.ts`
  * with rolldown once per run, that entry re-exports TOOL_SPECS from specs.ts
- * and derives WRITE_TOOL_NAMES / MOBILE_READ_TOOL_NAMES from the definitions,
- * and every harness module imports them from `surface.mjs` — so the check is
- * that the import wiring still exists and no fork has crept back in.
+ * and derives WRITE_TOOL_NAMES from the definitions, and every harness module
+ * imports them from `surface.mjs` — so the check is that the import wiring
+ * still exists and no fork has crept back in.
  *
  * Deliberately text-parsed: `registry.ts` imports supabase-js and Vite
  * `?raw` markdown, so it cannot be loaded from Node without a bundler.
@@ -127,10 +127,19 @@ test('harness imports the app tool specs instead of forking them', () => {
     /WRITE_TOOL_NAMES = new Set\(\s*TOOL_DEFINITIONS\.filter\(\(tool\) => tool\.surface === 'write'\)/,
     'app-surface.entry.ts no longer derives WRITE_TOOL_NAMES from the definitions',
   )
-  assert.match(
+  // The mobile roster is NOT derived here any more, and must not come back:
+  // the gate it fed is `admitToolCall`'s, so a set beside it is a second
+  // answer to a question the app already answers, in whatever order the block
+  // that reads it happens to sit.
+  assert.doesNotMatch(
     surfaceEntry,
-    /MOBILE_READ_TOOL_NAMES = new Set\(\s*TOOL_DEFINITIONS\.filter\(\(tool\) => tool\.availability\.mobile\)/,
-    'app-surface.entry.ts no longer derives MOBILE_READ_TOOL_NAMES from the definitions',
+    /MOBILE_READ_TOOL_NAMES/,
+    'app-surface.entry.ts derives a mobile roster again — the dispatch gate is the app’s',
+  )
+  assert.doesNotMatch(
+    harness,
+    /MOBILE_READ_TOOL_NAMES/,
+    'run.mjs gates on a mobile roster of its own again — the fork is back',
   )
   // The reference list too, so the harness offers exactly the list the app
   // offers.
@@ -143,8 +152,6 @@ test('harness imports the app tool specs instead of forking them', () => {
     'TOOL_SPECS',
     'TOOL_DEFINITIONS',
     'WRITE_TOOL_NAMES',
-    'MOBILE_READ_TOOL_NAMES',
-    'WRITE_BATCH_LIMIT',
     'AGENT_CELL_FIELDS',
     'renderCanvasAdapter',
     'rehearsalContext',
@@ -245,9 +252,39 @@ test('harness imports the app tool specs instead of forking them', () => {
   )
   assert.doesNotMatch(
     harness,
-    /TOOL_SPECS\.filter\([^)]*MOBILE_READ_TOOL_NAMES/,
+    /TOOL_SPECS\.filter\([^)]*(?:MOBILE_READ_TOOL_NAMES|availability)/,
     'run.mjs filters the spec table by its own mode gates again — the roster fork is back',
   )
+  // AND THE DISPATCH IS DERIVED TOO, which is the half the offer cannot
+  // cover: a model can call a name it was never offered. `admitToolCall`
+  // answers whether a call may run, so the mobile gate, the write gate and
+  // the batch budget are the app's, applied in the app's order. Spelled here
+  // again in an order of its own, a call tripping two of them reads back
+  // whichever block sits first — the exact failure the app-side change
+  // removed, which was still live on this side.
+  assert.match(
+    surfaceEntry,
+    /export\s*\{\s*admitToolCall\s*\}\s*from\s*'@\/lib\/agent\/tools\/admission'/,
+    'app-surface.entry.ts no longer re-exports admitToolCall from admission.ts',
+  )
+  destructuredFromSurface('admitToolCall')
+  assert.match(
+    harness,
+    /admitToolCall\(\{\s*\n?\s*mode: harnessMode\(caseDef\)/,
+    'run.mjs no longer asks the app whether a call may run, for the mode the case runs in',
+  )
+  // The three gates it used to spell. Each was an `if` over a case flag; a
+  // dispatch that names one again has taken the question back.
+  for (const [gate, pattern] of [
+    ['the mobile gate', /caseDef\.mobile &&/],
+    ['the write gate', /caseDef\.allowWrites === false &&/],
+    ['the batch budget', /(?:executed|writesThisSend) >= WRITE_BATCH_LIMIT/],
+  ])
+    assert.doesNotMatch(
+      harness,
+      pattern,
+      `run.mjs spells ${gate} in its dispatch again — the admission answer is the app's`,
+    )
   // And no fork crept back: a local spec array would re-declare tool
   // objects (`name: '...'` entries) and a local write set would shadow the
   // imported roster.
@@ -273,6 +310,84 @@ test('harness imports the app tool specs instead of forking them', () => {
     )
   }
 })
+
+/**
+ * THE APP-ONLY CATEGORY, ENFORCED AS A CATEGORY.
+ *
+ * `refusals.ts` splits its sentences by one rule — share it when the harness
+ * has a gate of its own whose answer is this same statement and the statement
+ * is TRUE of the harness's session — and says at every sentence which side it
+ * is on. That rule had exactly one enforcement, a `doesNotMatch` over the one
+ * sentence that was then app-only; when `NO_SEARCH_REFUSAL` became shared the
+ * check went with it and nothing stopped `SAMPLE_TRIAL_REFUSAL` or
+ * `STOPPED_REFUSAL` crossing next.
+ *
+ * So the check is over the CATEGORY, derived from the declarations
+ * themselves: every documented export of `refusals.ts` must declare a side,
+ * the entry must re-export every SHARED one and nothing marked APP-ONLY, and
+ * every shared sentence must reach the runner — an export the dispatch never
+ * reads is a sentence that only looks shared. A new refusal is covered on the
+ * day it is written, with no line to add here.
+ */
+test('the harness entry re-exports exactly the shared refusals, and nothing app-only', () => {
+  const refusals = readApp('src/lib/agent/tools/refusals.ts')
+  // A doc comment immediately followed by its export. The body may not span a
+  // `*/`, so the module header — which states the RULE, app-only and all —
+  // pairs with nothing and is not read as a declaration.
+  const documented = [
+    ...refusals.matchAll(/\/\*\*((?:(?!\*\/)[\s\S])*)\*\/\s*export (?:const|function) (\w+)/g),
+  ]
+  assert.ok(
+    documented.length >= 10,
+    `read ${documented.length} documented exports from refusals.ts: this check has no subject`,
+  )
+  const shared = []
+  const appOnly = []
+  const undeclared = []
+  for (const [, doc, name] of documented) {
+    if (/APP-ONLY/.test(doc)) appOnly.push(name)
+    else if (/SHARED/.test(doc)) shared.push(name)
+    else undeclared.push(name)
+  }
+  // Every SENTENCE picks a side. `WRITE_BATCH_LIMIT` is the one export that
+  // is not a sentence — a number two gates quote — so it is the only thing
+  // allowed to be silent; anything else silent here is a sentence that never
+  // answered the rule, and would be read as shareable by default.
+  assert.deepEqual(
+    undeclared,
+    ['WRITE_BATCH_LIMIT'],
+    'a refusal in refusals.ts declares neither SHARED nor APP-ONLY — the rule in its header is the one thing every sentence has to answer',
+  )
+  assert.ok(shared.length > 0 && appOnly.length > 0, 'the split is empty on one side')
+  const reExported = [
+    ...surfaceEntry.matchAll(
+      /export\s*\{([^}]*)\}\s*from\s*'@\/lib\/agent\/tools\/refusals'/g,
+    ),
+  ].flatMap((match) =>
+    match[1]
+      .split(',')
+      .map((name) => name.trim())
+      .filter(Boolean),
+  )
+  assert.deepEqual(
+    [...reExported].sort(),
+    [...shared].sort(),
+    'app-surface.entry.ts no longer re-exports exactly the sentences refusals.ts marks SHARED',
+  )
+  // The stronger half: an app-only sentence must not appear in the entry AT
+  // ALL, re-exported or imported for something else. The refusal it answers
+  // has no gate on the far side, so a case that met it would grade a recovery
+  // from a steer no session there gives.
+  for (const name of appOnly)
+    assert.doesNotMatch(
+      surfaceEntry,
+      new RegExp(`\\b${name}\\b`),
+      `app-surface.entry.ts carries ${name}, which refusals.ts marks APP-ONLY — see the rule in its header`,
+    )
+  // And each shared one reaches the dispatch that says it.
+  for (const name of shared) destructuredFromSurface(name)
+})
+
 
 /**
  * NO TOOL RESULT SENTENCE IS WRITTEN TWICE.
@@ -397,6 +512,7 @@ test('every write tool is a defineWriteTool definition', () => {
  */
 const TOOL_SPECS = (await import('@/lib/agent/tools/specs')).TOOL_SPECS
 const TOOL_DEFINITIONS = (await import('@/lib/agent/tools/definitions')).TOOL_DEFINITIONS
+const { sessionRoster } = await import('@/lib/agent/tools/roster')
 
 test('the spec table is the definition list, projected', () => {
   assert.deepEqual(
@@ -406,4 +522,51 @@ test('the spec table is the definition list, projected', () => {
   for (const spec of TOOL_SPECS) {
     assert.equal(spec.parameters.type, 'object', `${spec.name} has no object schema`)
   }
+})
+
+/**
+ * WHAT THE HARNESS IS ACTUALLY OFFERED, pinned rather than counted in prose.
+ *
+ * Deriving the offer narrowed it, and the narrowing was described by a pair of
+ * tool counts that nothing checked — a number in a description ages into a
+ * wrong number. The mode run.mjs declares is text (the runner needs a
+ * provider, so it cannot be imported here); the offer for that mode is the
+ * app's own roster, and this says which tools it is: everything, less ranked
+ * search, because no index and no embedding key is the truth of this
+ * environment.
+ */
+test('the harness offer is the app roster for the mode run.mjs declares', () => {
+  for (const [field, pattern] of [
+    ['sampleTrial: false', /sampleTrial: false,/],
+    ['searchOffered: false', /searchOffered: false,/],
+    ['mobileReading off the case', /mobileReading: Boolean\(caseDef\.mobile\),/],
+    ['allowWrites off the case', /allowWrites: caseDef\.allowWrites !== false,/],
+  ])
+    assert.match(harness, pattern, `run.mjs no longer declares ${field} in harnessMode`)
+  const HARNESS = {
+    sampleTrial: false,
+    mobileReading: false,
+    allowWrites: true,
+    searchOffered: false,
+  }
+  const named = (mode) => sessionRoster(mode).map((tool) => tool.name)
+  assert.deepEqual(
+    named(HARNESS),
+    TOOL_DEFINITIONS.filter((tool) => tool.name !== 'search_blueprint').map((tool) => tool.name),
+    'the harness desktop offer is no longer every tool but ranked search',
+  )
+  assert.deepEqual(
+    named({ ...HARNESS, mobileReading: true }),
+    TOOL_DEFINITIONS.filter(
+      (tool) => tool.availability.mobile && tool.name !== 'search_blueprint',
+    ).map((tool) => tool.name),
+    'the harness mobile offer is no longer the mobile-available tools but ranked search',
+  )
+  assert.deepEqual(
+    named({ ...HARNESS, allowWrites: false }).filter((name) =>
+      TOOL_DEFINITIONS.some((tool) => tool.name === name && tool.surface === 'write'),
+    ),
+    [],
+    'a view-only harness case is offered a write tool',
+  )
 })
