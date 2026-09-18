@@ -31,10 +31,9 @@ import {
   registerAgentUiContext,
 } from '@/lib/agent/uiBridge'
 import {
-  readLastViewedPath,
-  resolveDefaultPathId,
+  resolvePathIdToShow,
   writeLastViewedPath,
-} from '@/lib/mobilePathMemory'
+} from '@/lib/pathMemory'
 import {
   makeAgentCameraFlightWatcher,
   makeMobileAgentBridge,
@@ -187,8 +186,7 @@ export function MobileShell() {
   // ONE path at a time (decided 2026-08-16, single-select confirmed
   // 2026-08-17): the control drives the same PathSelection context the desktop
   // PATHS checkboxes use — the canvas needs no mobile-specific plumbing —
-  // but always replaces the whole selection with one path. Defaults to the
-  // last-viewed path per scenario (localStorage), else the happy path.
+  // but always replaces the whole selection with one path.
   const { pathsByScenario } = useCanvasBlueprints(
     useMemo(
       () => (selectedScenarioId ? [selectedScenarioId] : []),
@@ -207,10 +205,18 @@ export function MobileShell() {
     return pathsByScenario.get(selectedScenarioId) ?? []
   }, [selectedScenarioId, catalog, pathsByScenario])
 
-  const activePathId = selectedScenarioId
-    ? (getSelectedPathIds(selectedScenarioId)[0] ??
-      resolveDefaultPathId(readLastViewedPath(selectedScenarioId), paths))
-    : null
+  // The shell keeps no memory of its own. Which path to show is one
+  // statement in the path memory module, which `openScenario` resolves
+  // through too; the shell asks, and reports what it was told. The store
+  // holds the selection as a list and treats its head as active, so the head
+  // is what crosses — the module is told the active path, not the convention.
+  const activePathId = resolvePathIdToShow(
+    selectedScenarioId,
+    selectedScenarioId
+      ? (getSelectedPathIds(selectedScenarioId)[0] ?? null)
+      : null,
+    paths,
+  )
   const choosePath = (pathId: string) => {
     if (!selectedScenarioId) return
     setSelectedPathIds(selectedScenarioId, [pathId])

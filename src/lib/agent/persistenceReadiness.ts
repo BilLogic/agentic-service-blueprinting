@@ -64,6 +64,33 @@ export type AgentPersistenceWork = {
   id: string
 }
 
+/**
+ * The flight a piece of work is running as — handed to the work itself, so it
+ * can ask the one question an async read cannot answer for itself: is the
+ * database I started against still the one behind this handle?
+ *
+ * WHY THE WORK HAS TO ASK RATHER THAN BE CANCELLED FROM HERE. A read already
+ * on the wire cannot be recalled, and the damage is never the read — it is
+ * what the work does with what it read. The session-list merge reads one
+ * table and then writes two places, the list on screen and the rows the table
+ * it read was missing; run to completion after an account switch, it publishes
+ * the signed-out account's sessions over the sessions of the person now signed
+ * in and upserts that account's rows into the new table. So the identity
+ * travels with the flight and the write is the thing that is abandoned.
+ *
+ * It is the era rather than the client because the client does not leave this
+ * module — that is the rule that keeps a second, contradictory answer to "can
+ * we read yet" from being written — and because the era is already the fact
+ * that means "the ask that was here has been replaced".
+ */
+export type AgentPersistenceFlight = {
+  /** Has this handle been forgotten and re-armed since this flight started? */
+  superseded: () => boolean
+}
+
+/** Work as this module runs it: a flight, and whatever the caller does with it. */
+type ParkedWork = (flight: AgentPersistenceFlight) => void | Promise<void>
+
 function handleOf(work: AgentPersistenceWork): string {
   return `${work.kind}:${work.id}`
 }
@@ -84,7 +111,7 @@ let attached: Client | null = null
  * conversation. A bounded map that eats a live read is worse than an
  * unbounded map of closures.
  */
-const parked = new Map<string, () => void | Promise<void>>()
+const parked = new Map<string, ParkedWork>()
 
 /** Handles whose work has been claimed — started, and so never started again. */
 const claimed = new Set<string>()
@@ -94,12 +121,15 @@ const settled = new Set<string>()
 
 /**
  * How many times a handle has been forgotten, so a flight from before the
- * forget cannot settle the ask that replaced it.
+ * forget cannot settle the ask that replaced it — and so that work which
+ * asks can decline to write.
  *
  * Forgetting re-arms a handle while its first flight may still be on the
  * wire. Without this, that first flight's completion marks the handle
  * settled, and the surface drops its skeleton for a conversation whose real
- * read has not come back yet.
+ * read has not come back yet. The same count is what a flight compares
+ * itself against through `superseded`, which is how the session-list merge
+ * stops one account's rows crossing into another's.
  */
 const eras = new Map<string, number>()
 
@@ -134,13 +164,19 @@ export function attachAgentPersistence(client: Client | null): void {
   waiting.forEach(([handle, work]) => start(handle, work))
 }
 
-function start(handle: string, work: () => void | Promise<void>): void {
+function start(handle: string, work: ParkedWork): void {
   claimed.add(handle)
   const era = eraOf(handle)
+  // The era is captured once, here, and closed over: read at write time
+  // instead, every flight would compare the current era with itself and no
+  // flight would ever find itself superseded.
+  const flight: AgentPersistenceFlight = {
+    superseded: () => eraOf(handle) !== era,
+  }
   notifyPending(handle)
   let finished: void | Promise<void>
   try {
-    finished = work()
+    finished = work(flight)
   } catch {
     finished = undefined
   }
@@ -160,10 +196,13 @@ function start(handle: string, work: () => void | Promise<void>): void {
  * Once per handle: the caller is free to ask again on every render or every
  * reopen without spending the one read it gets. `forgetAgentPersistenceWork`
  * is the only way back.
+ *
+ * `read` is handed the flight it runs as. Work that writes anywhere after an
+ * await has to consult it — see `AgentPersistenceFlight`.
  */
 export function whenAgentPersistenceReady(
   work: AgentPersistenceWork,
-  read: () => void | Promise<void>,
+  read: ParkedWork,
 ): void {
   const handle = handleOf(work)
   if (claimed.has(handle) || parked.has(handle)) return
@@ -211,12 +250,17 @@ export function useAgentPersistenceWorkPending(
  *
  * Two callers need it. A client change is a different database's answer, so
  * the ask has to be re-armed: the next client gets its own read, and a flight
- * still on the wire from the previous one cannot settle it. Re-arming is all
- * this does — the abandoned flight is not cancelled and its own writes still
- * land, which is why a caller that switches clients mid-read has a problem
- * this seam does not solve. And it is the seam that lets a test prove a read
- * rather than a memory: drop what the tab already knows, and the next open is
- * where another browser starts from.
+ * still on the wire from the previous one cannot settle it. Bumping the era
+ * also OFFERS that flight the chance to abandon its writes rather than merely
+ * lose its bookkeeping — but the offer only reaches work that consults its
+ * own `superseded`, which is an obligation on the caller and is stated as one
+ * on `whenAgentPersistenceReady`. The session-list merge honours it, and that
+ * is what keeps one account's rows out of another's table.
+ * `loop.ts`'s `readTranscript` does not, and does not need to: everything it
+ * writes after its await lands in the in-process run and nowhere durable.
+ * And it is the seam that lets a test prove a read rather than a memory: drop
+ * what the tab already knows, and the next open is where another browser
+ * starts from.
  */
 export function forgetAgentPersistenceWork(work: AgentPersistenceWork): void {
   const handle = handleOf(work)

@@ -35,7 +35,7 @@ describe('the storage namespace', () => {
   })
 
   /**
-   * The case the seam exists for. `mobilePathMemory` builds its key at MODULE
+   * The case the seam exists for. `pathMemory` builds its key at MODULE
    * SCOPE, so this is the whole ordering contract in one assertion: configure,
    * then import, and the module that never mentions a prefix writes under the
    * host's.
@@ -44,7 +44,7 @@ describe('the storage namespace', () => {
     const { configureStorageNamespace } = await import('@/lib/storageNamespace')
     configureStorageNamespace('acme-')
 
-    const { writeLastViewedPath } = await import('@/lib/mobilePathMemory')
+    const { writeLastViewedPath } = await import('@/lib/pathMemory')
     writeLastViewedPath('scenario-1', 'path-1')
 
     expect(window.localStorage.getItem('acme-mobile-paths')).toBe(

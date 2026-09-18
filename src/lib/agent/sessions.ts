@@ -6,6 +6,7 @@ import {
 } from '@/lib/agent/persistence'
 import {
   whenAgentPersistenceReady,
+  type AgentPersistenceFlight,
   type AgentPersistenceWork,
 } from '@/lib/agent/persistenceReadiness'
 import { storageKey } from '@/lib/storageNamespace'
@@ -258,10 +259,30 @@ export function hydrateAgentSessions(): void {
   whenAgentPersistenceReady(AGENT_SESSION_LIST_WORK, mergePersistedSessions)
 }
 
-/** Merge the DB's sessions in (DB wins on shared ids, local-only rows stay). */
-async function mergePersistedSessions(): Promise<void> {
+/**
+ * Merge the DB's sessions in (DB wins on shared ids, local-only rows stay).
+ *
+ * THE FLIGHT IS CONSULTED BEFORE EITHER WRITE, AND THAT IS A CROSS-ACCOUNT
+ * RULE RATHER THAN AN OPTIMISATION. The read below can still be on the wire
+ * when the panel hands persistence a different client — signing in, signing
+ * out, switching account — and it finishes against the database it started
+ * on whatever happened since. Both writes that follow it would then land
+ * somewhere else: `write` publishes the signed-out account's list over the
+ * sessions of the person now signed in, and `persistSession` resolves
+ * WHICHEVER client is attached by the time it runs, so rows that existed only
+ * in the old database are upserted into the new one and stay there.
+ *
+ * A superseded flight therefore computes nothing and returns. The handle has
+ * been re-armed by then and the replacement client's own merge is the one
+ * that publishes — which is also why the check sits after the await and
+ * before the first write, the only window in which this can be known.
+ */
+async function mergePersistedSessions(
+  flight: AgentPersistenceFlight,
+): Promise<void> {
   const persisted = await loadPersistedSessions()
   if (!persisted) return
+  if (flight.superseded()) return
   const byId = new Map(persisted.map((session) => [session.id, session]))
   const localOnly = snapshot.filter((session) => !byId.has(session.id))
   // Local-only sessions predate persistence — push them up so the merge

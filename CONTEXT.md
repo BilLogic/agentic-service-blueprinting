@@ -396,6 +396,9 @@ nobody, while a jump is asked for and answered.
 viewport: the thing a jump verdict is a claim about. A jump is asked for and
 answered; a flight is the movement itself, and a jump may involve none at all
 — a cell the board does not hold is answered without anything having flown.
+**Not a persistence flight** — `AgentPersistenceFlight` in
+`src/lib/agent/persistenceReadiness.ts` is one run of a piece of parked
+database work, and nothing moves on screen for it.
 
 **Jump verdict** — a jump's one settled answer, in four words: `landed`,
 `cancelled`, `superseded`, `unanswered`. The first three are the canvas's own
@@ -404,6 +407,10 @@ belongs to the deadline alone. **Not a check's verdict** — that word is how a
 check's run came out, four values of its own, defined in
 `docs/engineering/checks.md`. And not a status: a jump verdict is said once,
 about one camera move, and describes a move rather than a thing on the board.
+**And not persistence's `superseded`** — there the word asks whether the
+account a read was made for is still the one signed in, and the answer is a
+boolean a piece of work reads about itself rather than a verdict anyone
+publishes.
 
 ## The writing vocabulary
 
