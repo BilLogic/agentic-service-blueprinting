@@ -57,21 +57,35 @@ export type ChatResult = {
 }
 
 export type ChatInput = {
-  system: string
   /**
-   * Where the STABLE prefix of `system` ends (character index). Everything
-   * before it — role, canvas adapter, skill — is byte-identical across a
-   * session's rounds; everything after (live UI context, tier notes)
-   * changes per send. Providers that support prompt caching split here so
-   * the static prefix is paid for once, not up to 12× per send. Optional:
-   * absent means "treat the whole system as volatile".
+   * The prompt's stable part: role, canvas adapter, deployment doctrine and
+   * every skill body this message carries. Byte-identical across a send's
+   * rounds while the roster holds, so a provider that caches prompts pays
+   * for its ~6-8k tokens once instead of up to MAX_ROUNDS times.
    */
-  systemStableLength?: number
+  systemStable: string
+  /**
+   * The prompt's volatile part: the live UI context and the notes true of
+   * this send only. It changes every round, so it must sit BEHIND the
+   * stable part — a caching provider that saw them as one string would
+   * miss on every round.
+   */
+  systemVolatile: string
   messages: AgentMessage[]
   tools: ToolSpec[]
   apiKey: string
   model: string
   signal: AbortSignal
+}
+
+/**
+ * The whole prompt, for adapters whose provider has no caching concept:
+ * they concatenate rather than each spelling the join, so a prompt that
+ * reaches one of them can never differ from the prompt that reaches the
+ * one that splits.
+ */
+export function wholeSystem(input: ChatInput): string {
+  return input.systemStable + input.systemVolatile
 }
 
 export type AgentProviderAdapter = {

@@ -63,7 +63,7 @@ describe('the deployment references', () => {
     configureAgentReferences({ 'canvas-adapter': '# Our own adapter\n' })
     expect(referenceNames().filter((name) => name === 'canvas-adapter')).toHaveLength(1)
     expect(readReference('canvas-adapter', full)).toBe('# Our own adapter\n')
-    const system = buildSystem('', [], full)
+    const system = buildSystem([], full)
     expect(system).toContain('# Our own adapter\n')
     expect(system).not.toContain(TEMPLATE_REFERENCE_DOCS['canvas-adapter']!.slice(0, 200))
   })
@@ -133,11 +133,11 @@ describe('the canvas adapter is rendered against the roster it is served with', 
 
 describe('the system prompt', () => {
   it('carries the adapter as served, and the doctrine after it when the deployment has one', () => {
-    const bare = buildSystem('', [], full)
+    const bare = buildSystem([], full)
     expect(bare).toContain(readReference('canvas-adapter', full))
     expect(bare).not.toContain('--- deployment doctrine ---')
     configureAgentDoctrine('  Always cite the intake call.  ')
-    const overlaid = buildSystem('', [], full)
+    const overlaid = buildSystem([], full)
     expect(overlaid).toContain('--- deployment doctrine ---\nAlways cite the intake call.')
     expect(overlaid.indexOf('--- deployment doctrine ---')).toBeGreaterThan(
       overlaid.indexOf('--- canvas-adapter reference'),

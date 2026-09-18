@@ -84,7 +84,7 @@ vi.mock('@/lib/authoringRpc', async (importOriginal) => ({
 import { setActiveService } from '@/contexts/activeService'
 import { sendToAgent, stopAgent, useAgentRun } from '@/lib/agent/loop'
 import { AGENT_SKILL_COMMANDS } from '@/lib/agent/skills'
-import { ProviderError } from '@/lib/agent/providers/provider'
+import { ProviderError, wholeSystem } from '@/lib/agent/providers/provider'
 import { PACKAGE_OFFLINE_BOARD } from '@/data/blueprintFallbacks'
 import type { AgentSettings } from '@/lib/agent/settings'
 import {
@@ -272,7 +272,7 @@ describe('the loop, provider → tool → result → provider', () => {
       text: 'then /audit the intake',
       unrunSkills: [{ token: 'audit', label: '/sb:audit' }],
     })
-    const system = provider.inputs[0]!.system
+    const system = wholeSystem(provider.inputs[0]!)
     expect(system).toContain('/sb:audit')
     expect(system).toContain('is NOT a skill name')
     expect(system).toContain('NO skill ran')
@@ -294,7 +294,7 @@ describe('the loop, provider → tool → result → provider', () => {
         { token: 'map', label: '/sb:map' },
       ],
     })
-    const system = provider.inputs[0]!.system
+    const system = wholeSystem(provider.inputs[0]!)
     expect(system).toContain('are NOT skill names here')
     expect(system).toContain('"/audit" and "/map"')
     expect(system).toContain('the closest skills are /sb:audit and /sb:map')
@@ -311,7 +311,8 @@ describe('the loop, provider → tool → result → provider', () => {
       text: 'build this from my notes, then check it',
       skills: [map, audit],
     })
-    const { system, systemStableLength } = provider.inputs[0]!
+    const sent = provider.inputs[0]!
+    const system = wholeSystem(sent)
     expect(system.indexOf('--- active skill: /sb:map')).toBeLessThan(
       system.indexOf('--- active skill: /sb:audit'),
     )
@@ -319,11 +320,15 @@ describe('the loop, provider → tool → result → provider', () => {
     // The sentence that translates a skill for this surface is about all of
     // them, so it is said once rather than per skill.
     expect(system.split('You are the canvas agent, not an IDE agent')).toHaveLength(2)
-    // The cache breakpoint sits past EVERY body, not mid-skill: the prefix it
-    // measures has to be the whole stable prompt.
-    const stable = system.slice(0, systemStableLength)
-    expect(stable).toContain(map.content!.trimEnd().slice(-60))
-    expect(stable).toContain(audit.content!.trimEnd().slice(-60))
+    // The cache breakpoint sits past EVERY body, not mid-skill: both bodies
+    // end inside the stable part, and the volatile part begins after them.
+    expect(sent.systemStable).toContain(map.content!.trimEnd().slice(-60))
+    expect(sent.systemStable).toContain(audit.content!.trimEnd().slice(-60))
+    expect(sent.systemVolatile).not.toContain(map.content!.trimEnd().slice(-60))
+    expect(sent.systemVolatile).not.toContain(audit.content!.trimEnd().slice(-60))
+    // And the prompt is the two parts joined — nothing of it goes missing at
+    // the seam, and nothing is said twice.
+    expect(system).toBe(sent.systemStable + sent.systemVolatile)
     // The turn reads back with both, not just the first.
     expect(events[0]).toMatchObject({ kind: 'user', skills: ['sb:map', 'sb:audit'] })
   })
@@ -344,8 +349,8 @@ describe('the loop, provider → tool → result → provider', () => {
     // The closing call is the one that was sent no tools.
     const closing = provider.inputs.at(-1)!
     expect(closing.tools).toEqual([])
-    expect(closing.system).toContain('is NOT a skill name')
-    expect(closing.system).toContain('Do not describe /sb:audit as having run')
+    expect(wholeSystem(closing)).toContain('is NOT a skill name')
+    expect(wholeSystem(closing)).toContain('Do not describe /sb:audit as having run')
   })
 
   it('still says the session has no database on the closing call', async () => {
@@ -358,7 +363,7 @@ describe('the loop, provider → tool → result → provider', () => {
     await send({ client: null, text: 'walk me through the sample' })
     const closing = provider.inputs.at(-1)!
     expect(closing.tools).toEqual([])
-    expect(closing.system).toContain('This app has NO database connected')
+    expect(wholeSystem(closing)).toContain('This app has NO database connected')
   })
 
   it('still says the session is view-only on the closing call', async () => {
@@ -375,8 +380,8 @@ describe('the loop, provider → tool → result → provider', () => {
     await send({ client, text: 'walk me through the intake', allowWrites: false })
     const closing = provider.inputs.at(-1)!
     expect(closing.tools).toEqual([])
-    expect(closing.system).toContain('This session is VIEW-ONLY')
-    expect(closing.system).toContain('never imply you made it')
+    expect(wholeSystem(closing)).toContain('This session is VIEW-ONLY')
+    expect(wholeSystem(closing)).toContain('never imply you made it')
   })
 })
 

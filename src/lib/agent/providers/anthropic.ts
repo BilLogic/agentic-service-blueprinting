@@ -67,29 +67,27 @@ export const anthropicAdapter: AgentProviderAdapter = {
       body: JSON.stringify({
         model: input.model,
         max_tokens: 4096,
-        // Prompt caching: the stable system prefix (role + adapter + skill,
-        // ~6-8k tokens) is identical across a session's rounds and would
-        // otherwise be re-paid up to MAX_ROUNDS× per send. Split it into
-        // its own block with a cache breakpoint; the volatile tail (live
-        // UI context) rides uncached behind it.
-        system:
-          input.systemStableLength && input.systemStableLength > 0
-            ? [
-                {
-                  type: 'text',
-                  text: input.system.slice(0, input.systemStableLength),
-                  cache_control: { type: 'ephemeral' },
-                },
-                ...(input.system.length > input.systemStableLength
-                  ? [
-                      {
-                        type: 'text',
-                        text: input.system.slice(input.systemStableLength),
-                      },
-                    ]
-                  : []),
-              ]
-            : input.system,
+        // Prompt caching: the stable part (role + adapter + doctrine +
+        // every skill body, ~6-8k tokens) is identical across a session's
+        // rounds and would otherwise be re-paid up to MAX_ROUNDS times per
+        // send. It arrives already separated, so the breakpoint goes
+        // BETWEEN the two parts and this adapter cuts nothing: an index
+        // into a single string could land mid-skill, and a cache entry cut
+        // mid-skill matches nothing on the next round.
+        // An empty stable part would be an empty text block, which the
+        // provider rejects, so a prompt with nothing stable crosses whole.
+        system: input.systemStable
+          ? [
+              {
+                type: 'text',
+                text: input.systemStable,
+                cache_control: { type: 'ephemeral' },
+              },
+              ...(input.systemVolatile
+                ? [{ type: 'text', text: input.systemVolatile }]
+                : []),
+            ]
+          : input.systemVolatile,
         messages: toMessages(input.messages),
         ...(input.tools.length > 0
           ? {

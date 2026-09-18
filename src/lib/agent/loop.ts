@@ -98,7 +98,6 @@ const ROLE = roleDoc.trimEnd()
  * adapter: an overlay on the template's prompt, never a replacement of it.
  */
 export function buildSystem(
-  contextNote: string,
   skills: readonly AgentSkillCommand[],
   roster: readonly ToolDefinition[],
 ): string {
@@ -123,8 +122,18 @@ export function buildSystem(
     invoked.length > 0
       ? `\n\nYou are the canvas agent, not an IDE agent: skip the skill's file/script/CLI mechanics and act through your tools, translated by the canvas-adapter above. The skill's judgment — what makes a good blueprint/slice, the order of questions, the quality bars — applies in full.`
       : '',
-    contextNote ? `\n\n--- current context ---\n${contextNote}` : '',
   ].join('')
+}
+
+/**
+ * The live context as the prompt carries it. Separate from `buildSystem`
+ * because it is the one part of the prompt that changes between two rounds
+ * of the same send: the agent's own navigation moves the canvas mid-run.
+ * Everything volatile has to sit behind everything stable, or a caching
+ * provider re-reads the whole prompt every round.
+ */
+export function buildLiveContext(contextNote: string): string {
+  return contextNote ? `\n\n--- current context ---\n${contextNote}` : ''
 }
 
 // ---------------------------------------------------------------------------
@@ -766,21 +775,22 @@ export async function sendToAgent(input: {
         allowWrites,
         searchOffered: searchPlan.offered,
       })
-      // The stable system prefix (role + adapter + doctrine + EVERY skill
-      // this message carries — everything before the live context) is
-      // byte-identical across this send's rounds while the roster holds; its
-      // length lets caching providers put a cache breakpoint there. It is
-      // measured through the same builder the prompt is assembled with, so a
-      // message carrying several skill bodies moves the breakpoint past all
-      // of them rather than cutting the prompt mid-skill.
-      const systemStableLength = buildSystem('', skills, roster).length
+      // The prompt crosses the seam in its two parts rather than as one
+      // string: role + adapter + doctrine + EVERY skill body this message
+      // carries is stable across the send's rounds while the roster holds,
+      // and the live context and this send's notes are not. A caching
+      // provider puts its breakpoint between them. Handing over the parts
+      // rather than an index into a joined string is what keeps a message
+      // carrying several skill bodies from being cut mid-skill — there is
+      // no arithmetic left to get wrong, and the prompt is built once.
+      const systemStable = buildSystem(skills, roster)
       const liveContext = [contextNote, collectAgentUiContext()]
         .filter(Boolean)
         .join('\n')
       const result = await chatWithRetry(adapter, {
-        system:
-          buildSystem(liveContext, skills, roster) + sendNotes(mobileReading),
-        systemStableLength,
+        systemStable,
+        systemVolatile:
+          buildLiveContext(liveContext) + sendNotes(mobileReading),
         messages: run.messages,
         tools: roster.map(toolSpec),
         apiKey,
@@ -1026,13 +1036,11 @@ export async function sendToAgent(input: {
         })
         closingRound = true
         const closing = await chatWithRetry(adapter, {
-          system:
-            buildSystem(
+          systemStable,
+          systemVolatile:
+            buildLiveContext(
               [contextNote, collectAgentUiContext()].filter(Boolean).join('\n'),
-              skills,
-              roster,
             ) + sendNotes(mobileReading),
-          systemStableLength,
           messages: run.messages,
           tools: [],
           apiKey,
