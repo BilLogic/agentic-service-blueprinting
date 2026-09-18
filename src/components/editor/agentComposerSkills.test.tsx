@@ -28,6 +28,7 @@
  */
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { wholeSystem } from '@/lib/agent/providers/provider'
 import type { ChatInput, ChatResult } from '@/lib/agent/providers/provider'
 
 /** The scripted model: one answer per send, and it keeps what it was sent. */
@@ -198,7 +199,7 @@ describe('a token that nearly names a skill', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Run /sb:audit' }))
     await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
     const sent = provider.inputs[0]!
-    expect(sent.system).toContain('--- active skill: /sb:audit')
+    expect(wholeSystem(sent)).toContain('--- active skill: /sb:audit')
     // The official name stands where the reader's near miss stood, and the
     // sentence either side of it is untouched — accepting an offer moves a
     // word no more than accepting from the menu does.
@@ -213,8 +214,8 @@ describe('a token that nearly names a skill', () => {
     await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
     const sent = provider.inputs[0]!
     expect(JSON.stringify(sent.messages)).toContain(NEAR)
-    expect(sent.system).toContain('is NOT a skill name')
-    expect(sent.system).not.toContain('--- active skill')
+    expect(wholeSystem(sent)).toContain('is NOT a skill name')
+    expect(wholeSystem(sent)).not.toContain('--- active skill')
   })
 
   it('names both misses, and asks again for the second after the first is taken', async () => {
@@ -237,9 +238,9 @@ describe('a token that nearly names a skill', () => {
       'check /sb:audit then /sb:map this',
     )
     // Both skills ran, and nothing was reported as unrun.
-    expect(sent.system).toContain('--- active skill: /sb:audit')
-    expect(sent.system).toContain('--- active skill: /sb:map')
-    expect(sent.system).not.toContain('NOT skill name')
+    expect(wholeSystem(sent)).toContain('--- active skill: /sb:audit')
+    expect(wholeSystem(sent)).toContain('--- active skill: /sb:map')
+    expect(wholeSystem(sent)).not.toContain('NOT skill name')
   })
 
   it('tells the model about every miss when the prose goes as it stands', async () => {
@@ -252,9 +253,9 @@ describe('a token that nearly names a skill', () => {
     expect(JSON.stringify(sent.messages)).toContain('check /audit then /map this')
     // Both named. One told and the other left out is the same silence with a
     // smaller mouth — the model reads "/map" as a map that ran.
-    expect(sent.system).toContain('"/audit" and "/map"')
-    expect(sent.system).toContain('/sb:audit and /sb:map')
-    expect(sent.system).not.toContain('--- active skill')
+    expect(wholeSystem(sent)).toContain('"/audit" and "/map"')
+    expect(wholeSystem(sent)).toContain('/sb:audit and /sb:map')
+    expect(wholeSystem(sent)).not.toContain('--- active skill')
   })
 
   it('asks nothing about a token that resolves — it runs', async () => {
@@ -266,7 +267,7 @@ describe('a token that nearly names a skill', () => {
     // told them.
     await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
     expect(screen.queryByRole('button', { name: 'Send as text' })).toBeNull()
-    expect(provider.inputs[0]!.system).toContain('--- active skill: /sb:audit')
+    expect(wholeSystem(provider.inputs[0]!)).toContain('--- active skill: /sb:audit')
   })
 })
 
@@ -289,10 +290,10 @@ describe('one message carrying several skills', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
     const sent = provider.inputs[0]!
-    expect(sent.system.indexOf('--- active skill: /sb:map')).toBeLessThan(
-      sent.system.indexOf('--- active skill: /sb:audit'),
+    expect(wholeSystem(sent).indexOf('--- active skill: /sb:map')).toBeLessThan(
+      wholeSystem(sent).indexOf('--- active skill: /sb:audit'),
     )
-    expect(sent.system).toContain('in this order: /sb:map → /sb:audit')
+    expect(wholeSystem(sent)).toContain('in this order: /sb:map → /sb:audit')
     // The text is what sends, tokens and all — it is what the reader wrote.
     expect(JSON.stringify(sent.messages)).toContain(
       'build this from my notes /sb:map then /sb:audit it',
@@ -307,7 +308,7 @@ describe('one message carrying several skills', () => {
     // One body, not two: a reader who names a skill twice means it once, and
     // a second copy of a multi-kilobyte SKILL.md buys nothing but prompt.
     expect(
-      provider.inputs[0]!.system.split('--- active skill: /sb:map'),
+      wholeSystem(provider.inputs[0]!).split('--- active skill: /sb:map'),
     ).toHaveLength(2)
   })
 

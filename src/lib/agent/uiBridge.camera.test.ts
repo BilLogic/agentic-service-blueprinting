@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  SELECTION_POLL_DEADLINE_MS,
   agentFocusCell,
   agentOpenCellPanel,
   agentOpenScenario,
@@ -9,9 +10,12 @@ import {
 } from '@/lib/agent/uiBridge'
 import { registerActiveFocusCells } from '@/lib/canvasFocusCells'
 import {
-  publishCanvasNavigationOutcome,
-  waitForCanvasNavigationOutcome,
-} from '@/lib/canvasNavigationOutcome'
+  JUMP_DEADLINE_MS,
+  awaitPublishedJump,
+  settleJump,
+  verdictOfFlight,
+} from '@/lib/canvasJump'
+import { describeSelection } from '@/lib/shellContext'
 
 const cleanups: Array<() => void> = []
 
@@ -85,7 +89,7 @@ describe('agent camera bridge', () => {
     vi.useFakeTimers()
     cleanups.push(registerActiveFocusCells(() => new Promise(() => {})))
     const pending = agentFocusCell('cell-1')
-    await vi.advanceTimersByTimeAsync(1500)
+    await vi.advanceTimersByTimeAsync(JUMP_DEADLINE_MS)
     await expect(pending).resolves.toContain('not verified before timeout')
   })
 
@@ -142,7 +146,16 @@ describe('agent cell panel bridge', () => {
 })
 
 describe('agent navigation bridge', () => {
-  const transform = { pan: { x: 0, y: 0 }, zoom: 1 }
+  /*
+    The shell context these cases hand the bridge, rendered by the module the
+    bridge recognises it with. Hand-written, these lines were a fifth spelling
+    of the wire — and one of the cases below is RECOGNITION coverage, so a
+    re-spelled fixture would have been the verifier tested against a format
+    nothing publishes. Deriving them means a change to the sentence reaches
+    this file the way it reaches a shell.
+  */
+  const IDLE_CAMERA = 'Canvas camera: 100%, idle.'
+  const context = (...lines: string[]) => [...lines, IDLE_CAMERA].join('\n')
 
   function installShell(
     lines: () => string,
@@ -153,10 +166,7 @@ describe('agent navigation bridge', () => {
         selectPhase: () => {},
         selectScenario: (id) => {
           if (completion)
-            publishCanvasNavigationOutcome(id, {
-              kind: completion,
-              transform,
-            })
+            settleJump(id, verdictOfFlight(completion))
         },
         openAgentSurface: () => {},
         setSidebarCollapsed: () => {},
@@ -167,8 +177,11 @@ describe('agent navigation bridge', () => {
 
   it('waits for the viewport completion outcome instead of trusting idle', async () => {
     vi.useFakeTimers()
-    installShell(
-      () => 'Selected phase: "P" (p1)\nSelected scenario: "S" (s1)\nCanvas camera: 100%, idle.',
+    installShell(() =>
+      context(
+        describeSelection('phase', { id: 'p1', label: 'P' }),
+        describeSelection('scenario', { id: 's1', label: 'S' }),
+      ),
     )
     let settled: string | null = null
     void agentOpenScenario('s1').then((message) => {
@@ -176,7 +189,7 @@ describe('agent navigation bridge', () => {
     })
     await vi.advanceTimersByTimeAsync(200)
     expect(settled).toBeNull()
-    publishCanvasNavigationOutcome('s1', { kind: 'completed', transform })
+    settleJump('s1', 'landed')
     await vi.advanceTimersByTimeAsync(0)
     expect(settled).toContain('settled its canvas camera')
   })
@@ -185,7 +198,10 @@ describe('agent navigation bridge', () => {
     'does not claim a %s semantic flight landed',
     async (completion) => {
     vi.useFakeTimers()
-      installShell(() => 'Selected scenario: "S" (s1)\nCanvas camera: 100%, idle.', completion)
+      installShell(
+        () => context(describeSelection('scenario', { id: 's1', label: 'S' })),
+        completion,
+      )
       const settled = agentOpenScenario('s1')
       await vi.advanceTimersByTimeAsync(0)
       await expect(settled).resolves.toContain(completion)
@@ -193,54 +209,63 @@ describe('agent navigation bridge', () => {
   )
 
   /*
-    The phone listens on the SAME semantic key as this tool: its sheet keeps a
-    watcher of its own so the backdrop can stand down for the flight, and that
-    watcher lets go of its listener the moment a verdict arrives. Letting go
-    settles the watcher's OWN waiter as cancelled — right for it, and never an
-    answer for anybody else — so a landing has to survive a second listener
-    detaching from the same key. The agent read it as failure either way while
-    the fault was upstream, and this pins the shared channel so a future
-    change to it cannot quietly bring the false report back.
+    The phone awaits the SAME target as this tool: its sheet takes a jump of
+    its own so the composer can hand the caret back for the flight. One
+    verdict answers both, and one waiter settling has no bearing on the other
+    — the agent read a landing as failure while a second listener detaching
+    could settle somebody else's wait, and this pins the shared channel so a
+    future change to it cannot quietly bring the false report back.
   */
-  it('reports a landing even while a second listener lets go of the same key', async () => {
+  it('reports a landing while a second jump awaits the same target', async () => {
     vi.useFakeTimers()
-    let sheetWatcher: { cancel: () => void } | null = null
+    let sheetVerdict: string | null = null
     cleanups.push(
       registerAgentUiBridge({
         selectPhase: () => {},
         selectScenario: (id) => {
-          // What the phone's shell does, in the order it does it: listen
-          // before the selection commits, release on the verdict.
-          const watcher = waitForCanvasNavigationOutcome(id)
-          sheetWatcher = watcher
-          void watcher.promise.then(() => watcher.cancel())
+          // What the phone's shell does: its own jump on the same target,
+          // already listening because the selection is what commits it.
+          void awaitPublishedJump(id, () => {}).then((verdict) => {
+            sheetVerdict = verdict
+          })
         },
         openAgentSurface: () => {},
         setSidebarCollapsed: () => {},
       }),
     )
     cleanups.push(
-      registerAgentUiContext(
-        'shell',
-        () => 'Selected scenario: "S" (s1)\nCanvas camera: 100%, idle.',
+      registerAgentUiContext('shell', () =>
+        context(describeSelection('scenario', { id: 's1', label: 'S' })),
       ),
     )
     const settled = agentOpenScenario('s1')
     await vi.advanceTimersByTimeAsync(0)
-    expect(sheetWatcher).not.toBeNull()
-    publishCanvasNavigationOutcome('s1', { kind: 'completed', transform })
+    settleJump('s1', 'landed')
     await vi.advanceTimersByTimeAsync(0)
     await expect(settled).resolves.toContain('settled its canvas camera')
+    expect(sheetVerdict).toBe('landed')
   })
 
   it('does not read the phase line as the scenario selection', async () => {
     vi.useFakeTimers()
     installShell(
-      () => 'Selected phase: "P" (s1)\nSelected scenario: none\nCanvas camera: 100%, idle.',
+      () =>
+        context(
+          // The scenario's id, on the PHASE line: the verifier must not read
+          // one selection's line as the other's.
+          describeSelection('phase', { id: 's1', label: 'P' }),
+          describeSelection('scenario', null),
+        ),
       'completed',
     )
     const pending = agentOpenScenario('s1')
-    await vi.advanceTimersByTimeAsync(1900)
-    await expect(pending).resolves.toContain('not verified before timeout')
+    // On the SELECTION poll's own clock, not the camera's. The two waits ask
+    // different questions, and this sentence used to arrive 200 ms later
+    // because the poll had been given the camera's measured deadline.
+    expect(SELECTION_POLL_DEADLINE_MS).toBeLessThan(JUMP_DEADLINE_MS)
+    await vi.advanceTimersByTimeAsync(SELECTION_POLL_DEADLINE_MS)
+    await expect(pending).resolves.toContain(
+      'the selected scenario was not verified before timeout',
+    )
   })
 })

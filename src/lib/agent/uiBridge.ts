@@ -1,5 +1,10 @@
 import { resolveActiveFocusCells } from '@/lib/canvasFocusCells'
-import { waitForCanvasNavigationOutcome } from '@/lib/canvasNavigationOutcome'
+import {
+  awaitPublishedJump,
+  awaitSelfAnsweringJump,
+  verdictOfFlight,
+} from '@/lib/canvasJump'
+import { namesSelection } from '@/lib/shellContext'
 
 /**
  * The agent's hands on the UI itself — camera and navigation, not data.
@@ -33,62 +38,59 @@ export function registerAgentUiBridge(next: AgentUiBridge): () => void {
 }
 
 /**
+ * How long the tool polls the shell's reported context for the selection it
+ * asked for. Its own number because it waits on its own thing: a shell
+ * re-rendering and re-reporting which phase or scenario it holds, which no
+ * measurement of the camera's fade-plus-remount-plus-fit says anything about.
+ * Held at the value it has always had, so the sentence a model reads when
+ * this expires arrives when it always did. Exported so a test can name it
+ * rather than borrow the camera's number and prove nothing about which clock
+ * this wait is on.
+ */
+export const SELECTION_POLL_DEADLINE_MS = 1800
+
+/**
  * Selection remains independently verified from the shell context. Camera
  * completion is not inferred from that context: idle is also what a cancelled
- * or superseded flight looks like, so the viewport publishes its exact result.
+ * or superseded flight looks like, so the viewport publishes its exact result
+ * and `canvasJump` answers with it.
  */
-const NAVIGATION_DEADLINE_MS = 1800
-const SELECTED_LINE: Record<'phase' | 'scenario', string> = {
-  phase: 'Selected phase',
-  scenario: 'Selected scenario',
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
 async function waitForNavigation(
   kind: 'phase' | 'scenario',
   id: string,
 ): Promise<boolean> {
-  const selectedLine = new RegExp(
-    `^${SELECTED_LINE[kind]}: .*\\(${escapeRegExp(id)}\\)$`,
-    'm',
-  )
-  const deadline = performance.now() + NAVIGATION_DEADLINE_MS
+  const deadline = performance.now() + SELECTION_POLL_DEADLINE_MS
   while (performance.now() < deadline) {
-    const context = collectAgentUiContext()
-    if (selectedLine.test(context)) return true
+    // Recognised by the module that renders the line, so a shell cannot
+    // change how it reports a selection out from under the check that reads
+    // it — the drift this used to have its own pattern for.
+    if (namesSelection(collectAgentUiContext(), kind, id)) return true
     await new Promise((done) => setTimeout(done, 25))
   }
   return false
 }
-
-const NAVIGATION_TIMED_OUT = Symbol('navigation-timed-out')
 
 async function openAndAwaitNavigation(
   kind: 'phase' | 'scenario',
   id: string,
   select: (id: string) => void,
 ) {
-  const camera = waitForCanvasNavigationOutcome(id)
-  select(id)
-  const [selected, result] = await Promise.all([
+  // The jump owns the ordering: it is listening before `select` runs, because
+  // the verdict is published by the fit the selection triggers. The selection
+  // poll starts as soon as the commit has happened, so the two halves are
+  // still awaited together rather than end to end.
+  const jump = awaitPublishedJump(id, () => select(id))
+  const [selected, verdict] = await Promise.all([
     waitForNavigation(kind, id),
-    Promise.race([
-      camera.promise,
-      new Promise<typeof NAVIGATION_TIMED_OUT>((resolve) =>
-        setTimeout(() => resolve(NAVIGATION_TIMED_OUT), NAVIGATION_DEADLINE_MS),
-      ),
-    ]),
+    jump,
   ])
-  camera.cancel()
+  const noun = kind === 'phase' ? 'Phase' : 'Scenario'
   if (!selected)
-    return `${kind === 'phase' ? 'Phase' : 'Scenario'} navigation started, but the selected ${kind} was not verified before timeout.`
-  if (result === NAVIGATION_TIMED_OUT)
-    return `${kind === 'phase' ? 'Phase' : 'Scenario'} navigation selected the target, but its camera outcome was not verified before timeout.`
-  if (result.kind !== 'completed')
-    return `${kind === 'phase' ? 'Phase' : 'Scenario'} navigation was ${result.kind}; the camera was not claimed as landed.`
+    return `${noun} navigation started, but the selected ${kind} was not verified before timeout.`
+  if (verdict === 'unanswered')
+    return `${noun} navigation selected the target, but its camera outcome was not verified before timeout.`
+  if (verdict !== 'landed')
+    return `${noun} navigation was ${verdict}; the camera was not claimed as landed.`
   return cameraSettled(kind)
 }
 
@@ -118,36 +120,41 @@ export function openAgentSurface(): boolean {
   return true
 }
 
+/** What a landed cell focus answers with — exported for the reason `cameraSettled` is. */
+export const CELL_CAMERA_SETTLED = 'Focused the active canvas camera on the cell.'
+
 /**
  * A camera fly resolves from a `requestAnimationFrame` step, and a hidden
  * tab suspends those — the promise would never settle and the agent loop
  * (a bare await, no abort wired to tool execution) would wedge with it.
- * So: no animation when hidden (the fit commits synchronously), and a
- * deadline on the wait regardless. A timeout is reported as unverified,
- * never as landed.
+ * So: no animation when hidden (the fit commits synchronously), and the jump's
+ * own deadline regardless. Silence is reported as unverified, never as landed.
+ *
+ * This focus answers for itself rather than publishing against a target, which
+ * is why it takes the self-answering form of the handshake — same deadline,
+ * same four verdict words.
  */
-const FOCUS_DEADLINE_MS = 1500
-const FOCUS_TIMED_OUT = Symbol('focus-timed-out')
-
-/** What a landed cell focus answers with — exported for the reason `cameraSettled` is. */
-export const CELL_CAMERA_SETTLED = 'Focused the active canvas camera on the cell.'
-
 export async function agentFocusCell(cellId: string): Promise<string> {
   const focus = resolveActiveFocusCells()
   if (!focus)
     return 'No active canvas camera is available right now — open the scenario first.'
-  const result = await Promise.race([
-    focus([cellId], { animate: !document.hidden }),
-    new Promise<typeof FOCUS_TIMED_OUT>((done) =>
-      setTimeout(() => done(FOCUS_TIMED_OUT), FOCUS_DEADLINE_MS),
-    ),
-  ])
-  if (result === FOCUS_TIMED_OUT)
+  const jump = await awaitSelfAnsweringJump(
+    () => focus([cellId], { animate: !document.hidden }),
+    // A cell the board does not hold is a flight that never left, so there is
+    // no verdict to give it: `null` says exactly that, where `cancelled` used
+    // to say a flight had been taken back from something that never moved.
+    (result) => (result.kind === 'miss' ? null : verdictOfFlight(result.completion)),
+  )
+  // Every branch reads the verdict. Asking the answer whether it is null and
+  // calling that silence was the private inference this handshake exists to
+  // delete: it was right only for as long as a focus result could not itself
+  // be null, which is a promise the focus pipeline never made.
+  if (jump.verdict === 'unanswered')
     return 'The camera focus started but was not verified before timeout; the cell was not claimed as landed.'
-  if (result.kind === 'miss')
+  if (jump.verdict === null)
     return 'That cell is not on the active canvas — open its scenario first, then retry.'
-  if (result.completion !== 'completed')
-    return `The camera focus was ${result.completion}; the cell was not claimed as landed.`
+  if (jump.verdict !== 'landed')
+    return `The camera focus was ${jump.verdict}; the cell was not claimed as landed.`
   return CELL_CAMERA_SETTLED
 }
 

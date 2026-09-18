@@ -7,6 +7,7 @@ import { PACKAGE_OFFLINE_BOARD, type OfflineBoard } from '@/data/blueprintFallba
 import { runTool, type ToolContext, type ToolDefinition } from '@/lib/agent/tools/definition'
 import { TOOL_DEFINITIONS, findToolDefinition } from '@/lib/agent/tools/definitions'
 import { liveSession, liveUi } from '@/lib/agent/tools/liveContext'
+import { notOnAllowListRefusal } from '@/lib/agent/tools/refusals'
 import { sessionRoster } from '@/lib/agent/tools/roster'
 
 type Client = SupabaseClient<Database>
@@ -111,7 +112,7 @@ export async function dispatchTool(
     return runTool(definition, args, toolContext(client, agentSessionId, context))
   }
   if (client === null) return sampleRefusal(name)
-  return `Tool "${name}" is not on the allow-list. Available tools are fixed; deletes do not exist here — removal is human-only.`
+  return notOnAllowListRefusal(name)
 }
 
 /**

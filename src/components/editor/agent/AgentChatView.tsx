@@ -62,8 +62,8 @@ import {
   sendToAgent,
   stopAgent,
   useAgentRun,
-  useAgentTranscriptHydrating,
 } from '@/lib/agent/loop'
+import { useAgentPersistenceWorkPending } from '@/lib/agent/persistenceReadiness'
 import {
   AGENT_SKILL_COMMANDS,
   completeSkillToken,
@@ -125,7 +125,9 @@ export function AgentChatView({
   // Same canAgent gate as the sessions list: without persistence the
   // "not yet hydrated" half of the flag would be a forever-skeleton.
   const transcriptHydrating =
-    useAgentTranscriptHydrating(session.id) && canAgent && !isSampleTrial
+    useAgentPersistenceWorkPending({ kind: 'transcript', id: session.id }) &&
+    canAgent &&
+    !isSampleTrial
   const changeCount = useAgentChangeCount(session.id)
   const [renaming, setRenaming] = useState(false)
   // The near misses the reader has been asked about — `/audit`, which names
@@ -145,13 +147,13 @@ export function AgentChatView({
   // what --anchor-width measures).
   const composerRowRef = useRef<HTMLDivElement>(null)
   // Reopening a session after a reload restores its transcript from
-  // agent_messages (no-op for never-persisted sessions). `client` is a
-  // dep on purpose: this child effect fires before the parent attaches
-  // persistence, the hydrate self-guards on attachment, and the retry
-  // happens HERE when the client lands.
+  // agent_messages (no-op for never-persisted sessions). Asking before the
+  // panel above has attached persistence is fine and is the ordinary case on
+  // a reload: the ask is parked and runs when a client lands, so this effect
+  // depends on the session and nothing else.
   useEffect(() => {
-    void hydrateAgentTranscript(session.id)
-  }, [session.id, client])
+    hydrateAgentTranscript(session.id)
+  }, [session.id])
 
   // React-side context. What the user is *looking at* (view, selection,
   // open panel, Design picks) comes from the UI-context bridge, collected

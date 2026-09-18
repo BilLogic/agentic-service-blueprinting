@@ -84,17 +84,24 @@ vi.mock('@/lib/authoringRpc', async (importOriginal) => ({
 import { setActiveService } from '@/contexts/activeService'
 import { sendToAgent, stopAgent, useAgentRun } from '@/lib/agent/loop'
 import { AGENT_SKILL_COMMANDS } from '@/lib/agent/skills'
-import { ProviderError } from '@/lib/agent/providers/provider'
+import { ProviderError, wholeSystem } from '@/lib/agent/providers/provider'
 import { PACKAGE_OFFLINE_BOARD } from '@/data/blueprintFallbacks'
 import type { AgentSettings } from '@/lib/agent/settings'
 import {
+  BATCH_LIMIT_REFUSAL,
+  BATCH_PAUSED_STATUS,
   REPEAT_READ_SUPPRESSED,
   SAMPLE_TRIAL_REFUSAL,
+  WRITE_BATCH_LIMIT,
   noSuchToolRefusal,
   repeatReadRefusal,
 } from '@/lib/agent/tools/refusals'
 import { configureAgentTools } from '@/lib/agent/tools/roster'
 import { NO_UI_STATE } from '@/lib/agent/tools/definitions/ui'
+
+/** The live UI note, and the block the prompt carries it in. */
+const CONTEXT_NOTE = 'Phase 2 is open; the Await lane is selected.'
+const CONTEXT_BLOCK = '\n\n--- current context ---\n'
 
 const SETTINGS: AgentSettings = { provider: 'anthropic', models: {}, keys: { anthropic: 'test-key' } }
 
@@ -117,6 +124,8 @@ const send = (
   > & {
     /** Pass one to send TWICE on the same session — the only case that needs it. */
     sessionId?: string
+    /** The live UI note; empty unless a case is about where it lands. */
+    contextNote?: string
   },
 ) => {
   const sessionId = input.sessionId ?? `loop-test-${(sessions += 1)}`
@@ -125,7 +134,7 @@ const send = (
     sessionId,
     offlineBoard: PACKAGE_OFFLINE_BOARD,
     settings: SETTINGS,
-    contextNote: '',
+    contextNote: input.contextNote ?? '',
   }).then(
     () => renderHook(() => useAgentRun(sessionId)).result.current.events,
   )
@@ -272,7 +281,7 @@ describe('the loop, provider → tool → result → provider', () => {
       text: 'then /audit the intake',
       unrunSkills: [{ token: 'audit', label: '/sb:audit' }],
     })
-    const system = provider.inputs[0]!.system
+    const system = wholeSystem(provider.inputs[0]!)
     expect(system).toContain('/sb:audit')
     expect(system).toContain('is NOT a skill name')
     expect(system).toContain('NO skill ran')
@@ -294,7 +303,7 @@ describe('the loop, provider → tool → result → provider', () => {
         { token: 'map', label: '/sb:map' },
       ],
     })
-    const system = provider.inputs[0]!.system
+    const system = wholeSystem(provider.inputs[0]!)
     expect(system).toContain('are NOT skill names here')
     expect(system).toContain('"/audit" and "/map"')
     expect(system).toContain('the closest skills are /sb:audit and /sb:map')
@@ -311,7 +320,8 @@ describe('the loop, provider → tool → result → provider', () => {
       text: 'build this from my notes, then check it',
       skills: [map, audit],
     })
-    const { system, systemStableLength } = provider.inputs[0]!
+    const sent = provider.inputs[0]!
+    const system = wholeSystem(sent)
     expect(system.indexOf('--- active skill: /sb:map')).toBeLessThan(
       system.indexOf('--- active skill: /sb:audit'),
     )
@@ -319,13 +329,63 @@ describe('the loop, provider → tool → result → provider', () => {
     // The sentence that translates a skill for this surface is about all of
     // them, so it is said once rather than per skill.
     expect(system.split('You are the canvas agent, not an IDE agent')).toHaveLength(2)
-    // The cache breakpoint sits past EVERY body, not mid-skill: the prefix it
-    // measures has to be the whole stable prompt.
-    const stable = system.slice(0, systemStableLength)
-    expect(stable).toContain(map.content!.trimEnd().slice(-60))
-    expect(stable).toContain(audit.content!.trimEnd().slice(-60))
+    // The cache breakpoint sits past EVERY body, not mid-skill: both bodies
+    // end inside the stable part, and the volatile part begins after them.
+    expect(sent.systemStable).toContain(map.content!.trimEnd().slice(-60))
+    expect(sent.systemStable).toContain(audit.content!.trimEnd().slice(-60))
+    expect(sent.systemVolatile).not.toContain(map.content!.trimEnd().slice(-60))
+    expect(sent.systemVolatile).not.toContain(audit.content!.trimEnd().slice(-60))
+    // And the prompt is the two parts joined — nothing of it goes missing at
+    // the seam, and nothing is said twice.
+    expect(system).toBe(sent.systemStable + sent.systemVolatile)
     // The turn reads back with both, not just the first.
     expect(events[0]).toMatchObject({ kind: 'user', skills: ['sb:map', 'sb:audit'] })
+  })
+
+  it('assembles what the single builder used to: every skill body, then the live context, once, one blank line past the last of them', async () => {
+    // The claim the whole seam rests on is that splitting the prompt in two
+    // did not CHANGE the prompt. The old single builder emitted the context
+    // block last — after every skill body, one blank line past it — so that
+    // is what the two parts joined have to spell, byte for byte. A
+    // separator lost or doubled, a context block said twice, or one that
+    // drifts ahead of a skill body is a different prompt to the model and a
+    // cache entry that matches nothing on the next round.
+    provider.turns = [{ parts: [{ type: 'text', text: 'On it.' }], stopReason: 'end' }]
+    const map = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:map')!
+    const audit = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:audit')!
+    await send({
+      client,
+      text: 'build this from my notes, then check it',
+      skills: [map, audit],
+      contextNote: CONTEXT_NOTE,
+    })
+    const sent = provider.inputs[0]!
+    const system = wholeSystem(sent)
+
+    // Said once. Twice would be two contexts for the model to reconcile.
+    expect(system.split(CONTEXT_BLOCK)).toHaveLength(2)
+    const seam = system.indexOf(CONTEXT_BLOCK)
+
+    // Past the last BYTE of the last skill body, not merely past its header.
+    const lastSkillByte = system.lastIndexOf(audit.content!.trimEnd().slice(-60))
+    expect(lastSkillByte).toBeGreaterThan(-1)
+    expect(seam).toBeGreaterThan(lastSkillByte)
+    expect(seam).toBeGreaterThan(system.lastIndexOf('--- active skill:'))
+
+    // Exactly one blank line at the join. The block brings its own '\n\n'
+    // and the part before it ends on a non-newline, so a separator added on
+    // either side of the seam shows up here as a third newline.
+    expect(system.slice(seam, seam + 4)).toBe('\n\n--')
+    expect(system[seam - 1]).not.toBe('\n')
+
+    // The context is the prompt's LAST word — nothing stable trails it.
+    expect(system.endsWith(CONTEXT_NOTE)).toBe(true)
+
+    // And the cut falls exactly on that boundary: the stable part ends where
+    // the context block begins, so the volatile part is the context block and
+    // carries the separator itself. The two parts are joined bare.
+    expect(sent.systemVolatile).toBe(CONTEXT_BLOCK + CONTEXT_NOTE)
+    expect(sent.systemStable).toHaveLength(seam)
   })
 
   it('still says nothing ran on the closing call, after the round budget is spent', async () => {
@@ -344,8 +404,8 @@ describe('the loop, provider → tool → result → provider', () => {
     // The closing call is the one that was sent no tools.
     const closing = provider.inputs.at(-1)!
     expect(closing.tools).toEqual([])
-    expect(closing.system).toContain('is NOT a skill name')
-    expect(closing.system).toContain('Do not describe /sb:audit as having run')
+    expect(wholeSystem(closing)).toContain('is NOT a skill name')
+    expect(wholeSystem(closing)).toContain('Do not describe /sb:audit as having run')
   })
 
   it('still says the session has no database on the closing call', async () => {
@@ -358,7 +418,7 @@ describe('the loop, provider → tool → result → provider', () => {
     await send({ client: null, text: 'walk me through the sample' })
     const closing = provider.inputs.at(-1)!
     expect(closing.tools).toEqual([])
-    expect(closing.system).toContain('This app has NO database connected')
+    expect(wholeSystem(closing)).toContain('This app has NO database connected')
   })
 
   it('still says the session is view-only on the closing call', async () => {
@@ -375,8 +435,8 @@ describe('the loop, provider → tool → result → provider', () => {
     await send({ client, text: 'walk me through the intake', allowWrites: false })
     const closing = provider.inputs.at(-1)!
     expect(closing.tools).toEqual([])
-    expect(closing.system).toContain('This session is VIEW-ONLY')
-    expect(closing.system).toContain('never imply you made it')
+    expect(wholeSystem(closing)).toContain('This session is VIEW-ONLY')
+    expect(wholeSystem(closing)).toContain('never imply you made it')
   })
 })
 
@@ -592,6 +652,75 @@ describe('a read the turn already ran', () => {
  * The clock is faked throughout: the backoff between tries is real time the
  * suite should not spend waiting.
  */
+/*
+ * The live half of an admission answer, at the loop rather than at the seam.
+ *
+ * `admission.test.ts` pins the answer itself — which gate refuses a call and
+ * in whose words. These two are about what the loop does AROUND two of those
+ * answers, which is the part no seam can hold: a batch pause shows one status
+ * row however many calls bounced, and a stop has to end the turn rather than
+ * dispatch the rest of the round.
+ */
+describe('a write batch the send has already spent', () => {
+  it('lands the limit, bounces the rest, and says "paused" once for the round', async () => {
+    setActiveService({ id: 'svc-1', slug: 'rooftop-retrofit', name: 'Rooftop Retrofit' })
+    const overBudget = 3
+    provider.turns = [
+      {
+        parts: Array.from({ length: WRITE_BATCH_LIMIT + overBudget }, (_unused, index) =>
+          call(`b${index}`, 'create_phase', { name: `Phase ${index}` }),
+        ),
+        stopReason: 'tool_use',
+      },
+      { parts: [{ type: 'text', text: 'Paused after the batch.' }], stopReason: 'end' },
+    ]
+
+    const events = await send({ client, text: 'Add a dozen phases' })
+
+    // Exactly the limit landed; the writes past it changed nothing.
+    expect(phasesCreated).toHaveLength(WRITE_BATCH_LIMIT)
+    expect(answerTo(`b${WRITE_BATCH_LIMIT - 1}`).isError).toBeUndefined()
+    for (let index = WRITE_BATCH_LIMIT; index < WRITE_BATCH_LIMIT + overBudget; index += 1)
+      expect(answerTo(`b${index}`)).toMatchObject({
+        result: BATCH_LIMIT_REFUSAL,
+        isError: true,
+      })
+    // One row for the pause, not one per bounced call: three identical
+    // "Paused" rows read as a stutter rather than a pause.
+    expect(events.filter((event) => event.kind === 'status')).toEqual([
+      { kind: 'status', text: BATCH_PAUSED_STATUS },
+    ])
+  })
+})
+
+describe('a stop that lands before the round\'s calls dispatch', () => {
+  it('runs none of them and ends the turn', async () => {
+    setActiveService({ id: 'svc-1', slug: 'rooftop-retrofit', name: 'Rooftop Retrofit' })
+    const sessionId = 'loop-stop-mid-batch'
+    provider.turns = [
+      () => {
+        // Pressed while the provider was still answering, so the loop reaches
+        // its calls with the signal already up.
+        stopAgent(sessionId)
+        return {
+          parts: [call('s1', 'create_phase', { name: 'One' }), call('s2', 'create_phase', { name: 'Two' })],
+          stopReason: 'tool_use',
+        }
+      },
+      { parts: [{ type: 'text', text: 'Should never be asked for.' }], stopReason: 'end' },
+    ]
+
+    const events = await send({ client, text: 'Add two phases', sessionId })
+
+    expect(phasesCreated).toEqual([])
+    expect(provider.inputs).toHaveLength(1)
+    expect(events.at(-1)).toEqual({
+      kind: 'status',
+      text: 'Stopped. Whatever already landed is in the change sheet, revertible.',
+    })
+  })
+})
+
 describe('a provider call that drops at the network layer', () => {
   // Every case here either waits out a backoff or must be shown not to
   // start one, so the clock is faked for all of them; `afterEach` restores
