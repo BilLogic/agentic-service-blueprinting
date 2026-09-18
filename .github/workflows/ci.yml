@@ -281,13 +281,18 @@ jobs:
           fi
           echo "ok: the walk refused a page that logged an error"
 
-      # Two cases under one config: the walk over every view, and
-      # `render-walk/annotation-drag.spec.ts` — the browser half of the
-      # annotation-drag slice, which draws a box across two cells with real
-      # mouse moves, drags it onto a third under a real pointer capture, and
-      # reads the captured cell ids out of the capture menu's own download.
-      # Those are the three things the jsdom slice has to stub.
-      - name: Walk every view of the sample board, and drag an annotation
+      # Four cases under one config: the walk over every view, the phone
+      # cover walk, and the two browser halves of jsdom slices.
+      # `render-walk/annotation-drag.spec.ts` draws a box across two cells
+      # with real mouse moves, drags it onto a third under a real pointer
+      # capture, and reads the captured cell ids out of the capture menu's own
+      # download — the three things that slice has to stub.
+      # `render-walk/mobile-agent-jump.spec.ts` drives the phone's agent jump
+      # at 375×812 with the provider endpoint answered from the spec, and
+      # asserts the three its slice cannot claim from jsdom: the tool's
+      # settled sentence on a real clock, a legible strip above the sheet, and
+      # the destination visibly inside it.
+      - name: Walk every view, drag an annotation, and jump the phone camera
         run: npm run check:render-walk
 
       # One screenshot per view, kept whichever way the walk went. The failures

@@ -120,7 +120,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: /mobile-cover\.spec\.ts/,
+      testIgnore: /mobile-.*\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         // Wider than the device default: a merged board with several paths
@@ -131,7 +131,7 @@ export default defineConfig({
     },
     {
       name: 'mobile',
-      testMatch: /mobile-cover\.spec\.ts/,
+      testMatch: /mobile-.*\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 375, height: 812 },

@@ -32,21 +32,46 @@
  * exactly the phase asked for. The phone's other coverage could see neither:
  * the bridge's unit test drives the hands with no shell around them, and the
  * source guards read the shell's own text rather than running it. Both
- * defects are encoded as red cases below, each injected at a seam this flow
- * really routes through, and each has been watched fail the assertions the
- * green case makes.
+ * defects are encoded as red cases below, each injected for that case only at
+ * a seam this flow really routes through, and each has been watched fail the
+ * assertions the green case makes.
+ *
+ * THE CLOCK IS TURNED BY HAND. Every timer in this flow is faked and advanced
+ * explicitly (`letTheClockRun`), for the reason the annotation-drag slice
+ * fakes its frames: the shipped choreography is a race between the shell's
+ * 200 ms fade, the camera's fit, the tool's 1800 ms verification deadline and
+ * the caret watcher's 2000 ms one, and a test that leaned on the wall clock
+ * to order them would be green on a quiet machine and red on a loaded runner
+ * — a failure that says nothing about the code. Faked, the ORDER is what is
+ * asserted and the machine's load cannot reach it.
  *
  * WHAT STANDS IN FOR THE CANVAS, AND WHY. `ServiceOverviewView` is replaced
  * by a camera stand-in of a dozen lines, for the reason the annotation-drag
  * slice stubs its board: jsdom lays nothing out, so the real viewport has no
  * rectangle to fit to, no frames to fly over, and no verdict to publish —
  * every assertion below would be about a camera that never moved. The
- * stand-in does exactly what the real viewport does at the two points this
- * flow reads it: it takes `occludedBottomPx` as the fit inset, and once per
- * mount it publishes an outcome for `cameraTargetId` through the shipped
- * `publishCanvasNavigationOutcome` — which is the key the real viewport
- * publishes under (`cameraOutcomeKey`, handed down from the same field).
- * Everything between the tool call and that verdict is the shipped code.
+ * stand-in does what the real viewport does at the three points this flow
+ * reads it: it takes `occludedBottomPx` as the fit inset, it ARMS on
+ * `cameraOutcomeKey` changing (the key `useZoomPanViewport` arms on, handed
+ * down from `cameraTargetId`) rather than once per mount, and it publishes
+ * that key's outcome through the shipped `publishCanvasNavigationOutcome`.
+ * Arming on the key rather than the mount is what lets this file see a jump
+ * whose destination does NOT remount the board — a phase whose first scenario
+ * is already on screen, which the shell keys the board by and therefore keeps
+ * — where the real code publishes and a mount-shaped stand-in would be
+ * silent. That case is asserted below. Everything between the tool call and
+ * the verdict is the shipped code.
+ *
+ * WHY THE STAND-IN'S FIT WAITS OUT THE FADE. The real viewport will not fit
+ * until the NAMED destination is measurable on the board in front of it (two
+ * frames of the same named element — see `useZoomPanViewport`), and during
+ * the shell's fade the board in front of it is still the PREVIOUS one: the
+ * key changes at selection, the swap happens `MOTION_FADE_MS` later. So the
+ * stand-in schedules its fit a tick behind that fade, which is the one number
+ * that makes it answer from the board the destination is actually drawn on.
+ * The outgoing instance is unmounted before its own fit comes due and its
+ * cleanup cancels it, exactly as an unmount is not a verdict for the real
+ * one.
  *
  * THE SHEET'S HEIGHT IS STAMPED, for the same reason. The sheet measures
  * itself with `getBoundingClientRect`, which jsdom answers 0 for; a zero
@@ -62,20 +87,18 @@
  * test, and the trial roster's. What this slice proves is the FLOW, given a
  * phone the provider admits an agent to.
  *
- * WHAT THIS FILE CANNOT SEE. It runs no frames. A real phone scenario jump
- * publishes its verdict about 366 ms after the selection — a 200 ms fade, one
- * canvas remount, then the fit — and the fade here is the shipped timer while
- * the fit is a timeout standing in for a chain of `requestAnimationFrame`
- * steps that jsdom does not schedule. So the ORDER and the choreography are
- * covered and the wall-clock duration is not: this file cannot say that a fit
+ * WHAT THIS FILE CANNOT SEE. It runs no frames and no wall clock. The fit is
+ * one faked timer standing in for a chain of `requestAnimationFrame` steps
+ * jsdom never schedules, and the deadlines the tool and the watcher race are
+ * never actually raced — the clock only moves when this file moves it. So the
+ * ORDER and the choreography are covered and the DURATION is not: that a fit
  * lands inside the tool's 1800 ms deadline or the watcher's 2000 ms one on a
  * real device, that the strip above the sheet is legible through the scrim,
- * or that the destination is visually inside it — only that the occluded
- * height reached the camera as an inset. Those are the render walk's to
- * answer, at 375×812 in a real browser.
+ * and that the destination is visibly inside it are answered in a browser by
+ * `render-walk/mobile-agent-jump.spec.ts`, at this same 375×812.
  */
 import { QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 /** The screen this flow is read on — the phone the render walk uses too. */
@@ -94,10 +117,11 @@ const SHEET_OCCLUDED_PX = Math.round(PHONE.height * 0.6)
 /**
  * What the camera stand-in saw, in the order it saw it.
  *
- * `fits` is one entry per mount-time fit — the moment the real viewport
- * publishes its verdict — carrying the semantic target it answered for and
- * the inset in force when it ran. `inset` is the latest value the shell
- * handed down, which is how the sheet's arrival is read before any jump.
+ * `fits` is one entry per fit — the moment the real viewport publishes its
+ * verdict — carrying the board it answered from, the semantic target it
+ * answered for, and the inset in force when it ran. `inset` is the latest
+ * value the shell handed down, which is how the sheet's arrival is read
+ * before any jump.
  */
 const camera = vi.hoisted(() => ({
   fits: [] as Array<{
@@ -106,13 +130,6 @@ const camera = vi.hoisted(() => ({
     occludedBottomPx: number
   }>,
   inset: 0,
-  /**
-   * How long after a mount the stand-in reports its fit. A real fit is a
-   * chain of frames; this is one timer, and the only thing it has to be is
-   * later than the mount and sooner than the deadlines the tool and the
-   * watcher race it against.
-   */
-  fitDelayMs: 16,
 }))
 
 // The one leaf read that is not this flow's: whether this session may talk to
@@ -131,13 +148,18 @@ vi.mock('@/contexts/SupabaseProvider', () => ({
 }))
 
 /**
- * THE TWO SHIPPED DEFECTS, AS SWITCHES.
+ * THE TWO SHIPPED DEFECTS, AS SWITCHES ARMED PER CASE.
  *
  * Both reds below restore a behaviour that really shipped, and both are
  * injected at a seam this flow really routes through rather than by editing
  * the shell: the module that is the agent's hands, and the read side of the
- * bridge the shell reports itself through. They are switches on mocks that
- * otherwise delegate exactly — a module graph reset per red would have to
+ * bridge the shell reports itself through. They are read at the moment the
+ * shell wires itself up — inside the case that armed them — so an unarmed
+ * run hands the shipped function and the shipped contributor straight
+ * through untouched, and the green cases below are not running through a
+ * wrapper of this file's.
+ *
+ * Switches rather than a module-graph reset per red: a reset would have to
  * re-import every provider the shell mounts under, and the whole point of an
  * injection is that the code under it is the shipped code.
  */
@@ -147,6 +169,11 @@ const defect = vi.hoisted(() => ({
   /** The shell reports everything about itself except its selected phase. */
   dropsThePhaseLine: false,
 }))
+
+/** Arm one shipped defect for THIS case. Disarmed again by the global `afterEach`. */
+function inject(which: keyof typeof defect) {
+  defect[which] = true
+}
 
 vi.mock('@/components/mobile/mobileAgentBridge', async (importOriginal) => {
   const actual =
@@ -179,31 +206,42 @@ vi.mock('@/components/mobile/mobileAgentBridge', async (importOriginal) => {
   }
 })
 
+/**
+ * The read side of the agent's view of the UI.
+ *
+ * Narrowed to the `shell` key on purpose: that is the contributor the phone
+ * shell registers its selection lines under, and it is the seam the second
+ * red is about. Filtering every contributor would take the line out of
+ * anything else that ever reported one, which is a defect nobody shipped and
+ * would make the red prove less than it claims.
+ */
 vi.mock('@/lib/agent/uiBridge', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/agent/uiBridge')>()
   return {
     ...actual,
     registerAgentUiContext: (key: string, contributor: () => string | null) =>
-      actual.registerAgentUiContext(key, () => {
-        const reported = contributor()
-        if (!defect.dropsThePhaseLine) return reported
-        return (reported ?? '')
-          .split('\n')
-          .filter((line) => !line.startsWith('Selected phase:'))
-          .join('\n')
-      }),
+      actual.registerAgentUiContext(
+        key,
+        defect.dropsThePhaseLine && key === 'shell'
+          ? () =>
+              (contributor() ?? '')
+                .split('\n')
+                .filter((line) => !line.startsWith('Selected phase:'))
+                .join('\n')
+          : contributor,
+      ),
   }
 })
 
 /**
  * The camera, stood in for. It reads the same two props the shell hands the
- * real board — the fit inset and the fit-ready callback — and publishes the
- * same verdict under the same key, once per mount, which is the shape the
- * shell's remount-per-scenario keying gives the real one.
+ * real board — the fit inset and the fit-ready callback — arms on the same
+ * key the real viewport arms on, and publishes the same verdict under it.
  */
 vi.mock('@/components/editor/ServiceOverviewView', async () => {
   const { createElement, useEffect, useRef } = await import('react')
   const { useEditor } = await import('@/contexts/EditorContext')
+  const { MOTION_FADE_MS } = await import('@/lib/motion')
   const { publishCanvasNavigationOutcome } = await import(
     '@/lib/canvasNavigationOutcome'
   )
@@ -225,6 +263,11 @@ vi.mock('@/components/editor/ServiceOverviewView', async () => {
       inset.current = occludedBottomPx
       camera.inset = occludedBottomPx
       useEffect(() => {
+        // A tick behind the shell's fade — see the file header: until the
+        // fade ends the board on screen is still the previous one, and the
+        // real viewport will not fit to a destination it cannot measure. The
+        // outgoing instance is unmounted first and this cleanup cancels its
+        // fit, which is the real one's rule that an unmount is not a verdict.
         const settle = setTimeout(() => {
           camera.fits.push({
             scenarioId: soloScenarioId ?? null,
@@ -237,10 +280,10 @@ vi.mock('@/components/editor/ServiceOverviewView', async () => {
               kind: 'completed',
               transform: { pan: { x: 0, y: 0 }, zoom: 1 },
             })
-        }, camera.fitDelayMs)
+        }, MOTION_FADE_MS + 16)
         return () => clearTimeout(settle)
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- one fit per mount, which is what the shell's keying gives the real board
-      }, [])
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- armed on the destination key and on the board drawn, which is what the real viewport's reset key carries; the callback is stable
+      }, [cameraTargetId, soloScenarioId])
       return createElement('div', {
         'data-testid': 'phone-canvas',
         'data-solo-scenario': soloScenarioId ?? '',
@@ -255,8 +298,13 @@ import { DeploymentConfigProvider } from '@/contexts/DeploymentConfigContext'
 import { EditorProvider } from '@/contexts/EditorContext'
 import { PathSelectionProvider } from '@/contexts/PathSelectionContext'
 import { ViewStateProvider } from '@/contexts/ViewStateContext'
+import {
+  agentSessionsSnapshot,
+  deleteAgentSession,
+} from '@/lib/agent/sessions'
 import { saveAgentSettings } from '@/lib/agent/settings'
 import { cameraSettled } from '@/lib/agent/uiBridge'
+import { MOTION_FADE_MS } from '@/lib/motion'
 import { dispatchTool } from '@/lib/agent/tools/registry'
 import { queryClient } from '@/lib/queryClient'
 import { SAMPLE_PHASES, SAMPLE_SCENARIOS } from '@/data/sampleBlueprint'
@@ -312,11 +360,25 @@ function stampTheSheetsHeight() {
 }
 
 /**
- * The phone's media answers: below the shell's breakpoint, and no reduced
- * motion — the scenario swap's fade is part of the choreography this flow is
- * about, and a reader who asked for less motion skips it.
+ * The phone this flow is read on, in both the answers a component can ask
+ * for. `matchMedia` alone is not a phone: `useIsMobile` reads
+ * `window.innerWidth`, which jsdom leaves at its 1024 default, so a file that
+ * advertises 375×812 and stubs only the media query puts a DESKTOP inside its
+ * own phone and never knows.
  */
-function phoneMedia() {
+function phoneScreen() {
+  for (const [name, value] of [
+    ['innerWidth', PHONE.width],
+    ['innerHeight', PHONE.height],
+  ] as const)
+    Object.defineProperty(window, name, {
+      configurable: true,
+      writable: true,
+      value,
+    })
+  // Below the shell's breakpoint, and no reduced motion — the scenario swap's
+  // fade is part of the choreography this flow is about, and a reader who
+  // asked for less motion skips it.
   window.matchMedia = ((query: string) => ({
     matches: query.includes('max-width: 767px'),
     media: query,
@@ -353,6 +415,39 @@ function renderPhone() {
   )
 }
 
+/**
+ * Turn the clock, inside `act`.
+ *
+ * Every timer this flow rides is faked — the shell's fade, the camera's fit,
+ * the tool's poll and its deadline, the caret watcher's — so nothing moves
+ * until this is called. Inside `act` because each of those lands as a state
+ * update, and outside it React would warn and the assertion after could read
+ * the DOM a render early.
+ */
+async function letTheClockRun(ms: number) {
+  // In steps, not one leap. React flushes a mounted component's effects when
+  // `act` RETURNS, so a single long advance runs the timers that exist at the
+  // start of it and never the ones the remount schedules inside it — the
+  // incoming board's fit would be queued and then left standing still. The
+  // step is the 25 ms `waitForNavigation` polls on, which is the finest
+  // grain anything in this flow reads.
+  const STEP_MS = 25
+  for (let left = ms; left > 0; left -= STEP_MS) {
+    const step = Math.min(STEP_MS, left)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(step)
+    })
+  }
+}
+
+/**
+ * How far to turn the clock over one agent-driven jump: the fade, the
+ * remount, the fit a tick behind it, and the 25 ms polls `waitForNavigation`
+ * runs in between. Comfortably short of the tool's own 1800 ms deadline,
+ * which is the point — the flight has to land with the deadline unreached.
+ */
+const ONE_FLIGHT_MS = MOTION_FADE_MS * 4
+
 /** The composer the caret is handed back to — found the way `focusAgentComposer` finds it. */
 const composer = () =>
   document.querySelector<HTMLTextAreaElement>('textarea[data-agent-composer]')
@@ -361,14 +456,68 @@ const composer = () =>
 const sheetContent = () =>
   document.querySelector<HTMLElement>('[data-slot="sheet-content"]')
 
-/** Is the ✦ sheet still on screen, with the conversation in it? */
-function sheetIsUp(): boolean {
-  return composer() !== null
+/**
+ * The ✦ sheet, if it is on screen AND showing.
+ *
+ * By its ROLE and by its OWN title, not by "a composer exists somewhere": a
+ * composer outliving the sheet and the sheet outliving the composer are
+ * different defects, and a check that only asks whether some textarea is in
+ * the document would pass on the first. `queryAllByRole` is the visibility
+ * half — it resolves the accessibility tree, so a dialog under an
+ * `aria-hidden` ancestor or a `display: none` subtree is not on screen for it,
+ * where a bare `querySelector` would find a node a reader cannot see. The
+ * title is the identity half: the index drawer is a bottom sheet too, and
+ * this flow is about the one headed Agent.
+ */
+function agentSheetOnScreen(): HTMLElement | null {
+  return (
+    screen
+      .queryAllByRole('dialog')
+      .find(
+        (dialog) =>
+          dialog
+            .querySelector('[data-slot="sheet-title"]')
+            ?.textContent?.trim() === 'Agent',
+      ) ?? null
+  )
+}
+
+/** Is the ✦ sheet up, with the conversation inside it? */
+function theSheetIsUpWithTheConversation(): boolean {
+  const sheet = agentSheetOnScreen()
+  const box = composer()
+  return sheet !== null && box !== null && sheet.contains(box)
 }
 
 /** What the phone reports about itself, read the way `get_ui_state` reads it. */
 async function uiState(): Promise<string> {
   return dispatchTool(null, SESSION, 'get_ui_state', {})
+}
+
+/**
+ * The agent's jump, with the clock turned over the flight by hand.
+ *
+ * Dispatched first and awaited after, because the tool's own answer is the
+ * thing the flight produces: it waits on the selection and on the camera's
+ * verdict, and neither arrives until the timers below are run.
+ */
+async function theAgentJumps(
+  tool: 'open_scenario' | 'open_phase',
+  args: Record<string, string>,
+): Promise<string> {
+  let landed = false
+  const answered = dispatchTool(null, SESSION, tool, args).then((text) => {
+    landed = true
+    return text
+  })
+  await letTheClockRun(ONE_FLIGHT_MS)
+  // A jump that has not answered by now has missed something the flow owed
+  // it. Run the clock past the tool's own 1800 ms deadline so it SAYS so:
+  // with a hand-turned clock, a promise nobody advances any further never
+  // settles, and the case would report a five-second test timeout instead of
+  // the assertion that would name the defect.
+  if (!landed) await letTheClockRun(2_000)
+  return answered
 }
 
 /**
@@ -385,48 +534,86 @@ async function readerOpensTheSheet() {
   // The cover's CTA is the one way off it, and on a phone it opens the first
   // scenario rather than an overview — a phone has no phase row to draw.
   fireEvent.click(screen.getByRole('button', { name: 'Open the blueprint' }))
-  await vi.waitFor(() => expect(screen.getByTestId('phone-canvas')).toBeTruthy())
+  await letTheClockRun(ONE_FLIGHT_MS)
+  expect(screen.getByTestId('phone-canvas')).toBeTruthy()
   // …and it arrives with the drawer still shut, on the canvas.
   expect(sheetContent()).toBeNull()
-  await vi.waitFor(() => expect(camera.fits).toHaveLength(1))
   // The landing fit was aimed at the whole screen: no sheet, nothing occluded.
+  expect(camera.fits).toHaveLength(1)
   expect(camera.fits[0]).toMatchObject({
     scenarioId: LANDED.id,
     occludedBottomPx: 0,
   })
 
   fireEvent.click(screen.getByRole('button', { name: 'Ask the agent' }))
-  fireEvent.click(await screen.findByRole('button', { name: 'New session' }))
+  await letTheClockRun(MOTION_FADE_MS)
+  // Synchronous queries throughout, and the clock turned between them:
+  // Testing Library's own async helpers (`findBy*`, its `waitFor`) schedule
+  // on a real `setTimeout` they cannot see has been faked, so they would wait
+  // for a tick this file never gives them.
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  await letTheClockRun(MOTION_FADE_MS)
   // The composer is the caret's destination, and it has to be typeable: a
   // panel with no provider key disables the field, and handing the caret to a
   // disabled field is worse than not handing it back at all.
-  await vi.waitFor(() => expect(composer()).toBeTruthy())
+  expect(composer()).toBeTruthy()
   expect(composer()!.disabled).toBe(false)
   // THE SHEET'S HEIGHT REACHED THE CAMERA, before any jump: the shell measured
   // it and handed it down as the fit inset.
-  await vi.waitFor(() => expect(camera.inset).toBe(SHEET_OCCLUDED_PX))
+  expect(camera.inset).toBe(SHEET_OCCLUDED_PX)
   expect(await uiState()).toContain('Agent sheet: open')
 }
 
+let unstamp: (() => void) | null = null
 beforeEach(() => {
+  // Every timer, by hand: see `letTheClockRun`. `Date` goes with them so the
+  // session module's own stamps move with the clock rather than against it.
+  // `performance` is faked with the timers on purpose: `waitForNavigation`
+  // measures its 1800 ms deadline with `performance.now()`, so a real one
+  // beside a fake clock is a deadline that can never be reached — the red
+  // below would wait for a timeout that never came, and the greens would be
+  // holding a race nobody ran.
+  vi.useFakeTimers({
+    toFake: [
+      'setTimeout',
+      'clearTimeout',
+      'setInterval',
+      'clearInterval',
+      'Date',
+      'performance',
+    ],
+  })
   camera.fits = []
   camera.inset = 0
-  phoneMedia()
+  phoneScreen()
   globalThis.ResizeObserver =
     StillResizeObserver as unknown as typeof ResizeObserver
   // The one key that makes the composer typeable. It never leaves this
   // process — nothing in this flow sends a message to a provider.
   saveAgentSettings({ provider: 'anthropic', keys: { anthropic: 'test-key' } })
-})
-
-let unstamp: (() => void) | null = null
-beforeEach(() => {
+  // Sessions outlive a test: the store is a localStorage-backed module, not
+  // component state. Left standing, the previous case's session is listed
+  // under its auto-name — "New session", the same words as the action that
+  // makes one — so the tap below lands on a session TITLE, which opens the
+  // rename dialogue, and the sheet under it goes out of the accessibility
+  // tree while the flow carries on looking fine.
+  clearTheSessionStore()
   unstamp = stampTheSheetsHeight()
 })
+
+/** Every session this process has made, gone. */
+function clearTheSessionStore() {
+  for (const session of agentSessionsSnapshot()) deleteAgentSession(session.id)
+}
+
 afterEach(() => {
   cleanup()
+  clearTheSessionStore()
   unstamp?.()
   unstamp = null
+  defect.closesTheSheetOnAJump = false
+  defect.dropsThePhaseLine = false
+  vi.useRealTimers()
 })
 
 describe('the agent moves the phone camera while the sheet stays up', () => {
@@ -435,7 +622,7 @@ describe('the agent moves the phone camera while the sheet stays up', () => {
 
     // THE AGENT JUMPS TO ANOTHER SCENARIO — through the tool the model calls,
     // so the answer below is the sentence a model would read.
-    const said = await dispatchTool(null, SESSION, 'open_scenario', {
+    const said = await theAgentJumps('open_scenario', {
       scenario_id: JUMPED.id,
     })
     expect(said).toBe(cameraSettled('scenario'))
@@ -443,7 +630,7 @@ describe('the agent moves the phone camera while the sheet stays up', () => {
     // 1. THE SHEET STAYED. This is the regression that shipped: the sheet used
     // to close to make the move visible, which threw the conversation away in
     // the one moment a reader most needs it.
-    expect(sheetIsUp()).toBe(true)
+    expect(theSheetIsUpWithTheConversation()).toBe(true)
     expect(await uiState()).toContain('Agent sheet: open')
 
     // 2. THE DESTINATION WAS AIMED ABOVE THE SHEET. The fit that answered for
@@ -469,18 +656,18 @@ describe('the agent moves the phone camera while the sheet stays up', () => {
 
     // 4. THE CARET CAME BACK, once the camera settled — the reader carries on
     // in words without hunting for the box.
-    await vi.waitFor(() => expect(document.activeElement).toBe(composer()))
+    expect(document.activeElement).toBe(composer())
 
     // THE AGENT JUMPS TO A PHASE. This is the other shipped defect's flow: a
     // shell with no phase line answered "not verified" for a jump that landed.
     // The caret is put down first, so its return is this jump's doing.
     composer()!.blur()
-    const saidPhase = await dispatchTool(null, SESSION, 'open_phase', {
+    const saidPhase = await theAgentJumps('open_phase', {
       phase_id: MAINTAIN.id,
     })
     expect(saidPhase).toBe(cameraSettled('phase'))
 
-    expect(sheetIsUp()).toBe(true)
+    expect(theSheetIsUpWithTheConversation()).toBe(true)
     expect(camera.fits.at(-1)).toEqual({
       // A phase is not a destination on a phone: the shell draws that phase's
       // FIRST scenario, and the camera answers for the phase it was asked for.
@@ -499,7 +686,46 @@ describe('the agent moves the phone camera while the sheet stays up', () => {
     // …and the phase selection cleared the scenario, which the shell says in
     // as many words rather than leaving the old one standing.
     expect(afterPhase).toContain('Selected scenario: none')
-    await vi.waitFor(() => expect(document.activeElement).toBe(composer()))
+    expect(document.activeElement).toBe(composer())
+  })
+
+  /**
+   * THE JUMP THAT DOES NOT REMOUNT THE BOARD.
+   *
+   * The shell keys its canvas by the scenario it draws, so jumping to a PHASE
+   * whose first scenario is already on screen leaves that board exactly where
+   * it is: nothing unmounts, nothing fades, and a camera that only answered
+   * once per mount would never answer at all — the tool would wait out its
+   * deadline and tell the model an arrival it can see had failed. The real
+   * viewport arms on the destination key, not on its own mount, so it
+   * publishes here; this case is what holds the stand-in to that.
+   */
+  it('answers for a phase whose scenario is already on screen, without the board remounting', async () => {
+    await readerOpensTheSheet()
+    await theAgentJumps('open_scenario', { scenario_id: JUMPED.id })
+    const board = screen.getByTestId('phone-canvas')
+    const fitsBefore = camera.fits.length
+
+    // The phase this scenario already belongs to. The shell resolves it to
+    // the same scenario, so the destination is the board in front of us.
+    const said = await theAgentJumps('open_phase', { phase_id: OPERATE.id })
+
+    expect(said).toBe(cameraSettled('phase'))
+    // The same node, not an equal one: nothing remounted and nothing faded.
+    expect(screen.getByTestId('phone-canvas')).toBe(board)
+    expect(
+      document
+        .querySelector('[data-mobile-scenario-swap]')
+        ?.getAttribute('data-mobile-scenario-swap'),
+    ).toBe('idle')
+    // …and the camera answered anyway, for the phase, aimed above the sheet.
+    expect(camera.fits.length).toBe(fitsBefore + 1)
+    expect(camera.fits.at(-1)).toEqual({
+      scenarioId: JUMPED.id,
+      targetId: OPERATE.id,
+      occludedBottomPx: SHEET_OCCLUDED_PX,
+    })
+    expect(theSheetIsUpWithTheConversation()).toBe(true)
   })
 })
 
@@ -512,17 +738,11 @@ describe('the agent moves the phone camera while the sheet stays up', () => {
  * was owed.
  */
 describe('goes red when the sheet closes on navigation again', () => {
-  beforeEach(() => {
-    defect.closesTheSheetOnAJump = true
-  })
-  afterEach(() => {
-    defect.closesTheSheetOnAJump = false
-  })
-
   it('lands the camera and reports success, with the conversation gone and the caret nowhere', async () => {
+    inject('closesTheSheetOnAJump')
     await readerOpensTheSheet()
 
-    const said = await dispatchTool(null, SESSION, 'open_scenario', {
+    const said = await theAgentJumps('open_scenario', {
       scenario_id: JUMPED.id,
     })
     // The camera landed and the tool says so — the defect is invisible here.
@@ -532,7 +752,7 @@ describe('goes red when the sheet closes on navigation again', () => {
     // And the assertions the green case makes about the sheet all fail: the
     // conversation is off screen, the fit was aimed at a screen with nothing
     // over it, and there is no composer left to hand the caret back to.
-    expect(sheetIsUp()).toBe(false)
+    expect(theSheetIsUpWithTheConversation()).toBe(false)
     expect(await uiState()).toContain('Agent sheet: closed')
     expect(camera.fits.at(-1)!.occludedBottomPx).toBe(0)
     expect(document.activeElement).toBe(document.body)
@@ -547,25 +767,20 @@ describe('goes red when the sheet closes on navigation again', () => {
  * not verified — so a model apologises for a move that landed.
  */
 describe('goes red when the shell stops reporting its selected phase', () => {
-  beforeEach(() => {
-    defect.dropsThePhaseLine = true
-  })
-  afterEach(() => {
-    defect.dropsThePhaseLine = false
-  })
-
   it('moves the camera to the phase and answers that the selection was not verified', async () => {
+    inject('dropsThePhaseLine')
     await readerOpensTheSheet()
 
-    const said = await dispatchTool(null, SESSION, 'open_phase', {
-      phase_id: MAINTAIN.id,
-    })
+    // The camera lands, the line never arrives, and the tool has to run out
+    // its 1800 ms verification deadline before it can answer — which
+    // `theAgentJumps` turns the clock through.
+    const said = await theAgentJumps('open_phase', { phase_id: MAINTAIN.id })
     // The camera went exactly where it was asked, with the sheet still up…
     expect(camera.fits.at(-1)).toMatchObject({
       targetId: MAINTAIN.id,
       occludedBottomPx: SHEET_OCCLUDED_PX,
     })
-    expect(sheetIsUp()).toBe(true)
+    expect(theSheetIsUpWithTheConversation()).toBe(true)
     // …and the answer the model reads is a failure.
     expect(said).toBe(
       'Phase navigation started, but the selected phase was not verified before timeout.',
