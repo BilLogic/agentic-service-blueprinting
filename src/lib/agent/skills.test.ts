@@ -5,8 +5,9 @@ import {
   draftWithoutSkillTokens,
   findSkillLookup,
   findSkillTokens,
-  findUnrunSkillToken,
+  findUnrunSkillTokens,
   skillMatchesQuery,
+  skillsInDraft,
 } from '@/lib/agent/skills'
 import { TOOL_DEFINITIONS } from '@/lib/agent/tools/definitions'
 import { readReference, referenceNames } from '@/lib/agent/tools/references'
@@ -74,10 +75,21 @@ describe('the skill lookup a draft carries', () => {
     expect(findSkillLookup('Hey can u /sb:aud ')).toBeNull()
   })
 
-  it('stays quiet while the draft already opens with a resolved skill', () => {
-    // That skill owns its arguments — a slash inside them is argument text.
-    expect(findSkillLookup('/sb:map from /notes')).toBeNull()
-    // An unresolved head token owns nothing, so the lookup still runs.
+  it('still opens on a second token after a resolved head skill', () => {
+    // The reversal. A guard used to refuse a lookup once the draft opened
+    // with a resolved skill — that skill owning its arguments, as a head
+    // command does in the tool this composer mirrors — and it contradicted
+    // the feature it shipped beside: a message carries as many skills as its
+    // text names, so the second one has to be findable.
+    expect(findSkillLookup('/sb:map notes then /sb:au')?.query).toBe('sb:au')
+    // A path typed for the head skill to read opens a lookup that matches no
+    // skill, and a lookup with no matches opens no menu — which is the whole
+    // of what the guard was buying.
+    expect(findSkillLookup('/sb:map from /notes')?.query).toBe('notes')
+    expect(
+      AGENT_SKILL_COMMANDS.filter((entry) => skillMatchesQuery(entry, 'notes')),
+    ).toEqual([])
+    // An unresolved head token never owned anything either way.
     expect(findSkillLookup('/audit the intake and /sb:m')?.query).toBe('sb:m')
   })
 
@@ -144,6 +156,24 @@ describe('the skills a draft names', () => {
     expect(idsIn('then /audit the intake')).toEqual([])
   })
 
+  it('runs one skill per resolved token, in order, deduped and uncapped', () => {
+    // `skillsInDraft` is what the send reads and the only record of what a
+    // message runs, and it was pinned only through the composer and the loop.
+    // Order, because the order is the instruction.
+    expect(skillsInDraft('build this from my notes /sb:map then /sb:audit it')
+      .map((skill) => skill.id)).toEqual(['sb:map', 'sb:audit'])
+    // Once each, however many times it is named: a second copy of a
+    // multi-kilobyte SKILL.md buys nothing but prompt.
+    expect(skillsInDraft('/sb:map from my notes, then /sb:map the rest')
+      .map((skill) => skill.id)).toEqual(['sb:map'])
+    // UNCAPPED — all four in one message, and no ceiling to trip over. A
+    // limit here would be a rule with no failure behind it.
+    expect(skillsInDraft('/sb:map then /sb:slice then /sb:audit then /sb:whatif')
+      .map((skill) => skill.id)).toEqual(['sb:map', 'sb:slice', 'sb:audit', 'sb:whatif'])
+    // A bare alias resolves nothing, so it runs nothing.
+    expect(skillsInDraft('then /audit the intake')).toEqual([])
+  })
+
   it('says what the message holds besides the skills it names', () => {
     expect(draftWithoutSkillTokens('/sb:audit')).toBe('')
     expect(draftWithoutSkillTokens('  /sb:map /sb:audit ')).toBe('')
@@ -155,18 +185,36 @@ describe('the skills a draft names', () => {
 
 describe('a near-miss token that would send as prose', () => {
   it('names the closest skill for a bare alias rather than resolving it', () => {
-    const unrun = findUnrunSkillToken('then /audit the intake')
-    expect(unrun).toEqual({
-      token: 'audit',
-      command: AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:audit'),
-      start: 5,
-      end: 11,
-    })
+    expect(findUnrunSkillTokens('then /audit the intake')).toEqual([
+      {
+        token: 'audit',
+        command: AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:audit'),
+        start: 5,
+        end: 11,
+      },
+    ])
+  })
+
+  it('reports EVERY miss in the draft, in the order they appear', () => {
+    // Several skills per message is normal, so several near misses are too.
+    // A walk that stopped at the first left the second silent — asked about
+    // `/audit`, completed it, and sent with `/map` still naming nothing.
+    const draft = 'check /audit then /map this'
+    expect(findUnrunSkillTokens(draft).map((miss) => miss.token)).toEqual([
+      'audit',
+      'map',
+    ])
+    // And a resolved token mixed in among them is not a miss.
+    expect(
+      findUnrunSkillTokens('/sb:map the notes then /audit it').map(
+        (miss) => miss.token,
+      ),
+    ).toEqual(['audit'])
   })
 
   it('reports the span, so accepting rewrites the token where it sits', () => {
     const draft = 'Hey can u /audit the goal setting'
-    const unrun = findUnrunSkillToken(draft)
+    const [unrun] = findUnrunSkillTokens(draft)
     expect(draft.slice(unrun!.start, unrun!.end)).toBe('/audit')
   })
 
@@ -174,18 +222,18 @@ describe('a near-miss token that would send as prose', () => {
     // A token that RESOLVES is not a near miss. It is coloured in the field
     // and it runs, so there is no silence to break and no question to ask —
     // this is the confirm-once prompt's deletion, pinned.
-    expect(findUnrunSkillToken('/sb:audit the intake')).toBeNull()
-    expect(findUnrunSkillToken('Hey can u /sb:audit the goal setting')).toBeNull()
+    expect(findUnrunSkillTokens('/sb:audit the intake')).toEqual([])
+    expect(findUnrunSkillTokens('Hey can u /sb:audit the goal setting')).toEqual([])
     // A token naming nothing is a word with a slash on it.
-    expect(findUnrunSkillToken('Hey can u /frobnicate this')).toBeNull()
+    expect(findUnrunSkillTokens('Hey can u /frobnicate this')).toEqual([])
     // The same strings the lookup refuses to fire on.
-    expect(findUnrunSkillToken('look at src/lib')).toBeNull()
-    expect(findUnrunSkillToken('do this and/or that')).toBeNull()
-    expect(findUnrunSkillToken('on 2026/09/17')).toBeNull()
+    expect(findUnrunSkillTokens('look at src/lib')).toEqual([])
+    expect(findUnrunSkillTokens('do this and/or that')).toEqual([])
+    expect(findUnrunSkillTokens('on 2026/09/17')).toEqual([])
     // This walk is NOT tail-anchored, so the path cases it has to refuse are
     // its own to refuse: a token with a path behind it, and a URL.
-    expect(findUnrunSkillToken('check /audit/notes.md')).toBeNull()
-    expect(findUnrunSkillToken('see http://example.test')).toBeNull()
+    expect(findUnrunSkillTokens('check /audit/notes.md')).toEqual([])
+    expect(findUnrunSkillTokens('see http://example.test')).toEqual([])
   })
 })
 

@@ -288,6 +288,46 @@ describe('a token that nearly names a skill', () => {
     expect(sent.system).not.toContain('--- active skill')
   })
 
+  it('names both misses, and asks again for the second after the first is taken', async () => {
+    // The silence this notice exists to close, reopened one token to the
+    // right: a message with two near misses asked about `/audit`, completed
+    // it, and sent with `/map` still naming nothing. Accepting goes back
+    // through the same check, so the second one asks in its turn.
+    const composer = openComposer()
+    type(composer, 'check /audit then /map this')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(screen.getByText(/closest matches are \/sb:audit and \/sb:map/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Run /sb:audit' }))
+    // Nothing sent yet: the second miss is now the question.
+    expect(provider.inputs).toEqual([])
+    expect(screen.getByText(/closest match is \/sb:map/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Run /sb:map' }))
+    await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
+    const sent = provider.inputs[0]!
+    expect(JSON.stringify(sent.messages)).toContain(
+      'check /sb:audit then /sb:map this',
+    )
+    // Both skills ran, and nothing was reported as unrun.
+    expect(sent.system).toContain('--- active skill: /sb:audit')
+    expect(sent.system).toContain('--- active skill: /sb:map')
+    expect(sent.system).not.toContain('NOT skill name')
+  })
+
+  it('tells the model about every miss when the prose goes as it stands', async () => {
+    const composer = openComposer()
+    type(composer, 'check /audit then /map this')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send as text' }))
+    await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
+    const sent = provider.inputs[0]!
+    expect(JSON.stringify(sent.messages)).toContain('check /audit then /map this')
+    // Both named. One told and the other left out is the same silence with a
+    // smaller mouth — the model reads "/map" as a map that ran.
+    expect(sent.system).toContain('"/audit" and "/map"')
+    expect(sent.system).toContain('/sb:audit and /sb:map')
+    expect(sent.system).not.toContain('--- active skill')
+  })
+
   it('asks nothing about a token that resolves — it runs', async () => {
     const composer = openComposer()
     type(composer, 'Hey can u /sb:audit the goal setting scenario')
@@ -298,6 +338,58 @@ describe('a token that nearly names a skill', () => {
     await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
     expect(screen.queryByRole('button', { name: 'Send as text' })).toBeNull()
     expect(provider.inputs[0]!.system).toContain('--- active skill: /sb:audit')
+  })
+})
+
+describe('one message carrying several skills', () => {
+  it('colours every token it resolves, wherever each one sits', () => {
+    const composer = openComposer()
+    type(composer, 'build this from my notes /sb:map then /sb:audit it')
+    const ink = skillInk()!
+    expect(within(ink).getByText('/sb:map')).toBeTruthy()
+    expect(within(ink).getByText('/sb:audit')).toBeTruthy()
+    // And the prose between them is nobody's collateral.
+    expect((composer as HTMLTextAreaElement).value).toBe(
+      'build this from my notes /sb:map then /sb:audit it',
+    )
+  })
+
+  it('runs them in the order the sentence puts them in', async () => {
+    const composer = openComposer()
+    type(composer, 'build this from my notes /sb:map then /sb:audit it')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
+    const sent = provider.inputs[0]!
+    expect(sent.system.indexOf('--- active skill: /sb:map')).toBeLessThan(
+      sent.system.indexOf('--- active skill: /sb:audit'),
+    )
+    expect(sent.system).toContain('in this order: /sb:map → /sb:audit')
+    // The text is what sends, tokens and all — it is what the reader wrote.
+    expect(JSON.stringify(sent.messages)).toContain(
+      'build this from my notes /sb:map then /sb:audit it',
+    )
+  })
+
+  it('counts a skill named twice once', async () => {
+    const composer = openComposer()
+    type(composer, '/sb:map from my notes, then /sb:map the rest')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
+    // One body, not two: a reader who names a skill twice means it once, and
+    // a second copy of a multi-kilobyte SKILL.md buys nothing but prompt.
+    expect(
+      provider.inputs[0]!.system.split('--- active skill: /sb:map'),
+    ).toHaveLength(2)
+  })
+
+  it('sends an instruction when the tokens are the whole message', async () => {
+    const composer = openComposer()
+    type(composer, '/sb:map /sb:audit')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
+    expect(JSON.stringify(provider.inputs[0]!.messages)).toContain(
+      'Run /sb:map, then /sb:audit — each from the top of its flow, in that order.',
+    )
   })
 })
 

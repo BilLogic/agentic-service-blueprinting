@@ -99,17 +99,29 @@ const ROLE = roleDoc.trimEnd()
  */
 export function buildSystem(
   contextNote: string,
-  skill: AgentSkillCommand | null | undefined,
+  skills: readonly AgentSkillCommand[],
   roster: readonly ToolDefinition[],
 ): string {
   const doctrine = agentDoctrine()
+  const invoked = skills.filter((skill) => skill.content)
   return [
     ROLE,
     '\n\n--- canvas-adapter reference (FULL text — get_reference serves the other, deeper references) ---\n',
     readReference('canvas-adapter', roster),
     doctrine ? `\n\n--- deployment doctrine ---\n${doctrine}` : '',
-    skill?.content
-      ? `\n\n--- active skill: ${skill.label} (invoked by the user; the same SKILL.md IDE agents follow) ---\n${skill.content}\n\nYou are the canvas agent, not an IDE agent: skip the skill's file/script/CLI mechanics and act through your tools, translated by the canvas-adapter above. The skill's judgment — what makes a good blueprint/slice, the order of questions, the quality bars — applies in full.`
+    // One block per skill, in the order the message named them; the paragraph that
+    // translates a skill for this surface follows them ONCE, because it is
+    // the same sentence about every one of them and N copies of it would
+    // read as N different instructions.
+    ...invoked.map(
+      (skill) =>
+        `\n\n--- active skill: ${skill.label} (invoked by the user; the same SKILL.md IDE agents follow) ---\n${skill.content}`,
+    ),
+    invoked.length > 1
+      ? `\n\nThe user invoked these skills together, in this order: ${invoked.map((skill) => skill.label).join(' → ')}. Work through them in that order — each one's own flow, in full — rather than blending them into one pass.`
+      : '',
+    invoked.length > 0
+      ? `\n\nYou are the canvas agent, not an IDE agent: skip the skill's file/script/CLI mechanics and act through your tools, translated by the canvas-adapter above. The skill's judgment — what makes a good blueprint/slice, the order of questions, the quality bars — applies in full.`
       : '',
     contextNote ? `\n\n--- current context ---\n${contextNote}` : '',
   ].join('')
@@ -125,8 +137,12 @@ export type TranscriptEvent =
   | {
       kind: 'user'
       text: string
-      /** Slash-skill id when the message invoked one (rendered as a badge). */
-      skill?: string
+      /**
+       * Every skill the message invoked, in the order its text named them —
+       * a message carries as many as it names, and a turn that reads back
+       * with one of them is a turn that reads back wrong.
+       */
+      skills?: string[]
       /** Attachment label when the message carried one. */
       attachmentLabel?: string
       /** The attachment's model-facing payload (annotation structure) —
@@ -539,19 +555,27 @@ export async function sendToAgent(input: {
   settings: AgentSettings
   contextNote: string
   text: string
-  /** Slash-skill invoked with this message (its SKILL.md joins the system prompt). */
-  skill?: AgentSkillCommand | null
   /**
-   * A NEAR MISS this message deliberately did not run: a word-start token
-   * that names no skill but spells a skill's bare alias, offered to the
-   * reader, who chose to send their sentence as prose instead. A token that
-   * does resolve never arrives here — it runs, which is what its colour in
-   * the composer promises. The model is told about the miss in the words
-   * below, because the likeliest reading of a message containing "/audit" is
-   * that the audit is loaded, and a model that believes it improvises the
-   * flow it was never given.
+   * The skills invoked with this message, in the order its text named them —
+   * every one of their SKILL.md bodies joins the system prompt. The composer
+   * parses them out of the draft at send; nothing else records them.
    */
-  unrunSkill?: { token: string; label: string } | null
+  skills?: readonly AgentSkillCommand[]
+  /**
+   * The NEAR MISSES this message deliberately did not run: word-start tokens
+   * that name no skill but spell a skill's bare alias, offered to the reader,
+   * who chose to send their sentence as prose instead. A token that does
+   * resolve never arrives here — it runs, which is what its colour in the
+   * composer promises. The model is told about them in the words below,
+   * because the likeliest reading of a message containing "/audit" is that
+   * the audit is loaded, and a model that believes it improvises the flow it
+   * was never given.
+   *
+   * A LIST, because a message carries as many skills as its text names and
+   * therefore as many misses: one told and the rest left out would be the
+   * same silence with a smaller mouth.
+   */
+  unrunSkills?: readonly { token: string; label: string }[] | null
   /** Canvas hand-off (annotation capture) folded into this message. */
   attachment?: AgentAttachment | null
   /**
@@ -567,10 +591,10 @@ export async function sendToAgent(input: {
     settings,
     contextNote,
     text,
-    skill,
-    unrunSkill,
     attachment,
   } = input
+  const unrunSkills = input.unrunSkills ?? []
+  const skills = input.skills ?? []
   const allowWrites = input.allowWrites !== false
   const run = runFor(sessionId)
   if (run.running) return
@@ -594,7 +618,9 @@ export async function sendToAgent(input: {
   push(sessionId, {
     kind: 'user',
     text,
-    ...(skill ? { skill: skill.id } : {}),
+    ...(skills.length > 0
+      ? { skills: skills.map((entry) => entry.id) }
+      : {}),
     ...(attachment
       ? { attachmentLabel: attachment.label, attachmentPayload: attachment.payload }
       : {}),
@@ -664,10 +690,24 @@ export async function sendToAgent(input: {
     signal: controller.signal,
   }
 
+  // Spelled in two whole sentences rather than one pluralised by ternaries:
+  // this paragraph is the only thing standing between a message that says
+  // "/audit" and a model that believes the audit ran, so it is written to be
+  // read rather than assembled. The one-miss wording is unchanged from the
+  // release that introduced it — the common case keeps its prompt bytes.
+  const missLabels = unrunSkills.map((miss) => miss.label).join(' and ')
+  const missTokens = unrunSkills.map((miss) => `"/${miss.token}"`).join(' and ')
+  const unrunNote =
+    unrunSkills.length === 0
+      ? ''
+      : unrunSkills.length === 1
+        ? `\n\n--- a skill name the message nearly typed ---\nThe user's message contains the token ${missTokens}, which is NOT a skill name here; the closest skill is ${missLabels}. They were offered it and chose to send the message as text, so NO skill ran and no skill's instructions are in this prompt. Do not describe ${missLabels} as having run, and do not summarise what it would have produced. Answer the message as written; where ${missLabels} is what the work needs, say so plainly and invite them to run it by that official name.`
+        : `\n\n--- skill names the message nearly typed ---\nThe user's message contains the tokens ${missTokens}, which are NOT skill names here; the closest skills are ${missLabels}. They were offered them and chose to send the message as text, so NO skill ran and no skill's instructions are in this prompt. Do not describe any of ${missLabels} as having run, and do not summarise what they would have produced. Answer the message as written; where they are what the work needs, say so plainly and invite them to run them by those official names.`
+
   /**
    * The paragraphs that are true of THIS send rather than of the session:
-   * the tier, the no-database trial, a skill name the message nearly typed
-   * and did not run, and the mobile shell. They sit after the cacheable
+   * the tier, the no-database trial, the skill names the message nearly
+   * typed and did not run, and the mobile shell. They sit after the cacheable
    * prefix, so they are a function rather than part of `buildSystem` — and a
    * function rather than an expression spelled at each call site, because it
    * used to be spelled at one of two and the other went without: the closing
@@ -691,9 +731,7 @@ export async function sendToAgent(input: {
     (sampleTrial
       ? '\n\n--- sample data, no database ---\nThis app has NO database connected. Everything you can read is the template\'s bundled SAMPLE blueprint, and you have read and navigation tools only — no write tool exists in this session. Answer, explain, and navigate; when the user wants an edit, say plainly that authoring needs a connected database — never imply you changed anything.'
       : '') +
-    (unrunSkill
-      ? `\n\n--- a skill name the message nearly typed ---\nThe user's message contains the token "/${unrunSkill.token}", which is NOT a skill name here; the closest skill is ${unrunSkill.label}. They were offered it and chose to send the message as text, so NO skill ran and no skill's instructions are in this prompt. Do not describe ${unrunSkill.label} as having run, and do not summarise what it would have produced. Answer the message as written; where ${unrunSkill.label} is what the work needs, say so plainly and invite them to run it by that official name.`
-      : '') +
+    unrunNote +
     (mobileReading
       ? '\n\n--- mobile shell ---\nThe user is on the MOBILE app, which is view-only for everyone — your tools are navigation and reading only (no writes, no annotations, no canvas mode switch). The mobile view is a vertical journey reader: scrolling down moves forward through the steps; a Map view shows the 2-D board. When the user wants an edit, explain it is made on desktop — never imply you made it.'
       : '')
@@ -728,17 +766,20 @@ export async function sendToAgent(input: {
         allowWrites,
         searchOffered: searchPlan.offered,
       })
-      // The stable system prefix (role + adapter + doctrine + skill —
-      // everything before the live context) is byte-identical across this
-      // send's rounds while the roster holds; its length lets caching
-      // providers put a cache breakpoint there.
-      const systemStableLength = buildSystem('', skill, roster).length
+      // The stable system prefix (role + adapter + doctrine + EVERY skill
+      // this message carries — everything before the live context) is
+      // byte-identical across this send's rounds while the roster holds; its
+      // length lets caching providers put a cache breakpoint there. It is
+      // measured through the same builder the prompt is assembled with, so a
+      // message carrying several skill bodies moves the breakpoint past all
+      // of them rather than cutting the prompt mid-skill.
+      const systemStableLength = buildSystem('', skills, roster).length
       const liveContext = [contextNote, collectAgentUiContext()]
         .filter(Boolean)
         .join('\n')
       const result = await chatWithRetry(adapter, {
         system:
-          buildSystem(liveContext, skill, roster) + sendNotes(mobileReading),
+          buildSystem(liveContext, skills, roster) + sendNotes(mobileReading),
         systemStableLength,
         messages: run.messages,
         tools: roster.map(toolSpec),
@@ -988,7 +1029,7 @@ export async function sendToAgent(input: {
           system:
             buildSystem(
               [contextNote, collectAgentUiContext()].filter(Boolean).join('\n'),
-              skill,
+              skills,
               roster,
             ) + sendNotes(mobileReading),
           systemStableLength,

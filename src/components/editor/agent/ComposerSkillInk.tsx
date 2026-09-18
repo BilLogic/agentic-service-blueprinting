@@ -49,6 +49,24 @@ export const COMPOSER_FIELD_METRICS =
  * about to act" means in the token vocabulary. Not a hue and not a new
  * variable; the token model is the only style seam there is.
  *
+ * Colour and nothing else, deliberately. A wash behind the token and a
+ * heavier weight were both tried and dropped: the reader asked for the
+ * treatment the tool this composer mirrors uses, which is coloured text with
+ * no band and no box around it.
+ *
+ * What that costs in THIS palette is worth writing down. The template ships
+ * `--primary-chroma: 0`, so this ink resolves to `oklch(0.3148 0 159)` against
+ * a `oklch(0.1 0 34)` prose — no hue is reachable, and the only axis left is
+ * lightness, which makes the token a shade LIGHTER than the words around it.
+ * A deployment that authors an accent gets a genuinely coloured token from the
+ * same line of code, which is the case this is tuned for.
+ *
+ * In the DARK theme the relation inverts — the ink lands near a lightness of
+ * 0.7676 against a 0.95 prose, so the token reads a shade DARKER than the
+ * words around it. Worth knowing before anyone reaches for a step in
+ * lightness in one direction and finds it is the wrong direction in the other
+ * theme; the signal is the step itself, not which way it goes.
+ *
  * The trailing newline is not decoration. A block collapses the last newline
  * of its content and a textarea renders a line for it, so a message ending in
  * Enter leaves the two with different scroll heights and the sync below lands
