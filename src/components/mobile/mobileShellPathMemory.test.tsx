@@ -3,11 +3,11 @@
  * WHICH PATH THE PHONE OPENS ON, read as a reader reads it.
  *
  * The phone shows one path at a time and remembers, per scenario, which one
- * that was. Three answers matter and none of them had a test that could go
+ * that was. Three wirings matter and none of them had a test that could go
  * red: a scenario the reader has already read opens on the path they left it
- * on; a scenario they have never opened opens on its happy path; and a
- * remembered path that has since been deleted falls back to the happy path
- * rather than leaving the selector pointing at nothing.
+ * on; a remembered path that has since been deleted falls back to the happy
+ * path rather than leaving the selector pointing at nothing; and the path the
+ * reader picks is written down, which is the half that outlives the visit.
  *
  * The phone's end-to-end slice does not reach any of this — it selects no
  * path, asserts no `Reading path:` line, and runs with empty storage, so only
@@ -16,6 +16,15 @@
  * scenario opens on with every suite green. These cases are that rule's own
  * coverage, mounted on the real shell so they answer for the wiring and not
  * only for the arithmetic.
+ *
+ * WHAT IS DELIBERATELY NOT A CASE HERE: "an absent memory opens on the happy
+ * path". These scenarios list their happy path first, so a phone mount and a
+ * four-tap walk buy an assertion the selector's own `paths[0]` fallback would
+ * satisfy whatever the resolve returned; the case that CAN fail for that
+ * reason is in `src/lib/pathMemory.test.ts`, on a variant-first fixture. The
+ * absent-memory wiring is still walked here — the remembering case below
+ * starts from empty storage and reads the happy path off the selector before
+ * it taps.
  *
  * WHY BOTH ASSERTIONS PER CASE. The selector alone cannot fail for the
  * fallback: it falls back to `paths[0]` when handed no active path, and on
@@ -252,13 +261,6 @@ describe('the path a scenario opens on', () => {
     expect(theSelectorNames()).toBe(VARIANT_PATH_NAME)
   })
 
-  it('opens on the happy path when there is nothing remembered', async () => {
-    await readerOpensTheMappedScenario()
-
-    expect(theReadingPathLine()).toBe(`Reading path: ${HAPPY_PATH_NAME}`)
-    expect(theSelectorNames()).toBe(HAPPY_PATH_NAME)
-  })
-
   it('falls back to the happy path when the remembered one is gone, rather than reading nothing', async () => {
     // A path id that resolves to no path in this scenario — what a reader has
     // in storage after the path they were reading is deleted from the
@@ -274,6 +276,9 @@ describe('the path a scenario opens on', () => {
   it('remembers the path the reader picks, so the next open lands on it', async () => {
     await readerOpensTheMappedScenario()
     expect(whatThePhoneRemembers(MAPPED.id)).toBeNull()
+    // Nothing remembered, so the shell resolved the happy path — the tap
+    // below needs that label to exist before it can change it.
+    expect(theSelectorNames()).toBe(HAPPY_PATH_NAME)
 
     fireEvent.click(screen.getByLabelText(`Path: ${HAPPY_PATH_NAME}`))
     await letTheClockRun(MOTION_FADE_MS)

@@ -1,5 +1,5 @@
 ---
-summary: Three components long enough to be worth splitting waited for the tests that would catch a split going wrong; the hold had an exit condition rather than an excuse, all three flows now have one, and what each split did is recorded at the end.
+summary: Three components long enough to be worth splitting waited for the tests that would catch a split going wrong; the hold had an exit condition rather than an excuse, all three flows now have one, and what each split did is recorded at the end — along with later splits of components this record never held, each stating what coverage it actually brought and where that falls short of the bar set here.
 ---
 
 # 17. Large component splits wait for an end-to-end round
@@ -27,6 +27,9 @@ Amended again 2026-09-18 (#922): the phone's agent flow has a slice and a
 browser case too — not because this record named the shell, and nothing is
 unblocked by them, but because the risk it was written about came true there
 twice; see the end.
+Amended again 2026-09-18 (#926): the phone's path memory is split on pins of
+its own, which are not this record's bar and are not claimed to be; see the
+end.
 **Context** `src/components/editor/CanvasAnnotationLayer.tsx`,
 `src/components/blueprint/BlueprintCellDetailPanel.tsx`,
 `src/components/editor/AgentPanel.tsx`
@@ -673,20 +676,70 @@ namespace, so the only branch it executes is the absent-memory default and it
 asserts nothing about even that. That split wants its own pins, and its own
 flow driven end to end, on the terms the first paragraph of this record sets.
 
-**The path memory was split afterwards, on coverage it brought itself.**
-The paragraph above held: the slice licensed nothing about which path a
-scenario opens on. So that split landed its own pins first and was watched
-pass against unchanged code before anything moved — four cases driving the
-real shell at phone width by taps, through the cover, the index and a
-scenario with a path fork, asserting both the reported reading line and the
-label the selector shows: a remembered path opens on itself, an absent memory
-opens on the happy path, a remembered path that has since been deleted falls
-back rather than leaving the reader on a board with no path, and a choice the
-reader makes survives as memory. Every one of them, and every case in the
-module's own file, was watched red against a deliberate break — the remembered
-branch removed, the happy-path default swapped for the last path, the
-existence check dropped, the precedence inverted, the write made to forget,
-and the shell made to stop asking the module at all. That is what stood in
-for the end-to-end round this record asks for, and it is the standard the next
-split of this shell is held to: not a flow that mounts the surface, but a
-flow that exercises the seam being moved.
+## Amended 2026-09-18: the path memory is split, below this record's bar
+
+**What moved.** `src/lib/pathMemory.ts` now owns which path a scenario opens
+on and which one a surface shows. The rule — an explicit selection, else the
+path the reader was last on if it still exists, else the scenario's happy path
+— was composed twice before: once inline in the phone's shell, which read
+storage, resolved the default and wrote the memory back for itself, and once
+at the selection seam `openScenario` lands the desktop through. The module
+reads its own storage, so no caller can fetch a stored value and then ask a
+question about it; the shell asks and reports what it is told.
+
+**This record never named the component, and the amendment above already said
+so.** `MobileShell.tsx` is not one of the three this ADR held, and the
+paragraph closing the phone-agent-flow amendment said in as many words that
+the slice landed there licensed nothing about which path a scenario opens on.
+Nothing blocked this split and nothing unblocks it. What follows is a report
+of the coverage it brought, measured against the bar this record sets, not a
+claim to have met it.
+
+**Measured against the bar, it falls short, and the gap is named rather than
+argued away.** Every flow this record calls covered has two things: a
+`src/slices/*.slice.test.tsx` with its own `npm run slice:*` script, and a
+browser case over the built distribution in the render walk. This split has
+neither. What it has instead is two files. `src/lib/pathMemory.test.ts` drives
+the rule through real storage — the remembered path, the happy-path default,
+a remembered path that has since been deleted, one memory per scenario, a
+scenario with no paths, and a corrupted key — on a fixture that lists the
+variant path FIRST, because a happy-first fixture lets "opens on its happy
+path" pass for a resolve that returns the first path in the list and a
+fallback swapped to `paths[0]` was watched leave exactly that case green.
+`src/components/mobile/mobileShellPathMemory.test.tsx` mounts the real
+`MobileShell` at 375×812 and walks a reader by taps from the cover through
+the index into the one sample scenario with a path fork, asserting both the
+reported reading line and the label the selector shows, for three wirings: a
+remembered path opens on itself, a deleted one falls back rather than leaving
+the reader on a board with no path, and a path the reader picks is written
+down. Both assertions are made per case because the selector alone falls back
+to `paths[0]` and could not fail for the deleted case on its own.
+
+**What that pair cannot see.** It stubs `ServiceOverviewView` — the canvas
+both of the incidents behind the amendment above went through — so nothing
+here answers for what the board renders once a path is resolved, for any
+geometry, or for a path change a real viewport has to re-fit to. It runs in
+jsdom on faked timers, so the order is its claim and the duration is not. It
+never leaves the phone: `openScenario`'s desktop landing resolves through the
+same module and is covered only by the module's own cases, not by any surface.
+And storage is a fresh namespace per case rather than one that survives a
+reload, which is the thing a reader actually experiences. A real end-to-end
+round would close the first three of those.
+
+**Whether this split should have been held to the full bar is left open, on
+purpose.** The case for holding it: the phone's path resolution is chrome the
+reader reads on every visit, and the incidents this record was written about
+were both surface-level. The case against: the moved code is a pure function
+over a `localStorage` map with no layout, no async and no canvas in it, which
+is the shape a jsdom pin covers well and a browser case covers expensively.
+That judgement is a ticket's to make, not this amendment's — the sentence this
+record sets stays as written, and this split is filed below it rather than
+redefining it.
+
+**Every case was watched red before it was trusted.** Against the split code:
+stubbing the storage read reddens five module cases; dropping the existence
+check reddens the deleted-path case at both levels and the no-paths case;
+swapping the happy-path default for the first path in the list reddens three
+module cases. Against unchanged code: the shell pins were written and watched
+pass before anything moved, and re-run against the pre-extraction shell after
+the fact to confirm the extraction had not rewritten them.

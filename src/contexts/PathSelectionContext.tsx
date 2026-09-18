@@ -18,10 +18,10 @@ import type { PathListItem } from '@/lib/pathSelection'
 import {
   defaultPathKeysFromCatalog,
   deriveSelections,
-  resolveScenarioOpenPathId,
   type ActivePathKeys,
   type PathCatalog,
 } from '@/lib/pathCatalogSelection'
+import { resolvePathIdToOpen } from '@/lib/pathMemory'
 
 type PathSelectionState = {
   catalog: PathCatalog
@@ -335,7 +335,7 @@ export function PathSelectionProvider({ children }: { children: ReactNode }) {
    */
   const selectDefaultPath = useCallback((scenarioId: string) => {
     const paths = catalogRef.current[scenarioId] ?? []
-    const resolved = resolveScenarioOpenPathId(scenarioId, paths)
+    const resolved = resolvePathIdToOpen(scenarioId, paths)
     if (resolved) {
       setSelectedPathIds(scenarioId, [resolved])
       setPendingDefaultScenarioId(null)
@@ -353,7 +353,7 @@ export function PathSelectionProvider({ children }: { children: ReactNode }) {
     if (pendingDefaultScenarioId === null) return
     const paths = state.catalog[pendingDefaultScenarioId] ?? []
     if (paths.length === 0) return
-    const resolved = resolveScenarioOpenPathId(pendingDefaultScenarioId, paths)
+    const resolved = resolvePathIdToOpen(pendingDefaultScenarioId, paths)
     // eslint-disable-next-line react-hooks/set-state-in-effect -- catalog-wait for openScenario; the pending id is the latch, so this settles in one pass once paths exist
     if (resolved) setSelectedPathIds(pendingDefaultScenarioId, [resolved])
     setPendingDefaultScenarioId(null)

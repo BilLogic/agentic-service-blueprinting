@@ -48,7 +48,7 @@ import {
   PACKAGE_OFFLINE_BOARD,
 } from '@/data/blueprintFallbacks'
 import { SAMPLE_NAV } from '@/data/sampleNav'
-import { writeLastViewedPath } from '@/lib/mobilePathMemory'
+import { writeLastViewedPath } from '@/lib/pathMemory'
 import type { PathListItem } from '@/lib/pathSelection'
 import type { NavItem } from '@/types/nav'
 
