@@ -1,6 +1,5 @@
 import type { AgentUiBridge } from '@/lib/agent/uiBridge'
-import type { JumpVerdict } from '@/lib/canvasJump'
-import { awaitJump } from '@/lib/canvasJump'
+import { awaitPublishedJump } from '@/lib/canvasJump'
 
 /**
  * The agent's navigation hands on mobile, pure and in a leaf module so the
@@ -66,7 +65,7 @@ export function makeMobileAgentBridge({
 
 export type AgentCameraFlightWatch = {
   /** Once, when the move has settled or the deadline says nobody answered. */
-  onSettled: (verdict: JumpVerdict) => void
+  onSettled: () => void
 }
 
 /**
@@ -86,17 +85,18 @@ export type AgentCameraFlightWatch = {
  * while the canvas is still moving.
  *
  * The handshake itself belongs to `canvasJump`: arming, the deadline, the
- * detach and the four verdict words all live there, and the verdict arrives
- * here rather than being discarded, so the caret comes back for a reason the
- * shell can see.
+ * detach and the four verdict words all live there. Which word it answered in
+ * is deliberately NOT passed on: the caret goes back to the composer for
+ * every one of them, and a parameter nothing reads is a parameter the next
+ * reader has to check before they can trust the branch they are writing.
  */
 export function makeAgentCameraFlightWatcher({ onSettled }: AgentCameraFlightWatch) {
   let generation = 0
   return function watch(targetId: string, commit: () => void): Promise<void> {
     const token = ++generation
-    return awaitJump(targetId, commit).then((jump) => {
+    return awaitPublishedJump(targetId, commit).then(() => {
       if (token !== generation) return
-      onSettled(jump.verdict)
+      onSettled()
     })
   }
 }

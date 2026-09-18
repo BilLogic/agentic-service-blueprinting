@@ -637,7 +637,7 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
       if (!key) return
       pendingSemanticOutcomeKeyRef.current = null
       semanticOutcomeGenerationRef.current += 1
-      settleJump(key, verdictOfFlight(result.kind), result.transform)
+      settleJump(key, verdictOfFlight(result.kind))
     },
     [],
   )
@@ -667,10 +667,13 @@ export function useZoomPanViewport(options: UseZoomPanViewportOptions = {}) {
    * still in the air after about a sixth of a second.
    *
    * Dropping the key without publishing leaves those waiters listening, so
-   * the remount's own verdict reaches them. A canvas that is gone for good
-   * publishes nothing and the jump's own deadline says so — the `unanswered`
-   * verdict, which is honest in a way a cancellation this viewport is in no
-   * position to claim once it no longer owns the camera is not.
+   * the remount's own verdict reaches them, and a canvas gone for good is
+   * answered by the jump's deadline instead — `unanswered`, which is honest
+   * in a way a cancellation this viewport is in no position to claim once it
+   * no longer owns the camera is not. This is the only place that chooses
+   * silence; the decision record for the handshake carries the rest of the
+   * reasoning, so that a correction to it lands once rather than in four
+   * copies.
    */
   const relinquishCameraNavigation = useCallback(() => {
     pendingSemanticOutcomeKeyRef.current = null

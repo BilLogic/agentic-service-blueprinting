@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  SELECTION_POLL_DEADLINE_MS,
   agentFocusCell,
   agentOpenCellPanel,
   agentOpenScenario,
@@ -10,7 +11,7 @@ import {
 import { registerActiveFocusCells } from '@/lib/canvasFocusCells'
 import {
   JUMP_DEADLINE_MS,
-  awaitJump,
+  awaitPublishedJump,
   settleJump,
   verdictOfFlight,
 } from '@/lib/canvasJump'
@@ -145,8 +146,6 @@ describe('agent cell panel bridge', () => {
 })
 
 describe('agent navigation bridge', () => {
-  const transform = { pan: { x: 0, y: 0 }, zoom: 1 }
-
   /*
     The shell context these cases hand the bridge, rendered by the module the
     bridge recognises it with. Hand-written, these lines were a fifth spelling
@@ -167,7 +166,7 @@ describe('agent navigation bridge', () => {
         selectPhase: () => {},
         selectScenario: (id) => {
           if (completion)
-            settleJump(id, verdictOfFlight(completion), transform)
+            settleJump(id, verdictOfFlight(completion))
         },
         openAgentSurface: () => {},
         setSidebarCollapsed: () => {},
@@ -190,7 +189,7 @@ describe('agent navigation bridge', () => {
     })
     await vi.advanceTimersByTimeAsync(200)
     expect(settled).toBeNull()
-    settleJump('s1', 'landed', transform)
+    settleJump('s1', 'landed')
     await vi.advanceTimersByTimeAsync(0)
     expect(settled).toContain('settled its canvas camera')
   })
@@ -226,8 +225,8 @@ describe('agent navigation bridge', () => {
         selectScenario: (id) => {
           // What the phone's shell does: its own jump on the same target,
           // already listening because the selection is what commits it.
-          void awaitJump(id, () => {}).then((jump) => {
-            sheetVerdict = jump.verdict
+          void awaitPublishedJump(id, () => {}).then((verdict) => {
+            sheetVerdict = verdict
           })
         },
         openAgentSurface: () => {},
@@ -241,7 +240,7 @@ describe('agent navigation bridge', () => {
     )
     const settled = agentOpenScenario('s1')
     await vi.advanceTimersByTimeAsync(0)
-    settleJump('s1', 'landed', transform)
+    settleJump('s1', 'landed')
     await vi.advanceTimersByTimeAsync(0)
     await expect(settled).resolves.toContain('settled its canvas camera')
     expect(sheetVerdict).toBe('landed')
@@ -260,7 +259,13 @@ describe('agent navigation bridge', () => {
       'completed',
     )
     const pending = agentOpenScenario('s1')
-    await vi.advanceTimersByTimeAsync(JUMP_DEADLINE_MS)
-    await expect(pending).resolves.toContain('not verified before timeout')
+    // On the SELECTION poll's own clock, not the camera's. The two waits ask
+    // different questions, and this sentence used to arrive 200 ms later
+    // because the poll had been given the camera's measured deadline.
+    expect(SELECTION_POLL_DEADLINE_MS).toBeLessThan(JUMP_DEADLINE_MS)
+    await vi.advanceTimersByTimeAsync(SELECTION_POLL_DEADLINE_MS)
+    await expect(pending).resolves.toContain(
+      'the selected scenario was not verified before timeout',
+    )
   })
 })

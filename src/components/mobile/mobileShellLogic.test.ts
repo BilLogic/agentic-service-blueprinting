@@ -134,8 +134,6 @@ describe('makeAgentCameraFlightWatcher', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
 
-  const transform = { pan: { x: 0, y: 0 }, zoom: 1 }
-
   function harness() {
     const onSettled = vi.fn()
     return { watch: makeAgentCameraFlightWatcher({ onSettled }), onSettled }
@@ -153,10 +151,9 @@ describe('makeAgentCameraFlightWatcher', () => {
     const h = harness()
     const flight = h.watch('scen-1', () => {})
 
-    settleJump('scen-1', 'landed', transform)
+    settleJump('scen-1', 'landed')
     await flight
     expect(h.onSettled).toHaveBeenCalledTimes(1)
-    expect(h.onSettled).toHaveBeenCalledWith('landed')
   })
 
   it('hands the caret back on the deadline when no verdict ever arrives', async () => {
@@ -168,8 +165,9 @@ describe('makeAgentCameraFlightWatcher', () => {
 
     await vi.advanceTimersByTimeAsync(1)
     await flight
-    // The reader gets their keyboard back and the shell is told why.
-    expect(h.onSettled).toHaveBeenCalledWith('unanswered')
+    // The caret comes back on silence too: a camera nobody answered for is
+    // no reason to keep holding the reader's keyboard.
+    expect(h.onSettled).toHaveBeenCalledTimes(1)
   })
 
   /*
@@ -182,13 +180,12 @@ describe('makeAgentCameraFlightWatcher', () => {
     const first = h.watch('scen-1', () => {})
     const second = h.watch('scen-2', () => {})
 
-    settleJump('scen-1', 'superseded', transform)
+    settleJump('scen-1', 'superseded')
     await first
     expect(h.onSettled).not.toHaveBeenCalled()
 
-    settleJump('scen-2', 'landed', transform)
+    settleJump('scen-2', 'landed')
     await second
     expect(h.onSettled).toHaveBeenCalledTimes(1)
-    expect(h.onSettled).toHaveBeenCalledWith('landed')
   })
 })

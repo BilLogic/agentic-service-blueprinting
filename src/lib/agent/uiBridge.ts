@@ -1,8 +1,7 @@
 import { resolveActiveFocusCells } from '@/lib/canvasFocusCells'
 import {
-  JUMP_DEADLINE_MS,
-  awaitAnsweredJump,
-  awaitJump,
+  awaitPublishedJump,
+  awaitSelfAnsweringJump,
   verdictOfFlight,
 } from '@/lib/canvasJump'
 import { namesSelection } from '@/lib/shellContext'
@@ -39,6 +38,18 @@ export function registerAgentUiBridge(next: AgentUiBridge): () => void {
 }
 
 /**
+ * How long the tool polls the shell's reported context for the selection it
+ * asked for. Its own number because it waits on its own thing: a shell
+ * re-rendering and re-reporting which phase or scenario it holds, which no
+ * measurement of the camera's fade-plus-remount-plus-fit says anything about.
+ * Held at the value it has always had, so the sentence a model reads when
+ * this expires arrives when it always did. Exported so a test can name it
+ * rather than borrow the camera's number and prove nothing about which clock
+ * this wait is on.
+ */
+export const SELECTION_POLL_DEADLINE_MS = 1800
+
+/**
  * Selection remains independently verified from the shell context. Camera
  * completion is not inferred from that context: idle is also what a cancelled
  * or superseded flight looks like, so the viewport publishes its exact result
@@ -48,9 +59,7 @@ async function waitForNavigation(
   kind: 'phase' | 'scenario',
   id: string,
 ): Promise<boolean> {
-  // The same window the jump itself is awaited over. Both halves of one
-  // navigation, so one number says how long this tool is prepared to wait.
-  const deadline = performance.now() + JUMP_DEADLINE_MS
+  const deadline = performance.now() + SELECTION_POLL_DEADLINE_MS
   while (performance.now() < deadline) {
     // Recognised by the module that renders the line, so a shell cannot
     // change how it reports a selection out from under the check that reads
@@ -70,18 +79,18 @@ async function openAndAwaitNavigation(
   // the verdict is published by the fit the selection triggers. The selection
   // poll starts as soon as the commit has happened, so the two halves are
   // still awaited together rather than end to end.
-  const jump = awaitJump(id, () => select(id))
-  const [selected, camera] = await Promise.all([
+  const jump = awaitPublishedJump(id, () => select(id))
+  const [selected, verdict] = await Promise.all([
     waitForNavigation(kind, id),
     jump,
   ])
   const noun = kind === 'phase' ? 'Phase' : 'Scenario'
   if (!selected)
     return `${noun} navigation started, but the selected ${kind} was not verified before timeout.`
-  if (camera.verdict === 'unanswered')
+  if (verdict === 'unanswered')
     return `${noun} navigation selected the target, but its camera outcome was not verified before timeout.`
-  if (camera.verdict !== 'landed')
-    return `${noun} navigation was ${camera.verdict}; the camera was not claimed as landed.`
+  if (verdict !== 'landed')
+    return `${noun} navigation was ${verdict}; the camera was not claimed as landed.`
   return cameraSettled(kind)
 }
 
@@ -122,23 +131,27 @@ export const CELL_CAMERA_SETTLED = 'Focused the active canvas camera on the cell
  * own deadline regardless. Silence is reported as unverified, never as landed.
  *
  * This focus answers for itself rather than publishing against a target, which
- * is why it takes the answered form of the handshake — same deadline, same
- * four verdict words.
+ * is why it takes the self-answering form of the handshake — same deadline,
+ * same four verdict words.
  */
 export async function agentFocusCell(cellId: string): Promise<string> {
   const focus = resolveActiveFocusCells()
   if (!focus)
     return 'No active canvas camera is available right now — open the scenario first.'
-  const jump = await awaitAnsweredJump(
+  const jump = await awaitSelfAnsweringJump(
     () => focus([cellId], { animate: !document.hidden }),
-    // A cell the board does not hold is a flight that never left. The caller
-    // below reads the answer itself and says so in its own words, so the
-    // verdict this hands back for a miss is never the sentence a reader sees.
-    (result) => (result.kind === 'miss' ? 'cancelled' : verdictOfFlight(result.completion)),
+    // A cell the board does not hold is a flight that never left, so there is
+    // no verdict to give it: `null` says exactly that, where `cancelled` used
+    // to say a flight had been taken back from something that never moved.
+    (result) => (result.kind === 'miss' ? null : verdictOfFlight(result.completion)),
   )
-  if (jump.answer === null)
+  // Every branch reads the verdict. Asking the answer whether it is null and
+  // calling that silence was the private inference this handshake exists to
+  // delete: it was right only for as long as a focus result could not itself
+  // be null, which is a promise the focus pipeline never made.
+  if (jump.verdict === 'unanswered')
     return 'The camera focus started but was not verified before timeout; the cell was not claimed as landed.'
-  if (jump.answer.kind === 'miss')
+  if (jump.verdict === null)
     return 'That cell is not on the active canvas — open its scenario first, then retry.'
   if (jump.verdict !== 'landed')
     return `The camera focus was ${jump.verdict}; the cell was not claimed as landed.`

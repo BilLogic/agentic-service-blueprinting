@@ -233,7 +233,7 @@ export function MobileShell() {
         // jump settled. A jump they asked for in words costs them no tap to
         // carry on in words, and a camera that nobody answered for still
         // stops being a reason to hold their keyboard.
-        onSettled: () => focusAgentComposer(),
+        onSettled: focusAgentComposer,
       }),
     [],
   )
