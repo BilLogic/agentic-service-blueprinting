@@ -13,8 +13,8 @@ import type { CameraTransform } from '@/lib/cameraTransition'
  * act that commits the selection; arming, committing, the race, detaching
  * both losers and the verdict all happen in here.
  *
- * The read runs ONE WAY, which the `docs/adr` record for this handshake
- * states and which the separate-clocks record before it requires: the canvas
+ * The read runs ONE WAY, which the decision record for this handshake states
+ * and which the separate-clocks record before it requires: the canvas
  * publishes where it got to, whoever asked decides what to do about it, and
  * nothing on the canvas waits on a shell state in return.
  */

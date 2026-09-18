@@ -111,6 +111,9 @@ export function openAgentSurface(): boolean {
   return true
 }
 
+/** What a landed cell focus answers with — exported for the reason `cameraSettled` is. */
+export const CELL_CAMERA_SETTLED = 'Focused the active canvas camera on the cell.'
+
 /**
  * A camera fly resolves from a `requestAnimationFrame` step, and a hidden
  * tab suspends those — the promise would never settle and the agent loop
@@ -122,10 +125,6 @@ export function openAgentSurface(): boolean {
  * is why it takes the answered form of the handshake — same deadline, same
  * four verdict words.
  */
-
-/** What a landed cell focus answers with — exported for the reason `cameraSettled` is. */
-export const CELL_CAMERA_SETTLED = 'Focused the active canvas camera on the cell.'
-
 export async function agentFocusCell(cellId: string): Promise<string> {
   const focus = resolveActiveFocusCells()
   if (!focus)
