@@ -298,7 +298,7 @@ function findSkillByAlias(token: string): AgentSkillCommand | undefined {
  * A near miss: the token as typed and the skill it nearly named, with the
  * span to rewrite if the reader takes the offer.
  */
-export type UnrunSkillToken = {
+export type SkillNearMiss = {
   /** The token as typed, without its slash. */
   token: string
   /** The closest skill — the one whose bare alias the token spelled. */
@@ -328,8 +328,8 @@ export type UnrunSkillToken = {
  * promise the colour makes, and a prompt asking a reader to confirm what
  * they can already see would be asking them to read it twice.
  */
-export function findUnrunSkillTokens(draft: string): UnrunSkillToken[] {
-  const misses: UnrunSkillToken[] = []
+export function findSkillNearMisses(draft: string): SkillNearMiss[] {
+  const misses: SkillNearMiss[] = []
   for (const { token, start, end } of wordStartTokens(draft)) {
     if (findSkillByToken(token)) continue
     const command = findSkillByAlias(token)

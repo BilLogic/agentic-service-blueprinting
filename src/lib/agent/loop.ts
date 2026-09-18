@@ -15,6 +15,7 @@ import {
 } from '@/lib/agent/providers/provider'
 import { dispatchTool, type DispatchContext } from '@/lib/agent/tools/registry'
 import type { OfflineBoard } from '@/data/blueprintFallbacks'
+import type { DeclaredMiss } from '@/lib/agent/sendDecision'
 import { agentSearchPlan } from '@/lib/agent/searchPlan'
 import { toolSpec } from '@/lib/agent/tools/definition'
 import { findToolDefinition } from '@/lib/agent/tools/definitions'
@@ -546,7 +547,7 @@ export async function sendToAgent(input: {
    * therefore as many misses: one told and the rest left out would be the
    * same silence with a smaller mouth.
    */
-  unrunSkills?: readonly { token: string; label: string }[] | null
+  declaredMisses?: readonly DeclaredMiss[] | null
   /** Canvas hand-off (annotation capture) folded into this message. */
   attachment?: AgentAttachment | null
   /**
@@ -564,7 +565,7 @@ export async function sendToAgent(input: {
     text,
     attachment,
   } = input
-  const unrunSkills = input.unrunSkills ?? []
+  const declaredMisses = input.declaredMisses ?? []
   const skills = input.skills ?? []
   const allowWrites = input.allowWrites !== false
   const run = runFor(sessionId)
@@ -666,12 +667,12 @@ export async function sendToAgent(input: {
   // "/audit" and a model that believes the audit ran, so it is written to be
   // read rather than assembled. The one-miss wording is unchanged from the
   // release that introduced it — the common case keeps its prompt bytes.
-  const missLabels = unrunSkills.map((miss) => miss.label).join(' and ')
-  const missTokens = unrunSkills.map((miss) => `"/${miss.token}"`).join(' and ')
-  const unrunNote =
-    unrunSkills.length === 0
+  const missLabels = declaredMisses.map((miss) => miss.label).join(' and ')
+  const missTokens = declaredMisses.map((miss) => `"/${miss.token}"`).join(' and ')
+  const declaredMissNote =
+    declaredMisses.length === 0
       ? ''
-      : unrunSkills.length === 1
+      : declaredMisses.length === 1
         ? `\n\n--- a skill name the message nearly typed ---\nThe user's message contains the token ${missTokens}, which is NOT a skill name here; the closest skill is ${missLabels}. They were offered it and chose to send the message as text, so NO skill ran and no skill's instructions are in this prompt. Do not describe ${missLabels} as having run, and do not summarise what it would have produced. Answer the message as written; where ${missLabels} is what the work needs, say so plainly and invite them to run it by that official name.`
         : `\n\n--- skill names the message nearly typed ---\nThe user's message contains the tokens ${missTokens}, which are NOT skill names here; the closest skills are ${missLabels}. They were offered them and chose to send the message as text, so NO skill ran and no skill's instructions are in this prompt. Do not describe any of ${missLabels} as having run, and do not summarise what they would have produced. Answer the message as written; where they are what the work needs, say so plainly and invite them to run them by those official names.`
 
@@ -703,7 +704,7 @@ export async function sendToAgent(input: {
     (sampleTrial
       ? '\n\n--- sample data, no database ---\nThis app has NO database connected. Everything you can read is the template\'s bundled SAMPLE blueprint, and you have read and navigation tools only — no write tool exists in this session. Answer, explain, and navigate; when the user wants an edit, say plainly that authoring needs a connected database — never imply you changed anything.'
       : '') +
-    unrunNote +
+    declaredMissNote +
     (mobileReading
       ? '\n\n--- mobile shell ---\nThe user is on the MOBILE app, which is view-only for everyone — your tools are navigation and reading only (no writes, no annotations, no canvas mode switch). The mobile view is a vertical journey reader: scrolling down moves forward through the steps; a Map view shows the 2-D board. When the user wants an edit, explain it is made on desktop — never imply you made it.'
       : '')
