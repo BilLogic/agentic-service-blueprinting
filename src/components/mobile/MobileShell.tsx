@@ -31,8 +31,7 @@ import {
   registerAgentUiContext,
 } from '@/lib/agent/uiBridge'
 import {
-  readLastViewedPath,
-  resolveDefaultPathId,
+  resolveShownPathId,
   writeLastViewedPath,
 } from '@/lib/mobilePathMemory'
 import {
@@ -195,10 +194,15 @@ export function MobileShell() {
     return pathsByScenario.get(selectedScenarioId) ?? []
   }, [selectedScenarioId, catalog, pathsByScenario])
 
-  const activePathId = selectedScenarioId
-    ? (getSelectedPathIds(selectedScenarioId)[0] ??
-      resolveDefaultPathId(readLastViewedPath(selectedScenarioId), paths))
-    : null
+  // The shell keeps no memory of its own: which path to show — explicit
+  // selection, else remembered, else happy — is one statement in the path
+  // memory module, which `openScenario` resolves through too. The shell
+  // asks, and reports what it was told.
+  const activePathId = resolveShownPathId(
+    selectedScenarioId,
+    selectedScenarioId ? getSelectedPathIds(selectedScenarioId) : [],
+    paths,
+  )
   const choosePath = (pathId: string) => {
     if (!selectedScenarioId) return
     setSelectedPathIds(selectedScenarioId, [pathId])

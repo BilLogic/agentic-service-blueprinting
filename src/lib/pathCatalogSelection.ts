@@ -1,5 +1,5 @@
 import { getPathColorKey } from '@/lib/pathColorTheme'
-import { readLastViewedPath, resolveDefaultPathId } from '@/lib/mobilePathMemory'
+import { resolveRememberedPathId } from '@/lib/mobilePathMemory'
 import {
   defaultSelectedPathIds,
   pickPreferredPath,
@@ -52,6 +52,11 @@ export function defaultPathKeyForScenario(
  * catalog, otherwise the preferred (happy) path. Shared by `openScenario` so
  * mobile and desktop land the same way.
  *
+ * Deliberately a re-export under this module's name rather than a second
+ * statement of the rule: the memory and the fallback belong to the path
+ * memory module, which owns the storage they read, and the last thing this
+ * seam needs is its own copy that can drift from the phone's.
+ *
  * @param scenarioId - Scenario whose stored last-viewed path is consulted.
  * @param paths - That scenario's registered paths.
  * @returns The path id to select, or `null` when the scenario has none.
@@ -60,7 +65,7 @@ export function resolveScenarioOpenPathId(
   scenarioId: string,
   paths: readonly PathListItem[],
 ): string | null {
-  return resolveDefaultPathId(readLastViewedPath(scenarioId), paths)
+  return resolveRememberedPathId(scenarioId, paths)
 }
 
 /**
