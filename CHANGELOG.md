@@ -1,5 +1,230 @@
 # Changelog
 
+## 1.44.28
+
+**Nothing here changes what the app does with a blueprint.** Four of the five
+are a defect each in the things that watch the app — a browser walk, a console,
+a record, a caret — and the fifth is a reading change in the entity panel.
+
+**A deployment's phone walk stops failing for a reason that was never about
+the deployment.** The walk's last check asks whether a destination is readable
+above the agent sheet, and it measured the CELL: its box, carrying its padding
+and its row's height. Both belong to the board being looked at rather than to
+the camera that framed it, so a board whose first row is a dozen pixels taller
+scored zero on a jump that put a perfectly legible strip on screen. It now
+measures the words. The protection that matters is untouched — text carried off
+the side of the screen still fails, which is the case the check was tightened
+for. This was found on a real deployment board and could not have been found
+here: the bundled sample board cannot exhibit it, even with its cell padding
+inflated to 130px.
+
+**The console is clean on load, so the next report means something.** A
+validation library feature-detects `new Function` by attempting it, and a
+strict policy reports the attempt even though the library swallows the throw.
+One refusal, every load, for a question whose answer was already settled —
+`default-src 'self'` refuses eval, so the runtime parser was what ran either
+way. The library's `jitless` flag says so up front instead of discovering it.
+Zero refusals now. ADR 0029 records why the script policy stays strict rather
+than buying silence with `'unsafe-eval'`.
+
+**A skill that was named and did not run leaves a record.** Choosing to send a
+message as plain text told the agent the skill had not run and left nothing
+behind — so reading the session later, there was no sign a skill had been named
+and declined. There is now a row saying so, in the transcript's quiet voice
+rather than as an error, and it survives a reload.
+
+**Accepting a suggestion mid-sentence keeps your place.** The caret used to
+land at the end of the whole draft instead of after the word just completed —
+reachable whenever a second near miss keeps the draft in the field. Everywhere
+else a completion reaches the end of the draft, so the browser's own behaviour
+happened to be the right answer; this is the one span where it was not.
+
+**A status option says what it means once.** The entity panel's Status list
+rendered `Proposed — design only` as one string, a second copy of a sentence
+the status badge already owned. Each option is now the name with its meaning
+beneath it, read from the same record the badge reads, and the duplicate is
+deleted rather than moved.
+
+### Upgrading a deployment
+
+- **Nothing to configure, and no migration.**
+- **If your phone render walk has been failing on the agent jump**, take this
+  release — it very likely was not your board. A board with slightly taller
+  rows failed a walk that was telling the truth.
+- **If you watch the browser console or collect CSP reports**, the expected
+  count of refusals on load is now **zero**, not one. A report means something
+  new. Note that a deployment which has not yet substituted its own project ref
+  into `public/_headers` still logs two placeholder warnings; those are not
+  refusals.
+- **If you grant your deployment `'unsafe-eval'` for an unrelated reason**, the
+  validation library still will not use its generated parser — the flag is set
+  unconditionally, because this package cannot read your headers. ADR 0029
+  names the escape hatch.
+- **If you screenshot or snapshot the entity panel's Status select**, it is
+  taller: each option is two lines, and the closed control now reads the status
+  name alone.
+
+### Patch Changes
+
+- 08ee9f9: A status option says what it means once
+
+  Picking a status in the entity panel used to offer six one-line options with the
+  meaning glued onto the name behind a dash — "Proposed — design only". The same
+  six states were explained a second time, at more length and in different words,
+  in the hover on the status badge, so the two sentences could disagree and did
+  not have to be changed together.
+
+  The option list now shows the name with that hover's own line beneath it in
+  caption grey: "Proposed", then "Designed and discussed, with no build card
+  behind it. It may never happen." One authored sentence per state, shown in both
+  places. The status names themselves are unchanged, nothing stored changes, and
+  the closed control still shows the name alone — there is no room on one line for
+  a sentence, and the list and the badge are where the meaning is read.
+
+  The guard that checks a definition never repeats the word above it now reads the
+  select's option list too, so a meaning edited into "Live is in use today" fails
+  the suite instead of shipping.
+
+- f968ab6: Accepting a suggestion mid-sentence keeps your place, instead of throwing the
+  caret to the end of the draft.
+
+  A reader who writes `check /audit then /map this` and takes the offer on
+  `/audit` gets `/sb:audit` written where the word stood — and now the caret
+  sits immediately after it, with the rest of the sentence still ahead of them.
+  It used to land after `this`: the token was rewritten in place, and the reader
+  was moved to the end of a sentence they were half-way through. Every keystroke
+  after that went to the wrong end of the message.
+
+  **Why it survived this long.** Nothing wrote a caret at all. Assigning a
+  textarea's `value` puts the caret at the end of the new text by itself, and
+  every other completion in the composer is tail-anchored — the slash menu's
+  lookup only matches a token that runs to the end of the draft — so "the end"
+  happened to be the right answer, for the wrong reason. The near-miss rewrite
+  is the one completion with prose behind it, and it inherited a behaviour that
+  was never a decision.
+
+  `completeSkillToken` now returns the caret along with the text, rather than
+  leaving the offset for a caller to re-derive from the gap rule it just
+  applied, and the composer's field takes that offset as a one-shot request it
+  carries out after the text is on screen — which is the only moment it can,
+  since the write that puts the text there is also what moves the caret. Focus
+  comes back to the field with it: both of these gestures are a press on a
+  button or a menu row, so the field has just lost focus, and a caret nobody is
+  typing at is not a caret.
+
+  **The mid-sentence case is pinned, and was watched failing first** — 30 where
+  15 was wanted, which is exactly the length of the draft against the end of the
+  completed name. The tail-anchored case is pinned beside it and its worth is
+  stated where it sits rather than implied: its offset cannot tell a deliberate
+  caret from the value setter's, because for a tail-anchored completion the two
+  are the same number for every input there is, but it does catch a deliberate
+  caret written to the wrong offset, and its focus assertion is red unless the
+  completion path hands the field back.
+
+- 03e74be: The console is clean on load, so a Content Security Policy report now means
+  something new.
+
+  Every build until now logged one CSP refusal on every load, and it was never
+  yours to fix. zod builds a faster parser for object schemas by generating
+  source and handing it to the `Function` constructor, and it finds out whether
+  that is allowed the only way a feature detection can — by attempting it. The
+  `default-src 'self'` in `public/_headers` refuses the attempt, zod catches the
+  throw and falls back to its runtime parser exactly as designed, and the
+  browser reports the refusal anyway: a caught `eval` error still fires a
+  `securitypolicyviolation` and still logs. The guidance was to expect exactly
+  one and read past it.
+
+  `src/lib/validationJit.ts` sets zod's own `jitless` flag at the app root, which
+  costs nothing under this policy — the probe was always going to fail and the
+  runtime parser was always going to run, so nothing about validation changes.
+  zod simply stops asking a question the policy had already answered. Verified on
+  a built distribution served with the real header and driven in Chromium: one
+  `securitypolicyviolation` before, zero after.
+
+  **The script policy did not move, and will not.** `'unsafe-eval'` would have
+  bought the same silence with the protection the policy exists for, and
+  suppressing the report would have hidden a signal worth keeping.
+  `docs/adr/0029-the-script-policy-stays-strict-and-jitless-makes-it-free.md`
+  holds that argument for whoever next proposes loosening `script-src`.
+
+  ### Upgrading a deployment
+
+  - **Nothing to configure.** Take the release; the flag is set by the package.
+  - **Re-read your baseline.** A CSP refusal in the console used to include one
+    that meant nothing. It no longer does, so treat any report as a new fact
+    worth chasing.
+  - **Two placeholder errors are not refusals.** If your `public/_headers` still
+    names `YOUR_PROJECT_REF.supabase.co`, the browser logs two "invalid source"
+    errors about it and every database call is blocked. Substitute your project
+    ref — that file's header says so, and it is the only console noise left on a
+    fresh load.
+
+- 713979f: The phone jump's legibility check reads the words, not the cell that holds
+  them.
+
+  **What was happening to a deployment.** The render walk's phone case ends by
+  counting cells of the destination board that are "wholly on screen above the
+  sheet", and it counted with each cell's bounding box. A cell's box is not the
+  words in it: it carries the cell's padding and the height of the row it sits
+  in, and both of those are properties of the BOARD. So a deployment whose first
+  row is a shade taller than this template's — a longer step title, a little more
+  padding, a theme with roomier rows — scored zero cells and went red on a walk
+  that was telling the truth. The destination had rendered above the sheet, a
+  strip-full of it rather than a sliver, the screenshot showed a board a person
+  could read, and the earlier assertions in the same block passed. Only the last
+  count failed, and it failed by a dozen pixels of padding.
+
+  **What it does now.** Each cell's text is measured directly — the union of the
+  rendered text's client rects — and the existing containment test is applied to
+  that. The rect union is taken over the cell's contents rather than off a known
+  element, so it does not care how a given cell is built, and cells differ.
+
+  The protection the check was tightened for is kept exactly. Text carried off
+  the side of the screen still fails it, because words go off the edge with the
+  cell that holds them; text that lands below the sheet still fails it. Both were
+  watched failing before this shipped. What is dropped is the part that was never
+  about the camera at all — the row height and the padding, which belong to the
+  board the walk was pointed at rather than to the framing the walk is judging.
+
+  **If you run the walk against your own board,** this is the case that may have
+  been red for you without a defect behind it. Nothing else in the walk changes,
+  and a board that passed before passes now.
+
+- 8837c8e: A skill a reader named and chose not to run now leaves a row in the
+  transcript, so the decision survives the scroll and the reload instead of
+  living only in the moment it was made.
+
+  Typing `/audit` where the skill is `/sb:audit` invokes nothing, and the
+  composer has asked about that for a while: run it under its official name, or
+  send the sentence as text. Taking the second answer told the model in that
+  send's prompt that no skill ran — and told nobody else anything. An hour
+  later, or on a reopened session, the only trace of the decision was the token
+  sitting in a sentence, which is exactly the thing that reads as an
+  invocation. Half the original complaint was that nothing on screen _or in the
+  transcript_ said so, and only the first half had been answered.
+
+  Sending as text now writes a row of its own under the message: the token as
+  it was typed, the skill that did not run, past tense, in the same quiet voice
+  every other non-turn row speaks in. It is not dressed as a failure — the
+  reader was asked a question with two answers and gave one of them — it does
+  not fold away into the "N steps" accordion where tool calls and errors go,
+  and it is written where every send passes through, so what the row says and
+  what the model was told cannot drift apart.
+
+  The row is a persisted event shape like any other: it rides the same
+  best-effort write-through to `agent_messages` and settles at the read
+  boundary, so a session opened in another browser shows it too, and
+  `get_session` spells it out for an agent catching up on a past conversation
+  rather than leaving it to infer from prose. Choosing to RUN the skill records
+  no such row — the badge on the turn and the skill's body in that turn's
+  prompt are already the evidence, and a second claim about the same fact is
+  only a second thing to keep in agreement.
+
+  **For a deployment owner:** nothing to configure and no migration. Rows of
+  the new shape appear in `agent_messages` for sends where a reader declined an
+  offer; a build that predates this one ignores them, and a transcript with
+  none of them reads exactly as it does today.
+
 ## 1.44.27
 
 **One data defect is fixed, and it is the reason to take this release.** Until
@@ -9239,8 +9464,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                                      ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                                      "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                                        ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                                        "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
