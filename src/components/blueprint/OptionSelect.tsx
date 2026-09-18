@@ -92,7 +92,7 @@ export function OptionSelect<V extends string>({
       <SelectContent>
         {options.map((option) => (
           <SelectItem key={option.value} value={option.value}>
-            <span className="flex min-w-0 flex-col items-start gap-0.5">
+            <span className="flex min-w-0 flex-col items-start gap-1">
               <span>{option.label}</span>
               {option.meaning ? (
                 <span className="text-xs whitespace-normal text-tertiary-foreground">
