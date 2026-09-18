@@ -6,11 +6,7 @@ import {
   STAKEHOLDER_KIND_LABELS,
   STAKEHOLDER_KIND_MEANING,
 } from '@/hooks/useStakeholders'
-import {
-  ENTITY_STATUS,
-  ENTITY_STATUS_MEANING,
-  ENTITY_STATUS_SHORT,
-} from '@/lib/entityStatus'
+import { STATUS_OPTIONS } from '@/components/blueprint/statusOptions'
 import { CANONICAL_LANE_ROLES, LANE_ROLES } from '@/lib/laneRoles'
 import { ENTITY_KIND_DEFINITIONS, PANEL_TERMS } from '@/lib/panelTerms'
 import {
@@ -37,9 +33,13 @@ type DefinitionPair = { label: string; body: string }
 /** Every (label, body) pair the app shows a reader, by the module holding it. */
 const ROSTER: Record<string, readonly DefinitionPair[]> = {
   'laneRoles.LANE_ROLES': CANONICAL_LANE_ROLES.map((role) => LANE_ROLES[role]),
-  'entityStatus.ENTITY_STATUS_MEANING': ENTITY_STATUS.map((status) => ({
-    label: ENTITY_STATUS_SHORT[status],
-    body: ENTITY_STATUS_MEANING[status],
+  // The status select's own option list, which is the meaning record and the
+  // short-name record as the control actually offers them. Read from the
+  // options rather than rebuilt from the two records, so the sweep covers the
+  // labels a reader picks from and not a second arrangement of them.
+  'StatusSelect.STATUS_OPTIONS': STATUS_OPTIONS.map((option) => ({
+    label: option.label,
+    body: option.meaning ?? '',
   })),
   'panelTerms.PANEL_TERMS': Object.entries(PANEL_TERMS).map(
     ([label, body]) => ({ label, body }),

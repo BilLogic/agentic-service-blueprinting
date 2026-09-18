@@ -11,15 +11,20 @@
  * jsdom performs no layout, so "nothing is clipped" and "the width does not
  * move" are not measurable here. What IS observable, and what the geometry
  * follows from, is asserted: the two selects are one control (they render
- * one trigger, identically classed), that trigger names its value in full
- * without the list ever being opened, the list carries every full label,
- * choosing hands back the value, and the trigger is in the tab order.
+ * one trigger, identically classed), that trigger names its value without the
+ * list ever being opened, the list carries every status as a name over its
+ * meaning, choosing hands back the value, and the trigger is in the tab
+ * order.
  */
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { RoleSelect } from '@/components/blueprint/RoleSelect'
 import { StatusSelect } from '@/components/blueprint/StatusSelect'
-import { ENTITY_STATUS, ENTITY_STATUS_LABEL } from '@/lib/entityStatus'
+import {
+  ENTITY_STATUS,
+  ENTITY_STATUS_MEANING,
+  ENTITY_STATUS_SHORT,
+} from '@/lib/entityStatus'
 import { TOUCHPOINT_ROLE_OPTIONS } from '@/lib/touchpointRole'
 
 const triggers = () =>
@@ -39,21 +44,54 @@ function choose(name: string) {
 afterEach(cleanup)
 
 describe('the status select', () => {
-  it('names its value in full before the list is ever opened', () => {
+  it('names its value before the list is ever opened', () => {
     render(<StatusSelect value="live" onChange={() => {}} />)
-    expect(trigger().textContent).toContain(ENTITY_STATUS_LABEL.live)
+    expect(trigger().textContent).toContain(ENTITY_STATUS_SHORT.live)
     expect(options()).toEqual([])
   })
 
-  it('lists every status by its full label, and hands back the one chosen', async () => {
+  /*
+   * An option used to be one string — "Live — in use today" — authored in a
+   * label record beside the meaning record the badge's hover reads, so the
+   * same state was explained twice in two different sentences. It is now the
+   * name and the meaning as two nodes, and the meaning node is the meaning
+   * record's own line.
+   *
+   * This asserts on the RENDERED option, not on whatever builds it: a check
+   * over the option list as data stays green while the control draws only the
+   * name, or draws the two glued back together.
+   */
+  it('shows every status as its name over its meaning, in two nodes', async () => {
+    render(<StatusSelect value="live" onChange={() => {}} />)
+    open(trigger())
+    await waitFor(() => expect(options()).toHaveLength(ENTITY_STATUS.length))
+    for (const [index, status] of ENTITY_STATUS.entries()) {
+      const option = options()[index]!
+      const lines = [...option.querySelectorAll('span')].map((node) =>
+        node.textContent?.trim(),
+      )
+      expect(lines, status).toContain(ENTITY_STATUS_SHORT[status])
+      expect(lines, status).toContain(ENTITY_STATUS_MEANING[status])
+    }
+  })
+
+  it('never glues the meaning onto the name with a dash', async () => {
+    render(<StatusSelect value="live" onChange={() => {}} />)
+    open(trigger())
+    await waitFor(() => expect(options()).toHaveLength(ENTITY_STATUS.length))
+    for (const option of options()) {
+      expect(option.textContent, option.textContent ?? '').not.toContain(' — ')
+    }
+  })
+
+  it('hands back the status chosen', async () => {
     const onChange = vi.fn()
     render(<StatusSelect value="live" onChange={onChange} />)
     open(trigger())
     await waitFor(() => expect(options()).toHaveLength(ENTITY_STATUS.length))
-    expect(options().map((o) => o.textContent?.trim())).toEqual(
-      ENTITY_STATUS.map((status) => ENTITY_STATUS_LABEL[status]),
-    )
-    choose(ENTITY_STATUS_LABEL.deprecated)
+    const deprecated = options()[ENTITY_STATUS.indexOf('deprecated')]!
+    fireEvent.pointerDown(deprecated, { pointerType: 'mouse', button: 0 })
+    fireEvent.click(deprecated)
     await waitFor(() => expect(onChange).toHaveBeenCalledWith('deprecated'))
   })
 

@@ -47,17 +47,18 @@ export function isUnbuilt(status: EntityStatus | null | undefined): boolean {
   return status === 'proposed' || status === 'planned' || status === 'built'
 }
 
-/** The state in the words a reader uses, for the panel. */
-export const ENTITY_STATUS_LABEL: Record<EntityStatus, string> = {
-  proposed: 'Proposed — design only',
-  planned: 'Planned — committed, not started',
-  built: 'Built — not deployed',
-  live: 'Live — in use today',
-  at_risk: 'At risk — live, failing',
-  deprecated: 'Deprecated — on the way out',
-}
-
-/** The one-word form, for a badge with no room to explain itself. */
+/**
+ * The state in the words a reader uses.
+ *
+ * There was a second record here, `ENTITY_STATUS_LABEL`, holding the same six
+ * states with their meanings glued on behind an em dash — "Proposed — design
+ * only" against the meaning record's "Designed and discussed, with no build
+ * card behind it." Two sentences for one state is two things to keep true, and
+ * the short one drifted from the long one the moment either was edited. The
+ * select now draws the name and the meaning as two nodes from the two records
+ * below, so the option list and the badge's definition body read the same
+ * source.
+ */
 export const ENTITY_STATUS_SHORT: Record<EntityStatus, string> = {
   proposed: 'Proposed',
   planned: 'Planned',

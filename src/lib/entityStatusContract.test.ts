@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { pathsOn, sourceOf as src } from '@/lib/sourceTree'
 import {
   ENTITY_STATUS,
-  ENTITY_STATUS_LABEL,
   ENTITY_STATUS_MEANING,
   ENTITY_STATUS_SHORT,
   asEntityStatus,
@@ -24,18 +23,14 @@ import type { EntityStatus as DatabaseEntityStatus } from '@/types/database'
 
 describe('the status ladder', () => {
   it('has one rung per state the panel can name', () => {
-    // The ladder, the label and the meaning are three lists that must agree.
+    // The ladder, the name and the meaning are three lists that must agree.
     // They drifted once already: `planned` and `prototype` were two words for
     // "not built" that did not order, and the one marked `planned` was code
     // already in QA.
     for (const rung of ENTITY_STATUS) {
-      expect(ENTITY_STATUS_LABEL[rung], rung).toBeTruthy()
       expect(ENTITY_STATUS_MEANING[rung], rung).toBeTruthy()
       expect(ENTITY_STATUS_SHORT[rung], rung).toBeTruthy()
     }
-    expect(Object.keys(ENTITY_STATUS_LABEL).sort()).toEqual(
-      [...ENTITY_STATUS].sort(),
-    )
     expect(Object.keys(ENTITY_STATUS_MEANING).sort()).toEqual(
       [...ENTITY_STATUS].sort(),
     )

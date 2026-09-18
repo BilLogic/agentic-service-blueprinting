@@ -25,6 +25,12 @@ export const PANEL_SELECT_TRIGGER_CLASS =
 export type SelectOption<V extends string> = {
   value: V
   label: string
+  /**
+   * What the name means, in the words the rest of the app already uses for
+   * it. Optional: a vocabulary whose names explain themselves (touchpoint
+   * roles) passes none, and the option is then a single line.
+   */
+  meaning?: string
 }
 
 /**
@@ -36,11 +42,16 @@ export type SelectOption<V extends string> = {
  * typeahead, a real listbox — and draws the trigger the way the panel's
  * other selects are drawn.
  *
- * The option text is the full label ("Live — in use today"), because the
- * dropdown is where a reader learns what the words mean; a badge only has
- * room for one of them. The trigger shows the same full label: at column
- * width it fits, and a reader should not have to open the list to learn what
- * the current value means either.
+ * An option is the NAME and, under it in caption grey, what the name means.
+ * It used to be one string with the two glued together behind an em dash
+ * ("Live — in use today"), which made the meaning a second authored sentence
+ * beside the one the badge's hover already showed. Two nodes let the meaning
+ * come from the module that owns it, and let it wrap: the popup is the
+ * trigger's width, and a sentence has more to say than a line box holds.
+ *
+ * The trigger keeps the name alone. It is one line, `h-8` and clamped, so a
+ * meaning there would be a truncated meaning; the list and the badge's hover
+ * are where a reader learns the word.
  */
 export function OptionSelect<V extends string>({
   value,
@@ -81,7 +92,14 @@ export function OptionSelect<V extends string>({
       <SelectContent>
         {options.map((option) => (
           <SelectItem key={option.value} value={option.value}>
-            {option.label}
+            <span className="flex min-w-0 flex-col items-start gap-0.5">
+              <span>{option.label}</span>
+              {option.meaning ? (
+                <span className="text-xs whitespace-normal text-tertiary-foreground">
+                  {option.meaning}
+                </span>
+              ) : null}
+            </span>
           </SelectItem>
         ))}
       </SelectContent>
