@@ -5,7 +5,7 @@
  * hand-rolled lookalike.
  */
 import { Component, lazy, Suspense, useState, type ReactNode } from 'react'
-import { CheckCircle2, ChevronRight, Pencil, XCircle } from 'lucide-react'
+import { CheckCircle2, ChevronRight, Pencil, Slash, XCircle } from 'lucide-react'
 import { Eyebrow } from '@/components/blueprint/Eyebrow'
 import { Badge } from '@/components/ui/badge'
 import { Bubble, BubbleContent } from '@/components/ui/bubble'
@@ -85,6 +85,27 @@ function AgentMarkdown(props: { text: string; className?: string }) {
 }
 
 type ToolEvent = Extract<TranscriptEvent, { kind: 'tool' }>
+type DeclinedEvent = Extract<TranscriptEvent, { kind: 'declined' }>
+
+/**
+ * What a declined skill reads as: the token as typed, then the skill that did
+ * not run. In that order, because the token is the thing a reader can find
+ * again in the message above it, and the skill name is the news.
+ *
+ * A FACT, NOT A COMPLAINT. Nothing here went wrong — a reader was offered a
+ * skill and said no, which is one of the two answers the offer has. So the
+ * sentence states what happened, in the past tense, and stops: no "instead",
+ * no advice, no second invitation. The composer's notice already made the
+ * case for running it and has been answered; making it again down here would
+ * be arguing with a decision.
+ */
+function declinedLine(misses: DeclinedEvent['misses']): string {
+  const tokens = misses.map((miss) => `“/${miss.token}”`).join(' and ')
+  const labels = misses.map((miss) => miss.label).join(' and ')
+  return misses.length === 1
+    ? `${tokens} was sent as text — ${labels} did not run.`
+    : `${tokens} were sent as text — ${labels} did not run.`
+}
 
 /** One labelled payload block inside an opened tool row. */
 function ToolDetail({ label, body }: { label: string; body: string }) {
@@ -228,6 +249,19 @@ export function TranscriptRow({
       return (
         <Marker variant="separator" className="italic">
           <MarkerContent>{event.text}</MarkerContent>
+        </Marker>
+      )
+    case 'declined':
+      // A plain Marker in the muted voice every non-turn row speaks in —
+      // NOT the destructive one a failed tool call wears, and no error
+      // glyph. The slash is the shape of what happened: a token that looks
+      // like an invocation and invoked nothing.
+      return (
+        <Marker>
+          <MarkerIcon>
+            <Slash aria-hidden />
+          </MarkerIcon>
+          <MarkerContent>{declinedLine(event.misses)}</MarkerContent>
         </Marker>
       )
   }
