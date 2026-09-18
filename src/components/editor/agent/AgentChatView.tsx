@@ -551,100 +551,118 @@ export function AgentChatView({
           ) : null}
           {/* ONE field, the DS's own: InputGroup draws the border and the
               focus treatment (a single soft ring on the control, the same
-              geometry every other input in the app has), and the recognized
-              recognized token is COLOURED where it was typed, by a mirrored
-              layer behind the field (ComposerSkillInk). The badge row that
-              used to sit in an addon here is gone: it lifted the token out of
-              the prose and stood it at the front of the message.
+              geometry every other input in the app has), and the recognised
+              token is COLOURED where it was typed, by a mirrored layer behind
+              the field (ComposerSkillInk). The badge row that used to sit in
+              an addon here is gone: it lifted the token out of the prose and
+              stood it at the front of the message.
               The old hand-rolled wrapper stacked a 1px border and a 2px ring
-              on a borderless textarea: the box-around-a-box. */}
-          <InputGroup className="min-h-8 flex-1">
-            {inking ? (
-              <ComposerSkillInk ref={inkRef} draft={draft} tokens={skillTokens} />
-            ) : null}
-            <InputGroupTextarea
-              ref={fieldRef}
-              // The seam `focusAgentComposer` finds this by. The phone's
-              // shell gives the caret back here after an agent-driven camera
-              // move, so the reader keeps typing without hunting for the box.
-              data-agent-composer=""
-              rows={1}
-              // No imperative height write: the DS Textarea is
-              // `field-sizing-content`, so the browser grows it. max-h caps
-              // it at ~6 lines and then it scrolls, as before.
-              // geometry: min-h-7 is a 28px composer box; a 20px line sits in the padding.
-              //
-              // `relative` puts the field above the coloured layer, which is
-              // absolutely positioned and therefore paints over a static
-              // sibling however early it sits in the DOM. The selection band
-              // is translucent for the same stacking reason: an opaque one
-              // would cover the only copy of the text a reader can see.
-              className={cn(
-                COMPOSER_FIELD_METRICS,
-                'relative selection:bg-primary/25',
-                inking && 'text-transparent caret-foreground',
-              )}
-              value={draft}
-              onScroll={syncInkScroll}
-              onCompositionStart={() => setComposing(true)}
-              onCompositionEnd={() => setComposing(false)}
-              onChange={(event) => {
-                const value = event.target.value
-                // A dismissal answers for the draft that was on screen; the
-                // next keystroke is a new draft, and the menu is free again.
-                if (slashDismissed) setSlashDismissed(false)
-                setDraft(value)
-              }}
-              onKeyDown={(event) => {
-                if (slashOpen && event.key === 'ArrowDown') {
-                  event.preventDefault()
-                  moveSlashHighlight(1)
-                  return
+              on a borderless textarea: the box-around-a-box.
+
+              `h-auto` is what the inner wrapper below costs: InputGroup grows
+              for a DIRECT-child textarea (`has-[>textarea]:h-auto`) and the
+              field is a grandchild now, so the height that lets the composer
+              pass one line is spelled here instead of inferred. */}
+          <InputGroup className="h-auto min-h-8 flex-1">
+            {/* The layer and the field share ONE containing block, and the
+                block is sized by the field: that is what keeps the two copies
+                of the draft wrapping alike. The layer is `absolute inset-0`,
+                so it measures its positioned ancestor — InputGroup, until
+                this wrapper, and InputGroup coincides with the field only
+                while the field is its sole child, which is the slot an addon
+                occupied until this branch deleted it. Put any addon back and
+                InputGroup's own `has-[>[data-align=inline-start]]` rules
+                narrow the FIELD and not the layer: every line from the first
+                wrap down breaks somewhere else, the colour drifts off the
+                caret, and no shared metrics string can undo it. */}
+            <div className="relative min-w-0 flex-1">
+              {inking ? (
+                <ComposerSkillInk ref={inkRef} draft={draft} tokens={skillTokens} />
+              ) : null}
+              <InputGroupTextarea
+                ref={fieldRef}
+                // The seam `focusAgentComposer` finds this by. The phone's
+                // shell gives the caret back here after an agent-driven camera
+                // move, so the reader keeps typing without hunting for the box.
+                data-agent-composer=""
+                rows={1}
+                // No imperative height write: the DS Textarea is
+                // `field-sizing-content`, so the browser grows it. max-h caps
+                // it at ~6 lines and then it scrolls, as before.
+                // geometry: min-h-7 is a 28px composer box; a 20px line sits in the padding.
+                //
+                // `relative` puts the field above the coloured layer, which is
+                // absolutely positioned and therefore paints over a static
+                // sibling however early it sits in the DOM. The selection band
+                // is translucent for the same stacking reason: an opaque one
+                // would cover the only copy of the text a reader can see.
+                className={cn(
+                  COMPOSER_FIELD_METRICS,
+                  'relative selection:bg-primary/25',
+                  inking && 'text-transparent caret-foreground',
+                )}
+                value={draft}
+                onScroll={syncInkScroll}
+                onCompositionStart={() => setComposing(true)}
+                onCompositionEnd={() => setComposing(false)}
+                onChange={(event) => {
+                  const value = event.target.value
+                  // A dismissal answers for the draft that was on screen; the
+                  // next keystroke is a new draft, and the menu is free again.
+                  if (slashDismissed) setSlashDismissed(false)
+                  setDraft(value)
+                }}
+                onKeyDown={(event) => {
+                  if (slashOpen && event.key === 'ArrowDown') {
+                    event.preventDefault()
+                    moveSlashHighlight(1)
+                    return
+                  }
+                  if (slashOpen && event.key === 'ArrowUp') {
+                    event.preventDefault()
+                    moveSlashHighlight(-1)
+                    return
+                  }
+                  if (
+                    slashOpen &&
+                    (event.key === 'Enter' || event.key === 'Tab') &&
+                    // Shift+Enter stays a newline even mid-menu — same
+                    // exemption the closed-menu send path makes below.
+                    !event.shiftKey
+                  ) {
+                    event.preventDefault()
+                    const highlighted = slashPickable.find(
+                      (command) => command.id === nextHighlight,
+                    )
+                    if (highlighted) pickSkill(highlighted)
+                    return
+                  }
+                  if (slashOpen && event.key === 'Escape') {
+                    // Mark the event consumed: the canvas selection listener
+                    // skips defaultPrevented Escapes, and closing this menu
+                    // must not also wipe a cell selection.
+                    event.preventDefault()
+                    // The menu closes and the draft is UNTOUCHED. Escape used
+                    // to clear the field, which was invisible while a draft
+                    // could only ever be "/aud" and is text deletion with no
+                    // undo the moment a sentence surrounds the token.
+                    setSlashDismissed(true)
+                    return
+                  }
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault()
+                    send()
+                  }
+                }}
+                placeholder={
+                  keyed
+                    ? 'Message the agent… ("/" for skills)'
+                    : 'Add an API key in agent settings first'
                 }
-                if (slashOpen && event.key === 'ArrowUp') {
-                  event.preventDefault()
-                  moveSlashHighlight(-1)
-                  return
-                }
-                if (
-                  slashOpen &&
-                  (event.key === 'Enter' || event.key === 'Tab') &&
-                  // Shift+Enter stays a newline even mid-menu — same
-                  // exemption the closed-menu send path makes below.
-                  !event.shiftKey
-                ) {
-                  event.preventDefault()
-                  const highlighted = slashPickable.find(
-                    (command) => command.id === nextHighlight,
-                  )
-                  if (highlighted) pickSkill(highlighted)
-                  return
-                }
-                if (slashOpen && event.key === 'Escape') {
-                  // Mark the event consumed: the canvas selection listener
-                  // skips defaultPrevented Escapes, and closing this menu
-                  // must not also wipe a cell selection.
-                  event.preventDefault()
-                  // The menu closes and the draft is UNTOUCHED. Escape used
-                  // to clear the field, which was invisible while a draft
-                  // could only ever be "/aud" and is text deletion with no
-                  // undo the moment a sentence surrounds the token.
-                  setSlashDismissed(true)
-                  return
-                }
-                if (event.key === 'Enter' && !event.shiftKey) {
-                  event.preventDefault()
-                  send()
-                }
-              }}
-              placeholder={
-                keyed
-                  ? 'Message the agent… ("/" for skills)'
-                  : 'Add an API key in agent settings first'
-              }
-              aria-label="Message the agent"
-              disabled={!keyed}
-            />
+                aria-label="Message the agent"
+                disabled={!keyed}
+              />
+            </div>
           </InputGroup>
           <IconTooltip label="Send">
             <Button
