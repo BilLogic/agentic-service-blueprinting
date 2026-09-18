@@ -9,12 +9,10 @@ import { sourceOf } from '@/lib/sourceTree'
  * source guard is the honest instrument here, and it catches the exact
  * regression that happened: the wash made conditional again.
  *
- * The phase line the shell reports used to be guarded here the same way —
- * by reading this file for its interpolation — because the sentence was
- * assembled inline and had no interface to ask. It has one now
- * (`describeSelection`), and the claim is asserted against the renderer both
- * shells and the navigation verifier share, where a fourth spelling of the
- * format cannot drift.
+ * The phase line the shell reports used to be guarded here too, by reading
+ * this file for its interpolation. Its wording belongs to
+ * `describeSelection` now, so both the wording and the guard that this shell
+ * still calls it sit beside that renderer, in `lib/shellContext.test.ts`.
  */
 const SHEET = sourceOf('components/mobile/MobileAgentSheet.tsx')
 

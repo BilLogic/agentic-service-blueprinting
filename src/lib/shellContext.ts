@@ -15,6 +15,9 @@
   furniture it does not have.
 */
 
+import { getSlideDisplayLabel } from '@/types/nav'
+import type { NavItem } from '@/types/nav'
+
 /**
  * How the editor shell describes its sidebar to the agent.
  *
@@ -67,11 +70,37 @@ export function describeSidebar({
 /** The two things a shell reports a selection of, in the tools' vocabulary. */
 export type SelectionKind = 'phase' | 'scenario'
 
-/** What a shell knows about the slide it has selected, if it has one. */
-export type SelectedSlide = {
+/**
+ * What a shell knows about the phase or scenario it has selected.
+ *
+ * NOT `SelectedSlide`. A *slide* in this codebase is one row of a slice — a
+ * moment of that slice as a reader meets it — and what a shell selects is a
+ * phase or a scenario on the canvas. The glossary polices that word, and this
+ * type is on the shell/agent wire: a name here that calls a phase a slide
+ * teaches every later reader the wrong noun for the thing the tools navigate.
+ */
+export type SelectedItem = {
   id: string
   /** The reader-facing label, already resolved by the shell that has it. */
   label: string
+}
+
+/**
+ * The nav item a shell has selected, in the shape the line wants — or nothing.
+ *
+ * The two shells spelled this ternary out four times between them, and each
+ * copy had to remember that the label is `getSlideDisplayLabel`'s answer and
+ * not the item's own `label` field. One copy forgetting that is a line whose
+ * reader and whose model disagree about what is on screen, which is the
+ * failure this module exists to prevent, one level up.
+ */
+export function selectionOf(
+  item: NavItem | undefined,
+  slides: NavItem[],
+): SelectedItem | null {
+  return item
+    ? { id: item.id, label: getSlideDisplayLabel(item, slides) }
+    : null
 }
 
 /*
@@ -92,6 +121,21 @@ const SELECTION_LABEL: Record<SelectionKind, string> = {
 }
 
 /**
+ * Why an absent selection is a view rather than a fault, in one word.
+ *
+ * A closed set, not free text: the qualifier is part of a line whose
+ * recognisability is the whole point, and a shell that may write any words
+ * inside those parentheses is a shell that can invent a fifth spelling of the
+ * sentence without anything noticing.
+ *
+ * `overview` exists because the phone reports no `View level:` line the way
+ * the desktop does — so on the zoomed-out board this qualifier is the ONLY
+ * signal to the model that no scenario is open by design rather than by
+ * mistake. Give the phone a view-level line of its own and this goes away.
+ */
+export type SelectionAbsence = 'overview'
+
+/**
  * The line a shell reports its selected phase or scenario with.
  *
  * `note` qualifies an absent selection that is a view rather than a fault —
@@ -101,8 +145,8 @@ const SELECTION_LABEL: Record<SelectionKind, string> = {
  */
 export function describeSelection(
   kind: SelectionKind,
-  selected: SelectedSlide | null,
-  note?: string,
+  selected: SelectedItem | null,
+  note?: SelectionAbsence,
 ): string {
   if (!selected)
     return `${SELECTION_LABEL[kind]}: none${note ? ` (${note})` : ''}`

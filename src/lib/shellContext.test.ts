@@ -4,6 +4,7 @@ import {
   describeSidebar,
   namesSelection,
 } from '@/lib/shellContext'
+import { sourceOf, stripComments } from '@/lib/sourceTree'
 
 /**
  * The line the agent reads about the sidebar.
@@ -84,14 +85,9 @@ describe('describeSidebar', () => {
  * The two lines a shell reports about its selection, and the check the
  * navigation tools run against them.
  *
- * These were the same sentence spelled four times — twice in the two shells,
- * once as a prefix constant in the navigation tools, and once again as a
- * regex in a source-text guard that read the phone's file looking for the
- * interpolation. The spelling that mattered was the one nobody had: a phone
- * release shipped without the phase line at all, and every agent-driven
- * phase jump answered "the selected phase was not verified" while the canvas
- * sat on exactly the phase asked for. Rendering and recognition now leave
- * from the same place, so the tools cannot fail to read what a shell writes.
+ * One sentence, spelled once: rendering and recognition leave from the same
+ * place, so the tools cannot fail to read what a shell writes. The module's
+ * own comment carries the release this cost.
  */
 describe('describeSelection', () => {
   it('names a selected phase with its label and its id', () => {
@@ -118,6 +114,42 @@ describe('describeSelection', () => {
     expect(describeSelection('scenario', null, 'overview')).toBe(
       'Selected scenario: none (overview)',
     )
+  })
+})
+
+/*
+  EVERY SHELL THAT CAN HOLD A SELECTION REPORTS ONE — A PLACEHOLDER, READ OVER
+  THE SOURCE.
+
+  The weakest honest form of the claim: each shell file calls
+  `describeSelection` for both kinds. It says nothing about the wording (the
+  renderer above holds that) and it cannot see whether the line reaches the
+  agent.
+
+  It is here because without it NOTHING fails when a shell stops reporting its
+  selection, and a claim nobody can break is not covered. The renderer's tests
+  are a table over this module; the navigation verifier's tests are handed a
+  context by stub; no test mounts either shell for the context it registers.
+  So deleting the two calls from the phone's shell reproduces — green — the
+  exact release that shipped the phone without the phase line.
+
+  DELETE THIS when the phone's end-to-end slice drives a mounted shell and
+  reads the context it actually registers, which is the claim this is standing
+  in for. That slice is in flight; mounting a shell for it is its work and not
+  this module's.
+*/
+describe('both shells report their selection through this module', () => {
+  const shells: Array<[string, string]> = [
+    ['the phone', 'components/mobile/MobileShell.tsx'],
+    ['the desktop editor', 'components/editor/EditorShell.tsx'],
+  ]
+
+  it.each(shells)('%s renders both of its selection lines', (_who, path) => {
+    // Comments blanked: a comment naming the renderer is not a call to it,
+    // and both shells have one beside these lines.
+    const code = stripComments(sourceOf(path))
+    expect(code).toMatch(/describeSelection\(\s*'phase'/)
+    expect(code).toMatch(/describeSelection\(\s*'scenario'/)
   })
 })
 

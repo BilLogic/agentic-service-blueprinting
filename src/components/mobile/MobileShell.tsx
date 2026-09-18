@@ -41,7 +41,7 @@ import {
 } from '@/components/mobile/mobileAgentBridge'
 import { focusAgentComposer } from '@/lib/agent/composerFocus'
 import { waitForCanvasNavigationOutcome } from '@/lib/canvasNavigationOutcome'
-import { describeSelection } from '@/lib/shellContext'
+import { describeSelection, selectionOf } from '@/lib/shellContext'
 import { getMainSlides, getSlideDisplayLabel, getSubslides } from '@/types/nav'
 import type { NavItem } from '@/types/nav'
 import { useActiveServiceId } from '@/contexts/activeService'
@@ -262,26 +262,19 @@ export function MobileShell() {
   // What the shell knows about the phone's screen, for get_ui_state.
   const shellContext = [
     'Mobile shell (view-only): the shared canvas, scoped to the selected phase',
-    /*
-      The phase line is reported here and not only by the desktop shell,
-      because this is the line the navigation tools VERIFY a selection
-      against. Without it every agent-driven phase jump on the phone answered
-      "navigation started, but the selected phase was not verified" while the
-      canvas sat on exactly the phase asked for: a tool cannot read a
-      selection the shell never reports, and a model told its navigation
-      failed apologises for a move that landed. The wording comes from the
-      module the verifier reads with, so the two ends cannot drift apart
-      again.
-    */
-    describeSelection(
-      'phase',
-      phase ? { id: phase.id, label: getSlideDisplayLabel(phase, slides) } : null,
-    ),
+    // Both lines are the wire the navigation tools verify a selection
+    // against, so this shell has to publish them even though the desktop does
+    // too: a tool cannot read a selection the shell never reports, and the
+    // release that shipped without the phase line is the story
+    // `shellContext` tells. The wording comes from that module, so the two
+    // ends of the wire cannot drift apart again.
+    describeSelection('phase', selectionOf(phase, slides)),
     describeSelection(
       'scenario',
-      scenario
-        ? { id: scenario.id, label: getSlideDisplayLabel(scenario, slides) }
-        : null,
+      selectionOf(scenario, slides),
+      // The phone publishes no `View level:` line, so on the zoomed-out board
+      // this qualifier is the only thing telling the model that an empty
+      // scenario is the view and not a fault.
       view === 'home' ? 'overview' : undefined,
     ),
     paths.length > 0 && activePathId

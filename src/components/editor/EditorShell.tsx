@@ -57,14 +57,17 @@ import {
 } from '@/lib/agent/placement'
 import { registerAgentUiCommand } from '@/lib/agent/uiCommands'
 import { suppressCanvasResizeRefit } from '@/lib/canvasChromeResize'
-import { getSlideDisplayLabel } from '@/types/nav'
 import {
   MOTION_STRUCTURAL_EASE,
   MOTION_STRUCTURAL_MS,
   SHELL_ENTRANCE_STEP_MS,
   prefersReducedMotion,
 } from '@/lib/motion'
-import { describeSelection, describeSidebar } from '@/lib/shellContext'
+import {
+  describeSelection,
+  describeSidebar,
+  selectionOf,
+} from '@/lib/shellContext'
 import { storageKey } from '@/lib/storageNamespace'
 import { cn } from '@/lib/utils'
 
@@ -385,21 +388,10 @@ function DesktopEditorShell() {
   const scenarioSlide = slides.find((slide) => slide.id === selectedScenarioId)
   const shellContext = [
     `View level: ${view}${view === 'home' ? ' (zoomed-out overview of all phases)' : ''}`,
-    describeSelection(
-      'phase',
-      phaseSlide
-        ? { id: phaseSlide.id, label: getSlideDisplayLabel(phaseSlide, slides) }
-        : null,
-    ),
-    describeSelection(
-      'scenario',
-      scenarioSlide
-        ? {
-            id: scenarioSlide.id,
-            label: getSlideDisplayLabel(scenarioSlide, slides),
-          }
-        : null,
-    ),
+    // The wire the navigation tools verify a selection against, worded by the
+    // module they read it back with.
+    describeSelection('phase', selectionOf(phaseSlide, slides)),
+    describeSelection('scenario', selectionOf(scenarioSlide, slides)),
     activeTab
       ? `Active tab: ${activeTab.kind} for slice ${activeTab.sliceId}`
       : 'Active tab: base blueprint view (no slice tab)',
