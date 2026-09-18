@@ -8,7 +8,8 @@ claims:
   - src/components/editor/agent/AgentSessionsView.tsx
   - src/components/editor/agent/AgentSettingsRailButton.tsx
   - src/components/editor/agent/ChangeCount.tsx
-  - src/components/editor/agent/ComposerSkillInk.tsx
+  - src/components/editor/agent/ComposerInkedField.tsx
+  - src/components/editor/agent/composerFieldMetrics.ts
   - src/components/editor/agent/SessionDialogs.tsx
   - src/components/editor/agent/SessionRow.tsx
   - src/components/editor/agent/TranscriptRow.tsx

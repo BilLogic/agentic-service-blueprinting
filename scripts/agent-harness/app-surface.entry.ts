@@ -15,15 +15,47 @@ export { TOOL_DEFINITIONS }
  */
 export { renderCanvasAdapter } from '@/lib/agent/tools/references'
 /**
- * The two rosters the harness gates on, derived here from the definitions
- * the way the app's roster derives them: a write is a tool on the write
- * surface, and the mobile roster is every tool whose availability says so.
+ * The app's own roster, so the harness OFFERS what a session would be
+ * offered instead of mirroring two of its gates by hand. The harness declares
+ * the mode; `sessionRoster` decides the membership and the order.
+ */
+export { sessionRoster } from '@/lib/agent/tools/roster'
+/**
+ * The app's own admission answer, so the harness's DISPATCH refuses what a
+ * session would refuse — in the app's order, on the app's grounds, in the
+ * app's words. Still needed past the offer because a model can call a name it
+ * was never offered, which is exactly the case the offer cannot answer.
+ *
+ * The harness mirrored three of these gates by hand before, in an order of
+ * its own (mobile, then write, then batch), so a call tripping two of them
+ * read back the sentence whichever hand-written block reached first: a
+ * `search_blueprint` call in a mobile case was told the shell is view-only
+ * about a tool the app withholds for the missing search plan. That is the
+ * same failure this PR removed from the app loop, and it was still here.
+ */
+export { admitToolCall } from '@/lib/agent/tools/admission'
+/**
+ * WHAT IS STILL NEEDED PAST THE OFFER AND THE ADMISSION, and why — one set,
+ * derived here from the definitions the way the app derives it: a write is a
+ * tool on the write surface.
+ *
+ * Two readers want it. `cases.mjs` counts the writes in a trace against it,
+ * which is how a "no writes happened" check knows what a write is. And the
+ * runner hands it to `admitToolCall` as the `isWrite` FACT — the one input
+ * the app does not derive either, because `ui_command` is a write when its
+ * `command` argument names a mutating control. The app answers that from the
+ * live command registry; nothing registers a command in this environment and
+ * the harness serves no `ui_command` at all, so a call's write-ness here IS
+ * its definition's surface. Said out loud because it is a divergence: a
+ * mutating `ui_command` is neither refused to a viewer nor budgeted here, and
+ * no case can reach that state to notice.
+ *
+ * The mobile roster used to be derived here too, for a gate this file's
+ * second export now answers. It is gone rather than kept: a set exported for
+ * a gate nobody applies is the next fork.
  */
 export const WRITE_TOOL_NAMES = new Set(
   TOOL_DEFINITIONS.filter((tool) => tool.surface === 'write').map((tool) => tool.name),
-)
-export const MOBILE_READ_TOOL_NAMES = new Set(
-  TOOL_DEFINITIONS.filter((tool) => tool.availability.mobile).map((tool) => tool.name),
 )
 import {
   sampleGetBlueprint as readBlueprint,
@@ -105,20 +137,23 @@ export { CELL_CAMERA_SETTLED, cameraSettled } from '@/lib/agent/uiBridge'
  */
 export { REFERENCE_NAMES } from '@/lib/agent/tools/referenceNames'
 /**
- * The loop's refusals and the batch limit they quote, so the harness's
- * rehearsal of the same gates answers in the loop's words. run.mjs carried
- * its own copy of each before, and a copy is a sentence the loop can change
- * without the harness noticing.
+ * The loop's refusals, so the harness answers the gates it shares with the
+ * app in the app's words. run.mjs carried its own copy of each before, and a
+ * copy is a sentence the loop can change without the harness noticing.
  *
- * Exactly the refusals whose gate the harness HAS, and whose statement is
- * true of its session. `refusals.ts` holds that rule and says at each
- * app-only sentence which half of it fails; do not restate it here.
+ * EXACTLY THE SHARED SET — every sentence `refusals.ts` marks SHARED, and no
+ * sentence it marks APP-ONLY, which `toolParity.test.mjs` checks as a
+ * CATEGORY rather than one name at a time. `refusals.ts` holds the rule and
+ * says at each app-only sentence which half of it fails; do not restate it
+ * here. The batch LIMIT is no longer among them: the harness quoted it to
+ * enforce the budget itself, and the budget is the app's admission answer
+ * now, so the constant has nothing to do on this side of the seam.
  */
 export {
   BATCH_LIMIT_REFUSAL,
   MOBILE_SHELL_REFUSAL,
+  NO_SEARCH_REFUSAL,
   VIEW_ONLY_REFUSAL,
-  WRITE_BATCH_LIMIT,
   noSuchToolRefusal,
 } from '@/lib/agent/tools/refusals'
 /**

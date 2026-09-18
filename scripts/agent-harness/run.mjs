@@ -27,9 +27,9 @@
  *   canvas-adapter.md and the skill files are the SAME FILES the app loads
  *   (`?raw` there, readFileSync here). No copies, so no drift.
  * - MIRRORED BY HAND: the system-prompt ASSEMBLY (buildStableSystem +
- *   buildLiveContext + the tier / mobile injections), the provider glue, the
- *   batch limiter and the round cap follow src/lib/agent/loop.ts and
- *   providers/ by copy — edit both sides together. The app splits that
+ *   buildLiveContext + the tier / mobile injections), the provider glue and
+ *   the round cap follow src/lib/agent/loop.ts and providers/ by copy — edit
+ *   both sides together. The app splits that
  *   assembly in two where it crosses the provider seam — a stable part it
  *   builds without the context note, and a volatile part the context block
  *   opens — because one provider caches the prefix. The harness calls no
@@ -42,22 +42,34 @@
  *   Everything else — the writes, the refusals, and every database read's
  *   text — answers in the app's words, and `toolParity.test.mjs` fails if a
  *   sentence the app says turns up composed here again.
- * - ROSTER FORK, stated so the refusals make sense: this harness offers the
- *   whole spec table whatever the environment — every write with no database
- *   configured (`HAS_DB` false), and ranked search with no index. The app
- *   withholds both and has a refusal for each; a tool absent from a session's
- *   roster does not exist for it. So two of the app's refusals cannot be said
- *   here at all — the sample trial's, and the missing-search one — and
- *   `refusals.ts` marks both app-only for exactly that reason. A ranked-search
- *   call is answered by NO_SEARCH_HERE instead, which is true of this session.
+ * - ROSTER AND ADMISSION: ONE-SOURCED, with ONE widening and one fork
+ *   declared. The offer is `sessionRoster` — the app's own — handed the mode
+ *   this environment is in, so the harness cannot grade a model in a state no
+ *   reader can reach. It used to offer the whole spec table whatever the
+ *   environment, which forked twice over: ranked search with no index behind
+ *   it (a refusal the app has and this could not say, so it said one of its
+ *   own) and every write with no database. The search half is now derived
+ *   away — `searchOffered: false` is the truth here, so the tool is absent and
+ *   the app's own missing-search refusal is true on both sides and shared. The
+ *   write half is the widening, and it is deliberate: see `harnessMode` below
+ *   for what it buys and what it costs.
+ *
+ *   The DISPATCH derives too: `admitToolCall` answers whether a call may run,
+ *   so the mobile gate, the write gate and the batch budget are the app's, in
+ *   the app's order, rather than three blocks spelled here in an order of
+ *   their own. What stays this side of the seam is the live facts, and one of
+ *   them is a FORK, stated at `isWriteCall`: write-ness here is the
+ *   definition's surface, where the app also asks a `ui_command`'s arguments
+ *   against a command registry no environment without a canvas can fill.
  * - DELIBERATELY NOT MIRRORED: the loop's repeat-read guard, which answers a
  *   read already run this turn with a pointer to the earlier result instead
- *   of running it again. The gates copied above shape what a model DOES —
+ *   of running it again. The gates derived above shape what a model DOES —
  *   how many writes land, how many rounds it gets — and a harness that let a
  *   model exceed them would grade a run the app could not have. This one
  *   shapes only what a model SEES TWICE, and no case in the suite repeats a
- *   read, so a copy here would be machinery no case exercises, free to drift
- *   from the loop unnoticed. Mirror it the day a case needs it.
+ *   read, so the fact is handed to the admission as `false` and the pointer
+ *   the app would answer with is never said here. Turn it on the day a case
+ *   needs it — the gate itself is already the app's.
  *
  * Provider selection is NEUTRAL — the first key found wins:
  *   GEMINI_API_KEY, then ANTHROPIC_API_KEY, then OPENAI_API_KEY
@@ -166,16 +178,17 @@ const {
   TOOL_SPECS,
   TOOL_DEFINITIONS,
   WRITE_TOOL_NAMES,
-  MOBILE_READ_TOOL_NAMES,
   BATCH_LIMIT_REFUSAL,
   MOBILE_SHELL_REFUSAL,
+  NO_SEARCH_REFUSAL,
   VIEW_ONLY_REFUSAL,
-  WRITE_BATCH_LIMIT,
   AGENT_CELL_FIELDS,
   noSuchToolRefusal,
   renderCanvasAdapter,
   rehearsalContext,
   runTool,
+  sessionRoster,
+  admitToolCall,
 } = surface
 
 /**
@@ -190,6 +203,16 @@ const OWNER_TAG_COLUMNS = AGENT_CELL_FIELDS.filter((field) => field.editor.contr
   (field) => field.key,
 )
 
+/**
+ * Whether a call writes, as this environment can answer it: the definition's
+ * surface. The app's own predicate also asks the ARGUMENTS — `ui_command` is
+ * a write when its `command` names a mutating control — and that half cannot
+ * cross, because the answer comes from the live registry the open surfaces
+ * fill and nothing registers a command here (the harness serves no
+ * `ui_command` at all; a call to it falls to the unknown-name refusal). So
+ * the divergence is one-directional and named: a mutating `ui_command` would
+ * be refused to a viewer and budgeted in the app and is neither here.
+ */
 const isWriteCall = (name) => WRITE_TOOL_NAMES.has(name)
 
 // ---------------------------------------------------------------------------
@@ -526,54 +549,84 @@ let dryCounter = 0
  */
 const DRY_RUN_NOTE =
   'NOTE: rehearsal — this write was not applied and any ids above are placeholders; a re-read will not show it. Continue as if it landed; do not re-read to verify it and do not retry it.'
-/**
- * HARNESS-LOCAL, and it has to be. The app's `NO_SEARCH_REFUSAL` tells the
- * model the tool does not exist in the session, which is true exactly where
- * the loop says it: the tool was filtered out of the roster and never
- * offered. This harness OFFERS it — the roster it hands a provider is the
- * whole spec table — so the app's sentence would be a lie about this session.
- * (The roster fork itself is its own issue, not this sentence's business.)
- *
- * What IS true here is that nothing in this environment serves ranked search:
- * there is no deployment index and no embedding key. The steer is the graded
- * part — a case grades what a run does after being turned away — so this
- * points at the same two reads the app's sentence points at.
- */
-const NO_SEARCH_HERE =
-  'Ranked search is not served in this rehearsal environment (no search index). Use list_blueprint for what exists at a level, and get_blueprint for one scenario.'
 async function dispatch(caseDef, name, args, trace, turn = 0) {
   const mock = caseDef.mocks?.[name]
   const record = { name, args, isError: false, turn }
   trace.push(record)
-  if (caseDef.mobile && !MOBILE_READ_TOOL_NAMES.has(name)) {
-    record.offRoster = true
+  // WHETHER THIS CALL MAY RUN IS THE APP'S ANSWER, not three gates spelled
+  // here in an order of their own. `admitToolCall` applies the allow-list,
+  // the search offer, both availability gates, the write gate and the batch
+  // budget, in the order a session applies them — so a call tripping two of
+  // them reads back the sentence a reader of the app would have read. The
+  // harness supplies only the live facts, which is the same split the loop
+  // works to: the batch count for this turn (only calls that LANDED eat
+  // budget — a failed write changed nothing), and a write-ness its
+  // environment can answer (see `isWriteCall`). The two facts this
+  // environment does not have — a Stop, and a repeat-read record — are
+  // stated false, as the header says they are.
+  const writesThisSend = trace.filter(
+    (t) =>
+      t !== record &&
+      t.turn === turn &&
+      t.name !== '__text' &&
+      isWriteCall(t.name) &&
+      !t.isError,
+  ).length
+  const admission = admitToolCall({
+    mode: harnessMode(caseDef),
+    name,
+    facts: {
+      aborted: false,
+      isWrite: isWriteCall(name),
+      writesThisSend,
+      repeatRead: false,
+    },
+  })
+  if (!admission.admitted) {
     record.isError = true
-    record.result = MOBILE_SHELL_REFUSAL
-    return record.result
-  }
-  if (caseDef.allowWrites === false && isWriteCall(name)) {
-    record.refusedWrite = true
-    record.isError = true
-    record.result = VIEW_ONLY_REFUSAL
-    return record.result
-  }
-  // Mirror of the app loop's enforced batch etiquette: only calls that
-  // landed (no error) eat budget — a failed write changed nothing.
-  if (isWriteCall(name)) {
-    const executed = trace.filter(
-      (t) =>
-        t !== record &&
-        t.turn === turn &&
-        t.name !== '__text' &&
-        isWriteCall(t.name) &&
-        !t.isError,
-    ).length
-    if (executed >= WRITE_BATCH_LIMIT) {
-      record.limited = true
-      record.isError = true
-      record.result = BATCH_LIMIT_REFUSAL
-      return record.result
+    // The GROUND chooses the trace flag, because the checks in cases.mjs read
+    // which gate fired and not what it said; the SENTENCE stays the shared
+    // binding, so `toolParity.test.mjs` can still see the harness answering
+    // its own gate with the app's export rather than a copy of the words.
+    // The equality below is what keeps that mapping from lying.
+    switch (admission.ground) {
+      case 'mobile-reading':
+        record.offRoster = true
+        record.result = MOBILE_SHELL_REFUSAL
+        break
+      case 'view-only':
+        record.refusedWrite = true
+        record.result = VIEW_ONLY_REFUSAL
+        break
+      case 'batch-limit':
+        record.limited = true
+        record.result = BATCH_LIMIT_REFUSAL
+        break
+      case 'no-search':
+        // Nothing here serves ranked search, the mode says so, and the
+        // derived roster withholds the tool — so only a model reaching for a
+        // remembered name lands here, and the app's sentence is true of this
+        // session word for word, steer included, which is the part a case
+        // grades the recovery on.
+        record.result = NO_SEARCH_REFUSAL
+        break
+      default:
+        // The grounds this environment declares itself out of: a stop it has
+        // no way to press, a repeat-read guard it deliberately does not
+        // mirror, the no-database trial it widens away from, and an
+        // allow-list it never configures. THROW rather than answer: each of
+        // those sentences is app-only precisely because no gate here can
+        // truthfully say it, and answering with one would publish it to a
+        // graded transcript through the back door.
+        throw new Error(
+          `the harness reached the ${admission.ground} gate, which its session declares itself out of`,
+        )
     }
+    if (record.result !== admission.refusal)
+      throw new Error(
+        `the harness answered the ${admission.ground} gate with a sentence the app does not say`,
+      )
+    return record.result
   }
   try {
     if (mock) {
@@ -715,14 +768,6 @@ async function dispatch(caseDef, name, args, trace, turn = 0) {
         return record.result
       case 'focus_cell':
         record.result = CELL_CAMERA_SETTLED
-        return record.result
-      // Ranked search is offered to the model here — the roster this
-      // harness hands a provider is the whole spec table — and nothing
-      // serves it. So this answers in a sentence that is true of THIS
-      // session, steering to the same two reads the app's refusal steers to;
-      // see NO_SEARCH_HERE on why the app's own wording cannot be used.
-      case 'search_blueprint':
-        record.result = NO_SEARCH_HERE
         return record.result
       // A name nothing above maps: a tool this environment cannot serve, or
       // one the model invented. The name does not exist in this session
@@ -964,17 +1009,46 @@ const chat = PROVIDER ? CHAT[PROVIDER.id] : null
 // harness grades a budget the app does not have.
 const MAX_ROUNDS = 12
 
+/**
+ * The mode this environment is in, as the app's roster asks for it.
+ *
+ * Three of the four are read off the case, so a mobile case is offered the
+ * mobile roster and a view-only case no write — the same narrowing a session
+ * gets, from the same function, rather than from a filter spelled here that
+ * had to be kept in step with `roster.ts` by hand.
+ *
+ * `searchOffered: false` is a FACT, not a choice: there is no deployment
+ * index here and no embedding key, which is exactly the state the app
+ * withholds `search_blueprint` in.
+ *
+ * `sampleTrial: false` IS a choice, and the one place this harness declares
+ * itself something its environment is not. With no database configured the
+ * app reads the bundled sample and has no write tool at all; this harness
+ * rehearses every write as a dry run against a client that records instead of
+ * writing, so a roster narrowed by the missing database would offer nothing
+ * for the write half of the suite to call. The cost is stated rather than
+ * hidden: no case here can reach the app's no-database refusal, which is why
+ * `refusals.ts` keeps that sentence app-only. The day the harness stops
+ * rehearsing, this becomes `!HAS_DB` and that sentence is shareable.
+ */
+function harnessMode(caseDef) {
+  return {
+    sampleTrial: false,
+    mobileReading: Boolean(caseDef.mobile),
+    allowWrites: caseDef.allowWrites !== false,
+    searchOffered: false,
+  }
+}
+
 async function runCaseLLM(caseDef) {
   const trace = []
   const replies = [] // final text per user turn
   const messages = []
-  // One pass, mirroring loop.ts: no tool available on mobile is a write,
-  // so the mobile gate subsumes the tier filter.
-  const offered = TOOL_SPECS.filter((spec) =>
-    caseDef.mobile
-      ? MOBILE_READ_TOOL_NAMES.has(spec.name)
-      : caseDef.allowWrites !== false || !WRITE_TOOL_NAMES.has(spec.name),
-  )
+  // The offer is the APP'S roster, handed the mode this case runs in, then
+  // read off the app's own spec table so the order is the order a session
+  // sees. The two gates this used to spell by hand are gone with it.
+  const roster = new Set(sessionRoster(harnessMode(caseDef)).map((tool) => tool.name))
+  const offered = TOOL_SPECS.filter((spec) => roster.has(spec.name))
   // The tier / mobile injections are the app's, verbatim (loop.ts). The
   // mobile paragraph subsumes the tier one, so only one may speak.
   const system =
