@@ -40,7 +40,7 @@
  * so it calls `configureStorageNamespace('acme-')` instead, and it must do so
  * BEFORE it imports the app. That ordering is not a preference. Nine modules
  * compute their key at MODULE SCOPE (`agent/settings.ts`, `agent/sessions.ts`,
- * `agent/placement.ts`, `devPortal.ts`, `mobilePathMemory.ts`,
+ * `agent/placement.ts`, `devPortal.ts`, `pathMemory.ts`,
  * `slideSheetHeight.ts`, `staleChunkReload.ts`, `theme.ts`,
  * `components/editor/EditorShell.tsx`), and six of those go further and READ
  * localStorage at module scope to seed a `useSyncExternalStore` snapshot

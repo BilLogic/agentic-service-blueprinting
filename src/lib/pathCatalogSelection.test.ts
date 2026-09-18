@@ -4,7 +4,6 @@ import {
   defaultPathKeysFromCatalog,
   deriveSelections,
   isScenarioSwitch,
-  resolveScenarioOpenPathId,
   type PathCatalog,
 } from '@/lib/pathCatalogSelection'
 import type { PathListItem } from '@/lib/pathSelection'
@@ -51,21 +50,6 @@ describe('defaultPathKeyForScenario', () => {
       defaultPathKeyForScenario([path('a', 'Recovery', 'variant')]),
     ).toBe('variant:Recovery')
     expect(defaultPathKeyForScenario([])).toBeUndefined()
-  })
-})
-
-describe('resolveScenarioOpenPathId', () => {
-  it('falls back to the happy path when nothing is stored', () => {
-    expect(
-      resolveScenarioOpenPathId('sc-1', [
-        path('p-var', 'Reschedule', 'variant'),
-        path('p-happy', 'Happy Path'),
-      ]),
-    ).toBe('p-happy')
-  })
-
-  it('is null when the scenario has no paths', () => {
-    expect(resolveScenarioOpenPathId('sc-1', [])).toBeNull()
   })
 })
 
