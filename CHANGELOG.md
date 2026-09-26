@@ -1,5 +1,161 @@
 # Changelog
 
+## 2.0.0
+
+**The template is Uno Blueprint, and everything a deployment names it by says
+so.** The repository is `BilLogic/uno-blueprint`, the package is
+`uno-blueprint`, the plugin is `ub` from the `ub-marketplace`, and its four
+skills are `ub:map`, `ub:slice`, `ub:audit` and `ub:whatif`. What a blueprint
+holds and how the app behaves are unchanged; what moves is every name a
+deployment reaches the template through, which is why this is a major.
+
+### Upgrading a deployment
+
+- **Reinstall the plugin** from the new marketplace:
+  `claude plugin marketplace add BilLogic/uno-blueprint`, then
+  `claude plugin install ub@ub-marketplace`. The plugin id is `ub` and the
+  marketplace id is `ub-marketplace`.
+- **Pin the new tag** as `github:BilLogic/uno-blueprint#v2.0.0`, under the
+  dependency key `uno-blueprint`. Install that explicit spec —
+  `npm install github:BilLogic/uno-blueprint#v2.0.0` — so the lockfile's
+  resolved SHA moves to the tag; a bare `npm install` leaves it where it was.
+- **Rename the package in every import and path** to `uno-blueprint`: imports
+  such as `uno-blueprint/styles.css`, `uno-blueprint/bootstrap`,
+  `uno-blueprint/overlay` and `uno-blueprint/vite-imports`; the
+  `node_modules/uno-blueprint/src` paths in `tsconfig.json` and
+  `vite.config.ts`; and any script run from `node_modules/uno-blueprint/`. The
+  Vite plugins are named `uno-blueprint:overlay` and
+  `uno-blueprint:vite-imports`, for a config that looks either up by name.
+- **Invoke the skills as `ub:map`, `ub:slice`, `ub:audit` and `ub:whatif`**
+  wherever a deployment's docs, prompts or agents name one. The composer runs
+  `/ub:<skill>`.
+- **Import the default-config exports** as `templateDefaultConfig`,
+  `templateDefaultCellBudget` and `templateDefaultAgentSearch`.
+- **Expect the naming guard's new vocabulary.** `check:standalone` passes
+  `uno`, `Uno Blueprint` and `ub:` names, and fails on the deployment's slug,
+  its owner's name and its bot, and on any spelling of the package, the skill
+  namespace, the marketplace or the repository other than the current one. A
+  deployment that runs the template's guard over its own tree sees the new
+  patterns.
+- **Saved browser settings reset once on the default prefix.** The storage
+  prefix is `ub-`, so an installation on the default prefix starts with its
+  theme, remembered paths, agent sessions and placement cleared, and any model
+  key pasted into the in-app agent has to be pasted again. An installation that
+  set its own prefix with `configureStorageNamespace` keeps everything.
+- **The local Supabase database starts empty once.** The local `project_id` is
+  `uno-blueprint`, and a changed local project id resets the local Docker
+  volumes. Run `supabase db reset` after the first `supabase start` to reseed.
+  Hosted projects are untouched.
+
+### Plugin contract
+
+- The plugin is `ub` in `identifiers.json`. The skill, reference, schema, agent,
+  hook and tool names under it are unchanged; they are invoked under the new
+  plugin id.
+
+### Major Changes
+
+- 840d251: The package is `uno-blueprint`
+
+  The repository is `BilLogic/uno-blueprint` and the package it publishes is
+  named `uno-blueprint`. The plugin manifest's homepage and repository, the
+  cover page's repository link, the schema `$id`s, the bundled sample's source
+  links and every document point at that URL, and the naming guard holds the
+  repository to that one slug.
+
+  The seed generator's UUID namespace is a fixed constant, so a re-seed keys onto
+  the rows already there.
+
+  A deployment pins the template as `github:BilLogic/uno-blueprint#v<version>`
+  under the dependency name `uno-blueprint`, and installs that explicit spec so
+  the lockfile moves to the new tag. Everything it reads out of the package
+  follows the name: imports such as `uno-blueprint/styles.css`,
+  `uno-blueprint/bootstrap`, `uno-blueprint/overlay` and
+  `uno-blueprint/vite-imports`, the `node_modules/uno-blueprint/src` paths in its
+  `tsconfig.json` and `vite.config.ts`, and any script it runs from
+  `node_modules/uno-blueprint/`.
+
+  The local Supabase `project_id` is `uno-blueprint`. Changing a local project id
+  resets the local Docker volumes, so the first `supabase start` after upgrading
+  begins from an empty local database; run `supabase db reset` to reseed it.
+
+- bb9700c: The skills are invoked as `ub:`
+
+  The plugin is `ub`, installed from the `ub-marketplace`, and its four skills
+  are `ub:map`, `ub:slice`, `ub:audit` and `ub:whatif`. The composer offers and
+  runs `/ub:<skill>`; a bare segment such as `/audit` still only finds the skill
+  and never runs it. The router, the skills, the agents, the references, the
+  hooks (whose messages now open `[ub]`), the skill evals, the cover page and its
+  figures, and the bundled sample blueprint all use the new names, and the app's
+  default organisation name and page title are Uno Blueprint.
+
+  A deployment reinstalls the plugin as `ub@ub-marketplace` and uses the `ub:`
+  names wherever it invokes a skill. The overlay and import Vite plugins are named
+  `uno-blueprint:overlay` and `uno-blueprint:vite-imports`, so a deployment
+  config that looks either up by name follows them. The default-config exports
+  are `templateDefaultConfig`, `templateDefaultCellBudget` and
+  `templateDefaultAgentSearch`, so a deployment that imports any of them imports
+  it by that name.
+
+  The browser storage prefix is `ub-`. An installation that runs on the default
+  prefix starts once with its saved settings reset: the theme, the remembered
+  paths, the agent's sessions and placement, and any model key pasted into the
+  in-app agent, which has to be pasted again. An installation that set its own
+  prefix with `configureStorageNamespace` keeps everything.
+
+### Patch Changes
+
+- 224af99: Every document reads as Uno Blueprint
+
+  The README, SETUP, CONTEXT, the guides, the ADRs, the connector notes, the
+  workspace handoff template and this changelog name the template Uno Blueprint,
+  the plugin `ub` and the skills `ub:map`, `ub:slice`, `ub:audit` and `ub:whatif`.
+  The schema migration's header comment names the template the same way; the
+  schema itself is unchanged.
+
+  `check:standalone` now holds the package, its skill namespace and its
+  marketplace to a single spelling each, as well as failing on the deployment's
+  names. A deployment that runs the template's guard over its own tree sees the
+  new patterns.
+
+- f94bd63: The cover no longer promises a Slack bot
+
+  "Where you reach it from" on the landing view, the alt text on its figure, and
+  the figure's own badge all named the Slack bot as the fourth way in, beside the
+  app, the in-app agent and agentic tools, as though the template shipped it. It
+  does not. The cover now names the three it ships, and describes the fourth,
+  drawn dashed, as a pattern a deployment can build: a reader holding only the
+  publishable key, bound by the read-consumer rules in
+  `references/adapter-contract.md`. The figure keeps its filename, so the
+  sample's frame and the seed that point at `/cover/four-ways-in.svg` are
+  unchanged.
+
+- 8420241: The README no longer promises a Slack bot
+
+  "Where the blueprint is used" listed the Slack bot as the fourth way in, beside
+  the app, the in-app agent and agentic tools, as though the template shipped it.
+  It does not, and guide/02 already said so. The README now names the three it
+  ships, and describes the fourth as a pattern a deployment can build: a reader
+  holding only the publishable key, bound by the read-consumer rules in
+  `references/adapter-contract.md`. "Connect your agents" says the same of a
+  Slack bot under "Everywhere else", and guide/04 no longer speaks of "the Slack
+  bot" as though one were running. The README also says what the in-app agent
+  needs: it asks you to sign in and bring your own model key.
+
+- 194d8bf: The template can say its own name
+
+  The template is called Uno Blueprint, and the naming guard used to fail on the
+  word `uno` wherever it appeared, so the template could not name itself.
+  `check:standalone` now reads the deployment's slug, its owner's name and its
+  bot, and nothing else: `uno`, `Uno Blueprint` and `ub:map` pass, while the
+  deployment's names still fail. The bot's pattern is bounded at both ends so it
+  cannot catch the template's name or the English words that begin with the same
+  three letters. The cover-content test imports the guard's patterns rather than
+  keeping a copy of them.
+
+  The glossary gains the naming rule: the Template is called Uno Blueprint, and a
+  Deployment is named for its owner.
+
 ## 1.44.29
 
 **A past session reads back with its words intact.** `get_session` already
@@ -4030,10 +4186,7 @@ slice actually carries, which is `authorship`.
   exported `CoverContent` type and name it on the config:
 
   ```ts
-  import type {
-    CoverContent,
-    DeploymentConfig,
-  } from "uno-blueprint";
+  import type { CoverContent, DeploymentConfig } from "uno-blueprint";
 
   export const coverContent: CoverContent = {
     title: "The workspace name shown on the cover and in app chrome",
@@ -9505,8 +9658,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                                          ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                                          "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                                            ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                                            "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
