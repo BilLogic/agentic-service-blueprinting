@@ -1,5 +1,74 @@
 # Changelog
 
+## 2.1.0
+
+**The template can be served from a path.** One build-time variable,
+`BASE_PATH`, puts the app under a prefix such as `/demo/`, and every URL it
+reads or writes keeps that prefix. Unset, nothing changes, which is why this is
+a minor.
+
+### Upgrading a deployment
+
+- **At a domain root, nothing is required** beyond the usual pin bump:
+  `vite.config.ts` changed, and a deployment holds it byte-identical, so copy
+  the new file in with the bump.
+- **To serve from a path**, set `BASE_PATH` (for example `/demo/`) under
+  `[build.environment]` in `netlify.toml`.
+- **Move the redirect and header rules under the prefix**: the `/assets/*`
+  404 and cache block and the SPA fallback become `/demo/assets/*`, `/demo/*`
+  and `/demo/index.html`, in that order. `npm run check:hosting` reads the same
+  setting and holds them to it.
+- **Copy the byte-identical `vite.config.ts`**, which takes `BASE_PATH` as
+  Vite's `base`.
+- **Add the prefixed URL to the Supabase redirect allow-list** for the
+  magic link, on both origins when the app is also reached through a proxy.
+- **On the fronting site, add the proxy rewrite** when the path belongs to
+  another site, forwarding the path unchanged to the app's site.
+- A deployment that enrols the render walk runs it with the same `BASE_PATH`
+  over a build made with it.
+
+The recipe is the README's Deploy section and
+`docs/guide/04-operations.md` § Serving from a path.
+
+### Minor Changes
+
+- 0e07ed4: The template can be served from a path
+
+  The app no longer assumes it lives at the root of a domain. One build-time
+  variable, `BASE_PATH` (for example `/demo/`), sets where it is served. Vite
+  takes it as `base`, the build is written under it (`dist/demo/…`) with
+  `_headers` and `_redirects` moved back up to `dist/`, and every URL the app
+  reads or writes keeps the prefix: the service slug in the path, deep links and
+  the board address, the magic-link redirect, and root-relative image paths
+  stored in the data (storyboard frames, touchpoint logos, cover images).
+  `src/lib/basePath.ts` is where those cross the prefix.
+
+  `npm run check:hosting` reads the same setting, from the environment or from
+  `[build.environment]` in `netlify.toml`, and holds the prefixed rules to the
+  same order and cache (`/demo/assets/*` → 404 above `/demo/*` →
+  `/demo/index.html`). The render walk previews at the prefix and navigates
+  relative to it. A new case, `render-walk/served-from-a-path.spec.ts`, asserts
+  that the shareable address carries the prefix, that a cold load of it lands the
+  same board, and that no request leaves the prefix. CI runs the whole walk again
+  over a `/demo/` build.
+
+  Unset, nothing changes: `base` is `/`, the output is `dist/`, and every URL is
+  what it was. The recipe, including the Netlify rewrite for showing the app
+  under a path on another site, is in `docs/guide/04-operations.md` § Serving
+  from a path.
+
+  Upgrading a deployment:
+
+  - `vite.config.ts` changes, and a deployment holds it byte-identical: copy
+    the new file in with the pin bump. At a domain root that is all it needs.
+  - A deployment served from a path sets `BASE_PATH` in `[build.environment]`,
+    moves its redirects and its `/assets/*` cache block under the prefix, and
+    adds the prefixed URL to its Supabase redirect allow-list (both origins, if
+    it is also reached through a proxy on another site).
+  - A deployment that enrols the render walk runs it with the same `BASE_PATH`
+    over a build made with it. The walk's specs now navigate to `./` rather than
+    `/`.
+
 ## 2.0.0
 
 **The template is Uno Blueprint, and everything a deployment names it by says
@@ -9658,8 +9727,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                                            ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                                            "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                                              ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                                              "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
