@@ -48,7 +48,7 @@ npm run check:version
 ## 4. Tag it. Every release gets a tag.
 
 The tag is not bookkeeping — it is the release. A consumer pins
-`github:BilLogic/agentic-service-blueprinting#v<version>`, which resolves a tag
+`github:BilLogic/uno-blueprint#v<version>`, which resolves a tag
 and nothing else; the lockfile integrity hash exists because a tag names one
 immutable tree. A released version with no tag is a number nothing downstream
 can ask for.
@@ -74,7 +74,7 @@ after it.
 ## 5. Verifying what a consumer gets
 
 ```bash
-npm pack github:BilLogic/agentic-service-blueprinting#v0.4.0
+npm pack github:BilLogic/uno-blueprint#v0.4.0
 ```
 
 That is the resolution path a downstream lockfile takes. It prints the file

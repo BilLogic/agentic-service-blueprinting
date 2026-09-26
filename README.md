@@ -226,6 +226,6 @@ Everything else — every document with what it answers, and the routing table
 an agent matches its task against — is [INDEX.md](./INDEX.md), with
 [docs/overview.md](./docs/overview.md) for what the folders mean. Work in
 flight lives in
-[issues](https://github.com/BilLogic/agentic-service-blueprinting/issues)
+[issues](https://github.com/BilLogic/uno-blueprint/issues)
 rather than in the tree, so you can see what is already being worked on before
 proposing something.

@@ -1,5 +1,5 @@
 ---
-'agentic-service-blueprinting': patch
+'uno-blueprint': patch
 ---
 
 The template can say its own name

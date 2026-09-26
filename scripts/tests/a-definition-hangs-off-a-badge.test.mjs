@@ -54,7 +54,7 @@ const CARD_MODULE = 'src/components/blueprint/DefinitionCard.tsx'
  * Every `.tsx` of the application, wherever this tree keeps it, as `src/…`.
  *
  * A deployment reads the application out of
- * `node_modules/agentic-service-blueprinting` and has no `src` beside its
+ * `node_modules/uno-blueprint` and has no `src` beside its
  * `scripts/`, so the walk that started at `resolve(REPO_ROOT, 'src')` swept
  * nothing there and reported it in green — a check that has stopped looking
  * prints the same line as one that looked and agreed. The `app` sweep walks

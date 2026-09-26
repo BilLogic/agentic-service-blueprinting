@@ -31,7 +31,7 @@ const app = sweep({ subject: 'app', root: REPO_ROOT })
  *
  * The migrations are this tree's — a deployment applies them from here and
  * keeps no copy — and the two `src/…` modules below are the APPLICATION's,
- * which a deployment reads out of `node_modules/agentic-service-blueprinting`
+ * which a deployment reads out of `node_modules/uno-blueprint`
  * rather than from beside its `scripts/`. Resolving both against
  * `process.cwd()` named a file that is not there, so the check that holds the
  * canvas and the migration to one word failed where a deployment ran it. The

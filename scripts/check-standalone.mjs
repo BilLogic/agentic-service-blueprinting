@@ -68,13 +68,14 @@
  * `unobserve`, `unowned` and `unopposed`; bounding it before and after means
  * the bot's name fails and the template's name, and ordinary English, pass.
  *
- * The four patterns after the deployment's hold the package, its skill
- * namespace and its marketplace to a single spelling each. Each is bounded so
- * the npm name and repository slug, an applied migration's errcode, and
- * ordinary words such as `usb:` pass: the namespace token is word-bounded, the
- * phrase is matched on whitespace only while the npm name is hyphenated, and
+ * The five patterns after the deployment's hold the package, its skill
+ * namespace, its marketplace and its repository to a single spelling each.
+ * The two short ones are bounded so an applied migration's errcode and
+ * ordinary words such as `usb:` pass: the namespace token is word-bounded, and
  * the acronym is case-sensitive and word-bounded, since a digit after it is
- * still a word character.
+ * still a word character. The phrase is matched on whitespace and the slug on
+ * hyphens, so together they catch the name as prose, as a path and as a URL.
+ * The slug is matched bare, because no legitimate word contains it.
  *
  * ── What is NOT matched, deliberately ──────────────────────────────────────
  *
@@ -106,6 +107,7 @@ export const PATTERNS = [
   { label: 'sb-marketplace', test: /\bsb-marketplace\b/i },
   { label: 'Agentic Service Blueprinting', test: /\bagentic\s+service\s+blueprinting\b/i },
   { label: 'ASB (case-sensitive)', test: /\bASB\b/ },
+  { label: 'agentic-service-blueprinting', test: /agentic-service-blueprinting/i },
 ]
 
 /**

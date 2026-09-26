@@ -38,10 +38,10 @@
  *
  * WHERE THE FILES COME FROM is the `app` subject of `scripts/sweep.mjs`, which
  * answers with this tree's `src` or the one inside
- * `node_modules/agentic-service-blueprinting` in a deployment that keeps no copy,
+ * `node_modules/uno-blueprint` in a deployment that keeps no copy,
  * and hands back one `src/…` path per file whichever it was. The reporting is
  * what was left to get wrong here: a path made relative to this tree's root came
- * back as `node_modules/agentic-service-blueprinting/src/components/editor/…`
+ * back as `node_modules/uno-blueprint/src/components/editor/…`
  * there, which `SLICE_SURFACE` still matches but which the two files named below
  * do not, so the walk's own proof that it reached the editor failed in the one
  * arrangement it was written to survive.

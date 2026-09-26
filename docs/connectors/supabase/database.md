@@ -778,7 +778,7 @@ for every table BOTH files describe, whether every column this package's
 application reads is described there too:
 
 ```bash
-node node_modules/agentic-service-blueprinting/scripts/check-database-types-superset.mjs \
+node node_modules/uno-blueprint/scripts/check-database-types-superset.mjs \
   types/database.ts
 ```
 

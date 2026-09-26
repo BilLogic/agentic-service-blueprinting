@@ -91,12 +91,12 @@ import { dirname, join, relative, resolve, sep } from 'node:path'
 // By package name, not relative: a deployment enrols this module byte-identical
 // and reaches the overlay rule through the package it installed, the same
 // spelling `vite.config.ts` uses; here the name resolves by self-reference.
-import { resolveOverlaid } from 'agentic-service-blueprinting/overlay'
+import { resolveOverlaid } from 'uno-blueprint/overlay'
 import { repoConfig } from './repo-config.mjs'
 import { chooseDeployment, packageName, resolveSeedFiles, siblingCandidates } from './seed-list.mjs'
 
 /** The package a deployment reads the application out of. */
-export const APP_PACKAGE = 'agentic-service-blueprinting'
+export const APP_PACKAGE = 'uno-blueprint'
 
 /** The subjects, in the order this header explains them. */
 export const SUBJECTS = [

@@ -56,7 +56,7 @@ const DATABASE_TYPES = 'src/types/database.ts'
  *
  * Both subjects are APPLICATION source — the editor forms, and every `.ts`
  * and `.tsx` the assignment sweep reads — and a deployment keeps the
- * application in `node_modules/agentic-service-blueprinting`, not beside its
+ * application in `node_modules/uno-blueprint`, not beside its
  * `scripts/`. `resolve(process.cwd(), 'src/…')` named a file that is not
  * there, and a walk rooted at `resolve(REPO_ROOT, 'src')` named a directory
  * that is not there: the first is an ENOENT and the second a walk of nothing,

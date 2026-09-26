@@ -147,7 +147,7 @@ function hookNames(root) {
  * Read through a `sweep` of the application, because these two are the only names in the
  * manifest that come out of the APPLICATION rather than out of the plugin tree,
  * and a deployment keeps no `src` of its own — it depends on this repository as
- * a package and reads them out of `node_modules/agentic-service-blueprinting`.
+ * a package and reads them out of `node_modules/uno-blueprint`.
  * These functions used to answer a missing file with `[]`, which is the worst
  * available answer: the manifest generated there would have declared that the
  * canvas agent offers no tools and accepts no reference names, and `--check`

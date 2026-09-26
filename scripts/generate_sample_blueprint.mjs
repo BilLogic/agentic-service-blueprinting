@@ -141,7 +141,7 @@ const SERVICE = {
 const FIXTURE_TIMESTAMP = '2026-08-18T00:00:00+00:00'
 
 /** GitHub blob base for cell resources — every path is verified to exist. */
-const REPO_URL = 'https://github.com/BilLogic/agentic-service-blueprinting/blob/main'
+const REPO_URL = 'https://github.com/BilLogic/uno-blueprint/blob/main'
 const repoLink = (name, path) => {
   // A rename must never leave a 404 on the board: the link is checked against
   // the working tree at emission, not trusted.

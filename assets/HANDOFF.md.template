@@ -74,5 +74,5 @@ control. Do not import content here that can't be public.
 ## Contacts & provenance
 
 - Engagement/handoff notes: {{HANDOFF_NOTES}}
-- Template & plugin: https://github.com/BilLogic/agentic-service-blueprinting
+- Template & plugin: https://github.com/BilLogic/uno-blueprint
   (upgrade recipe: `references/customization.md`)

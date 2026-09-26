@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Report privately through
-[GitHub Security Advisories](https://github.com/BilLogic/agentic-service-blueprinting/security/advisories/new).
+[GitHub Security Advisories](https://github.com/BilLogic/uno-blueprint/security/advisories/new).
 Please don't open a public issue for a vulnerability — an issue is visible
 to everyone, including before there is a fix.
 

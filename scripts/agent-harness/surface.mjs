@@ -27,7 +27,7 @@ import { appLayers, sweep } from '../sweep.mjs'
  * the deployment config, which names the cover's figures. Without the loader
  * the surface bundle fails on the first `.md?raw` it meets.
  */
-import { viteImportsPlugin } from 'agentic-service-blueprinting/vite-imports'
+import { viteImportsPlugin } from 'uno-blueprint/vite-imports'
 
 /** The tree the harness runs in: the working directory — never this file's location; `sweep.mjs` says why. */
 const ROOT = process.cwd()

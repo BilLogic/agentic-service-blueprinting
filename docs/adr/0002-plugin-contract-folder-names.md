@@ -5,8 +5,8 @@ summary: skills/, references/, agents/, hooks/ and scripts/ keep their names rat
 # 2. The plugin contract's folder names are an exception
 
 **Status** Accepted — 2026-08-25
-**Context** [#54](https://github.com/BilLogic/agentic-service-blueprinting/issues/54),
-[#59](https://github.com/BilLogic/agentic-service-blueprinting/issues/59)
+**Context** [#54](https://github.com/BilLogic/uno-blueprint/issues/54),
+[#59](https://github.com/BilLogic/uno-blueprint/issues/59)
 
 ## Context
 

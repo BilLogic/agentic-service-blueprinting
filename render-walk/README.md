@@ -210,7 +210,7 @@ of the package, and `exports` carries `"./*"`, so they are reachable by path.
 From the root of a deployment that installs this package, one command:
 
 ```bash
-node node_modules/agentic-service-blueprinting/render-walk/run.mjs
+node node_modules/uno-blueprint/render-walk/run.mjs
 ```
 
 `npx render-walk` is the same thing through the bin the install links; put

@@ -74,11 +74,20 @@ test('the template goes by one name', () => {
     'Agentic Service Blueprinting',
   ])
   assert.deepEqual(labels('the ASB template'), ['ASB (case-sensitive)'])
+  assert.deepEqual(labels("import { App } from 'agentic-service-blueprinting'"), [
+    'agentic-service-blueprinting',
+  ])
+  assert.deepEqual(labels('github:BilLogic/agentic-service-blueprinting#v1.0.0'), [
+    'agentic-service-blueprinting',
+  ])
+  assert.deepEqual(labels('node_modules/Agentic-Service-Blueprinting/src'), [
+    'agentic-service-blueprinting',
+  ])
 })
 
 test('the name patterns are bounded, so the package name and other words pass', () => {
-  assert.deepEqual(labels("import { App } from 'agentic-service-blueprinting'"), [])
-  assert.deepEqual(labels('github:BilLogic/agentic-service-blueprinting#v1.0.0'), [])
+  assert.deepEqual(labels("import { App } from 'uno-blueprint'"), [])
+  assert.deepEqual(labels('github:BilLogic/uno-blueprint#v1.0.0'), [])
   assert.deepEqual(labels("raise exception 'proof' using errcode = 'ASB01';"), [])
   assert.deepEqual(labels('the Asbestos report, lowercase asb'), [])
   assert.deepEqual(labels('a usb: device and a dsb: flag'), [])

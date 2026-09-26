@@ -45,7 +45,7 @@
  *   - The reader is in THIS PACKAGE, because the file naming the path also
  *     ships from here and is read from here. `docs/` is packed with the rest
  *     of the tree, so an agent that opens the vendored rulebook out of
- *     `node_modules/agentic-service-blueprinting/` finds `docs/erd.mmd`
+ *     `node_modules/uno-blueprint/` finds `docs/erd.mmd`
  *     exactly where the sentence said. Not dangling, not a defect.
  *   - The path is written `./docs/…`, which says out loud that it is
  *     relative to the reader — `bootstrap.ts` shows a host how to import its

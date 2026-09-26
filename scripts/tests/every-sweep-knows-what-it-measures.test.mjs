@@ -3,7 +3,7 @@
  * No script names an application path without knowing where the application is.
  *
  * A deployment installs this repository as a package and reads the application
- * out of `node_modules/agentic-service-blueprinting/src`, laid under whatever
+ * out of `node_modules/uno-blueprint/src`, laid under whatever
  * residents its own `src` still holds. `src/lib/agent/tools/specs.ts` written by hand is a file that is not
  * there: the check either crashes or sweeps an empty set and reports success —
  * and the second goes on reporting it, because a check that has stopped

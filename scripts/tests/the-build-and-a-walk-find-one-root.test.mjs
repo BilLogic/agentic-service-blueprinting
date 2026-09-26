@@ -155,7 +155,7 @@ test('a sixth statement that names only the package is reported', () => {
     mkdirSync(join(root, 'scripts'))
     writeFileSync(
       join(root, 'scripts', 'a-sixth-statement.mjs'),
-      "export const WHERE = 'node_modules/agentic-service-blueprinting/src/lib/x.ts'\n",
+      "export const WHERE = 'node_modules/uno-blueprint/src/lib/x.ts'\n",
     )
     const found = statementsOfTheRoots(root)
     assert.deepEqual(

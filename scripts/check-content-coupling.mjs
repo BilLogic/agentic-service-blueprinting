@@ -309,6 +309,15 @@ export const ALLOWED = [
       'generated from are in subject, so a value pasted into a new one fails ' +
       'before it can reach this file.',
   },
+  {
+    file: 'scripts/generate_seed_sql.py',
+    match: '37310bd6-53e3-578e-9879-ed5cc6845c87',
+    why:
+      'the seed generator’s UUIDv5 namespace. Every id a generated seed has ' +
+      'ever minted derives from it, in this template and in every deployment ' +
+      'that seeds through it, so it is a constant rather than a lookup: a ' +
+      'different value re-keys every row on the next seed.',
+  },
 ]
 
 /** Whether one site is one of the allowlist's. */

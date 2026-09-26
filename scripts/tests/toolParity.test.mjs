@@ -34,7 +34,7 @@ function read(path) {
  *
  * The harness modules above are this repository's and sit next to this test in
  * every deployment. `specs.ts` and `registry.ts` are not: a deployment keeps no
- * `src` and reads them out of `node_modules/agentic-service-blueprinting`.
+ * `src` and reads them out of `node_modules/uno-blueprint`.
  * Read by hand from `src/…`, this file did not fail there — it threw ENOENT on
  * import, which took the parity checks out of the run entirely. So the sweep
  * reads them through the overlay, and a file it cannot find is a missing

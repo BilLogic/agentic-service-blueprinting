@@ -40,7 +40,7 @@ import { defineConfig } from 'vite'
  */
 const APP_SOURCE_ROOTS = [
   path.resolve(import.meta.dirname, './src'),
-  path.resolve(import.meta.dirname, './node_modules/agentic-service-blueprinting/src'),
+  path.resolve(import.meta.dirname, './node_modules/uno-blueprint/src'),
 ]
 
 const [residents, packagedApplication] = APP_SOURCE_ROOTS as [string, string]
@@ -62,7 +62,7 @@ const appSource = applicationIsAPackage ? packagedApplication : residents
  * Loaded only where the package is — see the account above of why by name.
  */
 const overlay = applicationIsAPackage
-  ? (await import('agentic-service-blueprinting/overlay')).overlayPlugin({
+  ? (await import('uno-blueprint/overlay')).overlayPlugin({
       layers: APP_SOURCE_ROOTS,
     })
   : null
@@ -101,7 +101,7 @@ const overlay = applicationIsAPackage
  * reads a test file asks for a package that is not there.
  */
 const packagedApplicationOptimizeDeps = {
-  exclude: ['agentic-service-blueprinting', '@'],
+  exclude: ['uno-blueprint', '@'],
   entries: [
     'index.html',
     `${appSource}/**/*.{ts,tsx}`,

@@ -24,8 +24,8 @@ each step below ends in something to *check* rather than something to look at.
 ### 1. Clone it and install
 
 ```bash
-git clone https://github.com/BilLogic/agentic-service-blueprinting.git
-cd agentic-service-blueprinting
+git clone https://github.com/BilLogic/uno-blueprint.git
+cd uno-blueprint
 npm install
 ```
 

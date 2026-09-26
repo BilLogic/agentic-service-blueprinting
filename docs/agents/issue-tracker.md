@@ -1,5 +1,5 @@
 ---
-summary: How the engineering skills read and write this repo's issue queue — GitHub Issues on BilLogic/agentic-service-blueprinting, through the gh CLI.
+summary: How the engineering skills read and write this repo's issue queue — GitHub Issues on BilLogic/uno-blueprint, through the gh CLI.
 ---
 
 # Issue tracker: GitHub

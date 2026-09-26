@@ -5,8 +5,8 @@ summary: The individual file paths under references/ and skills/ are a published
 # 4. Reference paths are a published interface
 
 **Status** Accepted — 2026-09-05
-**Context** [#135](https://github.com/BilLogic/agentic-service-blueprinting/issues/135),
-[#138](https://github.com/BilLogic/agentic-service-blueprinting/issues/138)
+**Context** [#135](https://github.com/BilLogic/uno-blueprint/issues/135),
+[#138](https://github.com/BilLogic/uno-blueprint/issues/138)
 
 ## Context
 

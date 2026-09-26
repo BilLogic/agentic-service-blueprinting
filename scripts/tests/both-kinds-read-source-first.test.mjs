@@ -47,7 +47,7 @@ const app = sweep({ subject: 'app', root: REPO_ROOT })
  * Two of the three are files of THIS tree, which every deployment holds
  * byte-identical beside this test. The third is the APPLICATION's, and a
  * deployment keeps no `src`: it reads the application out of
- * `node_modules/agentic-service-blueprinting`. The `app` sweep knows the
+ * `node_modules/uno-blueprint`. The `app` sweep knows the
  * difference, and a file it cannot find is asserted away rather than read as an
  * empty one — which matters here more than it looks, because the rule below is
  * "no surface says the wrong thing", and a surface nobody can read says nothing

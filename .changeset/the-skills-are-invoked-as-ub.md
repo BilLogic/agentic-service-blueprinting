@@ -1,5 +1,5 @@
 ---
-'agentic-service-blueprinting': major
+'uno-blueprint': major
 ---
 
 The skills are invoked as `ub:`

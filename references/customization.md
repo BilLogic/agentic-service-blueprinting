@@ -212,7 +212,7 @@ hands over what its own pipeline already produced. From the root of a
 deployment that installs this package:
 
 ```bash
-python3 node_modules/agentic-service-blueprinting/scripts/generate_fallbacks.py \
+python3 node_modules/uno-blueprint/scripts/generate_fallbacks.py \
   <ir-file> --locale <tag> \
   --out deployment/data/generatedBlueprints.ts \
   --registry-out deployment/data/sampleBlueprints.ts \
@@ -233,18 +233,18 @@ tree without a `src` reaches them. Each opens with one line:
 
 ```ts
 // deployment/data/sampleBlueprints.ts
-import type { SampleBlueprintRegistry } from 'agentic-service-blueprinting'
+import type { SampleBlueprintRegistry } from 'uno-blueprint'
 ```
 
 ```ts
 // deployment/data/sampleNav.ts
-import type { NavItem } from 'agentic-service-blueprinting'
+import type { NavItem } from 'uno-blueprint'
 ```
 
 and the config hands both halves over together:
 
 ```ts
-import type { DeploymentConfig } from 'agentic-service-blueprinting'
+import type { DeploymentConfig } from 'uno-blueprint'
 import { SAMPLE_BLUEPRINTS } from './data/sampleBlueprints'
 import { SAMPLE_NAV } from './data/sampleNav'
 
@@ -490,7 +490,7 @@ import form stays. A bundler that does not know it stops on the first one:
 
 ```
 [UNLOADABLE_DEPENDENCY] Could not load
-  node_modules/agentic-service-blueprinting/src/lib/agent/skill/references/check-fee-visibility.md?raw
+  node_modules/uno-blueprint/src/lib/agent/skill/references/check-fee-visibility.md?raw
 ```
 
 That is a missing loader, not a broken graph. Install it from the package
@@ -498,7 +498,7 @@ rather than keeping a copy — one import, in whatever rollup-family bundler the
 harness already uses (rolldown, rollup, Vite's own build):
 
 ```js
-import { viteImportsPlugin } from 'agentic-service-blueprinting/vite-imports'
+import { viteImportsPlugin } from 'uno-blueprint/vite-imports'
 
 const bundle = await rolldown({
   input: harnessEntry,

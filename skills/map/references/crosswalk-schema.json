@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/BilLogic/agentic-service-blueprinting/skills/map/references/crosswalk-schema.json",
+  "$id": "https://github.com/BilLogic/uno-blueprint/skills/map/references/crosswalk-schema.json",
   "title": "Blueprint Crosswalk",
   "description": "Reviewable, reusable mapping from a foreign blueprint's structure (their swimlanes/columns/variants) onto the template data model (roles/lanes/steps/paths). Built during translation (skills/map/references/translate-playbook.md) and presented for user approval BEFORE any IR is generated. Invariant: every source element is either mapped or listed in `unmapped` with a reason — nothing is ever silently dropped.",
   "type": "object",

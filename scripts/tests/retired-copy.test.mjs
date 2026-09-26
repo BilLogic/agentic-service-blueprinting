@@ -92,7 +92,7 @@ const REPO_ROOT = resolve(new URL('../..', import.meta.url).pathname)
  * `APP_PACKAGE` — the sweep's own `base`, the directory a `src/…` path hangs
  * off. That is the half that used to be got wrong here as well as the walk: a
  * path made relative to a deployment's root came back as
- * `node_modules/agentic-service-blueprinting/src/components/…`, which the
+ * `node_modules/uno-blueprint/src/components/…`, which the
  * `.tsx` filter still admits and which no finding, no exemption and no reader
  * of this file would recognise.
  */

@@ -29,7 +29,7 @@
  * used to be this repository's own `src`, spelled once here so no consumer had
  * to — which is the right shape and was the wrong fact: a deployment installs
  * this repository as a package and reads the application out of
- * `node_modules/agentic-service-blueprinting/src`, keeping no `src` of its own.
+ * `node_modules/uno-blueprint/src`, keeping no `src` of its own.
  * A walk pointed at the `src` that is not there finds no file, reports no
  * write, and every rule built on it passes — `PANEL_WRITE_SURFACE` matches an
  * empty set of writers, `check:seed-load` asks the database about nothing, and

@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url'
 import { overlayPlugin, resolveOverlaid } from '../overlay.mjs'
 
 const OVERLAY = '/deployment/src'
-const PACKAGE = '/deployment/node_modules/agentic-service-blueprinting/src'
+const PACKAGE = '/deployment/node_modules/uno-blueprint/src'
 const LAYERS = [OVERLAY, PACKAGE]
 
 /** A fixture: the files each layer holds, and "exists" read off it. */
@@ -82,7 +82,7 @@ test('the module resolves by the package’s own name here, as it does out of no
   // spelling that resolves on both sides. The deployment side is the
   // deployment-root suite's; this is the template side — self-reference
   // through `exports`, which is what makes the same bytes load here.
-  const resolved = fileURLToPath(import.meta.resolve('agentic-service-blueprinting/overlay'))
+  const resolved = fileURLToPath(import.meta.resolve('uno-blueprint/overlay'))
   assert.equal(resolved, fileURLToPath(new URL('../overlay.mjs', import.meta.url)))
 })
 
@@ -95,7 +95,7 @@ test('the plugin answers with the resident under any spelling, and stays silent 
   const root = mkdtempSync(join(tmpdir(), 'overlay-'))
   try {
     const overlay = join(root, 'src')
-    const packaged = join(root, 'node_modules', 'agentic-service-blueprinting', 'src')
+    const packaged = join(root, 'node_modules', 'uno-blueprint', 'src')
     for (const dir of [join(overlay, 'lib'), join(packaged, 'lib')]) mkdirSync(dir, { recursive: true })
     writeFileSync(join(overlay, 'lib', 'resident.ts'), 'export const WHO = "resident"\n')
     writeFileSync(join(overlay, 'lib', 'role.md'), '# resident\n')

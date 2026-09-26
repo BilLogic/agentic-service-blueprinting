@@ -19,7 +19,7 @@ against: what a decision was and why is [`adr/`](./adr/), and what shipped is
 the git history.
 
 **The queue — not in this repository.** Work in flight is
-[GitHub issues](https://github.com/BilLogic/agentic-service-blueprinting/issues),
+[GitHub issues](https://github.com/BilLogic/uno-blueprint/issues),
 so a contributor can see what is already being worked on without cloning
 anything.
 

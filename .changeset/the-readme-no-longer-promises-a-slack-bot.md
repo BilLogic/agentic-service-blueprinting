@@ -1,5 +1,5 @@
 ---
-'agentic-service-blueprinting': patch
+'uno-blueprint': patch
 ---
 
 The README no longer promises a Slack bot
