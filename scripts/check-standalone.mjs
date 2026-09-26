@@ -89,7 +89,7 @@ import { whenRun } from './verdict.mjs'
 export const PATTERNS = [
   { label: 'plus-uno', test: /plus[-_]uno/i },
   { label: 'PLUS (case-sensitive)', test: /\bPLUS\b/ },
-  { label: 'uno-bot', test: /\buno[-_]?bot\b/i },
+  { label: 'uno-bot', test: /\buno[-_ ]?bots?\b/i },
   // A second deployment's name. It has no English collisions, so a plain
   // word boundary is enough; it is here because a test fixture carried it
   // through a port once, and nothing else would have said so.

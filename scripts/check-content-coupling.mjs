@@ -95,7 +95,8 @@
  *    else's staff. Word-bounded and case-insensitive; `tutorial` is untouched.
  *    `src/content/coverContent.test.ts` already forbids exactly this word over
  *    the cover-page object. This generalises it to the tree, the same way
- *    `check-standalone.mjs` generalised that file's other two patterns.
+ *    `check-standalone.mjs` holds the deployment's names for the tree and
+ *    that file imports them from it.
  *
  * 3. THAT DEPLOYMENT'S SCHEDULING VOCABULARY. `call-off`, `fill-in request`
  *    and `Standard Scheduling` are its words for a shift somebody drops, the

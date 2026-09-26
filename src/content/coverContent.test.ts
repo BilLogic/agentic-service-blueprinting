@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { PATTERNS } from '../../scripts/check-standalone.mjs'
 import { COVER_ASSET_MANIFEST } from '../../scripts/sync-cover-assets.mjs'
 import { coverFigures, coverTabSections } from '@/components/cover/coverModel'
 import { packageCoverFigures } from '@/components/cover/packageCoverFigures'
@@ -14,11 +15,9 @@ import { coverContent } from '@/content/coverContent'
 
 const ASSETS_DIR = fileURLToPath(new URL('../../docs/assets', import.meta.url))
 
-/** Deployment vocabulary that must never reach the template skin. `PLUS` is
- * matched case-sensitively — the ordinary word "plus" is legitimate copy. The
- * template's own name, Uno Blueprint, is not on the list; the bot's name is
- * bounded at both ends so it cannot catch it. */
-const FORBIDDEN = [/\bPLUS\b/, /plus[-_]uno/i, /\buno[-_]?bot\b/i, /\btutors?\b/i]
+/** Deployment vocabulary that must never reach the template skin: the names
+ * the standalone guard holds for the whole tree, and the deployment's cast. */
+const FORBIDDEN = [...PATTERNS.map(({ test }) => test), /\btutors?\b/i]
 
 function allStrings(value: unknown, out: string[] = []): string[] {
   if (typeof value === 'string') out.push(value)

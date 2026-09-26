@@ -61,6 +61,7 @@ test('the deployment is still named nowhere', () => {
   assert.deepEqual(labels('ask uno-bot in the channel'), ['uno-bot'])
   assert.deepEqual(labels('the uno_bot handler'), ['uno-bot'])
   assert.deepEqual(labels('UnoBot replied'), ['uno-bot'])
+  assert.deepEqual(labels('the uno bot and its sibling uno-bots'), ['uno-bot'])
 })
 
 test('the bot pattern is bounded, so ordinary English passes', () => {
