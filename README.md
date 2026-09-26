@@ -61,7 +61,7 @@ Each is walked, with its own figure, in [guide/03 — The plugin](./docs/guide/0
 
 ![Ways into the blueprint — the app, the in-app agent, agentic tools, and a Slack bot you could build, over one shared context layer](./docs/assets/four-ways-in.svg)
 
-The app is where people read, compare, and present. The in-app agent drafts changes in place. Your agentic tools reach the same rows from your IDE or CLI. The template ships those three, and all of them work from one shared context layer, so what any of them reads is what the others wrote. The fourth, dashed, is a pattern rather than a component: nothing here is a Slack bot. A chat surface over the blueprint can read what a deployment publishes, holding only the publishable key, and answer with links back to the exact cell; what it has to honour is the read-consumer section of the adapter contract, [references/adapter-contract.md](./references/adapter-contract.md), and [guide/02](./docs/guide/02-using-it-in-practice.md) describes the shape. Who may do what follows from the account each one uses: see [guide/04 — Operations](./docs/guide/04-operations.md).
+The app is where people read, compare, and present. The in-app agent drafts changes in place. Your agentic tools reach the same rows from your IDE or CLI. The template ships those three, and all of them work from one shared context layer, so what any of them reads is what the others wrote. The fourth, dashed, is a pattern rather than a component: nothing here is a Slack bot. A chat surface over the blueprint can read what a deployment publishes, holding only the publishable key, and answer with links back to the exact cell; what it has to honour is the read-consumer section of the adapter contract, [references/adapter-contract.md](./references/adapter-contract.md#read-consumers-bots-agent-tools-external-integrations), and [guide/02](./docs/guide/02-using-it-in-practice.md) describes the shape. Who may do what follows from the account each one uses: see [guide/04 — Operations](./docs/guide/04-operations.md).
 
 ## The blueprint model
 
@@ -157,7 +157,7 @@ All three are generated. Edit a migration and run `npm run generate:portable-cor
 ### Connect your agents
 
 - **In the IDE** — install this repo as a Claude Code plugin (manifest: [.claude-plugin/plugin.json](./.claude-plugin/plugin.json)). That loads the four skills, five agents, and the hooks: Claude can then build, review, import, and update blueprints in your workspace.
-- **Everywhere else (a Slack bot you build, an assistant, any agent you run)** — the template ships none of these, but a deployed blueprint publishes its rows for reading, so an agent holding the anon key can query them and answer with links back to individual cells. What a backend has to satisfy to work this way is the adapter contract: [references/adapter-contract.md](./references/adapter-contract.md), walked in [guide/03](./docs/guide/03-the-plugin.md).
+- **Everywhere else (a Slack bot you build, an assistant, any agent you run)** — the template ships none of these, but a deployed blueprint publishes its rows for reading, so an agent holding only the publishable key can query them and answer with links back to individual cells. What a backend has to satisfy to work this way is the adapter contract: [references/adapter-contract.md](./references/adapter-contract.md), walked in [guide/03](./docs/guide/03-the-plugin.md).
 
 ## Reference
 
