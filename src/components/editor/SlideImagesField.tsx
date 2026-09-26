@@ -239,7 +239,7 @@ export function SlideImagesField({
           return (
             <div key={frame.cellId} className="relative w-16 shrink-0">
               <ZoomableImage
-                src={servedUrl(frame.src)}
+                src={frame.src}
                 alt=""
                 triggerLabel="Enlarge frame"
                 siblings={siblings}
@@ -284,7 +284,7 @@ export function SlideImagesField({
           return (
             <div key={src} className="relative w-16 shrink-0">
               <ZoomableImage
-                src={servedUrl(src)}
+                src={src}
                 alt=""
                 triggerLabel="Enlarge image"
                 siblings={siblings}

@@ -121,7 +121,7 @@ export function StoryboardStepDetailStack({
         <div key={entry.laneName} className="flex flex-col gap-2">
           <div className={PICTURE_FRAME_CLASS}>
             <ZoomableImage
-              src={servedUrl(entry.frame)}
+              src={entry.frame}
               alt={entry.label}
               triggerLabel={`Expand: ${entry.label}`}
               siblings={siblings}

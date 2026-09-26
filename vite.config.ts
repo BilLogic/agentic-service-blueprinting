@@ -158,10 +158,11 @@ const deploymentSource = path.resolve(import.meta.dirname, './deployment')
  *
  * Unset, both are what they always were: `base` is `/` and the output is
  * `dist`. The rule for the value is stated inline rather than imported: this
- * file is bundled in isolation, and `src/lib/basePath.ts`'s
- * `normalizeBasePath` is the same rule with the tests behind it.
+ * file is bundled in isolation. The hosting check states it too, and
+ * `scripts/tests/base-path-rule.test.mjs` holds the two to one answer;
+ * `src/lib/basePath.ts` is pinned to the same table by its own test.
  */
-function basePath(value: string | undefined): string {
+export function basePath(value: string | undefined): string {
   const trimmed = (value ?? '').trim()
   if (!trimmed) return '/'
   if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed) || trimmed.startsWith('.') || /[?#]/.test(trimmed)) {

@@ -179,7 +179,7 @@ function StepPanelBody({
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden rounded-md bg-muted/20">
                   <ZoomableImage
-                    src={servedUrl(frame.src)}
+                    src={frame.src}
                     alt={frame.laneName}
                     triggerLabel={`Expand: ${frame.laneName}`}
                     siblings={frameSiblings}

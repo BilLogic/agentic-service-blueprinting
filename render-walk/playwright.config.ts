@@ -95,7 +95,11 @@ if (!Number.isInteger(PREVIEW_PORT) || PREVIEW_PORT < 1 || PREVIEW_PORT > 65535)
  * because this file is staged and run away from the application.
  */
 export const BASE_PATH = (() => {
-  const segments = (process.env.BASE_PATH ?? '').trim().split('/').filter(Boolean)
+  const value = (process.env.BASE_PATH ?? '').trim()
+  if (/^[a-z][a-z0-9+.-]*:/i.test(value) || value.startsWith('.') || /[?#]/.test(value)) {
+    throw new Error(`render-walk: BASE_PATH must be a path such as /demo/, not ${JSON.stringify(value)}`)
+  }
+  const segments = value.split('/').filter(Boolean)
   return segments.length === 0 ? '/' : `/${segments.join('/')}/`
 })()
 

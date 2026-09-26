@@ -97,8 +97,8 @@ Unset or `/`, nothing changes: the output is `dist/`, and every URL is what it
 was. Set, three things follow from the one value:
 
 - **The build is written under the path.** The output lands in `dist/demo/`
-  (`dist/demo/index.html`, `dist/demo/assets/…`, the `public/` files beside
-  them), so every file sits at the URL the browser asks for. The publish
+  (its `index.html`, its `assets/` and the `public/` files beside them), so
+  every file sits at the URL the browser asks for. The publish
   directory stays `dist`. `_headers` and `_redirects` are moved back up to
   `dist/`, the only place a host reads them.
 - **Every URL the app reads or writes keeps the prefix.** The board address,
@@ -150,9 +150,17 @@ have files of its own under the path. It lives in the other site's
 configuration, not in this template's `netlify.toml`, so `check:hosting` never
 reads it.
 
-With a database behind the app, add the prefixed URL
-(`https://example.org/demo/`) to the Supabase project's redirect allow-list, so
-a magic link lands back on the app. The render walk runs over a prefixed build
+With a database behind the app, add the prefixed URL to the Supabase
+project's redirect allow-list, so a magic link lands back on the app. A magic
+link returns to the origin it was sent from, so when the app is reachable
+both ways, list both: `https://example.org/demo/` for the proxy, and
+`https://your-app-site.netlify.app/demo/` for the site itself.
+
+Nothing is served at the app site's own root any more, so `/` there answers
+404. If people know that address, send them on with a redirect above the
+others: `from = "/"`, `to = "/demo/"`, `status = 301`. A local build under a
+path empties only `dist/demo/`, so delete `dist/` first if an earlier root
+build left files beside it. The render walk runs over a prefixed build
 too: build with `BASE_PATH=/demo/`, then run `BASE_PATH=/demo/ npm run
 check:render-walk`
 ([render-walk/README.md § Served from a path](../../render-walk/README.md#served-from-a-path)).

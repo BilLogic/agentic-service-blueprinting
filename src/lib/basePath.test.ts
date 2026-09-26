@@ -31,10 +31,14 @@ describe('normalizeBasePath', () => {
     expect(normalizeBasePath('/a/b')).toBe('/a/b/')
   })
 
+  // The same table as scripts/tests/base-path-rule.test.mjs, which holds the
+  // build's and the hosting check's copies of this rule to it.
   it('refuses a value that is not a path', () => {
     expect(() => normalizeBasePath('https://example.com/demo/')).toThrow(/path/)
     expect(() => normalizeBasePath('./demo')).toThrow(/path/)
     expect(() => normalizeBasePath('/demo?x=1')).toThrow(/path/)
+    expect(() => normalizeBasePath('../demo')).toThrow(/path/)
+    expect(() => normalizeBasePath('/demo#top')).toThrow(/path/)
   })
 })
 

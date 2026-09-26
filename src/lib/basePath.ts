@@ -7,7 +7,9 @@
  * under a prefix instead (`https://host/demo/…`), and then the browser's path
  * and the app's path differ by that prefix. Everything that reads a pathname,
  * writes one, or hands the browser a stored image path crosses between the two
- * here, and nowhere else.
+ * here. The two writers that only replace the SEARCH (`BoardAddressSync`, the
+ * view-state writer) keep `location.pathname` as it stands, prefix included,
+ * and so need no crossing.
  *
  * The prefix is a BUILD-time setting: `BASE_PATH` in the build environment,
  * which `vite.config.ts` hands to Vite as `base`, and which reaches this

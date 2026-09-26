@@ -400,7 +400,7 @@ function StageFrame({
   } | null>(null)
   return (
     <ZoomableImage
-      src={servedUrl(src)}
+      src={src}
       alt=""
       triggerLabel="Enlarge image"
       siblings={siblings}

@@ -29,10 +29,12 @@ from a path.
 
 Upgrading a deployment:
 
-- A deployment served from a domain root needs nothing.
+- `vite.config.ts` changes, and a deployment holds it byte-identical: copy
+  the new file in with the pin bump. At a domain root that is all it needs.
 - A deployment served from a path sets `BASE_PATH` in `[build.environment]`,
   moves its redirects and its `/assets/*` cache block under the prefix, and
-  adds the prefixed URL to its Supabase redirect allow-list.
+  adds the prefixed URL to its Supabase redirect allow-list (both origins, if
+  it is also reached through a proxy on another site).
 - A deployment that enrols the render walk runs it with the same `BASE_PATH`
   over a build made with it. The walk's specs now navigate to `./` rather than
   `/`.

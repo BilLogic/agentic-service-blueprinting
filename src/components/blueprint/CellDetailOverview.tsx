@@ -133,7 +133,7 @@ export function CellDetailOverview({
       ) : (
         <div className={CELL_DETAIL_PICTURE_FRAME_CLASS}>
           <ZoomableImage
-            src={servedUrl(featuredImage)}
+            src={featuredImage}
             alt={cellTitleText}
             triggerLabel={`Expand: ${cellTitleText}`}
             triggerClassName="absolute inset-0 block cursor-pointer"

@@ -63,7 +63,7 @@ export function CoverFigure({
 }) {
   return (
     <ZoomableImage
-      src={servedUrl(figure.src)}
+      src={figure.src}
       alt={figure.alt}
       // The authored size, which the browser cannot be asked for: these
       // figures are `viewBox`-only SVGs with no intrinsic size at all.

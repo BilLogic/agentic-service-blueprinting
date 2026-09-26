@@ -278,6 +278,8 @@ export function ZoomableImage({
               FRAME_SHAPE_CLASS,
             )}
           >
+            {/* The one place this component's picture meets the base path:
+                callers and siblings hand in the stored path as written. */}
             <img
               ref={imageRef}
               src={servedUrl(shown.src)}

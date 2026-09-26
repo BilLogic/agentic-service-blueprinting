@@ -108,7 +108,7 @@ function Portrait({
       */}
       {image.size === 'framed' ? (
         <ZoomableImage
-          src={servedUrl(image.src)}
+          src={image.src}
           alt={image.alt}
           triggerLabel={`Expand: ${image.alt}`}
           // `w-fit`, because a button in a flex column stretches and the
