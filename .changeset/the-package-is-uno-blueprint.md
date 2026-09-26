@@ -7,11 +7,11 @@ The package is `uno-blueprint`
 The repository is `BilLogic/uno-blueprint` and the package it publishes is
 named `uno-blueprint`. The plugin manifest's homepage and repository, the
 cover page's repository link, the schema `$id`s, the bundled sample's source
-links and every document point at the new URL. The naming guard fails on the
-former repository slug wherever a commit carries it.
+links and every document point at that URL, and the naming guard holds the
+repository to that one slug.
 
-The seed generator's UUID namespace is a fixed constant, so every id a seed
-mints is the same as before and a re-seed keys onto the rows already there.
+The seed generator's UUID namespace is a fixed constant, so a re-seed keys onto
+the rows already there.
 
 A deployment pins the template as `github:BilLogic/uno-blueprint#v<version>`
 under the dependency name `uno-blueprint`, and installs that explicit spec so

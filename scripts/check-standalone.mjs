@@ -70,11 +70,12 @@
  *
  * The five patterns after the deployment's hold the package, its skill
  * namespace, its marketplace and its repository to a single spelling each.
- * Each is bounded so an applied migration's errcode and ordinary words such as
- * `usb:` pass: the namespace token is word-bounded, and the acronym is
- * case-sensitive and word-bounded, since a digit after it is still a word
- * character. The phrase is matched on whitespace and the slug on hyphens, so
- * together they catch the name as prose, as a path and as a URL.
+ * The two short ones are bounded so an applied migration's errcode and
+ * ordinary words such as `usb:` pass: the namespace token is word-bounded, and
+ * the acronym is case-sensitive and word-bounded, since a digit after it is
+ * still a word character. The phrase is matched on whitespace and the slug on
+ * hyphens, so together they catch the name as prose, as a path and as a URL.
+ * The slug is matched bare, because no legitimate word contains it.
  *
  * ── What is NOT matched, deliberately ──────────────────────────────────────
  *
