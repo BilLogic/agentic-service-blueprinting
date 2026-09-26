@@ -40,24 +40,39 @@ test('this tree names no deployment it was generalised from', () => {
 })
 
 test('a reintroduced reference is caught and its line is reported', () => {
-  const found = violationsIn('a\n// ported from uno-blueprint\nb\n')
+  const found = violationsIn('a\n// ported from plus-uno\nb\n')
   assert.deepEqual(
     found.map(({ line, label }) => ({ line, label })),
-    [
-      { line: 2, label: 'uno' },
-      { line: 2, label: 'uno-bot / uno-blueprint' },
-    ],
+    [{ line: 2, label: 'plus-uno' }],
   )
-  assert.equal(found[0].text, '// ported from uno-blueprint')
+  assert.equal(found[0].text, '// ported from plus-uno')
 })
 
-test('uno is word-bounded, so ordinary English passes', () => {
-  // Each of these appears in the tree today. An unbounded /uno/ fails on all
-  // four and the check does not survive its first week.
+test('the template may use its own name', () => {
+  assert.deepEqual(labels('uno'), [])
+  assert.deepEqual(labels('Welcome to Uno Blueprint'), [])
+  assert.deepEqual(labels('the uno-blueprint repository'), [])
+  assert.deepEqual(labels('run /ub:map on a folder of notes'), [])
+})
+
+test('the deployment is still named nowhere', () => {
+  assert.deepEqual(labels('the plus-uno deployment'), ['plus-uno'])
+  assert.deepEqual(labels('PLUS Uno Blueprint'), ['PLUS (case-sensitive)'])
+  assert.deepEqual(labels('ask uno-bot in the channel'), ['uno-bot'])
+  assert.deepEqual(labels('the uno_bot handler'), ['uno-bot'])
+  assert.deepEqual(labels('UnoBot replied'), ['uno-bot'])
+})
+
+test('the bot pattern is bounded, so ordinary English passes', () => {
+  // Each of these appears in the tree today. The bot's name is the only
+  // pattern that starts with those three letters, and it has to stay bounded
+  // at both ends so no word merely containing them is caught.
   assert.deepEqual(labels('observer.unobserve()'), [])
   assert.deepEqual(labels('-- an unowned cell'), [])
   assert.deepEqual(labels('left unopposed by the reviewer'), [])
   assert.deepEqual(labels('the notion of "selected"'), [])
+  assert.deepEqual(labels('uno bottles'), [])
+  assert.deepEqual(labels('unobotany'), [])
 })
 
 test('PLUS is case-sensitive, because lowercase plus is legitimate copy', () => {
@@ -70,7 +85,7 @@ test('PLUS is case-sensitive, because lowercase plus is legitimate copy', () => 
 test('a citation of the source repository is not coupling', () => {
   assert.deepEqual(labels('Moved from BilLogic/plus-uno-blueprint ADR 0012 (#551).'), [])
   assert.deepEqual(labels('See BilLogic/plus-uno-blueprint#617'), [])
-  assert.deepEqual(labels('uno is a deployment'), ['uno'])
+  assert.deepEqual(labels('plus-uno is a deployment'), ['plus-uno'])
   assert.deepEqual(
     labels('PLUS lives in data, see BilLogic/plus-uno-blueprint'),
     ['PLUS (case-sensitive)'],

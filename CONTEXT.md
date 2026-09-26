@@ -31,11 +31,13 @@ generated from the list CI acts on.
 ## The application
 
 **Template** — the canonical application: its code, its schema and its defaults.
-Published and installable, and the one codebase every deployment runs.
+Published and installable, and the one codebase every deployment runs. The
+Template is called Uno Blueprint.
 
 **Deployment** — an installation of the template that supplies its own content,
 brand and data through its config, and authors no application code of its own
-beyond the residents it still holds.
+beyond the residents it still holds. A Deployment is named for its owner: the
+owner's name, then Uno Blueprint (Acme Uno Blueprint, say).
 
 **Overlay** — the deployment's source tree laid over the package's, per path:
 for a path under the application alias, the deployment's copy if it exists,

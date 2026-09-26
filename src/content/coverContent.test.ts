@@ -15,8 +15,10 @@ import { coverContent } from '@/content/coverContent'
 const ASSETS_DIR = fileURLToPath(new URL('../../docs/assets', import.meta.url))
 
 /** Deployment vocabulary that must never reach the template skin. `PLUS` is
- * matched case-sensitively — the ordinary word "plus" is legitimate copy. */
-const FORBIDDEN = [/\bPLUS\b/, /\buno\b/i, /\btutors?\b/i]
+ * matched case-sensitively — the ordinary word "plus" is legitimate copy. The
+ * template's own name, Uno Blueprint, is not on the list; the bot's name is
+ * bounded at both ends so it cannot catch it. */
+const FORBIDDEN = [/\bPLUS\b/, /plus[-_]uno/i, /\buno[-_]?bot\b/i, /\btutors?\b/i]
 
 function allStrings(value: unknown, out: string[] = []): string[] {
   if (typeof value === 'string') out.push(value)
