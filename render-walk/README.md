@@ -65,7 +65,7 @@ registry, the navigation tool, the phone's bridge, the shell and the real
 viewport. The key is a string this spec seeds into `localStorage` and reaches
 no network, because no request leaves the page. That seed is the one thing in
 this directory that has to know an installation's storage prefix, which is
-`sb-` here and `RENDER_WALK_STORAGE_PREFIX` for a deployment that renamed its
+`ub-` here and `RENDER_WALK_STORAGE_PREFIX` for a deployment that renamed its
 namespace.
 
 What it asserts: the sheet is still up with the conversation in it after the

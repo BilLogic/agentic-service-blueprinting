@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 /** The template's own prefix. Spelled out to prove the key arrived through it. */
-const STORED_KEY = 'sb-theme'
+const STORED_KEY = 'ub-theme'
 
 /** A `matchMedia` that answers "no dark preference" and never changes. */
 function stubMatchMedia() {

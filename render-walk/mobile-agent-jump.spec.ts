@@ -53,7 +53,7 @@ import { VIEW_SCREENSHOT_DIR } from './playwright.config'
  * accessible names. They are listed in `render-walk/README.md` § What the
  * walk reads off the app.
  *
- * The storage prefix is this template's own (`sb-`), and a deployment that
+ * The storage prefix is this template's own (`ub-`), and a deployment that
  * renamed its namespace passes `RENDER_WALK_STORAGE_PREFIX`: the seed below
  * is the one thing in this directory that has to know an installation's
  * prefix, because nothing on the page publishes it.
@@ -99,7 +99,7 @@ declare const document: {
 const MOBILE_SCREENSHOT_DIR = join(VIEW_SCREENSHOT_DIR, 'mobile')
 
 /** The namespace this installation's keys live under — see the header. */
-const STORAGE_PREFIX = process.env.RENDER_WALK_STORAGE_PREFIX ?? 'sb-'
+const STORAGE_PREFIX = process.env.RENDER_WALK_STORAGE_PREFIX ?? 'ub-'
 
 /** What a landed scenario jump answers with, from `lib/agent/uiBridge.ts`. */
 const CAMERA_SETTLED = 'Opened the scenario and settled its canvas camera.'

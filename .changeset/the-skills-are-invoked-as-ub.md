@@ -19,3 +19,9 @@ config that looks either up by name follows them. The default-config exports
 are `templateDefaultConfig`, `templateDefaultCellBudget` and
 `templateDefaultAgentSearch`, so a deployment that imports any of them imports
 it by that name.
+
+The browser storage prefix is `ub-`. An installation that runs on the default
+prefix starts once with its saved settings reset: the theme, the remembered
+paths, the agent's sessions and placement, and any model key pasted into the
+in-app agent, which has to be pasted again. An installation that set its own
+prefix with `configureStorageNamespace` keeps everything.

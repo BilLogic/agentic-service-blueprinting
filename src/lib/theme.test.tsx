@@ -77,16 +77,16 @@ describe('what is stored', () => {
 
   it('stores under the namespaced key, never the bare one', async () => {
     const { THEME_STORAGE_KEY, setTheme } = await import('@/lib/theme')
-    expect(THEME_STORAGE_KEY).toBe('sb-theme')
+    expect(THEME_STORAGE_KEY).toBe('ub-theme')
     setTheme('dark')
-    expect(window.localStorage.getItem('sb-theme')).toBe('dark')
+    expect(window.localStorage.getItem('ub-theme')).toBe('dark')
     expect(window.localStorage.getItem('theme')).toBeNull()
   })
 })
 
 describe('the class, applied while the module evaluates', () => {
   it('a stored dark theme is on the root once the import returns', async () => {
-    window.localStorage.setItem('sb-theme', 'dark')
+    window.localStorage.setItem('ub-theme', 'dark')
     const { getTheme } = await import('@/lib/theme')
     // No render, no effect, no tick — just the import.
     expect(root().classList.contains('dark')).toBe(true)
@@ -105,7 +105,7 @@ describe('the class, applied while the module evaluates', () => {
   })
 
   it('a stored `system` reads the query', async () => {
-    window.localStorage.setItem('sb-theme', 'system')
+    window.localStorage.setItem('ub-theme', 'system')
     stubMatchMedia(true)
     const { getTheme } = await import('@/lib/theme')
     expect(root().classList.contains('dark')).toBe(true)
@@ -114,7 +114,7 @@ describe('the class, applied while the module evaluates', () => {
   })
 
   it('applies no inline script to get there', async () => {
-    window.localStorage.setItem('sb-theme', 'dark')
+    window.localStorage.setItem('ub-theme', 'dark')
     await import('@/lib/theme')
     expect(document.querySelectorAll('script:not([src])')).toHaveLength(0)
   })
@@ -127,13 +127,13 @@ describe('changing it', () => {
     expect(root().classList.contains('dark')).toBe(true)
     expect(root().classList.contains('light')).toBe(false)
     expect(root().style.colorScheme).toBe('dark')
-    expect(window.localStorage.getItem('sb-theme')).toBe('dark')
+    expect(window.localStorage.getItem('ub-theme')).toBe('dark')
 
     setTheme('light')
     expect(root().classList.contains('light')).toBe(true)
     expect(root().classList.contains('dark')).toBe(false)
     expect(root().style.colorScheme).toBe('light')
-    expect(window.localStorage.getItem('sb-theme')).toBe('light')
+    expect(window.localStorage.getItem('ub-theme')).toBe('light')
   })
 
   it('tells its subscribers, and only when the answer moved', async () => {
@@ -150,7 +150,7 @@ describe('changing it', () => {
   })
 
   it('keeps following the query while the choice is `system`', async () => {
-    window.localStorage.setItem('sb-theme', 'system')
+    window.localStorage.setItem('ub-theme', 'system')
     const media = stubMatchMedia(false)
     const { getTheme } = await import('@/lib/theme')
     expect(getTheme().resolvedTheme).toBe('light')
@@ -162,7 +162,7 @@ describe('changing it', () => {
   })
 
   it('ignores the query once a theme is chosen outright', async () => {
-    window.localStorage.setItem('sb-theme', 'system')
+    window.localStorage.setItem('ub-theme', 'system')
     const media = stubMatchMedia(false)
     const { getTheme, setTheme } = await import('@/lib/theme')
     setTheme('light')
@@ -177,17 +177,17 @@ describe('changing it', () => {
     const { getTheme } = await import('@/lib/theme')
     expect(getTheme().resolvedTheme).toBe('light')
 
-    window.localStorage.setItem('sb-theme', 'dark')
-    window.dispatchEvent(new StorageEvent('storage', { key: 'sb-theme' }))
+    window.localStorage.setItem('ub-theme', 'dark')
+    window.dispatchEvent(new StorageEvent('storage', { key: 'ub-theme' }))
     expect(getTheme().resolvedTheme).toBe('dark')
     expect(root().classList.contains('dark')).toBe(true)
   })
 
   it('is deaf to another key moving', async () => {
     const { getTheme } = await import('@/lib/theme')
-    window.localStorage.setItem('sb-theme', 'dark')
+    window.localStorage.setItem('ub-theme', 'dark')
     window.dispatchEvent(
-      new StorageEvent('storage', { key: 'sb-slide-sheet-height' }),
+      new StorageEvent('storage', { key: 'ub-slide-sheet-height' }),
     )
     expect(getTheme().resolvedTheme).toBe('light')
   })
@@ -195,7 +195,7 @@ describe('changing it', () => {
 
 describe('the hook', () => {
   it('knows the resolved theme on its FIRST render — no mounted flag', async () => {
-    window.localStorage.setItem('sb-theme', 'dark')
+    window.localStorage.setItem('ub-theme', 'dark')
     const { useTheme } = await import('@/lib/theme')
     const renders: (string | undefined)[] = []
     function Probe() {
