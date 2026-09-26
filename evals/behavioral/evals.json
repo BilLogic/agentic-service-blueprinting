@@ -1,5 +1,5 @@
 {
-  "skill_name": "sb",
+  "skill_name": "ub",
   "notes": "Behavioral evals per the Agent Skills best-practices guide (three per skill). Fixtures live in scripts/tests/. Run each query in a fresh session with the plugin installed and judge against expected_behavior; there is no built-in runner — see evals/README.md.",
   "evals": [
     {

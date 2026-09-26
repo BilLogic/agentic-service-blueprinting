@@ -3,7 +3,7 @@
  * Does every repository path this package's own prose names still exist?
  *
  * `skills/`, `references/`, `agents/` and `hooks/` are what an installed
- * `sb:map` / `sb:audit` / `sb:slice` / `sb:whatif` reads at runtime. When one
+ * `ub:map` / `ub:audit` / `ub:slice` / `ub:whatif` reads at runtime. When one
  * of those documents writes `` `src/styles/tokens.css` `` the agent does not
  * treat it as illustration — it opens the file, and a rename three months ago
  * turns a routing instruction into a dead end the agent has to recover from
@@ -180,7 +180,7 @@ const EXTENSIONS =
  * actually write around.
  */
 export const WORKSPACE_ARTIFACTS = new Map([
-  ['blueprint-workspace.json', 'per-workspace state file, written by sb:map'],
+  ['blueprint-workspace.json', 'per-workspace state file, written by ub:map'],
   ['blueprint/*.json', 'the adopter\'s IR, authored in their workspace'],
   ['HANDOFF.md', 'generated per workspace from assets/HANDOFF.md.template'],
   ['audit/findings-report.json', 'the no-DB findings ledger, written per run'],

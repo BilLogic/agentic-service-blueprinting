@@ -193,7 +193,7 @@ export type ResolvedAgentSearchConfig = {
 /**
  * The overlay an external deployment supplies. Sparse by construction: every
  * section and every field is optional, and what is left out is inherited from
- * `asbDefaultConfig`.
+ * `templateDefaultConfig`.
  */
 export type DeploymentConfig = {
   /** Product identity shown in app chrome. `name` is the wordmark seam. */
@@ -393,7 +393,7 @@ export type ResolvedDeploymentConfig = {
     /**
      * Settled when the deployment names a search section, absent when it does
      * not — the same sparseness as its two neighbours. An absent section is
-     * the template's own state, which `asbDefaultAgentSearch` spells out:
+     * the template's own state, which `templateDefaultAgentSearch` spells out:
      * search off, nothing listed. Readers go through
      * `configureAgentSearch`, which takes `undefined` and means exactly that.
      */
@@ -509,7 +509,7 @@ export type ResolvedDeploymentConfig = {
  * The cell text rung has moved from 14px to 13px, which fits more; measure
  * against the current rung before changing this number, rather than guessing.
  */
-export const asbDefaultCellBudget: CellContentBudget = {
+export const templateDefaultCellBudget: CellContentBudget = {
   prose: { target: 120, warning: 120 },
   touchpointLabels: { target: 120, warning: 120 },
 }
@@ -522,19 +522,19 @@ export const asbDefaultCellBudget: CellContentBudget = {
  * raises `relation does not exist` on its first call. A deployment whose
  * database does hold it says so on its own config.
  */
-export const asbDefaultAgentSearch: ResolvedAgentSearchConfig = {
+export const templateDefaultAgentSearch: ResolvedAgentSearchConfig = {
   enabled: false,
   indexes: [],
 }
 
-export const asbDefaultConfig: DeploymentConfig = {
+export const templateDefaultConfig: DeploymentConfig = {
   brand: { name: ORG_NAME, accent: BRAND.accent },
   content: { workspaceTitle: coverContent.title },
   sample: { nav: SAMPLE_NAV, blueprints: PACKAGE_SAMPLE_BLUEPRINTS },
   pathColorPins: {},
   cellBudget: {
-    prose: { ...asbDefaultCellBudget.prose },
-    touchpointLabels: { ...asbDefaultCellBudget.touchpointLabels },
+    prose: { ...templateDefaultCellBudget.prose },
+    touchpointLabels: { ...templateDefaultCellBudget.touchpointLabels },
   },
   defaultLanes: DEFAULT_LANE_SET,
   // The template's own landing page, named through the module it is authored
@@ -587,16 +587,16 @@ function copyRung(
 
 /**
  * Resolve the cell budget: each kind and each rung falls through to
- * {@link asbDefaultCellBudget} when the overlay omits it. The numbers live
+ * {@link templateDefaultCellBudget} when the overlay omits it. The numbers live
  * only on that constant — this copies them, it does not restate them.
  */
 function mergeCellBudget(
   over: CellContentBudgetOverlay | undefined,
 ): CellContentBudget {
   return {
-    prose: copyRung(asbDefaultCellBudget.prose, over?.prose),
+    prose: copyRung(templateDefaultCellBudget.prose, over?.prose),
     touchpointLabels: copyRung(
-      asbDefaultCellBudget.touchpointLabels,
+      templateDefaultCellBudget.touchpointLabels,
       over?.touchpointLabels,
     ),
   }
@@ -615,7 +615,7 @@ function mergeAgentSearch(
 ): ResolvedAgentSearchConfig | undefined {
   if (!over) return undefined
   return {
-    enabled: over.enabled ?? asbDefaultAgentSearch.enabled,
+    enabled: over.enabled ?? templateDefaultAgentSearch.enabled,
     indexes: (over.indexes ?? []).map((index) => ({ ...index })),
   }
 }
@@ -660,13 +660,13 @@ export function resolveDeploymentConfig(
   config?: DeploymentConfig | null,
 ): ResolvedDeploymentConfig {
   const brand = {
-    ...present(asbDefaultConfig.brand),
+    ...present(templateDefaultConfig.brand),
     ...present(config?.brand),
     // The one guaranteed field: default name unless the deployment names one.
-    name: config?.brand?.name ?? asbDefaultConfig.brand?.name ?? ORG_NAME,
+    name: config?.brand?.name ?? templateDefaultConfig.brand?.name ?? ORG_NAME,
   }
-  const content = mergeSection(asbDefaultConfig.content, config?.content)
-  const mergedAgent = mergeSection(asbDefaultConfig.agent, config?.agent)
+  const content = mergeSection(templateDefaultConfig.content, config?.content)
+  const mergedAgent = mergeSection(templateDefaultConfig.agent, config?.agent)
   // `mergeSection` is one level deep, so it copied the overlay's own `search`
   // object across by reference. Drop that reference and put the settled deep
   // copy in its place. A host that named no search section leaves the key off
@@ -681,12 +681,12 @@ export function resolveDeploymentConfig(
   const overlaidNav = config?.sample?.nav
   const sample = {
     nav: [
-      ...(overlaidNav?.length ? overlaidNav : (asbDefaultConfig.sample?.nav ?? [])),
+      ...(overlaidNav?.length ? overlaidNav : (templateDefaultConfig.sample?.nav ?? [])),
     ],
     blueprints: settleSampleBlueprints(config?.sample?.blueprints),
   }
   const pathColorPins = {
-    ...present(asbDefaultConfig.pathColorPins),
+    ...present(templateDefaultConfig.pathColorPins),
     ...present(config?.pathColorPins),
   } as Record<string, number>
   const cellBudget = mergeCellBudget(config?.cellBudget)
@@ -696,13 +696,13 @@ export function resolveDeploymentConfig(
   // list fields above it are: an empty cover is not a shape anyone can supply
   // — the required fields make it a compile error — so the only two states
   // here are "the deployment wrote one" and "it did not".
-  const cover = config?.cover ?? asbDefaultConfig.cover ?? coverContent
+  const cover = config?.cover ?? templateDefaultConfig.cover ?? coverContent
   const storyboard = {
     embeddedBorderPaths: [...(config?.storyboard?.embeddedBorderPaths ?? [])],
   }
   const overlaidLanes = config?.defaultLanes
   const defaultLanes = (
-    overlaidLanes?.length ? overlaidLanes : (asbDefaultConfig.defaultLanes ?? [])
+    overlaidLanes?.length ? overlaidLanes : (templateDefaultConfig.defaultLanes ?? [])
   ).map((lane) => ({ ...lane }))
 
   return {

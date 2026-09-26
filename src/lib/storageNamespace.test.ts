@@ -21,9 +21,9 @@ describe('the storage namespace', () => {
     const { STORAGE_PREFIX, currentStoragePrefix, storageKey } = await import(
       '@/lib/storageNamespace'
     )
-    expect(STORAGE_PREFIX).toBe('sb-')
-    expect(currentStoragePrefix()).toBe('sb-')
-    expect(storageKey('agent-settings')).toBe('sb-agent-settings')
+    expect(STORAGE_PREFIX).toBe('ub-')
+    expect(currentStoragePrefix()).toBe('ub-')
+    expect(storageKey('agent-settings')).toBe('ub-agent-settings')
   })
 
   it('a host names its own, and every later key takes it', async () => {
@@ -50,7 +50,7 @@ describe('the storage namespace', () => {
     expect(window.localStorage.getItem('acme-mobile-paths')).toBe(
       '{"scenario-1":"path-1"}',
     )
-    expect(window.localStorage.getItem('sb-mobile-paths')).toBeNull()
+    expect(window.localStorage.getItem('ub-mobile-paths')).toBeNull()
   })
 
   it('a late change throws instead of splitting the namespace in two', async () => {
@@ -58,12 +58,12 @@ describe('the storage namespace', () => {
       '@/lib/storageNamespace'
     )
     // Whatever imported the app already asked for a key.
-    expect(storageKey('agent-sessions')).toBe('sb-agent-sessions')
+    expect(storageKey('agent-sessions')).toBe('ub-agent-sessions')
     expect(() => configureStorageNamespace('acme-')).toThrow(
-      /already in use as "sb-"/,
+      /already in use as "ub-"/,
     )
     // And the app keeps running on the prefix its keys were built with.
-    expect(storageKey('agent-sessions')).toBe('sb-agent-sessions')
+    expect(storageKey('agent-sessions')).toBe('ub-agent-sessions')
   })
 
   it('repeating the same prefix is a no-op, however late', async () => {

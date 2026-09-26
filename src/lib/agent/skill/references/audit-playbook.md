@@ -132,7 +132,7 @@ implement this table — execute, never improvise.
    human judgement about an agent statement, not an edit of the statement.
 3. Confirm back: check, cells, old → new status.
 4. Never run checks, never write anything else. If the user ALSO wants the
-   underlying issue fixed, that is the `sb:map` skill, after.
+   underlying issue fixed, that is the `ub:map` skill, after.
 
 Status vocabulary is closed: `open | resolved | dismissed`. `dismissed`
 means "true but accepted — do not show me again"; `resolved` means "was
@@ -169,6 +169,6 @@ then add it to the roster.
 ## §6 Canvas note
 
 Inside this template's in-app canvas agent the audit is fully live — the
-`/sb:audit` row of `references/canvas-adapter.md` is the ONLY canonical
+`/ub:audit` row of `references/canvas-adapter.md` is the ONLY canonical
 canvas translation (tools, dedupe wiring, pacing, cell-id fingerprints).
 Read that row; nothing here overrides it.

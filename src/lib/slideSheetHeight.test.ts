@@ -60,6 +60,6 @@ describe('the remembered slide-sheet height', () => {
     setSlideSheetHeight(320)
     persistSlideSheetHeight()
     expect(window.localStorage.getItem('acme-slide-sheet-height')).toBe('320')
-    expect(window.localStorage.getItem('sb-slide-sheet-height')).toBeNull()
+    expect(window.localStorage.getItem('ub-slide-sheet-height')).toBeNull()
   })
 })

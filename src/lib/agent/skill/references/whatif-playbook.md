@@ -93,7 +93,7 @@ When the human accepts a whatif's recommendation:
    `skills/whatif/references/change-request-schema.json` — the diff (cell-key
    addressed), affected scenario keys, the base sign-off hashes captured
    at analysis time, and the finding fingerprints it supersedes.
-2. Then STOP and tell the user to invoke sb:map (map-promote) — never
+2. Then STOP and tell the user to invoke ub:map (map-promote) — never
    chain into promotion in the same turn; the gap between accept and
    promote is a human gate. Map-promote's steps for reference:
    verify hashes → edit IR → de-sign notice → re-sign → re-import →
@@ -118,7 +118,7 @@ Legacy `__file__` entries get the same two checks against the whole-file
 ## §5 Canvas note
 
 Inside the canvas agent whatif is fully live — the
-`/sb:whatif` row of `references/canvas-adapter.md` is the ONLY canonical
+`/ub:whatif` row of `references/canvas-adapter.md` is the ONLY canonical
 canvas translation (conversational variant, direct promotion on
 acceptance, optimistic-concurrency staleness). Read that row; nothing
 here overrides it.

@@ -35,7 +35,7 @@ export const listFindingsTool = defineTool({
 export const createFindingTool = defineWriteTool({
   name: 'create_finding',
   description:
-    'Record one sb:audit / sb:whatif finding as a triageable row. Dedupe is built in: an open finding with the same fingerprint (check_key + cited cells) is updated in place, a dismissed one stays dismissed (the call reports it and writes nothing), a resolved one reopens as a new row. Omit run_id on the first finding of a run and reuse the returned run_id for the rest of that run. Cite cells by id; for a zero-cell finding pass scope instead (e.g. "scenario:Intake Call").',
+    'Record one ub:audit / ub:whatif finding as a triageable row. Dedupe is built in: an open finding with the same fingerprint (check_key + cited cells) is updated in place, a dismissed one stays dismissed (the call reports it and writes nothing), a resolved one reopens as a new row. Omit run_id on the first finding of a run and reuse the returned run_id for the rest of that run. Cite cells by id; for a zero-cell finding pass scope instead (e.g. "scenario:Intake Call").',
   args: z.object({
     source: z.enum(['audit', 'whatif']).describe('Which skill produced it'),
     check_key: arg.text('Roster check key, e.g. "gap-sweep"'),

@@ -44,7 +44,7 @@ const ASSET = /\.(?:svg|png|jpe?g|gif|webp|woff2?)$/
  */
 export function viteImportsPlugin() {
   return {
-    name: 'asb:vite-imports',
+    name: 'uno-blueprint:vite-imports',
     load(id) {
       if (id.endsWith(RAW_SUFFIX)) {
         const text = readFileSync(id.slice(0, -RAW_SUFFIX.length), 'utf8')

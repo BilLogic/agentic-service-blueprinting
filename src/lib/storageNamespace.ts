@@ -4,7 +4,7 @@
  * A CONFIGURATION SEAM. Every key written to `window.localStorage` or
  * `window.sessionStorage`, and the NAME of every cookie set on
  * `document.cookie`, is prefixed, and the prefix names the INSTALLATION rather
- * than the code: this template ships as `sb-`, and an adopter gives its own
+ * than the code: this template ships as `ub-`, and an adopter gives its own
  * installation a prefix of its own. Two installations served from one origin
  * would otherwise read each other's settings, sessions and chat placement, so
  * the prefix is the one thing about a stored name that must differ per
@@ -53,7 +53,7 @@
  * of that happens while the import graph evaluates — before React exists, let
  * alone before `App` renders. A `DeploymentConfig` field would therefore be
  * read one lifecycle too late, and the failure would be silent: the app would
- * run on `sb-` keys and quietly share a namespace with any other installation
+ * run on `ub-` keys and quietly share a namespace with any other installation
  * on the origin. A field that cannot be honoured is worse than no field, so
  * the prefix is deliberately NOT part of `DeploymentConfig`; `deploymentConfig.ts`
  * says so and points here.
@@ -78,7 +78,7 @@
  * from. An app that copies the repo edits this line; a deployment that mounts
  * the package leaves it alone and calls `configureStorageNamespace`.
  */
-export const STORAGE_PREFIX = 'sb-'
+export const STORAGE_PREFIX = 'ub-'
 
 let prefix: string = STORAGE_PREFIX
 

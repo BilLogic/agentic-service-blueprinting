@@ -203,7 +203,7 @@ def to_2026_08_27(doc: dict) -> None:
     2026.08.26 wrote nothing because the field it added was optional and its
     absence already meant the default. This one writes nothing because the
     table it renamed is not in the IR at all: `business_models` holds one
-    record per service and is authored at RUNTIME by the sb:* skills, like
+    record per service and is authored at RUNTIME by the ub:* skills, like
     slices, findings and evidence. The IR carries the blueprint — phases,
     scenarios, paths, cells, dependencies — and never carried this.
 

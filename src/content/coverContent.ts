@@ -29,13 +29,13 @@ import { packageCoverFigures } from '@/components/cover/packageCoverFigures'
  */
 export const coverContent: CoverContent = {
   // `title` omitted on purpose: the header falls back to ORG_NAME, which is
-  // the template default "Agentic Service Blueprint".
+  // the template default "Uno Blueprint".
   lede: 'A structured map of how this service is delivered — every phase, every scenario, every path variant, down to what one actor does at one moment. It is data, not a diagram: agents read it, slices are cut from it, and changes are traced through it before anyone commits.',
   primaryCtaLabel: 'Open the blueprint',
   repoUrl: 'https://github.com/BilLogic/agentic-service-blueprinting',
   commandCopy: { copyLabel: 'Copy', copiedLabel: 'Copied' },
   states: {
-    noSlices: 'No slices in this workspace yet — `/sb:slice` cuts the first one.',
+    noSlices: 'No slices in this workspace yet — `/ub:slice` cuts the first one.',
   },
   tabs: [
     {
@@ -196,34 +196,34 @@ export const coverContent: CoverContent = {
         {
           kind: 'skill',
           id: 'skills-map',
-          command: '/sb:map',
+          command: '/ub:map',
           summary:
             "Builds a blueprint from what you already have — documents, a working session, or someone else's diagram — and produces a validated blueprint file, signed off scenario by scenario and imported into the workspace.",
-          figure: packageCoverFigures.sbMap,
+          figure: packageCoverFigures.ubMap,
         },
         {
           kind: 'skill',
           id: 'skills-audit',
-          command: '/sb:audit',
+          command: '/ub:audit',
           summary:
             'Runs the check roster to find what is missing, conflicting, or unowned, and produces findings for triage — the audit writes no changes of its own.',
-          figure: packageCoverFigures.sbAudit,
+          figure: packageCoverFigures.ubAudit,
         },
         {
           kind: 'skill',
           id: 'skills-whatif',
-          command: '/sb:whatif',
+          command: '/ub:whatif',
           summary:
             'Traces a proposed change through the dependency graph before anyone commits, producing the cells it would reach and the assumptions it would break — worked on a copy, never the live blueprint.',
-          figure: packageCoverFigures.sbWhatif,
+          figure: packageCoverFigures.ubWhatif,
         },
         {
           kind: 'skill',
           id: 'skills-slice',
-          command: '/sb:slice',
+          command: '/ub:slice',
           summary:
             'Cuts the view one stakeholder needs out of the whole, producing one slice per view that still cites the cells it quotes.',
-          figure: packageCoverFigures.sbSlice,
+          figure: packageCoverFigures.ubSlice,
         },
         {
           kind: 'prose',

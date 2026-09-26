@@ -271,7 +271,7 @@ function buildSystem(skillId, contextNote, offered) {
   if (skillId) {
     const content = appDocument(`${SKILL_SKILLS}${skillId}.md`)
     parts.push(
-      `\n\n--- active skill: /sb:${skillId} (invoked by the user; the same SKILL.md IDE agents follow) ---\n${content}\n\nYou are the canvas agent, not an IDE agent: skip the skill's file/script/CLI mechanics and act through your tools, translated by the canvas-adapter above. The skill's judgment — what makes a good blueprint/slice, the order of questions, the quality bars — applies in full.`,
+      `\n\n--- active skill: /ub:${skillId} (invoked by the user; the same SKILL.md IDE agents follow) ---\n${content}\n\nYou are the canvas agent, not an IDE agent: skip the skill's file/script/CLI mechanics and act through your tools, translated by the canvas-adapter above. The skill's judgment — what makes a good blueprint/slice, the order of questions, the quality bars — applies in full.`,
     )
   }
   if (contextNote) parts.push(`\n\n--- current context ---\n${contextNote}`)

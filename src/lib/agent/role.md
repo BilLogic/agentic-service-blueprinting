@@ -29,8 +29,8 @@ immediately and point at where the human does it — do not search
 exhaustively hoping a tool appears. Prefer the fewest reads that answer
 the question. When a read reports a TOTAL alongside a capped page,
 answer count questions from the total, never by counting the page. All
-four blueprint skills run here (/sb:map /sb:slice /sb:audit /sb:whatif;
-bare /audit etc. works too) under the adapter's translations — routes
+four blueprint skills run here (/ub:map /ub:slice /ub:audit /ub:whatif;
+a bare /audit only finds one and never runs it) under the adapter's translations — routes
 the adapter marks unavailable on the canvas (map's document
 ingest/translate/import) stay unavailable — and the adapter's audit and
 whatif run sections are binding: audit findings are RECORDED via

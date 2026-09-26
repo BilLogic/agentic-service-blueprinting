@@ -231,8 +231,8 @@ export function AgentChatView({
     setSlashHighlight(next.id)
   }
 
-  // Accepting a match COMPLETES the token in place — `/sb:aud` becomes
-  // `/sb:audit `, exactly where the reader typed it, the way a shell
+  // Accepting a match COMPLETES the token in place — `/ub:aud` becomes
+  // `/ub:audit `, exactly where the reader typed it, the way a shell
   // completion behaves. It neither clears the field nor removes the token: the
   // first ate the sentence a reader was half-way through, and the second
   // moved their word to the front of the message as a badge. The rewrite
@@ -271,7 +271,7 @@ export function AgentChatView({
    * the send on the floor, and left the notice on screen still holding the
    * spans of the draft that had just moved — and the next click completed a
    * token against offsets that no longer pointed at it, turning `/audit` into
-   * `/sb:audit dit `. Deciding nothing when nothing can be sent means the
+   * `/ub:audit dit `. Deciding nothing when nothing can be sent means the
    * draft and the notice stay in agreement.
    */
   const resolveSend = (answer: SendAnswer) => {

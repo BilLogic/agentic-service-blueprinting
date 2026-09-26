@@ -505,13 +505,13 @@ describe('goes red on a stripped attribution: the write lands, the ledger does n
           session_id: sessionId,
           seq: 0,
           kind: 'user',
-          payload: { kind: 'user', text: 'audit the intake', skill: 'sb:audit' },
+          payload: { kind: 'user', text: 'audit the intake', skill: 'ub:audit' },
         },
         {
           session_id: sessionId,
           seq: 1,
           kind: 'user',
-          payload: { kind: 'user', text: 'then map it', skills: ['sb:map', 'sb:slice'] },
+          payload: { kind: 'user', text: 'then map it', skills: ['ub:map', 'ub:slice'] },
         },
       ],
     })
@@ -521,9 +521,9 @@ describe('goes red on a stripped attribution: the write lands, the ledger does n
     await vi.waitFor(() => expect(screen.getByText('An audited intake')).toBeTruthy())
     fireEvent.click(screen.getByText('An audited intake'))
     await vi.waitFor(() => expect(transcript().getByText('audit the intake')).toBeTruthy())
-    expect(transcript().getByText('/sb:audit')).toBeTruthy()
+    expect(transcript().getByText('/ub:audit')).toBeTruthy()
     // And the turn that named several still reads back with all of them.
-    expect(transcript().getByText('/sb:map')).toBeTruthy()
-    expect(transcript().getByText('/sb:slice')).toBeTruthy()
+    expect(transcript().getByText('/ub:map')).toBeTruthy()
+    expect(transcript().getByText('/ub:slice')).toBeTruthy()
   })
 })

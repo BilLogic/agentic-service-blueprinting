@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { BRAND, ORG_NAME } from './config'
 import { coverContent } from './content/coverContent'
 import {
-  asbDefaultConfig,
+  templateDefaultConfig,
   resolveDeploymentConfig,
   type DeploymentConfig,
 } from './deploymentConfig'
@@ -13,7 +13,7 @@ import type { CoverContent } from './components/cover/coverModel'
 // template defaults, and the standalone app — no config at all — reads exactly
 // as the defaults. Everything below is that contract's edges.
 
-describe('asbDefaultConfig', () => {
+describe('templateDefaultConfig', () => {
   /**
    * The default names three values through constants and inlines none of
    * them, which is what lets a deployment fork `config.ts` and its own
@@ -24,33 +24,33 @@ describe('asbDefaultConfig', () => {
    * theme files did not declare.
    */
   it('names the wordmark and the accent, and this template supplies neither', () => {
-    expect(asbDefaultConfig.brand?.name).toBe(ORG_NAME)
+    expect(templateDefaultConfig.brand?.name).toBe(ORG_NAME)
 
     expect(coverContent.title).toBeUndefined()
-    expect(asbDefaultConfig.content?.workspaceTitle).toBeUndefined()
+    expect(templateDefaultConfig.content?.workspaceTitle).toBeUndefined()
 
     expect(BRAND.accent).toBeUndefined()
-    expect(asbDefaultConfig.brand?.accent).toBeUndefined()
+    expect(templateDefaultConfig.brand?.accent).toBeUndefined()
 
     // The template ships no pins. A deployment that wants some supplies them.
-    expect(asbDefaultConfig.pathColorPins).toEqual({})
+    expect(templateDefaultConfig.pathColorPins).toEqual({})
 
     // The lanes a new blueprint starts with are the template's standard set,
     // named once in `blueprintValidation.ts` and referenced here, never
     // restated. A deployment's own lanes belong on its overlay.
-    expect(asbDefaultConfig.defaultLanes).toEqual(DEFAULT_LANE_SET)
+    expect(templateDefaultConfig.defaultLanes).toEqual(DEFAULT_LANE_SET)
 
     // The landing page the template lands on is its own content module,
     // named rather than restated. A deployment's cover belongs on its overlay.
-    expect(asbDefaultConfig.cover).toBe(coverContent)
+    expect(templateDefaultConfig.cover).toBe(coverContent)
 
     // No artwork of the template's own draws its own border.
-    expect(asbDefaultConfig.storyboard).toEqual({ embeddedBorderPaths: [] })
+    expect(templateDefaultConfig.storyboard).toEqual({ embeddedBorderPaths: [] })
 
     // The current single cap, expressed as target and warning per lane kind.
     // A deployment's own numbers (for example 80/100 and 32/48) belong on
     // its overlay, not here.
-    expect(asbDefaultConfig.cellBudget).toEqual({
+    expect(templateDefaultConfig.cellBudget).toEqual({
       prose: { target: 120, warning: 120 },
       touchpointLabels: { target: 120, warning: 120 },
     })
@@ -237,14 +237,14 @@ describe('resolveDeploymentConfig', () => {
     const resolved = resolveDeploymentConfig(config)
 
     expect(resolved.brand).not.toBe(config.brand)
-    expect(resolved.brand).not.toBe(asbDefaultConfig.brand)
+    expect(resolved.brand).not.toBe(templateDefaultConfig.brand)
     expect(resolved.agent).not.toBe(config.agent)
     expect(resolved.agent?.enabledTools).not.toBe(tools)
 
     tools.push('update_cell')
     resolved.brand.name = 'Mutated'
     expect(resolved.agent?.enabledTools).toEqual(['get_cell'])
-    expect(asbDefaultConfig.brand?.name).toBe(ORG_NAME)
+    expect(templateDefaultConfig.brand?.name).toBe(ORG_NAME)
     expect(config.brand?.name).toBe('Acme')
   })
 })

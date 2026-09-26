@@ -15,7 +15,7 @@ import type { TranscriptEvent } from '@/lib/agent/loop'
 
 const badges = () =>
   screen
-    .getAllByText(/^\/sb:/)
+    .getAllByText(/^\/ub:/)
     .map((element) => element.textContent)
 
 afterEach(cleanup)
@@ -25,9 +25,9 @@ describe('a user turn that invoked skills', () => {
     const event: TranscriptEvent = {
       kind: 'user',
       text: 'build this from my notes, then check it',
-      skills: ['sb:map', 'sb:audit'],
+      skills: ['ub:map', 'ub:audit'],
     }
     render(<TranscriptRow event={event} />)
-    expect(badges()).toEqual(['/sb:map', '/sb:audit'])
+    expect(badges()).toEqual(['/ub:map', '/ub:audit'])
   })
 })

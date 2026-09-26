@@ -70,7 +70,7 @@ describe('the reading of the application', () => {
   })
 
   describe('a file that moved', () => {
-    const root = mkdtempSync(join(tmpdir(), 'asb-reading-'))
+    const root = mkdtempSync(join(tmpdir(), 'uno-blueprint-reading-'))
     afterAll(() => rmSync(root, { recursive: true, force: true }))
 
     const write = (path: string, text: string) => {

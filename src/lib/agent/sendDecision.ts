@@ -31,9 +31,9 @@ import {
  * this module actually depends on — that those spans were measured against
  * THIS draft — with nothing to enforce it. A caller that answered twice off
  * one question fed a span measured against `/audit` into the rewritten
- * `/sb:audit ` and got `/sb:audit dit `; a caller that answered `declared`
+ * `/ub:audit ` and got `/ub:audit dit `; a caller that answered `declared`
  * with a list from a previous draft told the model in one breath that
- * `/sb:audit` had run and that `/audit` was a near miss that had not. Both
+ * `/ub:audit` had run and that `/audit` was a near miss that had not. Both
  * are unreachable now, because the list is not an input: every arm below
  * walks the draft it was handed, and the answer only says whether that walk's
  * result is a question, a declaration, or a rewrite.

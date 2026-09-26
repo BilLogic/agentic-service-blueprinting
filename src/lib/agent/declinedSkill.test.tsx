@@ -146,7 +146,7 @@ afterEach(() => {
 it('records the skill that was named and did not run', async () => {
   const { events } = await send({
     text: 'then /audit the intake',
-    declaredMisses: [{ token: 'audit', label: '/sb:audit' }],
+    declaredMisses: [{ token: 'audit', label: '/ub:audit' }],
   })
 
   // Under the message it is about, not floating somewhere in the run.
@@ -156,7 +156,7 @@ it('records the skill that was named and did not run', async () => {
     'assistant',
   ])
   expect(declined(events)[0]!.misses).toEqual([
-    { token: 'audit', label: '/sb:audit' },
+    { token: 'audit', label: '/ub:audit' },
   ])
 })
 
@@ -164,29 +164,29 @@ it('records every skill the message named and did not run, not the first', async
   const { events } = await send({
     text: 'check /audit then /map this',
     declaredMisses: [
-      { token: 'audit', label: '/sb:audit' },
-      { token: 'map', label: '/sb:map' },
+      { token: 'audit', label: '/ub:audit' },
+      { token: 'map', label: '/ub:map' },
     ],
   })
 
   // One row carrying both, because one message declined both in one answer.
   expect(declined(events)).toHaveLength(1)
   expect(declined(events)[0]!.misses).toEqual([
-    { token: 'audit', label: '/sb:audit' },
-    { token: 'map', label: '/sb:map' },
+    { token: 'audit', label: '/ub:audit' },
+    { token: 'map', label: '/ub:map' },
   ])
 })
 
 it('records nothing when the skill RAN — the invocation is its own evidence', async () => {
-  const audit = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:audit')!
+  const audit = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'ub:audit')!
   const { events } = await send({
-    text: '/sb:audit the intake',
+    text: '/ub:audit the intake',
     skills: [audit],
   })
 
   expect(declined(events)).toEqual([])
   // And the evidence that IS there: the invocation on the turn itself.
-  expect(events[0]).toMatchObject({ kind: 'user', skills: ['sb:audit'] })
+  expect(events[0]).toMatchObject({ kind: 'user', skills: ['ub:audit'] })
 })
 
 it('leaves a message that names no skill alone', async () => {
@@ -201,7 +201,7 @@ it('brings the row back from the database after the tab forgets the session', as
 
   const { sessionId } = await send({
     text: 'then /audit the intake',
-    declaredMisses: [{ token: 'audit', label: '/sb:audit' }],
+    declaredMisses: [{ token: 'audit', label: '/ub:audit' }],
   })
   // The write is best-effort and fire-and-forget, so wait for the rows
   // rather than for a guessed number of ticks.
@@ -222,7 +222,7 @@ it('brings the row back from the database after the tab forgets the session', as
     'assistant',
   ])
   expect(declined(result.current.events)[0]!.misses).toEqual([
-    { token: 'audit', label: '/sb:audit' },
+    { token: 'audit', label: '/ub:audit' },
   ])
 })
 
@@ -237,12 +237,12 @@ it('spells the decline out for an agent reading the session back', async () => {
 
   const { sessionId } = await send({
     text: 'then /audit the intake',
-    declaredMisses: [{ token: 'audit', label: '/sb:audit' }],
+    declaredMisses: [{ token: 'audit', label: '/ub:audit' }],
   })
   await waitFor(() => expect(table.rows).toHaveLength(3))
 
   const read = await getSession(sessionId)
-  expect(read).toContain('declined: "/audit" (nearly /sb:audit)')
+  expect(read).toContain('declined: "/audit" (nearly /ub:audit)')
   expect(read).toContain('sent as text, so no skill ran')
 })
 
@@ -259,11 +259,11 @@ describe('the row on screen', () => {
   it('states the token, the skill and the past tense — and nothing else', () => {
     render(
       <TranscriptRow
-        event={{ kind: 'declined', misses: [{ token: 'audit', label: '/sb:audit' }] }}
+        event={{ kind: 'declined', misses: [{ token: 'audit', label: '/ub:audit' }] }}
       />,
     )
     expect(
-      screen.getByText('“/audit” was sent as text — /sb:audit did not run.'),
+      screen.getByText('“/audit” was sent as text — /ub:audit did not run.'),
     ).toBeTruthy()
   })
 
@@ -273,15 +273,15 @@ describe('the row on screen', () => {
         event={{
           kind: 'declined',
           misses: [
-            { token: 'audit', label: '/sb:audit' },
-            { token: 'map', label: '/sb:map' },
+            { token: 'audit', label: '/ub:audit' },
+            { token: 'map', label: '/ub:map' },
           ],
         }}
       />,
     )
     expect(
       screen.getByText(
-        '“/audit” and “/map” were sent as text — /sb:audit and /sb:map did not run.',
+        '“/audit” and “/map” were sent as text — /ub:audit and /ub:map did not run.',
       ),
     ).toBeTruthy()
   })
@@ -289,7 +289,7 @@ describe('the row on screen', () => {
   it('wears the transcript’s quiet voice, not the destructive one a failure wears', () => {
     const { container } = render(
       <TranscriptRow
-        event={{ kind: 'declined', misses: [{ token: 'audit', label: '/sb:audit' }] }}
+        event={{ kind: 'declined', misses: [{ token: 'audit', label: '/ub:audit' }] }}
       />,
     )
     const marker = container.querySelector('[data-slot="marker"]')!
@@ -307,7 +307,7 @@ describe('the row on screen', () => {
     // in the company of failures.
     const events: TranscriptEvent[] = [
       { kind: 'user', text: 'then /audit the intake' },
-      { kind: 'declined', misses: [{ token: 'audit', label: '/sb:audit' }] },
+      { kind: 'declined', misses: [{ token: 'audit', label: '/ub:audit' }] },
       { kind: 'status', text: 'one' },
       { kind: 'status', text: 'two' },
       { kind: 'status', text: 'three' },

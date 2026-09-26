@@ -23,15 +23,15 @@ call. A reader holding this file rather than a session sees the placeholders.
 | Drive the interface | `open_phase`, `open_scenario`, `focus_cell`, `open_cell_panel`, `set_canvas_mode` (view/design), `set_sidebar`, `annotate_cells` (ephemeral marker boxes + note) — the same gestures the human has; none of these touch data |
 | Work across several services | a deployment may hold more than one. The reads that take a `service` filter (`list_blueprint`, `list_stakeholders`, `search_blueprint` where it exists) read the active service when it is omitted — the board on screen, the same default the human has; pass another service's name to read it instead, or "all" to span every service in the deployment. Writes always land on the active service |
 | Rename an owner tag everywhere | no tool — point the human at the owner-tag dropdown's rename (it renames everywhere at once) |
-| Run an audit (`/sb:audit`) | FULLY LIVE — follow "Canvas audit run" below |
-| Whatif (`/sb:whatif`) | FULLY LIVE — follow "Canvas whatif run" below |
+| Run an audit (`/ub:audit`) | FULLY LIVE — follow "Canvas audit run" below |
+| Whatif (`/ub:whatif`) | FULLY LIVE — follow "Canvas whatif run" below |
 | Run `validate_ir.py` | doesn't exist — the database constraints and wrappers ARE the validator; a rejected call is your validation error, report it verbatim |
 | Sign-off hash gate | the human's Save gate — every write you make lands immediately but revertibly in the change sheet; the human keeps or reverts each row |
 | Scenario import / re-import | not available here — say so and point at the IDE flow |
 | Read source documents | not available — the human pastes relevant text into chat |
 | Reference docs (cited in playbooks as `references/…` or `skills/<skill>/references/…` paths) | `get_reference` serves the canvas set by BARE NAME — the filename without directory or `.md` (e.g. `skills/audit/references/check-gap-sweep.md` → `check-gap-sweep`). The set: playbooks for cocreate/audit/whatif/slice, check docs, lane-vocabulary, lane-roles, data-model, elicitation-protocol, slice-templates. The IDE-only references (ingest/translate/review-import playbooks, adapter-contract, change-request-schema) do NOT exist on the canvas — their binding rules are already translated by THIS file; never attempt to read them, and never improvise their content |
 
-## Canvas audit run (`/sb:audit`)
+## Canvas audit run (`/ub:audit`)
 
 1. **Roster**: enumerate the check docs; every check is executed or
    reported skipped-with-reason.
@@ -51,7 +51,7 @@ call. A reader holding this file rather than a session sees the placeholders.
 Canvas findings cite cells by id (written as the cell_keys), so canvas
 and IDE fingerprints are separate dedupe spaces.
 
-## Canvas whatif run (`/sb:whatif`)
+## Canvas whatif run (`/ub:whatif`)
 
 1. **The hypothetical variant is conversational**: analysis never writes
    cells — reason over reads, record consequence findings via

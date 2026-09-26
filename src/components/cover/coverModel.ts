@@ -106,7 +106,7 @@ export type CoverSection =
   | {
       kind: 'skill'
       id: string
-      /** The invocation, e.g. `/sb:map`. Rendered as a click-to-copy control and
+      /** The invocation, e.g. `/ub:map`. Rendered as a click-to-copy control and
        * doubling as the panel's title. */
       command: string
       /** What the skill does AND what it leaves behind, as one paragraph.

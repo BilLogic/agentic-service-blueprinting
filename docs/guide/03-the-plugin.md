@@ -15,7 +15,7 @@ board, trace a change through it, then cut the view an audience asked for.
 
 ### `sb:map`
 
-![How to use sb:map](../assets/sb-map.svg)
+![How to use ub:map](../assets/ub-map.svg)
 
 Fires when you ask for a blueprint to be created, imported, translated or
 resumed. It routes by what already exists: nothing at all becomes
@@ -29,7 +29,7 @@ to a content hash.
 
 ### `sb:audit`
 
-![How to use sb:audit](../assets/sb-audit.svg)
+![How to use ub:audit](../assets/ub-audit.svg)
 
 Runs the check roster. Each check is dispatched to its own agent that sees
 only that check's doc and the export, so no check can be influenced by
@@ -38,7 +38,7 @@ edits the blueprint.
 
 ### `sb:whatif`
 
-![How to use sb:whatif](../assets/sb-whatif.svg)
+![How to use ub:whatif](../assets/ub-whatif.svg)
 
 Takes a proposed change and traces it on a copy: which cells it reaches,
 which assumptions stop holding, where displaced demand lands. Exits with
@@ -46,7 +46,7 @@ options, not edits. Accepting one promotes it through `sb:map`.
 
 ### `sb:slice`
 
-![How to use sb:slice](../assets/sb-slice.svg)
+![How to use ub:slice](../assets/ub-slice.svg)
 
 Takes one stakeholder view out of the blueprint as a document. Five types,
 each with a template. Exits when the slice validates and every claim in it

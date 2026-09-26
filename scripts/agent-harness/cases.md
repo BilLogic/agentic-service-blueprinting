@@ -9,7 +9,7 @@ service blueprint of this template itself. Six scenarios across four
 phases (Discover → Setup → Operate → Maintain), all on one 7-lane roster:
 Stakeholders, Blueprint owner, App & skill surface, Claude in
 the IDE, Pipeline scripts, Subagent fleet, References & guardrails. Most
-cases hit "Map your service" (the sb:map pipeline, phase Setup; the one
+cases hit "Map your service" (the ub:map pipeline, phase Setup; the one
 board that adds a storyboard row, so 8 lanes; 10 scenario columns, of which
 each of its two paths — From your documents / From someone else's diagram
 — takes 9) or "Audit the check roster" (phase Operate; 7 lanes; 7 steps

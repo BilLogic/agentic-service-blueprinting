@@ -101,7 +101,7 @@ describe('the field and its mirror wear one agreement', () => {
     // which is also the only way to catch the design-system control dropping
     // the `className` it was handed.
     const field = openField()
-    type(field, 'Hey can u /sb:audit the intake')
+    type(field, 'Hey can u /ub:audit the intake')
     for (const metric of COMPOSER_FIELD_METRICS.split(' ')) {
       expect(classesOn(field), metric).toContain(metric)
       expect(classesOn(mirror()!), metric).toContain(metric)
@@ -117,7 +117,7 @@ describe('the field and its mirror wear one agreement', () => {
     // no pointer target. Swap them and the caret is covered by an opaque copy
     // of the draft.
     const field = openField()
-    type(field, 'Hey can u /sb:audit the intake')
+    type(field, 'Hey can u /ub:audit the intake')
     expect(classesOn(field)).toEqual(
       expect.arrayContaining([
         'relative',
@@ -151,7 +151,7 @@ describe('the field and its mirror wear one agreement', () => {
     // the colour drifts off the caret. The module renders the group itself
     // and takes no children, so there is no add-on a caller can put there.
     const field = openField()
-    type(field, 'Hey can u /sb:audit the intake')
+    type(field, 'Hey can u /ub:audit the intake')
     const box = mirror()!.parentElement!
     expect(box).toBe(field.parentElement)
     expect(classesOn(box)).toContain('relative')
@@ -174,18 +174,18 @@ describe('the field and its mirror wear one agreement', () => {
 describe('the mirror draws the draft the field is holding', () => {
   it('colours every token that names a skill, wherever it sits', () => {
     const field = openField()
-    type(field, 'build from my notes /sb:map then /sb:audit it')
+    type(field, 'build from my notes /ub:map then /ub:audit it')
     const drawn = mirror()!
     // The same string, so the caret and the colour agree. The trailing
     // newline is the one a block would otherwise collapse, which would leave
     // the two with different scroll heights at the bottom of a long draft.
     expect(drawn.textContent).toBe(
-      'build from my notes /sb:map then /sb:audit it\n',
+      'build from my notes /ub:map then /ub:audit it\n',
     )
-    expect(within(drawn).getByText('/sb:map').className).toContain(
+    expect(within(drawn).getByText('/ub:map').className).toContain(
       'text-text-primary',
     )
-    expect(within(drawn).getByText('/sb:audit').className).toContain(
+    expect(within(drawn).getByText('/ub:audit').className).toContain(
       'text-text-primary',
     )
   })
@@ -200,7 +200,7 @@ describe('the mirror draws the draft the field is holding', () => {
 
   it('follows the field when a long message scrolls', () => {
     const field = openField()
-    type(field, 'Hey can u /sb:audit the intake')
+    type(field, 'Hey can u /ub:audit the intake')
     field.scrollTop = 40
     field.scrollLeft = 5
     fireEvent.scroll(field)
@@ -214,15 +214,15 @@ describe('the mirror draws the draft the field is holding', () => {
     // write too — before paint, or the colour lags a frame behind the caret
     // on every character typed.
     const field = openField()
-    type(field, 'Hey can u /sb:audit the intake')
+    type(field, 'Hey can u /ub:audit the intake')
     field.scrollTop = 24
-    type(field, 'Hey can u /sb:audit the intake once more')
+    type(field, 'Hey can u /ub:audit the intake once more')
     expect(mirror()!.scrollTop).toBe(24)
   })
 
   it('stands down while an IME is composing', () => {
     const field = openField()
-    type(field, 'Hey can u /sb:audit')
+    type(field, 'Hey can u /ub:audit')
     expect(mirror()).toBeTruthy()
     // A preedit string lives in the field, and transparent text would make it
     // invisible for as long as it is being composed.
@@ -238,10 +238,10 @@ describe('the mirror draws the draft the field is holding', () => {
     // string the field is not holding: the completed token is coloured
     // because the draft now contains it and for no other reason.
     const field = openField()
-    type(field, 'Hey can u /sb:aud')
+    type(field, 'Hey can u /ub:aud')
     expect(mirror()).toBeNull()
     fireEvent.keyDown(field, { key: 'Tab' })
-    expect(field.value).toBe('Hey can u /sb:audit ')
-    expect(within(mirror()!).getByText('/sb:audit')).toBeTruthy()
+    expect(field.value).toBe('Hey can u /ub:audit ')
+    expect(within(mirror()!).getByText('/ub:audit')).toBeTruthy()
   })
 })

@@ -2,7 +2,7 @@ import type {
   AgentSearchIndex,
   ResolvedAgentSearchConfig,
 } from '@/deploymentConfig'
-import { asbDefaultAgentSearch } from '@/deploymentConfig'
+import { templateDefaultAgentSearch } from '@/deploymentConfig'
 import type { AgentProviderId } from '@/lib/agent/settings'
 
 /**
@@ -43,8 +43,8 @@ export type AgentSearchPlan =
  * component, and a config read at render time cannot reach either.
  */
 let search: ResolvedAgentSearchConfig = {
-  enabled: asbDefaultAgentSearch.enabled,
-  indexes: [...asbDefaultAgentSearch.indexes],
+  enabled: templateDefaultAgentSearch.enabled,
+  indexes: [...templateDefaultAgentSearch.indexes],
 }
 
 /**
@@ -61,8 +61,8 @@ export function configureAgentSearch(
   next: ResolvedAgentSearchConfig | undefined,
 ): void {
   search = {
-    enabled: next?.enabled ?? asbDefaultAgentSearch.enabled,
-    indexes: (next?.indexes ?? asbDefaultAgentSearch.indexes).map((index) => ({
+    enabled: next?.enabled ?? templateDefaultAgentSearch.enabled,
+    indexes: (next?.indexes ?? templateDefaultAgentSearch.indexes).map((index) => ({
       ...index,
     })),
   }
