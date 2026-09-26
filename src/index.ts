@@ -34,8 +34,8 @@
  */
 export { App } from './App'
 export {
-  asbDefaultCellBudget,
-  asbDefaultConfig,
+  templateDefaultCellBudget,
+  templateDefaultConfig,
   resolveDeploymentConfig,
   type CellContentBudget,
   type CellContentBudgetOverlay,

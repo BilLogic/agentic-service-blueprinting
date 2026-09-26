@@ -13,7 +13,7 @@
  * stopped.
  */
 import {
-  asbDefaultCellBudget,
+  templateDefaultCellBudget,
   type CellContentBudget,
 } from '@/deploymentConfig'
 import { shouldUseTouchpointCellContent } from '@/lib/blueprintLayout'
@@ -52,7 +52,7 @@ function copyBudget(budget: CellContentBudget): CellContentBudget {
  * directly.
  */
 function templateBudget(): CellContentBudget {
-  return copyBudget(asbDefaultCellBudget)
+  return copyBudget(templateDefaultCellBudget)
 }
 
 let budget: CellContentBudget = templateBudget()

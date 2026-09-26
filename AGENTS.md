@@ -1,4 +1,4 @@
-# ub — service blueprinting skills (agent router)
+# ub — Uno Blueprint service blueprinting skills (agent router)
 
 This repo is the `ub` plugin. In Claude Code it installs as a plugin
 (`claude plugin marketplace add <this repo>` → `claude plugin install

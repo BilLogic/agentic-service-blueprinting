@@ -15,4 +15,7 @@ default organisation name and page title are Uno Blueprint.
 A deployment reinstalls the plugin as `ub@ub-marketplace` and uses the `ub:`
 names wherever it invokes a skill. The overlay and import Vite plugins are named
 `uno-blueprint:overlay` and `uno-blueprint:vite-imports`, so a deployment
-config that looks either up by name follows them.
+config that looks either up by name follows them. The default-config exports
+are `templateDefaultConfig`, `templateDefaultCellBudget` and
+`templateDefaultAgentSearch`, so a deployment that imports any of them imports
+it by that name.

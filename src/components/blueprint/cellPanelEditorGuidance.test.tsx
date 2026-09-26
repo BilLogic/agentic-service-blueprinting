@@ -17,7 +17,7 @@
  */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { asbDefaultCellBudget, resolveDeploymentConfig } from '@/deploymentConfig'
+import { templateDefaultCellBudget, resolveDeploymentConfig } from '@/deploymentConfig'
 import { configureCellBudget } from '@/lib/cellContentLimits'
 import {
   BACKSTAGE_TOUCHPOINTS_ROLE,
@@ -67,7 +67,7 @@ const THREE_TOUCHPOINTS = 'Online portal, Confirmation email, Phone line'
 
 beforeEach(() => {
   configureCellBudget({
-    prose: { ...asbDefaultCellBudget.prose },
+    prose: { ...templateDefaultCellBudget.prose },
     touchpointLabels: { target: TOUCHPOINT_BUDGET, warning: TOUCHPOINT_BUDGET },
   })
 })

@@ -13,7 +13,7 @@ import { chromaCeiling, contrast, dial, oklch, type Theme } from '@/lib/tokenMod
  * do: nothing.
  *
  * `BRAND` here carries no accent — the template ships every chroma dial at
- * zero, so there is no hue for one to name — and `asbDefaultConfig` passes that
+ * zero, so there is no hue for one to name — and `templateDefaultConfig` passes that
  * absence
  * straight through. The assertion below is what makes that provable rather
  * than argued: the dial the theme files declare is never written, so a
