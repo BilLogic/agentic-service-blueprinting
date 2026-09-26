@@ -30,9 +30,10 @@ file is git-ignored, and the service-role key is never written to disk and
 never pasted into a session
 ([adapter-contract.md §"Secrets"](../../references/adapter-contract.md)).
 
-The Slack bot, holding only the published key, can therefore answer
-questions and link to cells, and cannot change anything, without anyone
-having to remember that rule.
+A Slack bot a deployment builds on top, holding only the publishable key,
+can therefore answer questions and link to cells, and cannot change anything,
+without anyone having to remember that rule. The template ships no such bot;
+it is the read-consumer pattern in [guide/02](./02-using-it-in-practice.md).
 
 ## 2. The schema
 
