@@ -131,7 +131,7 @@ The context-menu trigger wraps the row rather than merging onto it, because
 `NavRow` renders two sibling buttons and there is no single element to merge
 onto. Items are Open in new tab and Present, then Rename, Duplicate and Delete
 for writers in Edit mode. The empty state names the two real routes — Edit
-mode's "Make slice", or the agent's `/sb:slice`.
+mode's "Make slice", or the agent's `/ub:slice`.
 
 This section is the precedent to copy for context menus over accordion
 groups — it is the one place both patterns are already settled together.

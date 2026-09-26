@@ -100,7 +100,7 @@ python3 scripts/validate_ir.py my-blueprint.json
 python3 scripts/generate_seed_sql.py my-blueprint.json --locale en --out supabase/seed.sql
 ```
 
-(Or let the agent do it: the `sb:map` skill builds the blueprint file from your
+(Or let the agent do it: the `ub:map` skill builds the blueprint file from your
 own documents.)
 
 **Success:** load it, then prove it renders to a keyless reader the same way

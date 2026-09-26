@@ -64,6 +64,28 @@ test('the deployment is still named nowhere', () => {
   assert.deepEqual(labels('the uno bot and its sibling uno-bots'), ['uno-bot'])
 })
 
+test('the template goes by one name', () => {
+  assert.deepEqual(labels('run /sb:map on a folder of notes'), ['sb:'])
+  assert.deepEqual(labels('the `sb:` skills'), ['sb:'])
+  assert.deepEqual(labels('SB:MAP in a heading'), ['sb:'])
+  assert.deepEqual(labels('claude plugin install sb@sb-marketplace'), ['sb-marketplace'])
+  assert.deepEqual(labels('# Agentic Service Blueprinting'), ['Agentic Service Blueprinting'])
+  assert.deepEqual(labels('the agentic service blueprinting template'), [
+    'Agentic Service Blueprinting',
+  ])
+  assert.deepEqual(labels('the ASB template'), ['ASB (case-sensitive)'])
+})
+
+test('the name patterns are bounded, so the package name and other words pass', () => {
+  assert.deepEqual(labels("import { App } from 'agentic-service-blueprinting'"), [])
+  assert.deepEqual(labels('github:BilLogic/agentic-service-blueprinting#v1.0.0'), [])
+  assert.deepEqual(labels("raise exception 'proof' using errcode = 'ASB01';"), [])
+  assert.deepEqual(labels('the Asbestos report, lowercase asb'), [])
+  assert.deepEqual(labels('a usb: device and a dsb: flag'), [])
+  assert.deepEqual(labels('the ub-marketplace, and ub:map'), [])
+  assert.deepEqual(labels('an agentic approach to service blueprinting'), [])
+})
+
 test('the bot pattern is bounded, so ordinary English passes', () => {
   // Each of these appears in the tree today. The bot's name is the only
   // pattern that starts with those three letters, and it has to stay bounded

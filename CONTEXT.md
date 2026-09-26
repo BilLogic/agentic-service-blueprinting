@@ -482,7 +482,7 @@ creates under the service lands on the scope's service. A tool never
 resolves a slug — the shell did, once.
 
 **Skill** — one of the four flows a reader starts by naming it in the
-composer: `/sb:map`, `/sb:slice`, `/sb:audit`, `/sb:whatif`. The same
+composer: `/ub:map`, `/ub:slice`, `/ub:audit`, `/ub:whatif`. The same
 `SKILL.md` an IDE agent follows from this repository's `skills/` tree,
 vendored into the bundle and joined to the system prompt for the one message
 that names it. **Not a tool**: a tool is one call the model makes, a skill is
@@ -493,7 +493,7 @@ only record of which skills a message runs.
 **Send** — one message the reader commits: its text, and the skills it names.
 
 **near miss** — a word-start token in a draft that names no skill but spells
-a skill's bare alias: `/audit` where the skill is `/sb:audit`. It invokes
+a skill's bare alias: `/audit` where the skill is `/ub:audit`. It invokes
 nothing, so the reader is asked before the message goes, and the question has
 exactly two answers — spell it properly and run it, or send the sentence as
 text.
