@@ -35,7 +35,7 @@ describe('the bundled sample keeps its figures where the walkthrough reads', () 
       (entry) => `${entry.laneName} → ${entry.frame}`,
     )
     const perPath = [
-      'Claude in the IDE → /cover/sb-map.svg',
+      'Claude in the IDE → /cover/ub-map.svg',
       'Blueprint owner → /cover/data-model-hierarchy.svg',
       'Blueprint owner → /cover/blueprint-anatomy.svg',
       'Blueprint owner → /cover/four-ways-in.svg',

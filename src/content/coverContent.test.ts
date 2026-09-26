@@ -54,7 +54,7 @@ describe('coverContent', () => {
   })
 
   it('carries the degraded-state and command-copy strings', () => {
-    expect(coverContent.states.noSlices).toContain('/sb:slice')
+    expect(coverContent.states.noSlices).toContain('/ub:slice')
     expect(coverContent.commandCopy.copiedLabel).toBe('Copied')
     expect(coverContent.commandCopy.copyLabel).toBe('Copy')
   })

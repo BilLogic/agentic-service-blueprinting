@@ -279,13 +279,13 @@ describe('the loop, provider → tool → result → provider', () => {
     await send({
       client,
       text: 'then /audit the intake',
-      declaredMisses: [{ token: 'audit', label: '/sb:audit' }],
+      declaredMisses: [{ token: 'audit', label: '/ub:audit' }],
     })
     const system = wholeSystem(provider.inputs[0]!)
-    expect(system).toContain('/sb:audit')
+    expect(system).toContain('/ub:audit')
     expect(system).toContain('is NOT a skill name')
     expect(system).toContain('NO skill ran')
-    expect(system).toContain('Do not describe /sb:audit as having run')
+    expect(system).toContain('Do not describe /ub:audit as having run')
     // A notice, not an invocation: the skill body stays out of the prompt.
     expect(system).not.toContain('--- active skill')
   })
@@ -299,22 +299,22 @@ describe('the loop, provider → tool → result → provider', () => {
       client,
       text: 'check /audit then /map this',
       declaredMisses: [
-        { token: 'audit', label: '/sb:audit' },
-        { token: 'map', label: '/sb:map' },
+        { token: 'audit', label: '/ub:audit' },
+        { token: 'map', label: '/ub:map' },
       ],
     })
     const system = wholeSystem(provider.inputs[0]!)
     expect(system).toContain('are NOT skill names here')
     expect(system).toContain('"/audit" and "/map"')
-    expect(system).toContain('the closest skills are /sb:audit and /sb:map')
-    expect(system).toContain('Do not describe any of /sb:audit and /sb:map as having run')
+    expect(system).toContain('the closest skills are /ub:audit and /ub:map')
+    expect(system).toContain('Do not describe any of /ub:audit and /ub:map as having run')
     expect(system).not.toContain('--- active skill')
   })
 
   it('carries several skills: every body in pick order, one translation note, and the cache breakpoint past them all', async () => {
     provider.turns = [{ parts: [{ type: 'text', text: 'On it.' }], stopReason: 'end' }]
-    const map = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:map')!
-    const audit = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:audit')!
+    const map = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'ub:map')!
+    const audit = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'ub:audit')!
     const events = await send({
       client,
       text: 'build this from my notes, then check it',
@@ -322,10 +322,10 @@ describe('the loop, provider → tool → result → provider', () => {
     })
     const sent = provider.inputs[0]!
     const system = wholeSystem(sent)
-    expect(system.indexOf('--- active skill: /sb:map')).toBeLessThan(
-      system.indexOf('--- active skill: /sb:audit'),
+    expect(system.indexOf('--- active skill: /ub:map')).toBeLessThan(
+      system.indexOf('--- active skill: /ub:audit'),
     )
-    expect(system).toContain('in this order: /sb:map → /sb:audit')
+    expect(system).toContain('in this order: /ub:map → /ub:audit')
     // The sentence that translates a skill for this surface is about all of
     // them, so it is said once rather than per skill.
     expect(system.split('You are the canvas agent, not an IDE agent')).toHaveLength(2)
@@ -339,7 +339,7 @@ describe('the loop, provider → tool → result → provider', () => {
     // the seam, and nothing is said twice.
     expect(system).toBe(sent.systemStable + sent.systemVolatile)
     // The turn reads back with both, not just the first.
-    expect(events[0]).toMatchObject({ kind: 'user', skills: ['sb:map', 'sb:audit'] })
+    expect(events[0]).toMatchObject({ kind: 'user', skills: ['ub:map', 'ub:audit'] })
   })
 
   it('assembles what the single builder used to: every skill body, then the live context, once, one blank line past the last of them', async () => {
@@ -351,8 +351,8 @@ describe('the loop, provider → tool → result → provider', () => {
     // drifts ahead of a skill body is a different prompt to the model and a
     // cache entry that matches nothing on the next round.
     provider.turns = [{ parts: [{ type: 'text', text: 'On it.' }], stopReason: 'end' }]
-    const map = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:map')!
-    const audit = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'sb:audit')!
+    const map = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'ub:map')!
+    const audit = AGENT_SKILL_COMMANDS.find((entry) => entry.id === 'ub:audit')!
     await send({
       client,
       text: 'build this from my notes, then check it',
@@ -399,13 +399,13 @@ describe('the loop, provider → tool → result → provider', () => {
     await send({
       client,
       text: 'then /audit the intake',
-      declaredMisses: [{ token: 'audit', label: '/sb:audit' }],
+      declaredMisses: [{ token: 'audit', label: '/ub:audit' }],
     })
     // The closing call is the one that was sent no tools.
     const closing = provider.inputs.at(-1)!
     expect(closing.tools).toEqual([])
     expect(wholeSystem(closing)).toContain('is NOT a skill name')
-    expect(wholeSystem(closing)).toContain('Do not describe /sb:audit as having run')
+    expect(wholeSystem(closing)).toContain('Do not describe /ub:audit as having run')
   })
 
   it('still says the session has no database on the closing call', async () => {

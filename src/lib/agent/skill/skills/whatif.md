@@ -1,6 +1,6 @@
 ---
 name: whatif
-description: Traces the consequences of a hypothetical change to an existing service blueprint before anyone commits to it — replays a scenario as if the change were made, restages a moment across the visibility line (frontstage/backstage), or prioritizes which cells matter most right now. Use when the user asks "what if we removed/automated/moved X", "what breaks if…", "what's the impact of…", "should this be customer-visible", "which cells should we focus on", or wants an accepted analysis promoted into an actual blueprint change. Requires an imported blueprint — for building one use sb:map; for finding present-tense inconsistencies use sb:audit.
+description: Traces the consequences of a hypothetical change to an existing service blueprint before anyone commits to it — replays a scenario as if the change were made, restages a moment across the visibility line (frontstage/backstage), or prioritizes which cells matter most right now. Use when the user asks "what if we removed/automated/moved X", "what breaks if…", "what's the impact of…", "should this be customer-visible", "which cells should we focus on", or wants an accepted analysis promoted into an actual blueprint change. Requires an imported blueprint — for building one use ub:map; for finding present-tense inconsistencies use ub:audit.
 ---
 
 # Blueprint Whatif
@@ -23,12 +23,12 @@ to the plugin root, and suggest the upgrade recipe in
 
 | Entry state | Route |
 | --- | --- |
-| No workspace / no IR | Stop — nothing to hypothesize against; `sb:map` first |
+| No workspace / no IR | Stop — nothing to hypothesize against; `ub:map` first |
 | Imported blueprint, hypothetical named | Pick the operation: replay / restage / prioritize (playbook §2) |
 | "What if we removed/changed/automated X" | **replay** |
 | "Should X be customer-visible / hidden?" | **restage** |
 | "Where should we focus / what matters most?" | **prioritize** |
-| Whatif exists, user accepts the recommendation | **Accept route** — emit a change request (playbook §4), then STOP and tell the user to invoke sb:map for map-promote. Never edit the IR from here, never chain into promotion in the same turn |
+| Whatif exists, user accepts the recommendation | **Accept route** — emit a change request (playbook §4), then STOP and tell the user to invoke ub:map for map-promote. Never edit the IR from here, never chain into promotion in the same turn |
 | Whatif exists, base blueprint has changed since | Stale — the embedded sign-off hashes say so. Offer re-trace; never promote stale analysis |
 | "Dismiss / resolve whatif finding X" | Triage route — identical to audit (audit-playbook §4) |
 

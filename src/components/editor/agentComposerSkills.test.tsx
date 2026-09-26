@@ -162,11 +162,11 @@ afterEach(() => {
 describe('the composer opens a skill lookup wherever a slash opens a word', () => {
   it('opens on a token typed mid-sentence, and accepting completes it in place', () => {
     const composer = openComposer()
-    pick(composer, 'Hey can u /sb:aud', '/sb:audit')
+    pick(composer, 'Hey can u /ub:aud', '/ub:audit')
     // The token gains its ending where it sits. It used to be lifted out of
     // the prose into a badge above the field, which put the reader's word at
     // the front of their own message.
-    expect((composer as HTMLTextAreaElement).value).toBe('Hey can u /sb:audit ')
+    expect((composer as HTMLTextAreaElement).value).toBe('Hey can u /ub:audit ')
   })
 
   it('leaves the caret at the end of a completion that reaches the end', () => {
@@ -180,33 +180,33 @@ describe('the composer opens a skill lookup wherever a slash opens a word', () =
     // focus assertion is not hedged: nothing here focuses the field, so it
     // is red unless the completion path puts the reader back in it.
     const composer = openComposer() as HTMLTextAreaElement
-    pick(composer, 'Hey can u /sb:aud', '/sb:audit')
-    expect(composer.value).toBe('Hey can u /sb:audit ')
-    expect(composer.selectionStart).toBe('Hey can u /sb:audit '.length)
-    expect(composer.selectionEnd).toBe('Hey can u /sb:audit '.length)
+    pick(composer, 'Hey can u /ub:aud', '/ub:audit')
+    expect(composer.value).toBe('Hey can u /ub:audit ')
+    expect(composer.selectionStart).toBe('Hey can u /ub:audit '.length)
+    expect(composer.selectionEnd).toBe('Hey can u /ub:audit '.length)
     expect(document.activeElement).toBe(composer)
   })
 
   it('finds a skill by the segment after its namespace', () => {
     const composer = openComposer()
     type(composer, 'first /aud')
-    expect(menuOption('/sb:audit')).toBeTruthy()
+    expect(menuOption('/ub:audit')).toBeTruthy()
   })
 
   it('stays shut on a slash that opens no word', () => {
     const composer = openComposer()
     type(composer, 'look at src/lib')
-    expect(menuOption('/sb:audit')).toBeNull()
+    expect(menuOption('/ub:audit')).toBeNull()
     type(composer, 'do this and/or that')
-    expect(menuOption('/sb:audit')).toBeNull()
+    expect(menuOption('/ub:audit')).toBeNull()
   })
 
   it('closes on the space after the token', () => {
     const composer = openComposer()
     type(composer, 'Hey can u /aud')
-    expect(menuOption('/sb:audit')).toBeTruthy()
+    expect(menuOption('/ub:audit')).toBeTruthy()
     type(composer, 'Hey can u /aud ')
-    expect(menuOption('/sb:audit')).toBeNull()
+    expect(menuOption('/ub:audit')).toBeNull()
   })
 })
 
@@ -217,8 +217,8 @@ describe('a token that nearly names a skill', () => {
     const composer = openComposer()
     type(composer, NEAR)
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
-    expect(screen.getByText(/closest match is \/sb:audit/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Run /sb:audit' })).toBeTruthy()
+    expect(screen.getByText(/closest match is \/ub:audit/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Run /ub:audit' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Send as text' })).toBeTruthy()
     // Neither branch taken for them: nothing has gone to the model.
     expect(provider.inputs).toEqual([])
@@ -228,14 +228,14 @@ describe('a token that nearly names a skill', () => {
     const composer = openComposer()
     type(composer, NEAR)
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Run /sb:audit' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Run /ub:audit' }))
     await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
     const sent = provider.inputs[0]!
-    expect(wholeSystem(sent)).toContain('--- active skill: /sb:audit')
+    expect(wholeSystem(sent)).toContain('--- active skill: /ub:audit')
     // The official name stands where the reader's near miss stood, and the
     // sentence either side of it is untouched — accepting an offer moves a
     // word no more than accepting from the menu does.
-    expect(JSON.stringify(sent.messages)).toContain('then /sb:audit the intake')
+    expect(JSON.stringify(sent.messages)).toContain('then /ub:audit the intake')
   })
 
   it('sends the prose unchanged when asked to, and says nothing ran', async () => {
@@ -263,20 +263,20 @@ describe('a token that nearly names a skill', () => {
     const composer = openComposer()
     type(composer, 'check /audit then /map this')
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
-    expect(screen.getByText(/closest matches are \/sb:audit and \/sb:map/)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Run /sb:audit' }))
+    expect(screen.getByText(/closest matches are \/ub:audit and \/ub:map/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Run /ub:audit' }))
     // Nothing sent yet: the second miss is now the question.
     expect(provider.inputs).toEqual([])
-    expect(screen.getByText(/closest match is \/sb:map/)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Run /sb:map' }))
+    expect(screen.getByText(/closest match is \/ub:map/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Run /ub:map' }))
     await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
     const sent = provider.inputs[0]!
     expect(JSON.stringify(sent.messages)).toContain(
-      'check /sb:audit then /sb:map this',
+      'check /ub:audit then /ub:map this',
     )
     // Both skills ran, and nothing was reported as unrun.
-    expect(wholeSystem(sent)).toContain('--- active skill: /sb:audit')
-    expect(wholeSystem(sent)).toContain('--- active skill: /sb:map')
+    expect(wholeSystem(sent)).toContain('--- active skill: /ub:audit')
+    expect(wholeSystem(sent)).toContain('--- active skill: /ub:map')
     expect(wholeSystem(sent)).not.toContain('NOT skill name')
   })
 
@@ -289,12 +289,12 @@ describe('a token that nearly names a skill', () => {
     const composer = openComposer() as HTMLTextAreaElement
     type(composer, 'check /audit then /map this')
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Run /sb:audit' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Run /ub:audit' }))
     // The token is rewritten in place and the prose behind it is untouched.
-    expect(composer.value).toBe('check /sb:audit then /map this')
+    expect(composer.value).toBe('check /ub:audit then /map this')
     // Immediately after the name they accepted — 15, not the draft's 30.
-    expect(composer.selectionStart).toBe('check /sb:audit'.length)
-    expect(composer.selectionEnd).toBe('check /sb:audit'.length)
+    expect(composer.selectionStart).toBe('check /ub:audit'.length)
+    expect(composer.selectionEnd).toBe('check /ub:audit'.length)
     // And in the field: the answer was given on a button, so the caret is
     // worth nothing unless the focus comes back with it.
     expect(document.activeElement).toBe(composer)
@@ -311,7 +311,7 @@ describe('a token that nearly names a skill', () => {
     // Both named. One told and the other left out is the same silence with a
     // smaller mouth — the model reads "/map" as a map that ran.
     expect(wholeSystem(sent)).toContain('"/audit" and "/map"')
-    expect(wholeSystem(sent)).toContain('/sb:audit and /sb:map')
+    expect(wholeSystem(sent)).toContain('/ub:audit and /ub:map')
     expect(wholeSystem(sent)).not.toContain('--- active skill')
   })
 
@@ -323,7 +323,7 @@ describe('a token that nearly names a skill', () => {
     // then dropped on the floor, and the notice stayed on screen holding
     // spans measured against the text that had just moved. The next click
     // completed a token against offsets that no longer pointed at it and
-    // `/audit` came back as `/sb:audit dit `. Nothing is decided now until a
+    // `/audit` came back as `/ub:audit dit `. Nothing is decided now until a
     // send is possible, so the draft and the notice cannot disagree.
     let release = () => {}
     provider.hold = new Promise<void>((resolve) => {
@@ -335,7 +335,7 @@ describe('a token that nearly names a skill', () => {
     await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
     type(composer, NEAR)
     fireEvent.keyDown(composer, { key: 'Enter' })
-    expect(screen.queryByText(/closest match is \/sb:audit/)).toBeNull()
+    expect(screen.queryByText(/closest match is \/ub:audit/)).toBeNull()
     expect((composer as HTMLTextAreaElement).value).toBe(NEAR)
     expect(provider.inputs.length).toBe(1)
     release()
@@ -345,7 +345,7 @@ describe('a token that nearly names a skill', () => {
       expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull(),
     )
     fireEvent.keyDown(composer, { key: 'Enter' })
-    expect(screen.getByText(/closest match is \/sb:audit/)).toBeTruthy()
+    expect(screen.getByText(/closest match is \/ub:audit/)).toBeTruthy()
     expect((composer as HTMLTextAreaElement).value).toBe(NEAR)
   })
 
@@ -363,7 +363,7 @@ describe('a token that nearly names a skill', () => {
     // And the next press asks again rather than sending the edited prose on
     // an answer given about an older draft.
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
-    expect(screen.getByText(/closest match is \/sb:audit/)).toBeTruthy()
+    expect(screen.getByText(/closest match is \/ub:audit/)).toBeTruthy()
     expect(provider.inputs).toEqual([])
   })
 
@@ -373,80 +373,80 @@ describe('a token that nearly names a skill', () => {
     // moves the text under the question, so the question goes with it — a
     // stale miss answered after a pick rewrites the wrong span.
     const composer = openComposer()
-    type(composer, 'then /audit the /sb:ma')
+    type(composer, 'then /audit the /ub:ma')
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(screen.getByRole('button', { name: 'Send as text' })).toBeTruthy()
-    fireEvent.click(menuOption('/sb:map')!)
+    fireEvent.click(menuOption('/ub:map')!)
     expect((composer as HTMLTextAreaElement).value).toBe(
-      'then /audit the /sb:map ',
+      'then /audit the /ub:map ',
     )
     expect(screen.queryByRole('button', { name: 'Send as text' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
-    expect(screen.getByText(/closest match is \/sb:audit/)).toBeTruthy()
+    expect(screen.getByText(/closest match is \/ub:audit/)).toBeTruthy()
     expect(provider.inputs).toEqual([])
   })
 
   it('asks nothing about a token that resolves — it runs', async () => {
     const composer = openComposer()
-    type(composer, 'Hey can u /sb:audit the goal setting scenario')
+    type(composer, 'Hey can u /ub:audit the goal setting scenario')
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     // Straight through, with the skill loaded. The prompt that used to stand
     // here asked a reader to confirm what the colour in the field already
     // told them.
     await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
     expect(screen.queryByRole('button', { name: 'Send as text' })).toBeNull()
-    expect(wholeSystem(provider.inputs[0]!)).toContain('--- active skill: /sb:audit')
+    expect(wholeSystem(provider.inputs[0]!)).toContain('--- active skill: /ub:audit')
   })
 })
 
 describe('one message carrying several skills', () => {
   it('colours every token it resolves, wherever each one sits', () => {
     const composer = openComposer()
-    type(composer, 'build this from my notes /sb:map then /sb:audit it')
+    type(composer, 'build this from my notes /ub:map then /ub:audit it')
     const drawn = composerMirror()!
-    expect(within(drawn).getByText('/sb:map')).toBeTruthy()
-    expect(within(drawn).getByText('/sb:audit')).toBeTruthy()
+    expect(within(drawn).getByText('/ub:map')).toBeTruthy()
+    expect(within(drawn).getByText('/ub:audit')).toBeTruthy()
     // And the prose between them is nobody's collateral.
     expect((composer as HTMLTextAreaElement).value).toBe(
-      'build this from my notes /sb:map then /sb:audit it',
+      'build this from my notes /ub:map then /ub:audit it',
     )
   })
 
   it('runs them in the order the sentence puts them in', async () => {
     const composer = openComposer()
-    type(composer, 'build this from my notes /sb:map then /sb:audit it')
+    type(composer, 'build this from my notes /ub:map then /ub:audit it')
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
     const sent = provider.inputs[0]!
-    expect(wholeSystem(sent).indexOf('--- active skill: /sb:map')).toBeLessThan(
-      wholeSystem(sent).indexOf('--- active skill: /sb:audit'),
+    expect(wholeSystem(sent).indexOf('--- active skill: /ub:map')).toBeLessThan(
+      wholeSystem(sent).indexOf('--- active skill: /ub:audit'),
     )
-    expect(wholeSystem(sent)).toContain('in this order: /sb:map → /sb:audit')
+    expect(wholeSystem(sent)).toContain('in this order: /ub:map → /ub:audit')
     // The text is what sends, tokens and all — it is what the reader wrote.
     expect(JSON.stringify(sent.messages)).toContain(
-      'build this from my notes /sb:map then /sb:audit it',
+      'build this from my notes /ub:map then /ub:audit it',
     )
   })
 
   it('counts a skill named twice once', async () => {
     const composer = openComposer()
-    type(composer, '/sb:map from my notes, then /sb:map the rest')
+    type(composer, '/ub:map from my notes, then /ub:map the rest')
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
     // One body, not two: a reader who names a skill twice means it once, and
     // a second copy of a multi-kilobyte SKILL.md buys nothing but prompt.
     expect(
-      wholeSystem(provider.inputs[0]!).split('--- active skill: /sb:map'),
+      wholeSystem(provider.inputs[0]!).split('--- active skill: /ub:map'),
     ).toHaveLength(2)
   })
 
   it('sends an instruction when the tokens are the whole message', async () => {
     const composer = openComposer()
-    type(composer, '/sb:map /sb:audit')
+    type(composer, '/ub:map /ub:audit')
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     await vi.waitFor(() => expect(provider.inputs.length).toBe(1))
     expect(JSON.stringify(provider.inputs[0]!.messages)).toContain(
-      'Run /sb:map, then /sb:audit — each from the top of its flow, in that order.',
+      'Run /ub:map, then /ub:audit — each from the top of its flow, in that order.',
     )
   })
 })
@@ -460,8 +460,8 @@ describe("the menu's keyboard behaviour", () => {
     fireEvent.keyDown(composer, { key: 'ArrowDown' })
     fireEvent.keyDown(composer, { key: 'Enter' })
     // Accepted and completed: the menu is shut and the token is in the text.
-    expect(menuOption('/sb:slice')).toBeNull()
-    expect((composer as HTMLTextAreaElement).value).toBe('/sb:slice ')
+    expect(menuOption('/ub:slice')).toBeNull()
+    expect((composer as HTMLTextAreaElement).value).toBe('/ub:slice ')
   })
 
   it('takes the item the arrows left on focus, not the first one', () => {
@@ -473,7 +473,7 @@ describe("the menu's keyboard behaviour", () => {
     fireEvent.keyDown(composer, { key: 'ArrowDown' })
     fireEvent.keyDown(composer, { key: 'ArrowDown' })
     fireEvent.keyDown(composer, { key: 'Tab' })
-    expect((composer as HTMLTextAreaElement).value).toBe('/sb:audit ')
+    expect((composer as HTMLTextAreaElement).value).toBe('/ub:audit ')
   })
 
   it('accepts on Tab, and wraps round the ends with ArrowUp', () => {
@@ -481,21 +481,21 @@ describe("the menu's keyboard behaviour", () => {
     type(composer, '/')
     fireEvent.keyDown(composer, { key: 'ArrowUp' })
     fireEvent.keyDown(composer, { key: 'Tab' })
-    expect(menuOption('/sb:whatif')).toBeNull()
-    expect((composer as HTMLTextAreaElement).value).toBe('/sb:whatif ')
+    expect(menuOption('/ub:whatif')).toBeNull()
+    expect((composer as HTMLTextAreaElement).value).toBe('/ub:whatif ')
   })
 
   it('dismisses on Escape without touching a character of the draft', () => {
     const composer = openComposer()
-    type(composer, 'Hey can u /sb:aud')
-    expect(menuOption('/sb:audit')).toBeTruthy()
+    type(composer, 'Hey can u /ub:aud')
+    expect(menuOption('/ub:audit')).toBeTruthy()
     fireEvent.keyDown(composer, { key: 'Escape' })
-    expect(menuOption('/sb:audit')).toBeNull()
+    expect(menuOption('/ub:audit')).toBeNull()
     // The token is the reader's text until they pick something. Escape used
     // to delete it, with no undo.
-    expect((composer as HTMLTextAreaElement).value).toBe('Hey can u /sb:aud')
+    expect((composer as HTMLTextAreaElement).value).toBe('Hey can u /ub:aud')
     // Typing asks again.
-    type(composer, 'Hey can u /sb:audi')
-    expect(menuOption('/sb:audit')).toBeTruthy()
+    type(composer, 'Hey can u /ub:audi')
+    expect(menuOption('/ub:audit')).toBeTruthy()
   })
 })

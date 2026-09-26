@@ -17,11 +17,11 @@ describe('CoverCommandCopy', () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
 
-    render(<CoverCommandCopy command="/sb:map" copyLabel="Copy" copiedLabel="Copied" />)
+    render(<CoverCommandCopy command="/ub:map" copyLabel="Copy" copiedLabel="Copied" />)
     await act(async () => {
-      screen.getByRole('button', { name: 'Copy /sb:map' }).click()
+      screen.getByRole('button', { name: 'Copy /ub:map' }).click()
     })
-    expect(writeText).toHaveBeenCalledWith('/sb:map')
+    expect(writeText).toHaveBeenCalledWith('/ub:map')
     expect(screen.getByText('Copied')).toBeDefined()
   })
 
@@ -29,17 +29,17 @@ describe('CoverCommandCopy', () => {
     const writeText = vi.fn().mockRejectedValue(new Error('denied'))
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
 
-    render(<CoverCommandCopy command="/sb:audit" copyLabel="Copy" copiedLabel="Copied" />)
+    render(<CoverCommandCopy command="/ub:audit" copyLabel="Copy" copiedLabel="Copied" />)
     await act(async () => {
-      screen.getByRole('button', { name: 'Copy /sb:audit' }).click()
+      screen.getByRole('button', { name: 'Copy /ub:audit' }).click()
     })
     expect(screen.queryByText('Copied')).toBeNull()
   })
 
   it('no clipboard API at all (plain http) is a no-op', () => {
-    render(<CoverCommandCopy command="/sb:whatif" copyLabel="Copy" copiedLabel="Copied" />)
+    render(<CoverCommandCopy command="/ub:whatif" copyLabel="Copy" copiedLabel="Copied" />)
     expect(() =>
-      screen.getByRole('button', { name: 'Copy /sb:whatif' }).click(),
+      screen.getByRole('button', { name: 'Copy /ub:whatif' }).click(),
     ).not.toThrow()
   })
 })

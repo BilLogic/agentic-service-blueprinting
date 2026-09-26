@@ -1,8 +1,8 @@
-# sb — service blueprinting skills (agent router)
+# ub — service blueprinting skills (agent router)
 
-This repo is the `sb` plugin. In Claude Code it installs as a plugin
+This repo is the `ub` plugin. In Claude Code it installs as a plugin
 (`claude plugin marketplace add <this repo>` → `claude plugin install
-sb@sb-marketplace`) and the skills load themselves. Any other agent — Cursor,
+ub@ub-marketplace`) and the skills load themselves. Any other agent — Cursor,
 Codex, anything else — reads this file as the router: the skills are plain
 markdown and work anywhere.
 
@@ -29,10 +29,10 @@ because they bind before any pointer could fire. Three checks hold that shape:
 
 | Invocation / intent | Read and follow |
 | --- | --- |
-| `sb:map` — create, import, translate, present or evolve a service blueprint; a directory holding `blueprint-workspace.json` or a `blueprint/` folder | `skills/map/SKILL.md` |
-| `sb:slice` — cut a stakeholder view (actor journey, moment, lane, cell brief) out of an existing blueprint | `skills/slice/SKILL.md` |
-| `sb:audit` — run the consistency-check roster, then record and triage findings | `skills/audit/SKILL.md` |
-| `sb:whatif` — trace a hypothetical change, promoting only on acceptance | `skills/whatif/SKILL.md` |
+| `ub:map` — create, import, translate, present or evolve a service blueprint; a directory holding `blueprint-workspace.json` or a `blueprint/` folder | `skills/map/SKILL.md` |
+| `ub:slice` — cut a stakeholder view (actor journey, moment, lane, cell brief) out of an existing blueprint | `skills/slice/SKILL.md` |
+| `ub:audit` — run the consistency-check roster, then record and triage findings | `skills/audit/SKILL.md` |
+| `ub:whatif` — trace a hypothetical change, promoting only on acceptance | `skills/whatif/SKILL.md` |
 
 ## Rules that hold for every skill
 

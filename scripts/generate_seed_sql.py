@@ -51,7 +51,7 @@ Schema coverage (migrations 20260729120000_derived_layer +
     arrow and an `enables` edge, and the UUIDv5 qualified key ends in
     `#<kind>` so the two do not collide. label/note still have no IR shape.
   * DERIVED TABLES ARE NEVER SEEDED. slices/slides/findings/evidence/
-    business_models is a runtime output of the sb:* skills, not IR-authored
+    business_models is a runtime output of the ub:* skills, not IR-authored
     content — there is deliberately no IR shape for them. Seeds cannot break
     them either: derived tables reference cells softly (uuid[]/text[], no FK),
     so the scenario-replace delete cannot cascade into them. The --verify

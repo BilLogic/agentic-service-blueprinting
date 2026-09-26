@@ -120,7 +120,7 @@ const SERVICE = {
   // the column exists precisely so the name is not the identity.
   slug: 'keeping-a-blueprint-true',
   summary:
-    'The service blueprint of this template itself — how a team finds agentic service blueprinting, gets a service onto the board, uses it, and brings it back in line when the service moves. Replace it with your own service; until then it doubles as documentation.',
+    'The service blueprint of this template itself — how a team finds Uno Blueprint, gets a service onto the board, uses it, and brings it back in line when the service moves. Replace it with your own service; until then it doubles as documentation.',
   // One authored example per core kind, grounding each generic definition in
   // this deployment (the meta-blueprint). Shown under the kind's definition on
   // the board; a re-map of a real service replaces them with its own.
@@ -394,7 +394,7 @@ const SCENARIOS = [
   },
 
   // -------------------------------------------------------------------
-  // 2 · Map your service — sb:map, two starting points, two paths
+  // 2 · Map your service — ub:map, two starting points, two paths
   //     (name kept verbatim: the harness, findingFingerprint.test.ts, the
   //     audit playbook and skills/audit/SKILL.md all pin this string)
   // -------------------------------------------------------------------
@@ -404,7 +404,7 @@ const SCENARIOS = [
     phaseKey: 'SETUP',
     name: 'Map your service',
     summary:
-      'The sb:map pipeline from two starting points — a folder of documents, or somebody else’s diagram — converging on one validated, signed-off, imported blueprint.',
+      'The ub:map pipeline from two starting points — a folder of documents, or somebody else’s diagram — converging on one validated, signed-off, imported blueprint.',
     order: 1,
     layout: 'stacked',
     spineLane: 'owner',
@@ -432,7 +432,7 @@ const SCENARIOS = [
       },
     ],
     steps: [
-      'Invoke sb:map',
+      'Invoke ub:map',
       'Route by what exists',
       'Scope and settle the spine',
       'Read the sources',
@@ -495,7 +495,7 @@ const SCENARIOS = [
       // Slot siblings on a tech lane: one cell per touchpoint at the same
       // moment. They are app-side and seed-side only — slot > 0 carries no
       // cell_key, and the IR an adopter authors has no slot concept.
-      { lane: 'surface', col: 7, slot: 0, content: 'sb:map preview' },
+      { lane: 'surface', col: 7, slot: 0, content: 'ub:map preview' },
       {
         lane: 'surface', col: 7, slot: 1,
         content: 'Cell detail panel',
@@ -512,9 +512,9 @@ const SCENARIOS = [
 
       {
         lane: 'claude', col: 1,
-        content: 'Loads the sb:map skill and its elicitation protocol',
+        content: 'Loads the ub:map skill and its elicitation protocol',
         // Journey figure for this column — the storyboard row picks it up.
-        frame: figure('sb-map.svg'),
+        frame: figure('ub-map.svg'),
       },
       {
         lane: 'claude', col: 2,
@@ -693,7 +693,7 @@ const SCENARIOS = [
   },
 
   // -------------------------------------------------------------------
-  // 3 · Audit the check roster — sb:audit, happy vs a reopened finding
+  // 3 · Audit the check roster — ub:audit, happy vs a reopened finding
   // -------------------------------------------------------------------
   {
     ordinal: 3,
@@ -701,7 +701,7 @@ const SCENARIOS = [
     phaseKey: 'OPERATE',
     name: 'Audit the check roster',
     summary:
-      'sb:audit runs its roster of blind checks and lands what they find as triageable rows — and the re-run is where a finding that was closed too early comes back.',
+      'ub:audit runs its roster of blind checks and lands what they find as triageable rows — and the re-run is where a finding that was closed too early comes back.',
     order: 1,
     layout: 'stacked',
     spineLane: 'owner',
@@ -762,7 +762,7 @@ const SCENARIOS = [
           'Humans may change only findings.status. The audit points and never fixes, and it may supersede only its own check’s open rows.',
       },
 
-      { lane: 'claude', col: 1, content: 'Loads sb:audit and reads the audit playbook before executing any route' },
+      { lane: 'claude', col: 1, content: 'Loads ub:audit and reads the audit playbook before executing any route' },
       { lane: 'claude', col: 2, content: 'Exports the blueprint once — every auditor reads that same export' },
       { lane: 'claude', col: 3, content: 'Dispatches one auditor per check, in parallel and blind' },
       { lane: 'claude', col: 4, content: 'Dedupes by fingerprint: dismissed stays dismissed, resolved reopens, open updates in place' },
@@ -870,7 +870,7 @@ const SCENARIOS = [
   },
 
   // -------------------------------------------------------------------
-  // 4 · Ideate a change (what-if) — sb:whatif on a copy
+  // 4 · Ideate a change (what-if) — ub:whatif on a copy
   // -------------------------------------------------------------------
   {
     ordinal: 4,
@@ -878,7 +878,7 @@ const SCENARIOS = [
     phaseKey: 'OPERATE',
     name: 'Ideate a change (what-if)',
     summary:
-      'sb:whatif traces a proposed change through the dependency graph on a copy, and stops at a human gate — nothing lands that nobody agreed to.',
+      'ub:whatif traces a proposed change through the dependency graph on a copy, and stops at a human gate — nothing lands that nobody agreed to.',
     order: 2,
     layout: 'stacked',
     spineLane: 'owner',
@@ -908,7 +908,7 @@ const SCENARIOS = [
       { lane: 'owner', col: 7, content: 'Accepts the option, or drops it and leaves the blueprint exactly as it was' },
 
       { lane: 'surface', col: 3, content: 'Dependency tab\nDependency arrows' },
-      { lane: 'surface', col: 7, content: 'Nothing on the canvas changes until sb:map promotes an accepted change' },
+      { lane: 'surface', col: 7, content: 'Nothing on the canvas changes until ub:map promotes an accepted change' },
 
       { lane: 'claude', col: 1, content: 'Picks the operation: replay, restage, or prioritize' },
       { lane: 'claude', col: 2, content: 'Copies the blueprint into whatif/<key>/ — the hypothetical never touches the base' },
@@ -916,7 +916,7 @@ const SCENARIOS = [
       { lane: 'claude', col: 4, content: 'Judges the consequences against the operation it picked, not against a general opinion' },
       { lane: 'claude', col: 5, content: 'Dispatches blueprint-reviewer in whatif-claim mode and cuts every claim that fails' },
       { lane: 'claude', col: 6, content: 'Writes comparison.md with citations and zero verbatim excerpts' },
-      { lane: 'claude', col: 7, content: 'Emits a change request, then stops: promotion is a separate sb:map invocation' },
+      { lane: 'claude', col: 7, content: 'Emits a change request, then stops: promotion is a separate ub:map invocation' },
 
       {
         lane: 'scripts', col: 2,
@@ -989,7 +989,7 @@ const SCENARIOS = [
   },
 
   // -------------------------------------------------------------------
-  // 5 · Slice for an audience — sb:slice, whenever a room needs one view
+  // 5 · Slice for an audience — ub:slice, whenever a room needs one view
   // -------------------------------------------------------------------
   {
     ordinal: 5,
@@ -997,7 +997,7 @@ const SCENARIOS = [
     phaseKey: 'OPERATE',
     name: 'Slice for an audience',
     summary:
-      'sb:slice takes the one view an audience asked for out of the blueprint and carries it into presentation mode and PDF, still pointing at the cells it quotes.',
+      'ub:slice takes the one view an audience asked for out of the blueprint and carries it into presentation mode and PDF, still pointing at the cells it quotes.',
     order: 3,
     layout: 'stacked',
     spineLane: 'owner',
@@ -1674,10 +1674,10 @@ const header = `// GENERATED by scripts/generate_sample_blueprint.mjs — edit t
 // of this template itself. One service (${SERVICE.name}), four phases
 // (Discover → Setup → Operate → Maintain, Maintain looping back to Operate),
 // six
-// scenarios named for the skill journey — evaluating the template, sb:map from two
+// scenarios named for the skill journey — evaluating the template, ub:map from two
 // starting points (two divergent paths, each omitting the other's column),
-// the sb:audit roster (happy vs a reopened finding), sb:whatif on a copy,
-// sb:slice for one audience, and the small update loop. Every cell is a true
+// the ub:audit roster (happy vs a reopened finding), ub:whatif on a copy,
+// ub:slice for one audience, and the small update loop. Every cell is a true
 // statement about how the template behaves, so the sample doubles as
 // documentation. Registered as the offline fallback content in
 // src/data/blueprintFallbacks.ts and src/types/nav.ts; the matching database

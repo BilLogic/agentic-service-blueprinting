@@ -165,7 +165,7 @@ export const MARKERS = [
     why:
       'the meta-blueprint’s service name — this template mapped as its own ' +
       'service. Replace it with yours: scripts/generate_seed_sql.py from a ' +
-      'validated blueprint file, or let sb:map build one from your documents.',
+      'validated blueprint file, or let ub:map build one from your documents.',
   },
   {
     label: 'the sample’s own id namespace',

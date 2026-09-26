@@ -72,7 +72,7 @@
  *
  * `Notion`, `Slack`, `Figma`, `FigJam`: all legitimate product vocabulary
  * here. Figma is a linked design tool the app actually supports, a named UI
- * idiom in ~20 comments, and an ingest source format `sb:map` reads. Notion
+ * idiom in ~20 comments, and an ingest source format `ub:map` reads. Notion
  * names a row-styling idiom and a published lane taxonomy in the crosswalk.
  * Slack is an ingest source and an English word ("the slack matters").
  * Grepping for any of them would report 100+ lines, none of them coupling.

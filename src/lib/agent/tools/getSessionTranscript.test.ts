@@ -66,7 +66,7 @@ const ONE_OF_EACH: Record<TranscriptEvent['kind'], TranscriptEvent> = {
   status: { kind: 'status', text: 'paused for your confirmation' },
   declined: {
     kind: 'declined',
-    misses: [{ token: 'audit', label: '/sb:audit' }],
+    misses: [{ token: 'audit', label: '/ub:audit' }],
   },
 }
 
@@ -80,7 +80,7 @@ const WORDS_EXPECTED: Record<TranscriptEvent['kind'], string> = {
   assistant: 'four cells moved',
   tool: '3 paths',
   status: 'paused for your confirmation',
-  declined: '/sb:audit',
+  declined: '/ub:audit',
 }
 
 describe('get_session hands an agent the words, not the kind', () => {

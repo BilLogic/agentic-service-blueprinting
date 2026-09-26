@@ -3,7 +3,7 @@
  * The plugin contract's IDENTIFIER LAYER, written down so a rename is a diff.
  *
  * Everything listed here is resolved BY NAME at runtime by something outside
- * this repo: a consumer types `/sb:audit`, the audit skill dispatches an agent
+ * this repo: a consumer types `/ub:audit`, the audit skill dispatches an agent
  * called `auditor`, the canvas agent calls `read_reference { name: 'data-model' }`,
  * a hook fires by event. None of it type-checks. Renaming any of it breaks a
  * consumer at runtime with no compile error and no test failure — which is

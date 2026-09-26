@@ -86,7 +86,7 @@ afterAll(() => {
  * that test is about.
  */
 function stageBuildFiles(): string {
-  const scratch = mkdtempSync(path.join(tmpdir(), 'asb-deployment-'))
+  const scratch = mkdtempSync(path.join(tmpdir(), 'uno-blueprint-deployment-'))
   scratches.push(scratch)
 
   for (const file of [
@@ -393,7 +393,7 @@ describe('a deployment that keeps residents in its src', () => {
     expect(app?.replacement).toBe(
       path.join(realpathSync(scratch), 'node_modules', 'agentic-service-blueprinting', 'src'),
     )
-    expect(config.plugins.map((plugin) => plugin.name)).toContain('asb:overlay')
+    expect(config.plugins.map((plugin) => plugin.name)).toContain('uno-blueprint:overlay')
   })
 
   it('resolves a resident to the deployment and everything else to the package', () => {

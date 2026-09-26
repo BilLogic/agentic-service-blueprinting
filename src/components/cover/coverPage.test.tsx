@@ -66,7 +66,7 @@ const content = (over: Partial<CoverContent> = {}): CoverContent => ({
         {
           kind: 'skill',
           id: 's1',
-          command: '/sb:map',
+          command: '/ub:map',
           summary: 'Second body. Produces a validated blueprint file.',
         },
         {

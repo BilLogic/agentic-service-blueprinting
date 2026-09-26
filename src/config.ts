@@ -5,7 +5,7 @@
  * wordmark, breadcrumbs). Change it when instantiating the template for an
  * organization; the browser tab title lives in index.html.
  */
-export const ORG_NAME = 'Agentic Service Blueprint'
+export const ORG_NAME = 'Uno Blueprint'
 
 /**
  * The brand block a deployment writes its own values into.

@@ -154,7 +154,7 @@ export function overlayPlugin({ layers }) {
   let extensions = ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json']
 
   return {
-    name: 'asb:overlay',
+    name: 'uno-blueprint:overlay',
     enforce: 'pre',
     configResolved(config) {
       extensions = config.resolve.extensions

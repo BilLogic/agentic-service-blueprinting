@@ -9,14 +9,14 @@ import whatifSkill from '@/lib/agent/skill/skills/whatif.md?raw'
  * scripts/sync-canvas-skills.mjs, never authored here. A /command loads its
  * skill into the system prompt for that message only.
  *
- * Commands are namespaced `sb:` to match the plugin invocation exactly —
- * /sb:audit here and /sb:audit in the IDE are the same skill. The official
+ * Commands are namespaced `ub:` to match the plugin invocation exactly —
+ * /ub:audit here and /ub:audit in the IDE are the same skill. The official
  * name is the ONLY spelling that invokes one; a bare alias is a search term
  * and a near-miss hint, and resolves nothing.
  */
 export type AgentSkillCommand = {
   /** The canonical /command token, without the slash. */
-  id: 'sb:map' | 'sb:slice' | 'sb:audit' | 'sb:whatif'
+  id: 'ub:map' | 'ub:slice' | 'ub:audit' | 'ub:whatif'
   /**
    * Bare spellings a reader reaches for. Deliberately half-alive: they match
    * in the menu and they name the closest skill when a token resolves to
@@ -32,30 +32,30 @@ export type AgentSkillCommand = {
 
 export const AGENT_SKILL_COMMANDS: AgentSkillCommand[] = [
   {
-    id: 'sb:map',
+    id: 'ub:map',
     aliases: ['map'],
-    label: '/sb:map',
+    label: '/ub:map',
     summary: 'Create or evolve a blueprint from notes and conversation',
     content: mapSkill,
   },
   {
-    id: 'sb:slice',
+    id: 'ub:slice',
     aliases: ['slice'],
-    label: '/sb:slice',
+    label: '/ub:slice',
     summary: 'Cut a stakeholder view out of the blueprint',
     content: sliceSkill,
   },
   {
-    id: 'sb:audit',
+    id: 'ub:audit',
     aliases: ['audit'],
-    label: '/sb:audit',
+    label: '/ub:audit',
     summary: 'Run the check roster — findings recorded for triage',
     content: auditSkill,
   },
   {
-    id: 'sb:whatif',
+    id: 'ub:whatif',
     aliases: ['whatif'],
-    label: '/sb:whatif',
+    label: '/ub:whatif',
     summary: 'Trace a hypothetical change — promote it only on acceptance',
     content: whatifSkill,
   },
@@ -107,14 +107,14 @@ export type SkillLookup = { query: string; start: number; end: number }
  *
  * A space after the token closes it, because the space is not in the token's
  * character class and the token has to reach the end. So does a second slash:
- * `/sb:audit/notes.md` is a path, and the token has to be the last thing in
+ * `/ub:audit/notes.md` is a path, and the token has to be the last thing in
  * the draft for it to be a lookup at all.
  *
  * A DRAFT THAT OPENS WITH A RESOLVED SKILL still gets a lookup on its later
  * tokens. A guard used to refuse one — a head command owns its arguments in
  * the tool this composer mirrors, so a slash inside them is argument text —
  * and it was deleted, because a message here carries as many skills as its
- * text names: with the guard, `/sb:map notes then /sb:au` offered nothing and
+ * text names: with the guard, `/ub:map notes then /ub:au` offered nothing and
  * the second skill had to be typed out in full, which is the feature refusing
  * itself. What the guard was protecting costs little without it: a path typed
  * for a skill to read opens a lookup whose query matches no skill, and a
@@ -149,14 +149,14 @@ export function findSkillLookup(draft: string): SkillLookup | null {
 
 /**
  * Accepting from the menu COMPLETES the token where it sits, the way a shell
- * completion does: `Hey can u /sb:aud` becomes `Hey can u /sb:audit `, and the
+ * completion does: `Hey can u /ub:aud` becomes `Hey can u /ub:audit `, and the
  * prose either side of the span is not read, moved or trimmed.
  *
  * It does not remove the token, and that is the reversal. Accepting used to
  * lift the span out of the prose and render the skill as a badge in a row
  * above the field, which moved the reader's word to the front of the message
- * and lost the position they had typed it in — `asdasd /sb:audit` became
- * `[/sb:audit] asdasd`. The token IS the invocation now, so it stays in the
+ * and lost the position they had typed it in — `asdasd /ub:audit` became
+ * `[/ub:audit] asdasd`. The token IS the invocation now, so it stays in the
  * sentence and takes a colour instead.
  *
  * The trailing space earns its place twice: it closes the lookup, because a
@@ -168,7 +168,7 @@ export function findSkillLookup(draft: string): SkillLookup | null {
  * A span the prose continues after keeps the space it already has rather than
  * gaining a second: the near-miss offer rewrites a token in mid-sentence
  * through here, and "then /audit the intake" would otherwise come back as
- * "then /sb:audit  the intake" — a visible hole in the reader's own sentence,
+ * "then /ub:audit  the intake" — a visible hole in the reader's own sentence,
  * from the one caller whose span does not reach the end of the draft.
  *
  * THE CARET COMES BACK WITH THE TEXT, at the far side of what was just
@@ -211,12 +211,12 @@ export type SkillTokenSpan = {
  * above gets its path safety free from the `$` anchor — a token that has to be
  * the last thing in the draft cannot have `/notes.md` behind it — and this
  * walk, which reads the whole draft, has to say so itself: without the
- * lookahead, "check /sb:audit/notes.md" stops the token at the slash,
+ * lookahead, "check /ub:audit/notes.md" stops the token at the slash,
  * resolves it, and colours a path segment as a skill that will run.
  *
  * The lookahead forbids a token character as well as a slash, and that is
  * load-bearing rather than belt-and-braces: forbidding only the slash lets
- * the match BACKTRACK to a shorter token — "sb:audi" — which satisfies it and
+ * the match BACKTRACK to a shorter token — "ub:audi" — which satisfies it and
  * leaves the walk reading tokens the reader never typed.
  *
  * Both readers of the draft go through here — the spans that get coloured and
@@ -264,8 +264,8 @@ export function findSkillTokens(draft: string): SkillTokenSpan[] {
  * The skills a draft RUNS: one per resolved token, in the order the tokens
  * appear, each skill once however many times it is named.
  *
- * Ordered, because the order is the instruction — "/sb:map my notes then
- * /sb:audit it" is two steps in a sequence, and the loop is told to work
+ * Ordered, because the order is the instruction — "/ub:map my notes then
+ * /ub:audit it" is two steps in a sequence, and the loop is told to work
  * through them in that sequence rather than blend them. Deduped, because a
  * reader who names a skill twice in one sentence means it once, and a second
  * copy of a multi-kilobyte SKILL.md buys nothing but prompt. UNCAPPED: there

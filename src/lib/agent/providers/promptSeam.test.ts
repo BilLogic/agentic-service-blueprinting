@@ -15,7 +15,7 @@ import { googleAdapter } from '@/lib/agent/providers/google'
 import { openaiAdapter } from '@/lib/agent/providers/openai'
 import type { ChatInput } from '@/lib/agent/providers/provider'
 
-const STABLE = 'ROLE and adapter.\n\n--- active skill: /sb:map ---\nMAP BODY ENDS HERE'
+const STABLE = 'ROLE and adapter.\n\n--- active skill: /ub:map ---\nMAP BODY ENDS HERE'
 const VOLATILE = '\n\n--- current context ---\nPhase 2 is open.'
 
 const request = (over: Partial<ChatInput> = {}): ChatInput => ({

@@ -2,10 +2,10 @@ import blueprintAnatomy from '../../../docs/assets/blueprint-anatomy.svg'
 import cellAnatomy from '../../../docs/assets/cell-anatomy.svg'
 import dataModelHierarchy from '../../../docs/assets/data-model-hierarchy.svg'
 import fourWaysIn from '../../../docs/assets/four-ways-in.svg'
-import sbAudit from '../../../docs/assets/sb-audit.svg'
-import sbMap from '../../../docs/assets/sb-map.svg'
-import sbSlice from '../../../docs/assets/sb-slice.svg'
-import sbWhatif from '../../../docs/assets/sb-whatif.svg'
+import ubAudit from '../../../docs/assets/ub-audit.svg'
+import ubMap from '../../../docs/assets/ub-map.svg'
+import ubSlice from '../../../docs/assets/ub-slice.svg'
+import ubWhatif from '../../../docs/assets/ub-whatif.svg'
 import skillArchitecture from '../../../docs/assets/skill-architecture.svg'
 import sliceConcept from '../../../docs/assets/slice-concept.svg'
 import slicingModel from '../../../docs/assets/slicing-model.svg'
@@ -82,27 +82,27 @@ export const packageCoverFigures = {
     width: 880,
     height: 334,
   },
-  sbAudit: {
-    src: sbAudit,
-    alt: 'How sb:audit runs its check roster and records findings for triage',
+  ubAudit: {
+    src: ubAudit,
+    alt: 'How ub:audit runs its check roster and records findings for triage',
     width: 880,
     height: 292,
   },
-  sbMap: {
-    src: sbMap,
-    alt: 'How sb:map turns documents, sessions, or a foreign diagram into a validated blueprint',
+  ubMap: {
+    src: ubMap,
+    alt: 'How ub:map turns documents, sessions, or a foreign diagram into a validated blueprint',
     width: 880,
     height: 292,
   },
-  sbSlice: {
-    src: sbSlice,
-    alt: 'How sb:slice selects and orders cells into a stakeholder view',
+  ubSlice: {
+    src: ubSlice,
+    alt: 'How ub:slice selects and orders cells into a stakeholder view',
     width: 880,
     height: 292,
   },
-  sbWhatif: {
-    src: sbWhatif,
-    alt: 'How sb:whatif traces a proposed change downstream on a copy',
+  ubWhatif: {
+    src: ubWhatif,
+    alt: 'How ub:whatif traces a proposed change downstream on a copy',
     width: 880,
     height: 292,
   },

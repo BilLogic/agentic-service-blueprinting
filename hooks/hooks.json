@@ -1,5 +1,5 @@
 {
-  "description": "sb plugin hooks: workspace status on session start, IR auto-validation after edits, service-role secret guard before writes. Every script fast-exits in non-blueprint contexts (plugin hooks fire in every session once the plugin is enabled).",
+  "description": "ub plugin hooks: workspace status on session start, IR auto-validation after edits, service-role secret guard before writes. Every script fast-exits in non-blueprint contexts (plugin hooks fire in every session once the plugin is enabled).",
   "hooks": {
     "SessionStart": [
       {
