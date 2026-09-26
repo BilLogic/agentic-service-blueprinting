@@ -52,7 +52,7 @@ Everything a plan carried has exactly one home elsewhere, and each of these
 was already true before this record:
 
 - **Work in flight** is
-  [GitHub issues](https://github.com/BilLogic/agentic-service-blueprinting/issues).
+  [GitHub issues](https://github.com/BilLogic/uno-blueprint/issues).
   A parent issue holds the problem statement and the argument; a child issue is
   what a pull request closes.
 - **A decision that is hard to reverse, surprising without its context, or a

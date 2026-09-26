@@ -5,7 +5,7 @@ summary: The deployed script policy stays `default-src 'self'` with no `'unsafe-
 # 29. The script policy stays strict, and `jitless` makes that free
 
 **Status** Accepted — 2026-09-18. Closes the question
-[#899](https://github.com/BilLogic/agentic-service-blueprinting/issues/899)
+[#899](https://github.com/BilLogic/uno-blueprint/issues/899)
 filed and left open, which concluded there was no acceptable fix.
 **Context** `public/_headers`, `src/lib/validationJit.ts`, `src/App.tsx`,
 `src/lib/agent/tools/definition.ts`. Beside

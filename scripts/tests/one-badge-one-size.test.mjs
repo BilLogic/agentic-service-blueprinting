@@ -74,7 +74,7 @@ const APP_SOURCE = appLayers(REPO_ROOT)[0]
  * parent.
  *
  * So a finding says `src/components/…` whether that `src` is this repository's
- * or the one inside `node_modules/agentic-service-blueprinting`, and
+ * or the one inside `node_modules/uno-blueprint`, and
  * `BADGE_COMPONENT` below is one path rather than one per deployment.
  *
  * It is also the directory a deployment depends on this package BY, which is
@@ -377,7 +377,7 @@ test('a nested element in a prop does not end the tag', () => {
 function treeThatMountsThePackage() {
   const root = mkdtempSync(join(tmpdir(), 'app-root-'))
   mkdirSync(join(root, 'node_modules'))
-  symlinkSync(APP_PACKAGE, join(root, 'node_modules', 'agentic-service-blueprinting'))
+  symlinkSync(APP_PACKAGE, join(root, 'node_modules', 'uno-blueprint'))
   return { root, done: () => rmSync(root, { recursive: true, force: true }) }
 }
 
@@ -397,7 +397,7 @@ test('a tree that reads the application out of the package walks the same call s
     const [mounted] = appLayers(tree.root)
     assert.equal(
       mounted,
-      join(tree.root, 'node_modules', 'agentic-service-blueprinting', 'src'),
+      join(tree.root, 'node_modules', 'uno-blueprint', 'src'),
     )
     assert.deepEqual(
       [...applicationSources(mounted)].sort(),

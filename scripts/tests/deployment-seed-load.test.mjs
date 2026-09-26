@@ -291,19 +291,19 @@ test('the tables read back are the ones the seed INSERTS into, once each', () =>
 
 test('exactly one deployment beside this checkout is the one it runs against', () => {
   const candidates = [
-    { dir: '/w/another-copy', name: 'agentic-service-blueprinting', hasSeed: true },
+    { dir: '/w/another-copy', name: 'uno-blueprint', hasSeed: true },
     { dir: '/w/their-app', name: 'their-app', hasSeed: true },
     { dir: '/w/no-database', name: 'other', hasSeed: false },
   ]
-  assert.deepEqual(chooseDeployment(candidates, 'agentic-service-blueprinting'), {
+  assert.deepEqual(chooseDeployment(candidates, 'uno-blueprint'), {
     dir: '/w/their-app',
   })
 })
 
 test('none and several both skip, and the message says which it was', () => {
   const none = chooseDeployment(
-    [{ dir: '/w/another-copy', name: 'agentic-service-blueprinting', hasSeed: true }],
-    'agentic-service-blueprinting',
+    [{ dir: '/w/another-copy', name: 'uno-blueprint', hasSeed: true }],
+    'uno-blueprint',
   )
   assert.match(none.skip, /no checkout beside this one/)
 
@@ -312,7 +312,7 @@ test('none and several both skip, and the message says which it was', () => {
       { dir: '/w/their-app', name: 'their-app', hasSeed: true },
       { dir: '/w/other-app', name: 'other-app', hasSeed: true },
     ],
-    'agentic-service-blueprinting',
+    'uno-blueprint',
   )
   assert.match(several.skip, /2 checkouts/)
   assert.match(several.skip, /their-app, other-app/)

@@ -12,7 +12,7 @@
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
 // Through the alias, not up two directories. A deployment reads the
-// application out of `node_modules/agentic-service-blueprinting` and has no
+// application out of `node_modules/uno-blueprint` and has no
 // `src` to walk up into, so `../../src/lib/…` is a file that is not there and
 // the suite cannot even load. `@/…` is the same pair of roots the build
 // resolves, so this import lands on whichever one holds the application.

@@ -2679,7 +2679,7 @@ name, with the generator writing both halves for a tree that has no `src`.
   copy of any of the three files would keep the old one; none does.
 - A generated registry or nav module can now import
   `SampleBlueprintRegistry`, `NavItem` and the board's shapes from
-  `agentic-service-blueprinting`; `scripts/generate_fallbacks.py --registry-out
+  `uno-blueprint`; `scripts/generate_fallbacks.py --registry-out
 … --nav-out …` writes both halves as standalone modules outside `src`.
 
 ### Patch Changes
@@ -2845,7 +2845,7 @@ tool description that taught the dependency direction backwards.
   `scripts/generate_fallbacks.py --register` run — or the walk has no board to
   find.
 - A harness that bundles the tool definitions imports `viteImportsPlugin` from
-  `agentic-service-blueprinting/vite-imports` instead of carrying a `?raw`
+  `uno-blueprint/vite-imports` instead of carrying a `?raw`
   loader of its own.
 - `check:database-types-superset` now reads your `types/database.ts` as the
   declaration of your database: tables you never migrated are information,
@@ -3135,7 +3135,7 @@ tool description that taught the dependency direction backwards.
   command that works.** From the root of a tree that installs this package:
 
   ```bash
-  node node_modules/agentic-service-blueprinting/render-walk/run.mjs
+  node node_modules/uno-blueprint/render-walk/run.mjs
   ```
 
   `npx render-walk` is the same thing through the bin the install links, and
@@ -3199,7 +3199,7 @@ identifier layer is unchanged, one alias the roster no longer lists aside.
   serves both layouts.
 - **The build overlay and the database types.** A deployment's `src` overlays
   the package's per path (`scripts/overlay.mjs`, exported as
-  `agentic-service-blueprinting/overlay`); the all-or-nothing rule is
+  `uno-blueprint/overlay`); the all-or-nothing rule is
   withdrawn. `src/types/database.ts` is generated whole from the replayed
   portable core, and a superset check ships for a deployment's own types.
   Each input a deployment owned inside `src` has a config home, named in one
@@ -3243,7 +3243,7 @@ identifier layer is unchanged, one alias the roster no longer lists aside.
   over the working directory. Run `check:database-types-superset` against
   your own generated types. To run the render walk against your own sample
   board, install `@playwright/test@1.62.0` and Chromium and point Playwright
-  at `node_modules/agentic-service-blueprinting/render-walk/playwright.config.ts`
+  at `node_modules/uno-blueprint/render-walk/playwright.config.ts`
   (see `render-walk/README.md`). Residents you still keep under `src` are
   yours to list; every path you delete is answered by the package.
 
@@ -3882,7 +3882,7 @@ gate no longer inherits a pointer to an issue its own tracker does not have.
 - Take `vite.config.ts`, `tsconfig.json` and `tsconfig.app.json` with the
   release as usual. The alias, the TypeScript include and the test glob all ship
   in them, so there is nothing to edit and nothing to unenrol.
-- Keep importing `agentic-service-blueprinting/styles.css` exactly as before. A
+- Keep importing `uno-blueprint/styles.css` exactly as before. A
   deployment's own markup in `deployment/` is still found by the ordinary scan
   of its project root, and its stylesheet gains the application's utilities
   alongside it.
@@ -4033,7 +4033,7 @@ slice actually carries, which is `authorship`.
   import type {
     CoverContent,
     DeploymentConfig,
-  } from "agentic-service-blueprinting";
+  } from "uno-blueprint";
 
   export const coverContent: CoverContent = {
     title: "The workspace name shown on the cover and in app chrome",
@@ -5919,7 +5919,7 @@ null` retires it when its cell goes; a check keeps them mutually exclusive and
   for every other alias, from this package's own files.
 
   Each mapping now names TWO roots, tried in order: `./src`, then
-  `./node_modules/agentic-service-blueprinting/src`. TypeScript's `paths` takes
+  `./node_modules/uno-blueprint/src`. TypeScript's `paths` takes
   an array and falls back per module. `vite.config.ts` chooses the first root
   that exists on disk.
 
@@ -9305,7 +9305,7 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
 - 7757f0e: The App is mountable: `App({ config })` and a typed `DeploymentConfig`.
 
   A deployment of this template mounts the whole app rather than forking it:
-  `import { App } from 'agentic-service-blueprinting'` and render it with a
+  `import { App } from 'uno-blueprint'` and render it with a
   `DeploymentConfig` — `brand` (name, logo, accent), `content` (workspace and
   cover titles) and a reserved `agent` section. Missing keys resolve to the
   template's own defaults, so a config of `{}` is the standalone app, and the

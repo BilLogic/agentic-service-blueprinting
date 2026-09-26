@@ -25,7 +25,7 @@ import { defineConfig, devices } from '@playwright/test'
  * deployment that installs this package enrols by running `run.mjs` beside
  * this file, from its own root:
  *
- *   node node_modules/agentic-service-blueprinting/render-walk/run.mjs
+ *   node node_modules/uno-blueprint/render-walk/run.mjs
  *
  * That runner copies this directory out of `node_modules` first and hands
  * Playwright the copy, because NEITHER LOADER WILL COMPILE A TYPESCRIPT FILE

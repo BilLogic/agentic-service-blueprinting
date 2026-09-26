@@ -5,7 +5,7 @@ Every word a panel puts in front of a reader, and the name behind it.
 records what every current word is **bound to**, the agreements included. A
 table of divergences alone cannot say that the rest are fine — "not listed"
 would mean both "aligned" and "nobody looked", and that ambiguity is the state
-[#89](https://github.com/BilLogic/agentic-service-blueprinting/issues/89) was
+[#89](https://github.com/BilLogic/uno-blueprint/issues/89) was
 raised about: *"how come we have inconsistent naming from front and backend
 again (i.e., resources vs. links)?"* The complaint was never that the words
 differ. It was that no document said which of the differences were on purpose.

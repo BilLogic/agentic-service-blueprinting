@@ -3,7 +3,7 @@
  * The fourth place this repo states its version: the git tag.
  *
  * `check-version-agreement.mjs` holds the three files together. None of them
- * is what a consumer actually pins — `github:BilLogic/agentic-service-blueprinting#v0.4.0`
+ * is what a consumer actually pins — `github:BilLogic/uno-blueprint#v0.4.0`
  * resolves a TAG, and a lockfile integrity hash exists only because a tag
  * names one immutable tree. A release with no tag states a version that
  * nothing downstream can ask for.

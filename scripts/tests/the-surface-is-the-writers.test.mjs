@@ -93,7 +93,7 @@ const readApp = (path) => {
 /**
  * The application, wherever this tree keeps it.
  *
- * A deployment reads it out of `node_modules/agentic-service-blueprinting/src`
+ * A deployment reads it out of `node_modules/uno-blueprint/src`
  * and holds no `src` of its own, and a walk that starts at `src` there finds no
  * writer — which satisfies every rule below at once, because a surface with no
  * writers to contradict it cannot be contradicted. `appSources` is the same

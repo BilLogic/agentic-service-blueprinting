@@ -62,7 +62,7 @@
  *
  *     // main.tsx
  *     import './deploymentBootstrap'          // configures the namespace
- *     import { App } from 'agentic-service-blueprinting'
+ *     import { App } from 'uno-blueprint'
  *
  * Getting that wrong is LOUD rather than silent: the prefix freezes the first
  * time `storageKey` reads it, and a later call that disagrees throws.

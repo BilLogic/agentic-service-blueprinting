@@ -16,7 +16,7 @@ summary: The build's application alias stops pointing at one root and becomes an
 deployment imports this template rather than vendoring it, and the build
 config it shares with the deployment is what decides where the application
 comes from. That decision was made per ROOT: the `@` alias pointed at the
-first of `./src` and `./node_modules/agentic-service-blueprinting/src` that
+first of `./src` and `./node_modules/uno-blueprint/src` that
 existed, and the loser was never consulted. So a deployment's `src` was ALL OR
 NOTHING — a `src` holding one file captured every `@/…` import and resolved
 none of the rest.
@@ -63,7 +63,7 @@ held it, and whether it was found at all; `overlayPlugin({ layers })` is the
 same rule as a Vite plugin, enforced
 `pre`, intercepting ids the alias has already rewritten into the package's
 root. Neither names a root — where the roots are is the build config's fact.
-The package exports the module as `agentic-service-blueprinting/overlay` and
+The package exports the module as `uno-blueprint/overlay` and
 `vite.config.ts` imports it **by package name**, which is the one spelling
 that resolves on both sides: out of `node_modules` in a deployment, and by
 self-reference here. It is imported only when the package is installed, so

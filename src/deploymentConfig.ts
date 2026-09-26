@@ -18,7 +18,7 @@
  * This package is consumed as SOURCE — a git install, resolved by a bundler
  * that understands this repo's `@/` alias and Vite's `import.meta.env` and
  * `?raw` — until a built distribution exists. The host also imports the
- * stylesheet, `agentic-service-blueprinting/styles.css`; `App` deliberately
+ * stylesheet, `uno-blueprint/styles.css`; `App` deliberately
  * does not, so a host owns the one place its CSS is loaded.
  *
  * ── WHAT THIS TYPE DOES NOT COVER ─────────────────────────────────────────

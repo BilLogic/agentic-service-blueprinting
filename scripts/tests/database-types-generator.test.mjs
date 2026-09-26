@@ -86,7 +86,7 @@ test('the superset check a deployment runs loads nothing that needs a developmen
   // resolves out of node_modules in a deployment and by self-reference here.
   for (const specifier of bare) {
     assert.ok(
-      specifier.startsWith('node:') || specifier.startsWith('agentic-service-blueprinting/'),
+      specifier.startsWith('node:') || specifier.startsWith('uno-blueprint/'),
       `${specifier} is not a built-in module`,
     )
   }

@@ -18,7 +18,7 @@ list is the gate on the way there; see
 ## Context
 
 [ADR 0019](./0019-the-deployment-is-a-deployment-of-the-template.md) (BilLogic/plus-uno-blueprint
-ADR 0012 at the time it was written) settled that `agentic-service-blueprinting`
+ADR 0012 at the time it was written) settled that `uno-blueprint`
 is the canonical application code and the live instance is a deployment over
 it, and deliberately left *how* the deployment consumes that code to its own
 record. This is that record. Four choices, each downstream of the last:
@@ -28,7 +28,7 @@ record. This is that record. Four choices, each downstream of the last:
    submodule) inside it.
 2. **A git dependency, pinned by release tag.** The dependency is a git ref —
    the mechanism the live instance already runs for this template's IR schema
-   and seed generator (`agentic-service-blueprinting#v0.5.0`), not a package
+   and seed generator (`uno-blueprint#v0.5.0`), not a package
    published to a registry — pinned to a **release tag**, with a commit SHA as
    the escape hatch for an urgent hotfix between releases.
 3. **The whole app, not a component library.** This template exports a

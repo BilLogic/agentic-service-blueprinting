@@ -146,7 +146,7 @@ NAV_FILE = Path("src/data/sampleNav.ts")
 # The name a deployment imports this package by. Only the standalone modules
 # below spell it: the blocks written into this repository's own src/ import
 # through '@/…', because there the package IS the tree.
-PACKAGE_NAME = "agentic-service-blueprinting"
+PACKAGE_NAME = "uno-blueprint"
 # Where the generated data module names `BlueprintData` when it is written
 # into this repository's own src/ — the alias, since there the package IS the
 # tree. A deployment's copy names the package instead.

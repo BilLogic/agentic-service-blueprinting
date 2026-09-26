@@ -252,7 +252,7 @@ test('the vocabulary follows the application, into the package when this tree ha
 
   const imported = vocabularySource('/repo', (p) => p.includes('node_modules'))
   assert.equal(imported.owner, 'package')
-  assert.match(imported.path, /node_modules\/agentic-service-blueprinting\/src\/lib\/panelTerms\.ts$/)
+  assert.match(imported.path, /node_modules\/uno-blueprint\/src\/lib\/panelTerms\.ts$/)
 })
 
 test('the schema declaration is the deployment root first, and the package only as a default', () => {
@@ -264,7 +264,7 @@ test('the schema declaration is the deployment root first, and the package only 
 
   const fallback = schemaDeclaration('/repo', () => false)
   assert.equal(fallback.owner, 'package')
-  assert.match(fallback.path, /node_modules\/agentic-service-blueprinting\/src\/types\/database\.ts$/)
+  assert.match(fallback.path, /node_modules\/uno-blueprint\/src\/types\/database\.ts$/)
 })
 
 /* ------------------------------------------ the database has the last word */

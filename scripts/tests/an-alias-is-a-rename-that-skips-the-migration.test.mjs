@@ -43,7 +43,7 @@ const app = sweep({ subject: 'app', root: REPO_ROOT })
  *
  * A select string is APPLICATION source by definition — it is the text a
  * component hands PostgREST — and a deployment reads the application out of
- * `node_modules/agentic-service-blueprinting` with no `src` beside its
+ * `node_modules/uno-blueprint` with no `src` beside its
  * `scripts/`. The hand-rolled walk that started at `resolve(REPO_ROOT, 'src')`
  * crashed there, and the day somebody made it tolerant of a missing directory
  * it would have done the worse thing instead: swept nothing and passed. The

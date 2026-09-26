@@ -12,7 +12,7 @@
     "paths": {
       "@/*": [
         "./src/*",
-        "./node_modules/agentic-service-blueprinting/src/*"
+        "./node_modules/uno-blueprint/src/*"
       ],
       "~/*": [
         "./deployment/*"

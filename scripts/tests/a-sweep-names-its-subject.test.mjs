@@ -20,7 +20,7 @@ import { dirname, join } from 'node:path'
 import { chooseDeployment } from '../seed-list.mjs'
 import { SUBJECTS, forgetUnverified, sweep } from '../sweep.mjs'
 
-const PACKAGE = 'node_modules/agentic-service-blueprinting'
+const PACKAGE = 'node_modules/uno-blueprint'
 
 /** A throwaway tree holding exactly the files named, each with the text given. */
 function tree(files) {
@@ -100,7 +100,7 @@ test('the app with one layer is that layer, whichever it is', () => {
 
 test('no application anywhere is a failure that names both places it looked', () => {
   const root = scratch({ 'docs/a.md': '# a' })
-  assert.throws(() => sweep({ subject: 'app', root }), /neither src nor node_modules\/agentic-service-blueprinting\/src/)
+  assert.throws(() => sweep({ subject: 'app', root }), /neither src nor node_modules\/uno-blueprint\/src/)
 })
 
 test('a path that is not under src/ is not the app’s to locate', () => {
@@ -235,7 +235,7 @@ test('the reference documents are the package’s, out of the install where ther
   const bare = scratch({ 'references/mine.md': 'mine', [`${PACKAGE}/package.json`]: '{}' })
   assert.throws(
     () => sweep({ subject: 'reference-docs', root: bare }),
-    /no references under .*node_modules\/agentic-service-blueprinting: this tree has no reference documents/,
+    /no references under .*node_modules\/uno-blueprint: this tree has no reference documents/,
   )
 })
 
@@ -248,9 +248,9 @@ test('the deployment seed is the one sibling that ships one and is not this pack
     mkdirSync(dirname(join(parent, rel)), { recursive: true })
     writeFileSync(join(parent, rel), text)
   }
-  write('template/package.json', '{"name":"agentic-service-blueprinting"}')
+  write('template/package.json', '{"name":"uno-blueprint"}')
   write('template/src/a.ts', '')
-  write('clone/package.json', '{"name":"agentic-service-blueprinting"}')
+  write('clone/package.json', '{"name":"uno-blueprint"}')
   write('clone/supabase/seed.sql', '-- a second checkout of this package')
   write('deployment/package.json', '{"name":"a-deployment"}')
   write('deployment/supabase/seed.sql', '-- the deployment')

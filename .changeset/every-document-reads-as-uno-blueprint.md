@@ -1,5 +1,5 @@
 ---
-'agentic-service-blueprinting': patch
+'uno-blueprint': patch
 ---
 
 Every document reads as Uno Blueprint

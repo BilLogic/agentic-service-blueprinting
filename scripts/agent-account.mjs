@@ -51,7 +51,7 @@
 /* ------------------------------------------------ where a source comes from */
 
 /** The package a deployment reads the application out of. */
-const PACKAGE = 'agentic-service-blueprinting'
+const PACKAGE = 'uno-blueprint'
 
 /**
  * The first of `candidates` that exists, or the last of them when none does —

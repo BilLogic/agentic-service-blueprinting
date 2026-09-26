@@ -117,7 +117,7 @@ function stageBuildFiles(): string {
  * snapshot of it.
  */
 function mountThePackage(scratch: string): void {
-  symlinkSync(repoRoot, path.join(scratch, 'node_modules', 'agentic-service-blueprinting'))
+  symlinkSync(repoRoot, path.join(scratch, 'node_modules', 'uno-blueprint'))
 }
 
 /**
@@ -137,7 +137,7 @@ function mountThePackage(scratch: string): void {
  * tree after this is what that test is about.
  */
 function installThePackage(scratch: string): string {
-  const installed = path.join(scratch, 'node_modules', 'agentic-service-blueprinting')
+  const installed = path.join(scratch, 'node_modules', 'uno-blueprint')
   mkdirSync(installed, { recursive: true })
   copyFileSync(path.join(repoRoot, 'package.json'), path.join(installed, 'package.json'))
   for (const directory of ['src', 'docs', 'scripts']) {
@@ -391,7 +391,7 @@ describe('a deployment that keeps residents in its src', () => {
     const app = aliasEntries(config.resolve.alias).find((entry) => entry.find === '@')
     // The config resolves its own directory to its real path; so does this.
     expect(app?.replacement).toBe(
-      path.join(realpathSync(scratch), 'node_modules', 'agentic-service-blueprinting', 'src'),
+      path.join(realpathSync(scratch), 'node_modules', 'uno-blueprint', 'src'),
     )
     expect(config.plugins.map((plugin) => plugin.name)).toContain('uno-blueprint:overlay')
   })
@@ -524,7 +524,7 @@ describe('the stylesheet built from each root', () => {
     writeStylesheetEntry(
       scratch,
       `${DEPLOYMENT_ROOT_DIRNAME}/stylesheet.ts`,
-      'agentic-service-blueprinting/styles.css',
+      'uno-blueprint/styles.css',
     )
     return scratch
   }
@@ -596,7 +596,7 @@ describe('a deployment’s dev server', () => {
       path.join(deployment, 'main.tsx'),
       [
         "import { createRoot } from 'react-dom/client'",
-        "import { App } from 'agentic-service-blueprinting'",
+        "import { App } from 'uno-blueprint'",
         '',
         "createRoot(document.getElementById('root')!).render(<App />)",
         '',

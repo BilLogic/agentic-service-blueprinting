@@ -5,8 +5,8 @@ summary: This repo ships two contracts with different failure modes — a plugin
 # 1. Two contract tiers, and a frozen identifier layer
 
 **Status** Accepted — 2026-08-25
-**Context** [#54](https://github.com/BilLogic/agentic-service-blueprinting/issues/54),
-[#55](https://github.com/BilLogic/agentic-service-blueprinting/issues/55)
+**Context** [#54](https://github.com/BilLogic/uno-blueprint/issues/54),
+[#55](https://github.com/BilLogic/uno-blueprint/issues/55)
 
 ## Context
 
@@ -98,7 +98,7 @@ what a human reads; both derive from it. `npm run version` runs
 `npm run check:version` fails when the three disagree and runs in CI.
 
 Every release gets an annotated `v<version>` tag on `main`. The tag is the only
-thing a consumer can actually pin — `github:BilLogic/agentic-service-blueprinting#v0.4.0`
+thing a consumer can actually pin — `github:BilLogic/uno-blueprint#v0.4.0`
 resolves a tag, and the lockfile integrity hash exists because a tag names one
 immutable tree. `npm run check:release-tag` guards the tags that exist; the
 release procedure ([docs/engineering/releasing.md](../engineering/releasing.md))
@@ -108,7 +108,7 @@ runs it with `--require`.
 
 `private` blocks `npm publish`, which is what we want: publishing to npm is
 explicitly not the distribution path (#54). It does **not** block the path that
-is — `npm pack github:BilLogic/agentic-service-blueprinting` resolves the repo,
+is — `npm pack github:BilLogic/uno-blueprint` resolves the repo,
 packs 566 files and prints an integrity hash today, with `private: true` set
 and no `files` field.
 

@@ -79,7 +79,7 @@ const ROOT = resolve(new URL('../..', import.meta.url).pathname)
  *
  * `resolve(ROOT, 'src')` is this repository's answer and only this
  * repository's: a deployment installs this package and reads the application
- * out of `node_modules/agentic-service-blueprinting`, with no `src` of its
+ * out of `node_modules/uno-blueprint`, with no `src` of its
  * own. `readdirSync` on a directory that is not there threw, which is the
  * loud form of this defect and the lucky one — a walk of its own is one line
  * away from the silent form, where a tolerated absence sweeps nothing and

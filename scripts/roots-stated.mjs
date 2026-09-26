@@ -42,7 +42,7 @@
 import { sweep } from './sweep.mjs'
 
 /** The package a deployment reads the application out of. */
-export const APP_PACKAGE = 'agentic-service-blueprinting'
+export const APP_PACKAGE = 'uno-blueprint'
 
 /**
  * A path under the package's application root, the package named either way.

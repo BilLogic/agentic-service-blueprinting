@@ -13,7 +13,7 @@ the record that used that number in the deployment is this one.
 
 ## Context
 
-Two repositories render the same service blueprint. `agentic-service-blueprinting`
+Two repositories render the same service blueprint. `uno-blueprint`
 is the publishable template a non-professional installs;
 [BilLogic/plus-uno-blueprint](https://github.com/BilLogic/plus-uno-blueprint)
 is the live instance this template was generalised from. They began as one

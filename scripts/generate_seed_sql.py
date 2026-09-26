@@ -74,13 +74,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import validate_ir  # noqa: E402
 
-# UUIDv5 namespace: uuid5(NAMESPACE_URL, repo URL), then per-entity
+# UUIDv5 namespace, fixed: every id a seed has ever minted derives from it, so
+# changing it would re-key every row in every deployment. Per entity,
 # uuid5(ns, f"{locale}:{entity_type}:{qualified_key}") with NFC-normalized
 # keys — the same derivation in every adapter, so the seed SQL and the
 # generated fallback module agree on every id.
-NAMESPACE = uuid.uuid5(
-    uuid.NAMESPACE_URL, "https://github.com/BilLogic/agentic-service-blueprinting"
-)
+NAMESPACE = uuid.UUID("37310bd6-53e3-578e-9879-ed5cc6845c87")
 
 
 def entity_uuid(locale: str, entity_type: str, qualified_key: str) -> str:

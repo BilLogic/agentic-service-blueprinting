@@ -72,7 +72,7 @@ const AMBIGUOUS = [
  * Every file that may hold a select string, wherever the application is.
  *
  * A deployment reads the application out of
- * `node_modules/agentic-service-blueprinting` and keeps no `src` beside its
+ * `node_modules/uno-blueprint` and keeps no `src` beside its
  * `scripts/`, so a walk rooted at `resolve(REPO_ROOT, 'src')` measured nothing
  * there — and an embed nobody looked at is answered by PostgREST with a 300
  * whether or not a check said so. The `app` sweep walks whichever roots hold

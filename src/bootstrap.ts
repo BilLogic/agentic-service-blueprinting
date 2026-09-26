@@ -16,11 +16,11 @@
  *
  *     // main.tsx — the deployment's entry
  *     import './deploymentBootstrap'
- *     import 'agentic-service-blueprinting/styles.css'
- *     import { App } from 'agentic-service-blueprinting'
+ *     import 'uno-blueprint/styles.css'
+ *     import { App } from 'uno-blueprint'
  *
  *     // deploymentBootstrap.ts — its own module, so it evaluates first
- *     import { configureStorageNamespace } from 'agentic-service-blueprinting/bootstrap'
+ *     import { configureStorageNamespace } from 'uno-blueprint/bootstrap'
  *
  *     configureStorageNamespace('acme-')
  *

@@ -29,7 +29,7 @@
  *     their byte-for-byte copy under `src/lib/agent/skill/`, which
  *     `sync-canvas-skills.mjs` writes — plus `docs/` and the root documents.
  *     An agent that opens the vendored rulebook out of
- *     `node_modules/agentic-service-blueprinting/` finds `docs/erd.mmd`
+ *     `node_modules/uno-blueprint/` finds `docs/erd.mmd`
  *     exactly where the sentence said, and finds it whether the sentence was
  *     written in `references/data-model.md` or in `docs/guide/`. This check is
  *     the authority over all of them and holds their paths true.

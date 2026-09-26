@@ -4,8 +4,8 @@
  * An external deployment mounts this template by importing `App` from the
  * package root and rendering it with its own `DeploymentConfig`:
  *
- *   import 'agentic-service-blueprinting/styles.css'
- *   import { App, type DeploymentConfig } from 'agentic-service-blueprinting'
+ *   import 'uno-blueprint/styles.css'
+ *   import { App, type DeploymentConfig } from 'uno-blueprint'
  *   createRoot(el).render(<App config={deploymentConfig} />)
  *
  * The stylesheet is the host's to import — `App` does not, so a host owns the
@@ -27,7 +27,7 @@
  * TWO SEAMS DO NOT ARRIVE THROUGH THE CONFIG, and cannot: the localStorage
  * namespace and the agent's extra reference documents are both settled while
  * this package's modules evaluate, which is before `App` renders anything. A
- * host settles them from `agentic-service-blueprinting/bootstrap`, in a module
+ * host settles them from `uno-blueprint/bootstrap`, in a module
  * it imports before this one — see `bootstrap.ts`, which is deliberately not
  * re-exported here, because reaching it through this module would evaluate
  * `App` first and defeat the point.

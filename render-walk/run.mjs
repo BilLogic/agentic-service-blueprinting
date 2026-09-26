@@ -14,7 +14,7 @@
  *
  * The instruction this package published until this release was the obvious one:
  *
- *   npx playwright test -c node_modules/agentic-service-blueprinting/render-walk/playwright.config.ts
+ *   npx playwright test -c node_modules/uno-blueprint/render-walk/playwright.config.ts
  *
  * It fails, and it fails for a reason neither side can configure away. Both
  * loaders that could compile that file refuse it for the same fact about where
@@ -89,7 +89,7 @@
  * The choice is passed on as `RENDER_WALK_PORT` itself, which is the config's
  * own override and the only thing it reads; nothing new crosses the seam.
  *
- * Run: node node_modules/agentic-service-blueprinting/render-walk/run.mjs
+ * Run: node node_modules/uno-blueprint/render-walk/run.mjs
  *      (or, by the bin the package installs: npx render-walk)
  * Here: npm run check:render-walk
  */

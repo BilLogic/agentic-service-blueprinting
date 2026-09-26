@@ -10,7 +10,7 @@ tree already had and the deployment's copy (BilLogic/plus-uno-blueprint
 ADR 0005) listed. Amended 2026-09-14 (#802): the list loses
 `agent/panelState.ts`, folded with `agent/attachments.ts` into
 `agent/sessions.ts` — one store for one thing, not three for the parts of it.
-Amended 2026-09-18 ([#921](https://github.com/BilLogic/agentic-service-blueprinting/issues/921)):
+Amended 2026-09-18 ([#921](https://github.com/BilLogic/uno-blueprint/issues/921)):
 the list gains `agent/persistenceReadiness.ts`, which answers whether the
 persisted agent rows can be read yet — condition 1, because the panel that
 asks unmounts and remounts when the chat is dragged between docked and
@@ -18,7 +18,7 @@ floating, and which read has been spent must not die in that gap. It takes the
 sessions list's own hydration flags with it, so the question has one answer
 rather than two. (Hookless code parks work there, but the outstanding answer
 is only ever read through a hook, so condition 2 is not what sends it here.)
-**Context** [#163](https://github.com/BilLogic/agentic-service-blueprinting/issues/163)
+**Context** [#163](https://github.com/BilLogic/uno-blueprint/issues/163)
 
 ## Context
 

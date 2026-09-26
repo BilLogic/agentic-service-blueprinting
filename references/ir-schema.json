@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/BilLogic/agentic-service-blueprinting/references/ir-schema.json",
+  "$id": "https://github.com/BilLogic/uno-blueprint/references/ir-schema.json",
   "title": "Service Blueprint IR",
   "description": "Intermediate representation for a service blueprint, authored as human-editable JSON in the workspace blueprint/ directory and validated by scripts/validate_ir.py (JSON is the supported authoring format; the stdlib scripts read .yaml/.yml only if PyYAML is installed). Mirrors the template data model (see references/data-model.md): service -> phases -> scenarios -> paths -> lanes/steps/cells/dependencies. Every entity carries a stable, locale-independent string key; database UUIDs are UUIDv5-derived from the key path (service/phase/scenario/path/lane/step) plus the locale, NFC-normalized, so re-imports are idempotent by construction. Cells are identified by their (path, lane, step) key triple; dependency edges by their source->target cell pair AND their kind, matching the database's uniqueness key (source_cell_id, target_cell_id, kind). Renaming a key after import creates a NEW identity on the next import. ALL human-readable text fields are locale maps ({en: ..., zh: ...}; additional locales allowed); structural fields (keys, enums, orders, URLs) are locale-independent.",
   "type": "object",

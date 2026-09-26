@@ -9,7 +9,7 @@ summary: How work gets proposed and landed here — the queue is GitHub issues r
 
 ## 1. The queue is public
 
-**Work in flight lives in [GitHub issues](https://github.com/BilLogic/agentic-service-blueprinting/issues), not in this repository.** Before proposing
+**Work in flight lives in [GitHub issues](https://github.com/BilLogic/uno-blueprint/issues), not in this repository.** Before proposing
 something, read the open issues: the point of moving the queue out of the tree
 was that a contributor can see what is already being worked on without a
 checkout.

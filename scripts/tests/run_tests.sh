@@ -662,7 +662,7 @@ mkdir -p "$DEP"
 python3 "$FALLBACK_GEN" "$SAMPLE" --locale en --out "$DEP/generatedBlueprints.ts" \
   --registry-out "$DEP/sampleBlueprints.ts" --nav-out "$DEP/sampleNav.ts" > /dev/null \
   || fail "deployment-pair: generation failed"
-grep -q "^import type { SampleBlueprintRegistry } from 'agentic-service-blueprinting'$" \
+grep -q "^import type { SampleBlueprintRegistry } from 'uno-blueprint'$" \
   "$DEP/sampleBlueprints.ts" \
   || fail "deployment-pair: the registry does not name its type by package name"
 grep -q "^import { GENERATED_PATH_FALLBACKS_BY_SCENARIO } from './generatedBlueprints'$" \
@@ -670,11 +670,11 @@ grep -q "^import { GENERATED_PATH_FALLBACKS_BY_SCENARIO } from './generatedBluep
   || fail "deployment-pair: the registry does not read the generated module beside it"
 grep -q "export const SAMPLE_BLUEPRINTS: SampleBlueprintRegistry" "$DEP/sampleBlueprints.ts" \
   || fail "deployment-pair: no SAMPLE_BLUEPRINTS export"
-grep -q "^import type { NavItem } from 'agentic-service-blueprinting'$" "$DEP/sampleNav.ts" \
+grep -q "^import type { NavItem } from 'uno-blueprint'$" "$DEP/sampleNav.ts" \
   || fail "deployment-pair: the nav does not name NavItem by package name"
 grep -q "export const SAMPLE_NAV: NavItem\[\]" "$DEP/sampleNav.ts" \
   || fail "deployment-pair: no SAMPLE_NAV export"
-grep -q "^import type { BlueprintData } from 'agentic-service-blueprinting'$" \
+grep -q "^import type { BlueprintData } from 'uno-blueprint'$" \
   "$DEP/generatedBlueprints.ts" \
   || fail "deployment-pair: the generated module still imports BlueprintData through '@/'"
 if grep -q "from '@/" "$DEP/sampleBlueprints.ts" "$DEP/sampleNav.ts" "$DEP/generatedBlueprints.ts"; then
