@@ -46,11 +46,14 @@
  *
  * ── The patterns, and why each is bounded the way it is ────────────────────
  *
- * `uno` is a substring of ordinary English. Unbounded, it fires on
- * `unobserve` (three test files), `unowned` (a migration, an SVG, the cover
- * content), `unopposed`, and `notion of "selected"`. So it is word-bounded,
- * and only word-bounded — case-insensitive, because `Uno's own content` in a
- * test comment was one of the eighteen.
+ * The deployment is named for its owner, and its slug is the owner's name
+ * joined to the template's: `plus-uno`. The template's own name is not a
+ * pattern. Uno Blueprint is what this package is called, so `uno`,
+ * `Uno Blueprint` and the `ub:` skills are its own vocabulary and pass. What
+ * fails is the owner's half, and anything built from it.
+ *
+ * `plus-uno` is matched case-insensitively, with a hyphen or an underscore
+ * between the halves, because a slug turns up as a path, an id and a label.
  *
  * `PLUS` is matched CASE-SENSITIVELY, and this is the one rule that cannot be
  * relaxed. Lowercase "plus" appears on ~150 lines of legitimate prose and
@@ -59,6 +62,11 @@
  * build and get deleted within a week, which is worse than no check.
  *   (`src/content/coverContent.test.ts` reached this conclusion first, over
  *   the cover-page content object alone; this generalises it to the tree.)
+ *
+ * The deployment's bot is word-bounded at BOTH ends. It begins with the three
+ * letters the template's name begins with, and those three letters open
+ * `unobserve`, `unowned` and `unopposed`; bounding it before and after means
+ * the bot's name fails and the template's name, and ordinary English, pass.
  *
  * ── What is NOT matched, deliberately ──────────────────────────────────────
  *
@@ -79,10 +87,9 @@ import { whenRun } from './verdict.mjs'
 
 /** Each `test` is applied per line; `label` is what the failure report says. */
 export const PATTERNS = [
-  { label: 'uno', test: /\buno\b/i },
-  { label: 'uno-bot / uno-blueprint', test: /uno[-_]?(?:bot|blueprint)/i },
   { label: 'plus-uno', test: /plus[-_]uno/i },
   { label: 'PLUS (case-sensitive)', test: /\bPLUS\b/ },
+  { label: 'uno-bot', test: /\buno[-_ ]?bots?\b/i },
   // A second deployment's name. It has no English collisions, so a plain
   // word boundary is enough; it is here because a test fixture carried it
   // through a port once, and nothing else would have said so.
@@ -150,8 +157,8 @@ export function scannedFiles(root = process.cwd()) {
  * Issue #551 moved ADRs here; a cross-reference that could be read from either
  * side has to name the repository as well as the number, and that repository's
  * GitHub path is `BilLogic/plus-uno-blueprint`. The citation is the pointer,
- * not coupling — a line that names "uno" or "PLUS" *beside* the citation still
- * fails.
+ * not coupling — a line that names `plus-uno` or "PLUS" *beside* the citation
+ * still fails.
  */
 const SOURCE_REPO_CITATION = /BilLogic\/plus-uno-blueprint/g
 
@@ -256,7 +263,7 @@ export function judge() {
       'Remove each one, or generalise it into an example an adopter can read. ' +
       'If a file legitimately has to name these words, add it to EXCLUDED in ' +
       'scripts/check-standalone.mjs with the reason.',
-    line: `no uno / PLUS / Ecoeled references in ${walk.files.length} files a commit would carry`,
+    line: `no plus-uno / PLUS / uno-bot / Ecoeled references in ${walk.files.length} files a commit would carry`,
   }
 }
 
