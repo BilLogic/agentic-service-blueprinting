@@ -68,13 +68,13 @@
  * `unobserve`, `unowned` and `unopposed`; bounding it before and after means
  * the bot's name fails and the template's name, and ordinary English, pass.
  *
- * The template goes by one name, and the patterns after the deployment's hold
- * it to that: any other name for the package, its namespace or its
- * marketplace fails the same way. Each is bounded so the package's npm name
- * and repository slug, the `ASB01` errcode an applied migration raises, and
- * ordinary words pass. The npm name is hyphenated and the phrase is matched
- * with whitespace only; the acronym is case-sensitive and word-bounded, and a
- * digit after it is still a word character.
+ * The four patterns after the deployment's hold the package, its skill
+ * namespace and its marketplace to a single spelling each. Each is bounded so
+ * the npm name and repository slug, an applied migration's errcode, and
+ * ordinary words such as `usb:` pass: the namespace token is word-bounded, the
+ * phrase is matched on whitespace only while the npm name is hyphenated, and
+ * the acronym is case-sensitive and word-bounded, since a digit after it is
+ * still a word character.
  *
  * ── What is NOT matched, deliberately ──────────────────────────────────────
  *
@@ -102,7 +102,7 @@ export const PATTERNS = [
   // word boundary is enough; it is here because a test fixture carried it
   // through a port once, and nothing else would have said so.
   { label: 'Ecoeled', test: /\becoeled\b/i },
-  { label: 'sb:', test: /\bsb:/ },
+  { label: 'sb:', test: /\bsb:/i },
   { label: 'sb-marketplace', test: /\bsb-marketplace\b/i },
   { label: 'Agentic Service Blueprinting', test: /\bagentic\s+service\s+blueprinting\b/i },
   { label: 'ASB (case-sensitive)', test: /\bASB\b/ },
@@ -267,15 +267,15 @@ export function judge() {
     what: 'a file a commit would carry',
     count: walk.files.length,
     opening:
-      'This package claims to stand alone under one name. These lines name the ' +
-      'deployment it was generalised from, or call the package something else:\n',
+      'This package claims to stand alone under one name. These lines match a ' +
+      'pattern in scripts/check-standalone.mjs:\n',
     findings,
     closing:
       `\n${problems.length} reference${problems.length === 1 ? '' : 's'}. ` +
       'Remove each one, or generalise it into an example an adopter can read. ' +
       'If a file legitimately has to name these words, add it to EXCLUDED in ' +
       'scripts/check-standalone.mjs with the reason.',
-    line: `no deployment name and no other name for the package in ${walk.files.length} files a commit would carry`,
+    line: `no ${PATTERNS.map(({ label }) => label).join(' / ')} references in ${walk.files.length} files a commit would carry`,
   }
 }
 

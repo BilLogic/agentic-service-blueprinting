@@ -11724,8 +11724,8 @@ reads, record per check).
 
 ## 0.2.0 — 2026-08-05
 
-Plugin renamed `service-blueprinting` → `ub`; skills renamed to bare tokens
-(`map`, `slice`, `audit`, `whatif`) so invocations read `ub:map`, `ub:slice`,
+The plugin is `ub` and its skills are bare tokens (`map`, `slice`,
+`audit`, `whatif`), so invocations read `ub:map`, `ub:slice`,
 `ub:audit`, `ub:whatif` on every surface (IDE plugin and canvas composer).
 Prose references swept across skills, references, agents, and hooks.
 
@@ -11747,7 +11747,7 @@ Canvas translation upgraded from read-only to full write parity:
 
 Initial plugin scaffold.
 
-- `service-blueprinting` skill: entry-state detection, playbook gating, hard
+- `ub` skill: entry-state detection, playbook gating, hard
   rules (validator gate, hash-bound sign-off, system-vs-journey refusal,
   secrets rules, target confirmation, co-equal backend choice), deterministic
   per-phase exit conditions.

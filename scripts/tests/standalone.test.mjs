@@ -67,6 +67,7 @@ test('the deployment is still named nowhere', () => {
 test('the template goes by one name', () => {
   assert.deepEqual(labels('run /sb:map on a folder of notes'), ['sb:'])
   assert.deepEqual(labels('the `sb:` skills'), ['sb:'])
+  assert.deepEqual(labels('SB:MAP in a heading'), ['sb:'])
   assert.deepEqual(labels('claude plugin install sb@sb-marketplace'), ['sb-marketplace'])
   assert.deepEqual(labels('# Agentic Service Blueprinting'), ['Agentic Service Blueprinting'])
   assert.deepEqual(labels('the agentic service blueprinting template'), [
