@@ -78,7 +78,7 @@ export const packageCoverFigures = {
   },
   fourWaysIn: {
     src: fourWaysIn,
-    alt: 'Four ways into the blueprint — the app, the in-app agent, agentic tools, and the Slack bot — over one shared context layer',
+    alt: 'Ways into the blueprint — the app, the in-app agent, agentic tools, and a Slack bot you could build — over one shared context layer',
     width: 880,
     height: 334,
   },
