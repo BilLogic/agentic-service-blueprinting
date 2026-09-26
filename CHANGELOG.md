@@ -130,7 +130,7 @@ deleted rather than moved.
   caret to the end of the draft.
 
   A reader who writes `check /audit then /map this` and takes the offer on
-  `/audit` gets `/sb:audit` written where the word stood — and now the caret
+  `/audit` gets `/ub:audit` written where the word stood — and now the caret
   sits immediately after it, with the rest of the sentence still ahead of them.
   It used to land after `this`: the token was rewritten in place, and the reader
   was moved to the end of a sentence they were half-way through. Every keystroke
@@ -235,7 +235,7 @@ deleted rather than moved.
   transcript, so the decision survives the scroll and the reload instead of
   living only in the moment it was made.
 
-  Typing `/audit` where the skill is `/sb:audit` invokes nothing, and the
+  Typing `/audit` where the skill is `/ub:audit` invokes nothing, and the
   composer has asked about that for a while: run it under its official name, or
   send the sentence as text. Taking the second answer told the model in that
   send's prompt that no skill ran — and told nobody else anything. An hour
@@ -638,10 +638,10 @@ the gap and the by-hand browser evidence written in its place.
   actually depends on — that those spans were measured against THIS draft — with
   nothing to enforce it. Two things went wrong through that hole, and both are
   now unreachable rather than merely discouraged. A second accept off one
-  question re-applied a span measured against `/audit` to the `/sb:audit ` that
+  question re-applied a span measured against `/audit` to the `/ub:audit ` that
   had replaced it, and the offsets landed inside the word: the draft became
-  `/sb:audit dit `. And a declaration built from the older list told the model
-  both halves of a contradiction in one message — `/sb:audit` among the skills
+  `/ub:audit dit `. And a declaration built from the older list told the model
+  both halves of a contradiction in one message — `/ub:audit` among the skills
   that ran, `/audit` among the near misses that did not. Every arm now walks the
   draft it is handed, including the declaration, which used to copy the caller's
   list verbatim and skip the walk entirely.
@@ -662,7 +662,7 @@ the gap and the by-hand browser evidence written in its place.
   gate on a run in flight sat after the rewrite, so accepting an offer mid-run
   rewrote the field, dropped the send, and left the notice on screen still
   holding the spans of the draft that had just moved — which is how a reader
-  reached `/sb:audit dit ` by clicking twice. The gate now comes first, so a
+  reached `/ub:audit dit ` by clicking twice. The gate now comes first, so a
   blocked send decides nothing and moves nothing, and both of the notice's
   buttons are disabled while it holds.
 
@@ -804,8 +804,8 @@ the gap and the by-hand browser evidence written in its place.
   The case is deleted rather than reworded, the false comment with it, and the
   file's header now states the gap in its place: why no jsdom assertion can
   separate the two offsets, and what covers the behaviour instead — a browser
-  check made by hand, typing `/sb:map notes then /sb:au` and pressing Tab to get
-  `/sb:map notes then /sb:audit ` with the caret at offset 29, focus kept and
+  check made by hand, typing `/ub:map notes then /ub:au` and pressing Tab to get
+  `/ub:map notes then /ub:audit ` with the caret at offset 29, focus kept and
   the menu closed. That is the evidence; a green assertion was not.
 
   Nothing else in the tree asserts a caret offset after a raw `value`
@@ -936,7 +936,7 @@ the gap and the by-hand browser evidence written in its place.
 
 **A skill is named in prose, anywhere in a message, and as many as the message
 names.** The composer used to start a skill lookup only for a draft that was
-nothing but `/` and a word, so `check the onboarding journey /sb:audit` sent
+nothing but `/` and a word, so `check the onboarding journey /ub:audit` sent
 the sentence as plain text and ran nothing — the token was punctuation to the
 model. A slash now opens a lookup wherever it opens a word, the menu offers on
 prefix, Tab or Enter completes the token **in place** rather than moving it,
@@ -957,12 +957,12 @@ failed.
 
 **Upgrading a deployment:**
 
-- **A skill runs only under its official name.** `/sb:audit` runs; a bare
+- **A skill runs only under its official name.** `/ub:audit` runs; a bare
   `/audit` left in the prose does not, and the composer asks about it instead.
   The short aliases still _match in the menu_ — typing `/audit` offers
-  `/sb:audit`, and accepting rewrites the token — so muscle memory still
+  `/ub:audit`, and accepting rewrites the token — so muscle memory still
   works, but any deployment doc, onboarding copy or canned prompt that tells a
-  reader to type `/audit` should say `/sb:audit`.
+  reader to type `/audit` should say `/ub:audit`.
 - **A stored user turn carries `skills: string[]`, not `skill: string`.** The
   one-skill spelling is migrated at the read, so existing transcripts open
   unchanged and need no backfill. Anything querying the payload directly —
@@ -1054,7 +1054,7 @@ failed.
   the menu keeps the sentence it was named in.
 
   The composer opened its menu only when a slash was the draft's first
-  character, so "Hey can u /sb:aud" was dead text: no menu, no skill, and a
+  character, so "Hey can u /ub:aud" was dead text: no menu, no skill, and a
   message that reads like an invocation sent as prose. A slash now opens a
   lookup at the head of the draft or directly after whitespace — the CJK
   sentence marks included, since a reader typing Japanese gets no space before
@@ -1067,7 +1067,7 @@ failed.
 
   **Accepting a match completes the token where it sits, and colours it.** A
   word-start token that names a skill is drawn in role ink exactly where the
-  reader typed it, and `/sb:aud` becomes `/sb:audit ` in place, the way a shell
+  reader typed it, and `/ub:aud` becomes `/ub:audit ` in place, the way a shell
   completion behaves — the prose either side is not read, moved or trimmed. The
   token is the invocation: the draft carries no skill field any more, and the
   skills a message runs are parsed out of its text at send, in the order the
@@ -1076,8 +1076,8 @@ failed.
 
   This replaces the badge the first version shipped. Accepting used to lift the
   token out of the prose and stand the skill in a row above the field, which
-  moved the reader's word to the front of their own message: `asdasd /sb:audit`
-  became `[/sb:audit] asdasd`, and the position they had typed it in was gone.
+  moved the reader's word to the front of their own message: `asdasd /ub:audit`
+  became `[/ub:audit] asdasd`, and the position they had typed it in was gone.
   The badge row is deleted. The field stays a real `<textarea>` — selection,
   IME, the mobile keyboard and native undo all come from the browser — so the
   colour is drawn by a layer behind it that renders the same string with the
@@ -1087,9 +1087,9 @@ failed.
 
   Escape closes the menu and leaves every character typed.
 
-  **One canonical spelling invokes.** A bare alias — `/audit` for `/sb:audit` —
+  **One canonical spelling invokes.** A bare alias — `/audit` for `/ub:audit` —
   no longer resolves anything, in the composer or in a typed-through draft. It
-  stays as a search term, so a reader still types `aud` and finds `/sb:audit`
+  stays as a search term, so a reader still types `aud` and finds `/ub:audit`
   without the namespace, and as the source of the closest-match suggestion. A
   reader who typed `/audit` to run the audit is offered it instead of running
   it, which is the reversal, and it is what makes a lookup that fires
@@ -1102,7 +1102,7 @@ failed.
   came close to, or send the sentence — and a sentence sent as prose tells the
   agent that nothing ran.
 
-  `/audit` is not a skill name here; `/sb:audit` is. A draft carrying the near
+  `/audit` is not a skill name here; `/ub:audit` is. A draft carrying the near
   miss sent as plain text: no skill loaded, and nothing on screen or in the
   transcript said so. The agent then improvised. One session spent four rounds
   re-reading the same scenario before the turn died, and the reader had no way
@@ -1112,11 +1112,11 @@ failed.
   On send, a draft carrying a word-start slash token that matches a skill's
   bare alias and no skill's official name now offers two choices and takes
   neither by default. Accepting rewrites the token where it sits — "then /audit
-  the intake" becomes "then /sb:audit the intake", the same in-place completion
+  the intake" becomes "then /ub:audit the intake", the same in-place completion
   the menu performs, so the reader can see in their own sentence what they
   agreed to — and the skill runs. Sending as text passes the sentence through
   untouched and adds a paragraph to the system prompt: the token names no skill
-  here, the closest one is `/sb:audit`, nothing ran, and the model must not
+  here, the closest one is `/ub:audit`, nothing ran, and the model must not
   describe it as having run or summarise what it would have produced. Editing
   the draft withdraws the question.
 
@@ -1138,7 +1138,7 @@ failed.
   them recorded in the transcript.
 
   A draft held one skill, so naming a second silently replaced the first:
-  "build this from my notes /sb:map then /sb:audit it" could not be asked in one
+  "build this from my notes /ub:map then /ub:audit it" could not be asked in one
   message even though the two flows compose. The skills a message runs are now
   read out of its text at send — every word-start token that resolves, in the
   order the tokens appear, each skill once however many times it is named, with
@@ -1158,7 +1158,7 @@ failed.
   **The menu keeps offering after the first skill, and the notice names every
   near miss.** A lookup used to refuse to open once the draft began with a
   resolved skill — a head command owning its arguments, as it does in the tool
-  this composer mirrors — so `/sb:map notes then /sb:au` offered nothing and the
+  this composer mirrors — so `/ub:map notes then /ub:au` offered nothing and the
   second skill had to be typed out in full. That guard is gone: what it was
   protecting costs nothing without it, since a path typed for a skill to read
   opens a lookup matching no skill and a lookup with no matches opens no menu.
@@ -1238,7 +1238,7 @@ and the saved theme moves onto the storage namespace.
 **Upgrading a deployment:**
 
 - **A saved theme resets once.** The key moves from the bare `theme` onto the
-  namespace seam, so it is `<prefix>theme` — `sb-theme` in the template.
+  namespace seam, so it is `<prefix>theme` — `ub-theme` in the template.
   Nothing migrates it: the first load after upgrading finds no saved theme and
   opens light. Choosing a theme writes the new key. Two installations on one
   origin stop sharing a theme as a result.
@@ -1275,7 +1275,7 @@ and the saved theme moves onto the storage namespace.
 
   **One saved theme resets, once.** The key moved from the bare `theme` that
   `next-themes` chose onto the namespace seam, so it is `<prefix>theme` from this
-  release — `sb-theme` in the template. Nothing migrates it: the first load after
+  release — `ub-theme` in the template. Nothing migrates it: the first load after
   upgrading reads no stored theme and opens light, and choosing a theme writes
   the new key. That is also what takes the last stored value off the shared
   origin — two installations on one host no longer read each other's theme, and
@@ -1916,7 +1916,7 @@ row at the same steps so the sample's walkthrough keeps them.
 
   Measured at the resolver, over both "Map your service" paths and every step:
   **2 strip entries before, 8 after** — four figures a path, three of them these
-  diagrams and the fourth the `sb:map` figure that never moved. The walk over
+  diagrams and the fourth the `ub:map` figure that never moved. The walk over
   every phase, scenario, path and layout of the offline board stays free of
   console errors.
 
@@ -10600,7 +10600,7 @@ Scheduling` is one of its scenarios. Each is as unusable to an adopter as its
   `list_blueprint` name (this repo keeps `list_scenarios` — it names what it
   returns), the reference-doc import seam (the deployment's nineteenth doc,
   `blueprint`, has no file here, so `REFERENCE_NAMES` stays at eighteen) and the
-  localStorage prefix (the template's `sb-` against the deployment's own).
+  localStorage prefix (the template's `ub-` against the deployment's own).
 
   Thirteen agent tool names are contract identifiers in `identifiers.json`, so
   this is a minor. No existing identifier moves, and no path in
@@ -11387,7 +11387,7 @@ check:database-names` does; it reads `slides(…,title,…)` from `summary` and
 - 42512f1: The arrow router is one generic engine, shared byte-for-byte with the
   deployment that pins this template.
 
-  asb's arrows were routed by an overhead-rail bus: a backward loop that collided
+  The template's arrows were routed by an overhead-rail bus: a backward loop that collided
   with a parallel row dropped into a reserved lane above the row and ran there.
   The deployment had since replaced that with a data-driven engine — anchor slots
   that separate a cell's in and out edges, a confluence planner that merges
@@ -11612,7 +11612,7 @@ check:database-names` does; it reads `slides(…,title,…)` from `summary` and
   migrations stale — `agent_sessions` and `agent_messages` were missing — which
   is what an adopter carrying it would have built.
 
-All notable changes to the `sb` plugin (formerly `service-blueprinting`) are
+All notable changes to the `ub` plugin are
 documented here. The plugin and the blueprint template app share this
 repository and one version number, checked by
 `npm run check:version` across `package.json`, `.claude-plugin/plugin.json`
@@ -11696,7 +11696,7 @@ fossil of the pre-0.2.2 skill name). Tests 30/30.
 
 Structural pass per Anthropic skill-authoring standards (skill-creator).
 skills/blueprint renamed skills/map — the runtime registration is now
-sb:map, matching every cross-pointer. Whatif sign-off hashes re-aligned
+ub:map, matching every cross-pointer. Whatif sign-off hashes re-aligned
 to the canonical PER-SCENARIO model (workspace-state.md; the 0.2.1
 whole-file form survives only as the legacy **file** fallback). Dedupe
 semantics single-sourced (playbook §3 + canvas-adapter row; playbook
@@ -11711,8 +11711,8 @@ planned. plugin.json says JSON IR.
 
 ## 0.2.1 — 2026-08-05
 
-Nineteen text-level gaps closed after blind cold-follow evals of sb:audit
-and sb:whatif (fresh-context agents following the SKILL.mds literally on a
+Nineteen text-level gaps closed after blind cold-follow evals of ub:audit
+and ub:whatif (fresh-context agents following the SKILL.mds literally on a
 real workspace): two-target staleness guard, **file** hash form, orphan-
 reopen gap shape, zero-cell fingerprint reason slugs, audit cell-key
 convention, export + no-DB findings-report substrate, entry-state
@@ -11724,19 +11724,19 @@ reads, record per check).
 
 ## 0.2.0 — 2026-08-05
 
-Plugin renamed `service-blueprinting` → `sb`; skills renamed to bare tokens
-(`map`, `slice`, `audit`, `whatif`) so invocations read `sb:map`, `sb:slice`,
-`sb:audit`, `sb:whatif` on every surface (IDE plugin and canvas composer).
+Plugin renamed `service-blueprinting` → `ub`; skills renamed to bare tokens
+(`map`, `slice`, `audit`, `whatif`) so invocations read `ub:map`, `ub:slice`,
+`ub:audit`, `ub:whatif` on every surface (IDE plugin and canvas composer).
 Prose references swept across skills, references, agents, and hooks.
 
 Canvas translation upgraded from read-only to full write parity:
 
-- `sb:audit` on canvas records findings rows via `record_finding` with the
+- `ub:audit` on canvas records findings rows via `record_finding` with the
   same dedupe discipline (open updates in place, dismissed stays dismissed,
   resolved reopens); triage via `set_finding_status`; ledger via
   `list_findings`. Canvas cell identity uses cell ids (cell_keys written as
   ids), so canvas and IDE fingerprints are separate dedupe spaces.
-- `sb:whatif` on canvas keeps the variant conversational (analysis never
+- `ub:whatif` on canvas keeps the variant conversational (analysis never
   writes cells), records consequence findings (source `whatif`), and on
   explicit acceptance promotes directly through the ordinary canvas write
   tools; optimistic-concurrency tokens replace the hash staleness guard.

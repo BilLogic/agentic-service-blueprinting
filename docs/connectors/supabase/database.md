@@ -4,7 +4,7 @@ summary: The Supabase recipe as an operated database — connection variables, e
 
 # Database
 
-Postgres database managed by [Supabase](https://supabase.com/) for the **agentic service blueprinting** template.
+Postgres database managed by [Supabase](https://supabase.com/) for the **Uno Blueprint** template.
 
 | Property | Value |
 | --- | --- |
@@ -63,7 +63,7 @@ blueprint file, never hand-edited: run `python3 scripts/generate_seed_sql.py
 `supabase/seed.sql` with it, and repeat step 4. A deployment built on this
 template carries its own blueprint and regenerates both `supabase/seed.sql` and
 the offline fallback from it — the sample here is only the default until you do.
-`sb:map` (the `map` skill) is the guided way to produce that blueprint file.
+`ub:map` (the `map` skill) is the guided way to produce that blueprint file.
 
 **Proving the path before you deploy.** `npm run check:seed-load` performs this
 whole load — core, recipe, and seed onto a throwaway database — and reads it

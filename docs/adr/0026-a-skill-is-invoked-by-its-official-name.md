@@ -1,5 +1,5 @@
 ---
-summary: A skill is invoked by its official namespaced name — `/sb:audit`, never `/audit` — and the bare segment after the colon keeps one job, finding the skill in the composer's menu and suggesting it when a reader types it as a token; one canonical spelling invokes, so a transcript, a ticket and a prompt all name a skill the same way, and the alias becomes the near-miss hint the silent-token notice needs.
+summary: A skill is invoked by its official namespaced name — `/ub:audit`, never `/audit` — and the bare segment after the colon keeps one job, finding the skill in the composer's menu and suggesting it when a reader types it as a token; one canonical spelling invokes, so a transcript, a ticket and a prompt all name a skill the same way, and the alias becomes the near-miss hint the silent-token notice needs.
 ---
 
 # 26. A skill is invoked by its official name; its alias only finds it
@@ -13,7 +13,7 @@ composer shipped with.
 ## Context
 
 Every skill has two spellings. The official one is namespaced to match the
-plugin invocation exactly — `/sb:audit` in the composer and `/sb:audit` in an
+plugin invocation exactly — `/ub:audit` in the composer and `/ub:audit` in an
 IDE are the same `SKILL.md` — and beside it sat a bare alias, `/audit`,
 resolving to the same skill. The comment that introduced the aliases said what
 they were for: muscle memory.
@@ -39,7 +39,7 @@ and nothing else.
 
 The alias keeps two jobs, both of which stop short of running anything. It
 matches in the composer's menu, so a reader still types `aud` and finds
-`/sb:audit` without typing the namespace first. And it is the source of the
+`/ub:audit` without typing the namespace first. And it is the source of the
 near-miss suggestion: a token that resolves to no skill but matches an alias
 names the canonical skill as the closest match, offered for the reader to
 accept rather than run. The wording of that offer belongs to the surface that

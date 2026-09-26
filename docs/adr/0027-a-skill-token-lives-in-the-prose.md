@@ -24,8 +24,8 @@ the field; the draft carried a `skillId` beside its text, and the badge was
 that field drawn.
 
 Both halves failed, and the visible half failed first. Accepting a match moved
-the reader's word out of the sentence it was in: `asdasd /sb:audit` became
-`[/sb:audit] asdasd`. In the user's words — *"the skill converted inline
+the reader's word out of the sentence it was in: `asdasd /ub:audit` became
+`[/ub:audit] asdasd`. In the user's words — *"the skill converted inline
 always move to front instead of hold its inline position"*. A completion that
 relocates the thing it completes is not a completion; it is an edit the reader
 did not ask for, applied to the one part of the screen they own.
@@ -40,7 +40,7 @@ run a skill it did not show. The pair could disagree, and did.
 **The token stays where it was typed, and takes a colour.** A word-start slash
 token that resolves to a skill is drawn in role ink exactly where it sits.
 Accepting from the menu completes the token's text in place, the way a shell
-completion does — `/sb:aud` becomes `/sb:audit ` — and the prose either side
+completion does — `/ub:aud` becomes `/ub:audit ` — and the prose either side
 of it is not read, moved or trimmed.
 
 **The text is the only source of truth.** `AgentDraft` carries text and
@@ -106,7 +106,7 @@ transparent only while the layer is drawing, or a preedit string would be
 invisible for as long as it is being composed.
 
 **A reader can edit a token into nonsense and lose a skill silently.**
-Deleting a character from `/sb:audit` uncolours it, and the message runs
+Deleting a character from `/ub:audit` uncolours it, and the message runs
 nothing. That is the honest consequence of the text being the record, and it
 is visible in the one place the reader is looking: the colour goes.
 

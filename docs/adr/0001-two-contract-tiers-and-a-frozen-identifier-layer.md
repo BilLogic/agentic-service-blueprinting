@@ -18,7 +18,7 @@ Neither of those is an npm package: `package.json` is `private: true` with no
 The two forms of distribution fail in opposite directions, and until now the
 repo had one word — "breaking" — for both.
 
-A consumer installs the plugin and **does not fork it**. They type `/sb:audit`,
+A consumer installs the plugin and **does not fork it**. They type `/ub:audit`,
 the skill dispatches an agent named `auditor`, the canvas agent calls
 `get_reference { name: 'data-model' }`, a hook fires on an event name. Every
 one of those is a string resolved at runtime. Nothing type-checks it, nothing

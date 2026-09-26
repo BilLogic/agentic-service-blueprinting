@@ -30,7 +30,7 @@
 
 -- Service Blueprint template schema (consolidated).
 --
--- Single schema migration for the agentic-service-blueprinting template,
+-- Single schema migration for the Uno Blueprint template,
 -- replacing the original instance's 700+ migration history: hierarchy
 -- tables, blueprint grid,
 -- path_steps ordering, cell metadata, layer_role, integrity trigger,

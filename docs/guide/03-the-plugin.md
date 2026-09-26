@@ -13,7 +13,7 @@ They are listed here in the order a team meets them, which is the order the
 sample blueprint's own scenarios run in: map a service, audit what is on the
 board, trace a change through it, then cut the view an audience asked for.
 
-### `sb:map`
+### `ub:map`
 
 ![How to use ub:map](../assets/ub-map.svg)
 
@@ -27,7 +27,7 @@ Its exit is not "looks done": a validated `blueprint/blueprint.json`, an
 adversarial review that came back clean, and a per-scenario sign-off bound
 to a content hash.
 
-### `sb:audit`
+### `ub:audit`
 
 ![How to use ub:audit](../assets/ub-audit.svg)
 
@@ -36,15 +36,15 @@ only that check's doc and the export, so no check can be influenced by
 another's conclusion. Exits with findings for you to triage; it never
 edits the blueprint.
 
-### `sb:whatif`
+### `ub:whatif`
 
 ![How to use ub:whatif](../assets/ub-whatif.svg)
 
 Takes a proposed change and traces it on a copy: which cells it reaches,
 which assumptions stop holding, where displaced demand lands. Exits with
-options, not edits. Accepting one promotes it through `sb:map`.
+options, not edits. Accepting one promotes it through `ub:map`.
 
-### `sb:slice`
+### `ub:slice`
 
 ![How to use ub:slice](../assets/ub-slice.svg)
 
@@ -58,8 +58,8 @@ traces to a cited cell.
 
 Each skill carries its own `references/` and, where it needs them,
 `scripts/`. It links only the shared references its task needs rather than
-loading all of them: `sb:map` links six, `sb:audit` six, `sb:whatif` five,
-`sb:slice` four.
+loading all of them: `ub:map` links six, `ub:audit` six, `ub:whatif` five,
+`ub:slice` four.
 
 The heavy reading happens elsewhere. Five agents run in their own context
 and hand back a summary rather than their raw material:

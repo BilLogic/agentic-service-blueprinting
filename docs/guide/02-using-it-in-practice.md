@@ -14,17 +14,17 @@ change through it, cut a view from it — plus the comparison the app does on
 its own.
 
 **Checking the blueprint still describes reality.** Services change faster
-than the artefacts that describe them. `sb:audit` runs its roster and
+than the artefacts that describe them. `ub:audit` runs its roster and
 hands back findings to triage: gaps behind frontstage promises, channels
 that disagree, moments nobody owns.
 
 **Scoping a change.** Someone proposes removing a step. Before estimating,
-you want to know what else touches it. `sb:whatif` walks the dependency
+you want to know what else touches it. `ub:whatif` walks the dependency
 graph from that cell and returns the cells the change would reach and the
 assumptions it would break, on a copy. Nothing moves until you accept it.
 
 **Bringing a stakeholder up to speed.** A team needs the part of the
-service that concerns them, not all of it. `sb:slice` takes that view —
+service that concerns them, not all of it. `ub:slice` takes that view —
 one lane, one step, one journey — as a document that still points back at
 the cells it quotes, so it cannot quietly drift from the blueprint.
 
@@ -41,7 +41,7 @@ two documents that were true on different days.
 | --- | --- | --- |
 | the app | anyone | read, compare, present |
 | the in-app agent | the person already reading | ask, and it drafts the change |
-| agentic tools | whoever works in an IDE or CLI | map and audit with the `sb` skills |
+| agentic tools | whoever works in an IDE or CLI | map and audit with the `ub` skills |
 | the Slack bot | everyone else | answers, and links to the exact cell |
 
 The first three read and write, and this template ships all three. The fourth

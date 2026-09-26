@@ -1,11 +1,11 @@
-# Agentic Service Blueprinting
+# Uno Blueprint
 
 Turn a service blueprint from a static artifact into an operational source of truth: structured, queryable data that agents consult continuously. **It stops being a poster and becomes a database.**
 
 This repo is that idea, working end to end — two things in one:
 
-1. **The `sb` Claude Code plugin** — four skills, in the order a team meets them. `sb:map` builds a blueprint from whatever you have: documents, a working session, or a diagram exported from somewhere else. `sb:audit` runs a roster of consistency checks over it. `sb:whatif` traces a proposed change before anyone commits to it. `sb:slice` takes the view one audience needs out of it.
-2. **An org-agnostic frontend and backend template** that `sb:map` deploys onto — React + Vite + [shadcn/ui](https://ui.shadcn.com/) grid renderer and a [Supabase](https://supabase.com/) schema, with dependency arrows, comparison views, and print/PDF export.
+1. **The `ub` Claude Code plugin** — four skills, in the order a team meets them. `ub:map` builds a blueprint from whatever you have: documents, a working session, or a diagram exported from somewhere else. `ub:audit` runs a roster of consistency checks over it. `ub:whatif` traces a proposed change before anyone commits to it. `ub:slice` takes the view one audience needs out of it.
+2. **An org-agnostic frontend and backend template** that `ub:map` deploys onto — React + Vite + [shadcn/ui](https://ui.shadcn.com/) grid renderer and a [Supabase](https://supabase.com/) schema, with dependency arrows, comparison views, and print/PDF export.
 
 ## Why a queryable blueprint
 
@@ -34,7 +34,7 @@ Demos of the blueprint in use (recordings coming soon):
 
 ### What it does
 
-Install the repo as a Claude Code plugin, then ask Claude to map a service — "turn our FigJam service map into a deployed blueprint", "blueprint how our support process works". `sb:map` routes by what exists: nothing → co-create from conversation; docs → ingest with per-cell provenance; a foreign structured diagram → translate via crosswalk; an existing workspace → resume/update.
+Install the repo as a Claude Code plugin, then ask Claude to map a service — "turn our FigJam service map into a deployed blueprint", "blueprint how our support process works". `ub:map` routes by what exists: nothing → co-create from conversation; docs → ingest with per-cell provenance; a foreign structured diagram → translate via crosswalk; an existing workspace → resume/update.
 
 The pipeline in one line:
 
@@ -50,10 +50,10 @@ The pipeline in one line:
 
 | Skill | What it is for | Where it ends |
 | --- | --- | --- |
-| [`sb:map`](./skills/map/SKILL.md) | create a blueprint, import documents, translate a foreign diagram, resume an existing workspace | a validated `blueprint/blueprint.json`, signed off per scenario |
-| [`sb:audit`](./skills/audit/SKILL.md) | run the check roster over a blueprint | findings you triage, nothing changed for you |
-| [`sb:whatif`](./skills/whatif/SKILL.md) | trace a proposed change before anyone commits to it | the cells it would reach, on a copy |
-| [`sb:slice`](./skills/slice/SKILL.md) | take a stakeholder view out of the blueprint: `journey`, `step`, `lane`, `cell`, `custom` | a slice document that still points at the cells it quotes |
+| [`ub:map`](./skills/map/SKILL.md) | create a blueprint, import documents, translate a foreign diagram, resume an existing workspace | a validated `blueprint/blueprint.json`, signed off per scenario |
+| [`ub:audit`](./skills/audit/SKILL.md) | run the check roster over a blueprint | findings you triage, nothing changed for you |
+| [`ub:whatif`](./skills/whatif/SKILL.md) | trace a proposed change before anyone commits to it | the cells it would reach, on a copy |
+| [`ub:slice`](./skills/slice/SKILL.md) | take a stakeholder view out of the blueprint: `journey`, `step`, `lane`, `cell`, `custom` | a slice document that still points at the cells it quotes |
 
 Each is walked, with its own figure, in [guide/03 — The plugin](./docs/guide/03-the-plugin.md).
 
