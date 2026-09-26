@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useSupabase } from '@/contexts/SupabaseProvider'
+import { appRootUrl } from '@/lib/basePath'
 
 /**
  * Sign in, or sign out — the front-door half of the settings surface, and
@@ -48,6 +49,8 @@ export function AdminSessionFields() {
   // `shouldCreateUser: false` keeps it from quietly minting accounts.
   // Requires the project's Site URL / redirect allowlist to include this
   // origin — a link mailed to the default localhost Site URL goes nowhere.
+  // Under a base path the link lands on the prefix, so the allow-list entry
+  // is the origin AND the prefix (`lib/basePath.ts`).
   const [linkSent, setLinkSent] = useState(false)
   const sendMagicLink = () => {
     if (!client || authBusy) return
@@ -60,7 +63,7 @@ export function AdminSessionFields() {
         email,
         options: {
           shouldCreateUser: false,
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: appRootUrl(window.location.origin),
         },
       })
       .then(({ error }) => {

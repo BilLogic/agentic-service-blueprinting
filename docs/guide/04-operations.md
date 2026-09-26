@@ -79,3 +79,88 @@ Any static host works; the same two rules have an equivalent everywhere.
 Live-database mode needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` **at
 build time**. Blueprint-specific gotchas are in
 [`skills/map/references/deploy-notes.md`](../../skills/map/references/deploy-notes.md).
+
+### Serving from a path
+
+By default the app is served from the root of a domain. To serve it under a
+path instead, such as `https://example.org/demo/`, set one build-time
+variable, `BASE_PATH`:
+
+```toml
+# netlify.toml
+[build.environment]
+  NODE_VERSION = "22"
+  BASE_PATH = "/demo/"
+```
+
+Unset or `/`, nothing changes: the output is `dist/`, and every URL is what it
+was. Set, three things follow from the one value:
+
+- **The build is written under the path.** The output lands in `dist/demo/`
+  (its `index.html`, its `assets/` and the `public/` files beside them), so
+  every file sits at the URL the browser asks for. The publish
+  directory stays `dist`. `_headers` and `_redirects` are moved back up to
+  `dist/`, the only place a host reads them.
+- **Every URL the app reads or writes keeps the prefix.** The board address,
+  deep links, the service slug in the path, the magic-link redirect, and
+  root-relative image paths stored in the data (`/cover/…`, touchpoint logos)
+  all resolve under `/demo/`. `src/lib/basePath.ts` is where they cross it.
+- **The hosting rules move under the path**, and `npm run check:hosting`
+  reads `BASE_PATH` (from the environment, or from `[build.environment]` above)
+  and holds the prefixed rules to the same order and cache:
+
+```toml
+[[redirects]]
+  from = "/demo/assets/*"
+  to = "/demo/assets/:splat"
+  status = 404
+
+[[redirects]]
+  from = "/demo/*"
+  to = "/demo/index.html"
+  status = 200
+```
+
+and, in `public/_headers`, the long cache moves to `/demo/assets/*` (the
+`/*` CSP block already covers the path):
+
+```
+/demo/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+```
+
+**Behind a proxy on another site.** When the path belongs to a different
+site (a marketing site that shows the app at `/demo/`), build and deploy the
+app on its own site exactly as above, with the same `BASE_PATH`. Then add one
+rewrite to the other site's `netlify.toml`:
+
+```toml
+[[redirects]]
+  from = "/demo/*"
+  to = "https://your-app-site.netlify.app/demo/:splat"
+  status = 200
+  force = true
+```
+
+The proxy forwards the path unchanged. Because the app's files already sit
+under `/demo/` on its own site, the same request works both ways: directly at
+`https://your-app-site.netlify.app/demo/…` and through the proxy at
+`https://example.org/demo/…`. That rule is forced because the other site may
+have files of its own under the path. It lives in the other site's
+configuration, not in this template's `netlify.toml`, so `check:hosting` never
+reads it.
+
+With a database behind the app, add the prefixed URL to the Supabase
+project's redirect allow-list, so a magic link lands back on the app. A magic
+link returns to the origin it was sent from, so when the app is reachable
+both ways, list both: `https://example.org/demo/` for the proxy, and
+`https://your-app-site.netlify.app/demo/` for the site itself.
+
+Nothing is served at the app site's own root any more, so `/` there answers
+404. If people know that address, send them on with a redirect above the
+others: `from = "/"`, `to = "/demo/"`, `status = 301`. A local build under a
+path empties only `dist/demo/`, so delete `dist/` first if an earlier root
+build left files beside it. The render walk runs over a prefixed build
+too: build with `BASE_PATH=/demo/`, then run `BASE_PATH=/demo/ npm run
+check:render-walk`
+([render-walk/README.md § Served from a path](../../render-walk/README.md#served-from-a-path)).

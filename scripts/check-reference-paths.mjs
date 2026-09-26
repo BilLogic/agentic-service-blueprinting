@@ -113,6 +113,7 @@ export const CONSUMER_IMPORTS = [
   'render-walk/annotation-drag.spec.ts',
   'render-walk/mobile-cover.spec.ts',
   'render-walk/mobile-agent-jump.spec.ts',
+  'render-walk/served-from-a-path.spec.ts',
 
   // The composition documents. Not imported either — READ, out of this
   // package's installed tree, by the deployment's own copy of

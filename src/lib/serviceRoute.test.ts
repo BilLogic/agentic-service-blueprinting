@@ -52,3 +52,27 @@ describe('a shared cell link carries the service and the cell', () => {
     expect(parseUrlViewState(search)).toEqual({ kind: 'blueprint', cellId: 'cell-123' })
   })
 })
+
+describe('under a base path', () => {
+  // A host that mounts the app at `/demo/` shows `/demo/<slug>` in the address
+  // bar. The prefix is the host's, not a service: reading it as the slug would
+  // route every visitor to a service called "demo", and writing a slug without
+  // it would move the reader off the app.
+  const base = '/demo/'
+
+  it('reads the bare prefix as the root, not as a slug', () => {
+    expect(parseServiceSlug('/demo/', base)).toBeNull()
+    expect(parseServiceSlug('/demo', base)).toBeNull()
+  })
+
+  it('reads the slug from the segment after the prefix', () => {
+    expect(parseServiceSlug('/demo/field-service', base)).toBe('field-service')
+  })
+
+  it('writes the slug under the prefix, search and all', () => {
+    expect(serviceRoutePath('field-service', '?cell=abc', base)).toBe(
+      '/demo/field-service?cell=abc',
+    )
+    expect(serviceRoutePath(null, '', base)).toBe('/demo/')
+  })
+})

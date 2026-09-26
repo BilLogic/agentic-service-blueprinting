@@ -8,6 +8,7 @@ import {
   TOUCHPOINT_ROLE_DEFINITION,
   TOUCHPOINT_ROLE_LABEL,
 } from '@/lib/touchpointRole'
+import { servedUrl } from '@/lib/basePath'
 import { shouldUseTouchpointCellContent } from '@/lib/blueprintLayout'
 import { isBlueprintStepStoryboardPlaceholder } from '@/lib/blueprintStoryboardPlaceholder'
 import { useTouchpointToneResolver } from '@/hooks/useTouchpointToneResolver'
@@ -128,7 +129,7 @@ export function CellDetailOverview({
   const imageBlock = showImages && featuredImage ? (
     <div className="flex w-full flex-col items-center gap-3">
       {frameIsLogo ? (
-        <img src={featuredImage} alt="" className={CELL_DETAIL_LOGO_CLASS} />
+        <img src={servedUrl(featuredImage)} alt="" className={CELL_DETAIL_LOGO_CLASS} />
       ) : (
         <div className={CELL_DETAIL_PICTURE_FRAME_CLASS}>
           <ZoomableImage
@@ -137,7 +138,7 @@ export function CellDetailOverview({
             triggerLabel={`Expand: ${cellTitleText}`}
             triggerClassName="absolute inset-0 block cursor-pointer"
           >
-            <img src={featuredImage} alt="" className={CELL_DETAIL_PICTURE_CLASS} />
+            <img src={servedUrl(featuredImage)} alt="" className={CELL_DETAIL_PICTURE_CLASS} />
           </ZoomableImage>
         </div>
       )}

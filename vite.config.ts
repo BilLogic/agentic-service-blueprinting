@@ -1,9 +1,9 @@
 /// <reference types="vitest/config" />
-import { existsSync } from 'fs'
+import { existsSync, renameSync } from 'fs'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 
 /**
  * Where `@/…` points: this repository's own `src`, or the package's, with
@@ -138,37 +138,110 @@ const packagedApplicationOptimizeDeps = {
  */
 const deploymentSource = path.resolve(import.meta.dirname, './deployment')
 
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [...(overlay ? [overlay] : []), react(), tailwindcss()],
-  optimizeDeps: applicationIsAPackage ? packagedApplicationOptimizeDeps : {},
-  resolve: {
-    alias: {
-      '@': appSource,
-      '~': deploymentSource,
+/**
+ * Where under its host the app is served: `/`, or a prefix such as `/demo/`.
+ *
+ * ONE SETTING, `BASE_PATH`, read from the build environment — a host's build
+ * settings, a `[build.environment]` table, or a `.env` file — and never from
+ * `DeploymentConfig`, because a config is read when `App` renders and the
+ * prefix has to be in every asset URL the build emits. Vite takes it as
+ * `base`, and the application reads it back as `import.meta.env.BASE_URL`
+ * through `src/lib/basePath.ts`, which is where every path the app reads or
+ * writes crosses it.
+ *
+ * The build is written UNDER the prefix too — `dist/demo/…` — so the files on
+ * disk sit at the paths the browser asks for. That is what lets one output
+ * serve both ways a host mounts it: published directly, where `/demo/*` falls
+ * back to `/demo/index.html`, and proxied from another site, which forwards
+ * `/demo/*` to the same path here unchanged. `vite preview` serves the nested
+ * output at the prefix, so the render walk previews exactly what ships.
+ *
+ * Unset, both are what they always were: `base` is `/` and the output is
+ * `dist`. The rule for the value is stated inline rather than imported: this
+ * file is bundled in isolation. The hosting check states it too, and
+ * `scripts/tests/base-path-rule.test.mjs` holds the two to one answer;
+ * `src/lib/basePath.ts` is pinned to the same table by its own test.
+ */
+export function basePath(value: string | undefined): string {
+  const trimmed = (value ?? '').trim()
+  if (!trimmed) return '/'
+  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed) || trimmed.startsWith('.') || /[?#]/.test(trimmed)) {
+    throw new Error(`BASE_PATH must be a path such as /demo/, not ${JSON.stringify(value)}`)
+  }
+  const segments = trimmed.split('/').filter(Boolean)
+  return segments.length === 0 ? '/' : `/${segments.join('/')}/`
+}
+
+/**
+ * The host's own files, put back where the host reads them.
+ *
+ * `public/_headers` and `public/_redirects` are read from the ROOT of the
+ * published directory and nowhere else. Under a prefix the whole output —
+ * `public/` included — lands in `dist/<prefix>/`, so without this step the
+ * two files are published one level down, where the host never looks, and
+ * every rule in them (the CSP, the hashed-asset cache) silently stops
+ * applying. At the root there is nothing to move and the step is not loaded.
+ */
+const HOST_FILES = ['_headers', '_redirects']
+
+function hostFilesAtPublishRoot(base: string): Plugin[] {
+  if (base === '/') return []
+  const publishRoot = path.resolve(import.meta.dirname, 'dist')
+  return [
+    {
+      name: 'host-files-at-publish-root',
+      apply: 'build',
+      closeBundle() {
+        for (const file of HOST_FILES) {
+          const nested = path.join(publishRoot, base, file)
+          if (existsSync(nested)) renameSync(nested, path.join(publishRoot, file))
+        }
+      },
     },
-  },
-  test: {
-    // Node by default (colour math, layout helpers, script-level suites);
-    // component tests opt into jsdom per-file with a
-    // `// @vitest-environment jsdom` docblock.
-    environment: 'node',
-    // The suite runs with the dev-server flags OFF, whatever a developer keeps
-    // in their own `.env.local`. `VITE_DEV_AUTHORING_UI=true` is how a
-    // deployment shows its edit surfaces on a dev server without an authoring
-    // key; it is read once at module load, so no `stubEnv` inside a test can
-    // reach it, and a suite that inherits it starts with write flags already
-    // up. That fails on the machine that has the flag and passes in CI, which
-    // is the shape of failure that costs the most to diagnose.
-    env: { VITE_DEV_AUTHORING_UI: '' },
-    include: [
-      'src/**/*.test.ts',
-      'src/**/*.test.tsx',
-      // A deployment's own tests, in its own root. Nothing here matches them —
-      // see the deployment source root above.
-      'deployment/**/*.test.ts',
-      'deployment/**/*.test.tsx',
-      'scripts/tests/**/*.test.mjs',
+  ]
+}
+
+// https://vite.dev/config/
+export default defineConfig(({ mode }) => {
+  const base = basePath(loadEnv(mode, import.meta.dirname, '').BASE_PATH)
+  return {
+    base,
+    build: { outDir: base === '/' ? 'dist' : path.join('dist', base) },
+    plugins: [
+      ...(overlay ? [overlay] : []),
+      react(),
+      tailwindcss(),
+      ...hostFilesAtPublishRoot(base),
     ],
-  },
+    optimizeDeps: applicationIsAPackage ? packagedApplicationOptimizeDeps : {},
+    resolve: {
+      alias: {
+        '@': appSource,
+        '~': deploymentSource,
+      },
+    },
+    test: {
+      // Node by default (colour math, layout helpers, script-level suites);
+      // component tests opt into jsdom per-file with a
+      // `// @vitest-environment jsdom` docblock.
+      environment: 'node',
+      // The suite runs with the dev-server flags OFF, whatever a developer keeps
+      // in their own `.env.local`. `VITE_DEV_AUTHORING_UI=true` is how a
+      // deployment shows its edit surfaces on a dev server without an authoring
+      // key; it is read once at module load, so no `stubEnv` inside a test can
+      // reach it, and a suite that inherits it starts with write flags already
+      // up. That fails on the machine that has the flag and passes in CI, which
+      // is the shape of failure that costs the most to diagnose.
+      env: { VITE_DEV_AUTHORING_UI: '' },
+      include: [
+        'src/**/*.test.ts',
+        'src/**/*.test.tsx',
+        // A deployment's own tests, in its own root. Nothing here matches them —
+        // see the deployment source root above.
+        'deployment/**/*.test.ts',
+        'deployment/**/*.test.tsx',
+        'scripts/tests/**/*.test.mjs',
+      ],
+    },
+  }
 })

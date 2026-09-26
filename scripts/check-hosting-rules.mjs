@@ -64,6 +64,16 @@
  * defect wherever it is written, and a check that read only one of the two
  * would be a check with a documented way around it.
  *
+ * UNDER A BASE PATH every rule moves with the output. A deployment served
+ * from a prefix sets `BASE_PATH` (`vite.config.ts`), and its build lands in
+ * `dist/<prefix>/`, so the hashed chunks are `/<prefix>/assets/*` and the
+ * fallback is `/<prefix>/*`. The check reads the same setting — the
+ * environment first, then the `[build.environment]` table of `netlify.toml`,
+ * which is where a host that builds from the file takes it — and holds the
+ * prefixed rules to the same order and the same cache. A table still written
+ * for the root is then the defect: its `/assets/*` rule matches nothing the
+ * site serves. Unset, the base is `/` and every rule reads as it always did.
+ *
  * What it counts is RULES, not files. Every file here passes every assertion
  * below when it is empty, so a run over emptied files would otherwise print
  * the same green line as a run over the real ones.
@@ -91,6 +101,67 @@ export const ASSETS = '/assets/*'
 
 /** What the missing-chunk rule has to say, in full. */
 export const MISSING_CHUNK = { from: ASSETS, to: '/assets/:splat', status: '404' }
+
+/**
+ * A base-path setting as `/` or `/<segments>/`, refusing what is not a path —
+ * the rule `vite.config.ts` builds with, restated here because a check reads
+ * no application module. `base-path-rule.test.mjs` holds this copy and the
+ * build's to one answer.
+ *
+ * @param {string | undefined} value
+ */
+export function normalizeBasePath(value) {
+  const trimmed = (value ?? '').trim()
+  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed) || trimmed.startsWith('.') || /[?#]/.test(trimmed)) {
+    throw new Error(`BASE_PATH must be a path such as /demo/, not ${JSON.stringify(value)}`)
+  }
+  const segments = trimmed.split('/').filter(Boolean)
+  return segments.length === 0 ? '/' : `/${segments.join('/')}/`
+}
+
+/**
+ * The base path this deployment builds with: `BASE_PATH` from the
+ * environment, or else from the `[build.environment]` table of the host's
+ * configuration file — the one place a host that builds from the file reads
+ * it. Only that table: a `[context.*.environment]` value applies to some
+ * deploys and not others, and a check that guessed which would be guessing.
+ *
+ * @param {string | null} configText
+ * @param {Record<string, string | undefined>} [env]
+ */
+export function basePathIn(configText, env = process.env) {
+  if (env.BASE_PATH?.trim()) return normalizeBasePath(env.BASE_PATH)
+  let inBuildEnvironment = false
+  for (const raw of (configText ?? '').split('\n')) {
+    const line = raw.trim()
+    if (line.startsWith('#')) continue
+    if (line.startsWith('[')) {
+      inBuildEnvironment = line === '[build.environment]'
+      continue
+    }
+    if (!inBuildEnvironment) continue
+    const pair = /^BASE_PATH\s*=\s*(.*)$/.exec(line)
+    if (pair) return normalizeBasePath(pair[1].trim().replace(/^["']|["']$/g, ''))
+  }
+  return '/'
+}
+
+/**
+ * The rules, under a base path: the hashed output's path, the missing-chunk
+ * rule in full, and the catch-all's `from`. At `/` these are `ASSETS`,
+ * `MISSING_CHUNK` and `/*`.
+ *
+ * @param {string} [base]
+ */
+export function hostingRules(base = '/') {
+  if (base === '/') return { assets: ASSETS, missingChunk: MISSING_CHUNK, catchAll: '/*' }
+  const assets = `${base}assets/*`
+  return {
+    assets,
+    missingChunk: { from: assets, to: `${base}assets/:splat`, status: MISSING_CHUNK.status },
+    catchAll: `${base}*`,
+  }
+}
 
 /** What a hashed asset may be cached for. A year, and never revalidated. */
 export const IMMUTABLE = 'public, max-age=31536000, immutable'
@@ -300,35 +371,37 @@ export function outlivesADeploy(value) {
  * @param {ReturnType<typeof redirectsIn>} blocks
  * @param {string} subject
  * @param {string} [note]
+ * @param {string} [base]
  * @returns {string[]}
  */
-export function orderFindings(blocks, subject, note = '') {
+export function orderFindings(blocks, subject, note = '', base = '/') {
   const found = []
   const tail = note ? ` ${note}` : ''
-  const missing = blocks.findIndex((block) => block.from === MISSING_CHUNK.from)
-  const catchAll = blocks.findIndex((block) => block.from === '/*')
+  const { missingChunk, catchAll: fallback } = hostingRules(base)
+  const missing = blocks.findIndex((block) => block.from === missingChunk.from)
+  const catchAll = blocks.findIndex((block) => block.from === fallback)
 
   if (missing === -1) {
     found.push(
-      `${subject} has no \`${MISSING_CHUNK.from}\` rule, so a hashed chunk this deploy no ` +
+      `${subject} has no \`${missingChunk.from}\` rule, so a hashed chunk this deploy no ` +
         'longer ships falls through to the catch-all and is answered with the app shell — a 200 ' +
         'and text/html where a script was asked for. Add the rule with ' +
-        `from = "${MISSING_CHUNK.from}", to = "${MISSING_CHUNK.to}", ` +
-        `status = ${MISSING_CHUNK.status}, and no force.${tail}`,
+        `from = "${missingChunk.from}", to = "${missingChunk.to}", ` +
+        `status = ${missingChunk.status}, and no force.${tail}`,
     )
   } else {
     const block = blocks[missing]
-    if (block.to !== MISSING_CHUNK.to) {
+    if (block.to !== missingChunk.to) {
       found.push(
-        `${subject}:${block.line} sends \`${MISSING_CHUNK.from}\` to \`${block.to}\` — the ` +
-          `target has to be \`${MISSING_CHUNK.to}\`, which is what keeps the rule from quietly ` +
+        `${subject}:${block.line} sends \`${missingChunk.from}\` to \`${block.to}\` — the ` +
+          `target has to be \`${missingChunk.to}\`, which is what keeps the rule from quietly ` +
           'rewriting one path into another.',
       )
     }
-    if (block.status !== MISSING_CHUNK.status) {
+    if (block.status !== missingChunk.status) {
       found.push(
-        `${subject}:${block.line} answers \`${MISSING_CHUNK.from}\` with ${block.status} — the ` +
-          `status has to be ${MISSING_CHUNK.status}, which is the whole point of the rule: a ` +
+        `${subject}:${block.line} answers \`${missingChunk.from}\` with ${block.status} — the ` +
+          `status has to be ${missingChunk.status}, which is the whole point of the rule: a ` +
           'missing chunk saying it is missing.',
       )
     }
@@ -347,21 +420,21 @@ export function orderFindings(blocks, subject, note = '') {
       `${subject}:${block.line} forces \`${block.from}\`. A host does not shadow existing ` +
         'content with a non-forced rule, and that — not `:splat` — is why an asset that IS ' +
         'there is still served. Forced, the rule answers for the files too: on ' +
-        `\`${MISSING_CHUNK.from}\` that is a ${MISSING_CHUNK.status} for every asset the site ` +
+        `\`${missingChunk.from}\` that is a ${missingChunk.status} for every asset the site ` +
         'has. Remove the force.',
     )
   }
 
   if (catchAll === -1) {
     found.push(
-      `${subject} has no \`/*\` catch-all, so there is nothing for the ` +
-        `\`${MISSING_CHUNK.from}\` rule to precede and no path reaches the app. The single-page ` +
+      `${subject} has no \`${fallback}\` catch-all, so there is nothing for the ` +
+        `\`${missingChunk.from}\` rule to precede and no path reaches the app. The single-page ` +
         `fallback is what every deep link depends on.${tail}`,
     )
   } else if (missing > catchAll) {
     found.push(
-      `${subject}:${blocks[missing].line} puts the \`${MISSING_CHUNK.from}\` rule BELOW the ` +
-        `\`/*\` catch-all on line ${blocks[catchAll].line}. The host takes the first rule that ` +
+      `${subject}:${blocks[missing].line} puts the \`${missingChunk.from}\` rule BELOW the ` +
+        `\`${fallback}\` catch-all on line ${blocks[catchAll].line}. The host takes the first rule that ` +
         'matches, so below it the rule is never reached and the defect it fixes is back, wearing ' +
         `the fix. Move the block above the catch-all.${tail}`,
     )
@@ -371,8 +444,8 @@ export function orderFindings(blocks, subject, note = '') {
 }
 
 /** The order claim over one `netlify.toml`'s text. */
-export function redirectFindings(text, subject = CONFIG) {
-  return orderFindings(redirectsIn(text), subject)
+export function redirectFindings(text, subject = CONFIG, base = '/') {
+  return orderFindings(redirectsIn(text), subject, '', base)
 }
 
 /**
@@ -382,12 +455,13 @@ export function redirectFindings(text, subject = CONFIG) {
  * the configuration file, so a catch-all here sits above every rule in
  * `netlify.toml` and reinstates the defect from above it.
  */
-export function fileRedirectFindings(text, subject = FILE_REDIRECTS) {
+export function fileRedirectFindings(text, subject = FILE_REDIRECTS, base = '/') {
   return orderFindings(
     redirectLinesIn(text),
     subject,
     `A host processes ${subject} BEFORE ${CONFIG}, so this file's own order is the one that ` +
       `decides; the rules in ${CONFIG} are never reached for a path this file matches.`,
+    base,
   )
 }
 
@@ -396,16 +470,18 @@ export function fileRedirectFindings(text, subject = FILE_REDIRECTS) {
  *
  * @param {ReturnType<typeof headerBlocksIn>} blocks
  * @param {string} subject
+ * @param {string} [base]
  * @returns {string[]}
  */
-export function hashedCacheFindings(blocks, subject = HEADERS) {
+export function hashedCacheFindings(blocks, subject = HEADERS, base = '/') {
   const found = []
-  const hashed = blocks.filter((block) => block.path === ASSETS)
+  const { assets } = hostingRules(base)
+  const hashed = blocks.filter((block) => block.path === assets)
 
   if (hashed.length === 0) {
     found.push(
-      `${subject} has no \`${ASSETS}\` block, so every hashed asset is revalidated on every ` +
-        `navigation even though its name already encodes its content. Add \`${ASSETS}\` with ` +
+      `${subject} has no \`${assets}\` block, so every hashed asset is revalidated on every ` +
+        `navigation even though its name already encodes its content. Add \`${assets}\` with ` +
         `\`Cache-Control: ${IMMUTABLE}\`.`,
     )
     return found
@@ -416,7 +492,7 @@ export function hashedCacheFindings(blocks, subject = HEADERS) {
     // first, a reader reads the last, and a `no-store` underneath the year
     // passes every assertion made about the year alone.
     found.push(
-      `${subject}:${hashed[1].line} declares \`${ASSETS}\` a second time (the first is on line ` +
+      `${subject}:${hashed[1].line} declares \`${assets}\` a second time (the first is on line ` +
         `${hashed[0].line}). One path, one block — a second one is a rule nobody can read off ` +
         'the file, and the one further down is the one a reviewer sees.',
     )
@@ -426,14 +502,14 @@ export function hashedCacheFindings(blocks, subject = HEADERS) {
     const cache = block.headers.find((header) => isCacheHeader(header.name))
     if (!cache) {
       found.push(
-        `${subject}:${block.line} \`${ASSETS}\` carries no Cache-Control, so the long cache the ` +
+        `${subject}:${block.line} \`${assets}\` carries no Cache-Control, so the long cache the ` +
           `content hash makes safe is not claimed. Add \`Cache-Control: ${IMMUTABLE}\`.`,
       )
       continue
     }
     if (cache.value !== IMMUTABLE) {
       found.push(
-        `${subject}:${cache.line} \`${ASSETS}\` is cached as \`${cache.value}\` rather than ` +
+        `${subject}:${cache.line} \`${assets}\` is cached as \`${cache.value}\` rather than ` +
           `\`${IMMUTABLE}\`. The hash in the name is what makes a year safe; anything shorter ` +
           'spends a round trip per navigation for nothing.',
       )
@@ -448,12 +524,14 @@ export function hashedCacheFindings(blocks, subject = HEADERS) {
  *
  * @param {ReturnType<typeof headerBlocksIn>} blocks
  * @param {string} subject
+ * @param {string} [base]
  * @returns {string[]}
  */
-export function longCacheFindings(blocks, subject = HEADERS) {
+export function longCacheFindings(blocks, subject = HEADERS, base = '/') {
   const found = []
+  const { assets } = hostingRules(base)
   for (const block of blocks) {
-    if (block.path === ASSETS) continue
+    if (block.path === assets) continue
     for (const header of block.headers) {
       if (!isCacheHeader(header.name)) continue
       if (!outlivesADeploy(header.value)) continue
@@ -461,7 +539,7 @@ export function longCacheFindings(blocks, subject = HEADERS) {
         `${subject}:${header.line} \`${block.path}\` is cached as \`${header.name}: ` +
           `${header.value}\`, which outlives a deploy, and nothing under that path carries a ` +
           'content hash. The shell is what delivers the new hashes: served from an old cache it ' +
-          `asks for chunks the site no longer has. Only \`${ASSETS}\` may be cached this long.`,
+          `asks for chunks the site no longer has. Only \`${assets}\` may be cached this long.`,
       )
     }
   }
@@ -469,9 +547,12 @@ export function longCacheFindings(blocks, subject = HEADERS) {
 }
 
 /** Both cache claims over one `_headers` file's text. */
-export function cacheFindings(text, subject = HEADERS) {
+export function cacheFindings(text, subject = HEADERS, base = '/') {
   const blocks = headerBlocksIn(text)
-  return [...hashedCacheFindings(blocks, subject), ...longCacheFindings(blocks, subject)]
+  return [
+    ...hashedCacheFindings(blocks, subject, base),
+    ...longCacheFindings(blocks, subject, base),
+  ]
 }
 
 /**
@@ -493,9 +574,13 @@ export function hostingSweep(root = process.cwd()) {
  * about the subject. With no rule file there is nothing to count either, so
  * `count` falls to zero and the NO SUBJECT outcome says the rest.
  *
+ * `base` is the path the deployment is served from; `judge` reads it with
+ * `basePathIn`, and every rule below is held under it.
+ *
  * @param {{ read: (path: string) => string | null, files: string[] }} walk
+ * @param {string} [base]
  */
-export function hostingFindings(walk) {
+export function hostingFindings(walk, base = '/') {
   const tracked = new Set(walk.files)
   const found = []
   let rules = 0
@@ -527,19 +612,19 @@ export function hostingFindings(walk) {
     const blocks = redirectsIn(config)
     const tomlHeaders = tomlHeaderBlocksIn(config)
     rules += blocks.length + tomlHeaders.length
-    found.push(...orderFindings(blocks, CONFIG))
+    found.push(...orderFindings(blocks, CONFIG, '', base))
     // `[[headers]]` here does not have to declare the hashed cache — that is
     // `public/_headers`'s one home for it — but a long cache on an unhashed
     // path is the defect wherever it was written down.
-    found.push(...longCacheFindings(tomlHeaders, CONFIG))
+    found.push(...longCacheFindings(tomlHeaders, CONFIG, base))
   }
 
   const headers = present(HEADERS, true)
   if (headers !== null) {
     const blocks = headerBlocksIn(headers)
     rules += blocks.length
-    found.push(...hashedCacheFindings(blocks, HEADERS))
-    found.push(...longCacheFindings(blocks, HEADERS))
+    found.push(...hashedCacheFindings(blocks, HEADERS, base))
+    found.push(...longCacheFindings(blocks, HEADERS, base))
   }
 
   // Optional, and read for anyway: this template ships none, and a repository
@@ -548,7 +633,7 @@ export function hostingFindings(walk) {
   if (fileRedirects !== null) {
     const lines = redirectLinesIn(fileRedirects)
     rules += lines.length
-    found.push(...fileRedirectFindings(fileRedirects, FILE_REDIRECTS))
+    found.push(...fileRedirectFindings(fileRedirects, FILE_REDIRECTS, base))
   }
 
   return { failures: found, rules }
@@ -560,8 +645,11 @@ export function hostingFindings(walk) {
  * Pure — it reads, decides, and hands back what it found and how many rules it
  * counted. Nothing here prints or exits.
  */
-export function judge(root = process.cwd()) {
-  const { failures, rules } = hostingFindings(hostingSweep(root))
+export function judge(root = process.cwd(), env = process.env) {
+  const walk = hostingSweep(root)
+  const base = basePathIn(walk.read(CONFIG), env)
+  const { assets, missingChunk, catchAll } = hostingRules(base)
+  const { failures, rules } = hostingFindings(walk, base)
   return {
     what: 'a hosting rule a commit would carry',
     count: rules,
@@ -573,8 +661,8 @@ export function judge(root = process.cwd()) {
       `${HEADERS}. Then run npm run check:hosting.`,
     line:
       `[hosting] ${rules} rules in ${CONFIG} and ${HEADERS} — a missing chunk answers ` +
-      `${MISSING_CHUNK.status} above the catch-all, nothing is forced, and only ${ASSETS} is ` +
-      'cached past a deploy.',
+      `${missingChunk.status} above the ${catchAll} catch-all, nothing is forced, and only ` +
+      `${assets} is cached past a deploy.`,
   }
 }
 

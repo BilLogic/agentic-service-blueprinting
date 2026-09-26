@@ -2,6 +2,7 @@ import { Expand } from 'lucide-react'
 import type { CoverFigure as CoverFigureModel } from '@/components/cover/coverModel'
 import { ZoomableImage } from '@/components/blueprint/ZoomableImage'
 import { COVER_MEASURE } from '@/components/cover/coverMeasure'
+import { servedUrl } from '@/lib/basePath'
 import { cn } from '@/lib/utils'
 
 /**
@@ -76,7 +77,7 @@ export function CoverFigure({
       )}
     >
       <img
-        src={figure.src}
+        src={servedUrl(figure.src)}
         alt={figure.alt}
         width={figure.width}
         height={figure.height}

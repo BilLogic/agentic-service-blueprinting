@@ -225,7 +225,7 @@ test.describe('the phone agent jump', () => {
     const assertNoProblems = (where: string) =>
       expect(problems, `${where}: ${problems.join('\n')}`).toEqual([])
 
-    await page.goto('/')
+    await page.goto('./')
     const cover = page.locator('[data-cover-page]')
     await expect(cover).toBeVisible()
     await cover.locator('header button').first().click()

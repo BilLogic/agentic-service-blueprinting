@@ -69,7 +69,7 @@ type CellBox = { id: string; x: number; y: number; width: number; height: number
  * same reason the sample-board walk reads its inventory there.
  */
 async function openFirstBoard(page: Page): Promise<Locator> {
-  await page.goto('/')
+  await page.goto('./')
 
   // The shell must have drawn before the cover is asked about. `count()`
   // answers at once, and on a slow first paint it answers zero before the

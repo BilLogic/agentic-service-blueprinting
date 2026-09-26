@@ -313,6 +313,27 @@ jobs:
           path: render-walk-output/**
           if-no-files-found: warn
 
+      # The same walk over a build served from a path. A host may mount the
+      # app under a prefix rather than at a domain root, and then every chunk,
+      # font, public image and written address has to stay under it. The build
+      # lands in `dist/demo/`, the preview serves it at `/demo/`, and the walk
+      # navigates relative to that. `served-from-a-path.spec.ts` asserts the
+      # prefix on the shareable address, a cold reload of it, and every
+      # same-origin request; the rest of the walk catches a stored image path
+      # that lost the prefix, because it 404s and the browser logs that as a
+      # console error. After the upload above, so the root walk's screenshots
+      # are the ones kept.
+      - name: Build the distribution under /demo/
+        run: npm run build
+        env:
+          BASE_PATH: /demo/
+          VITE_SUPABASE_URL: ''
+          VITE_SUPABASE_ANON_KEY: ''
+      - name: Walk the build served from /demo/
+        run: npm run check:render-walk
+        env:
+          BASE_PATH: /demo/
+
   # The portability position, executed.
   #
   # The partition between the portable Postgres core and the Supabase recipe is

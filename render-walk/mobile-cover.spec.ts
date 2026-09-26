@@ -62,7 +62,7 @@ test.describe('the phone cover walk', () => {
     }
 
     const problems: Problem[] = []
-    let address = '/'
+    let address = './'
     page.on('console', (message) => {
       if (message.type() === 'error') {
         problems.push({ address, detail: `console.error: ${message.text()}` })
@@ -81,7 +81,7 @@ test.describe('the phone cover walk', () => {
       )
     }
 
-    await page.goto('/')
+    await page.goto('./')
     const cover = page.locator('[data-cover-page]')
     await expect(cover).toBeVisible()
     await page.screenshot({ path: join(MOBILE_SCREENSHOT_DIR, 'cover.png') })

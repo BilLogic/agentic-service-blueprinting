@@ -21,7 +21,7 @@ import { defineConfig, devices } from '@playwright/test'
  *
  * `render-walk/` is a published path (`docs/adr/0004-reference-paths-are-a-
  * published-interface.md`, and `CONSUMER_IMPORTS` in
- * `scripts/check-reference-paths.mjs` lists all six of its files). A
+ * `scripts/check-reference-paths.mjs` lists all seven of its files). A
  * deployment that installs this package enrols by running `run.mjs` beside
  * this file, from its own root:
  *
@@ -80,7 +80,30 @@ if (!Number.isInteger(PREVIEW_PORT) || PREVIEW_PORT < 1 || PREVIEW_PORT > 65535)
     `render-walk: RENDER_WALK_PORT is not a port number: ${JSON.stringify(process.env.RENDER_WALK_PORT)}`,
   )
 }
-const PREVIEW_URL = `http://localhost:${PREVIEW_PORT}`
+
+/**
+ * The prefix the build under walk was served from — `BASE_PATH`, the same
+ * variable the build read, so a walk run in the environment that built `dist`
+ * previews it where it was built to live. Unset, it is the root and the walk
+ * is the one it always was.
+ *
+ * The specs navigate RELATIVE to this (`./`, `./?phase=…`), never to `/`:
+ * Playwright resolves a leading slash against the origin, which would step
+ * out of the prefix and walk nothing. `served-from-a-path.spec.ts` is the case
+ * that holds the prefix itself — see `render-walk/README.md` § Served from a
+ * path. The rule for the value is `src/lib/basePath.ts`'s, stated inline
+ * because this file is staged and run away from the application.
+ */
+export const BASE_PATH = (() => {
+  const value = (process.env.BASE_PATH ?? '').trim()
+  if (/^[a-z][a-z0-9+.-]*:/i.test(value) || value.startsWith('.') || /[?#]/.test(value)) {
+    throw new Error(`render-walk: BASE_PATH must be a path such as /demo/, not ${JSON.stringify(value)}`)
+  }
+  const segments = value.split('/').filter(Boolean)
+  return segments.length === 0 ? '/' : `/${segments.join('/')}/`
+})()
+
+const PREVIEW_URL = `http://localhost:${PREVIEW_PORT}${BASE_PATH}`
 
 /**
  * Everything the run writes, under the root it was started from — not under

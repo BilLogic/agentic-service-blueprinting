@@ -9,6 +9,7 @@ import {
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useImageZoom } from '@/hooks/useImageZoom'
+import { servedUrl } from '@/lib/basePath'
 import type { ImageZoomCursor } from '@/lib/imageZoomReducer'
 import { cn } from '@/lib/utils'
 
@@ -277,9 +278,11 @@ export function ZoomableImage({
               FRAME_SHAPE_CLASS,
             )}
           >
+            {/* The one place this component's picture meets the base path:
+                callers and siblings hand in the stored path as written. */}
             <img
               ref={imageRef}
-              src={shown.src}
+              src={servedUrl(shown.src)}
               alt={shown.alt}
               onLoad={measure}
               draggable={false}

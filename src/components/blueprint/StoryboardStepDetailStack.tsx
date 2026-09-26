@@ -3,6 +3,7 @@ import {
   hasEmbeddedStoryboardFrame,
   type StoryboardFrameEntry,
 } from '@/lib/storyboardWalkthrough'
+import { servedUrl } from '@/lib/basePath'
 import { cn } from '@/lib/utils'
 import type { CSSProperties } from 'react'
 
@@ -62,7 +63,7 @@ export function StoryboardStepDetailStack({
             style={{ gridColumn: index + 1, gridRow: 1 }}
           >
             <img
-              src={entry.frame}
+              src={servedUrl(entry.frame)}
               alt=""
               loading="lazy"
               decoding="async"
@@ -128,7 +129,7 @@ export function StoryboardStepDetailStack({
               triggerClassName="absolute inset-0 block cursor-pointer"
             >
               <img
-                src={entry.frame}
+                src={servedUrl(entry.frame)}
                 alt=""
                 loading="lazy"
                 decoding="async"

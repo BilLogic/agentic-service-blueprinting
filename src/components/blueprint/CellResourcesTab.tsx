@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { useCanvasModeValue } from '@/contexts/canvasModeContext'
 import { useSupabase } from '@/contexts/SupabaseProvider'
 import { setCellFeaturedImage } from '@/lib/authoringRpc'
+import { servedUrl } from '@/lib/basePath'
 import { updateCellResources } from '@/lib/cellContentMutations'
 import { setFeaturedResource } from '@/lib/placementResourceMutations'
 import { touchpointLogos } from '@/lib/resourcePresentation'
@@ -98,7 +99,7 @@ function InheritedLogos({
               key={logo.url}
               className="flex min-w-0 items-center gap-2 px-2 py-1 text-xs text-muted-foreground"
             >
-              <img src={logo.url} alt="" className="size-3 shrink-0 object-contain" />
+              <img src={servedUrl(logo.url)} alt="" className="size-3 shrink-0 object-contain" />
               <span className="min-w-0 truncate">{logo.name}</span>
               <span className="shrink-0 text-xs opacity-70">logo, from the touchpoint</span>
               {onSetFeaturedImage ? (

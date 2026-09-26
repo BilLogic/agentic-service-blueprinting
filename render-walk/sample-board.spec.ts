@@ -86,7 +86,7 @@ function boardAddress(view: Pick<View, 'phase' | 'scenario' | 'layout' | 'pathKe
   params.set(PARAM.scenario, view.scenario.id)
   for (const key of view.pathKeys) params.append(PARAM.paths, key)
   params.set(PARAM.view, view.layout)
-  return `/?${params.toString()}`
+  return `./?${params.toString()}`
 }
 
 function screenshotName(view: View): string {
@@ -346,7 +346,7 @@ test.describe('the bundled sample board', () => {
     }
 
     const problems: Problem[] = []
-    let address = '/'
+    let address = './'
     page.on('console', (message) => {
       if (message.type() === 'error') {
         problems.push({ address, detail: `console.error: ${message.text()}` })
@@ -364,7 +364,7 @@ test.describe('the bundled sample board', () => {
       )
     }
 
-    address = '/'
+    address = './'
     await page.goto(address)
 
     const phases = await readInventory(page)
