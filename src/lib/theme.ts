@@ -47,8 +47,10 @@ import { storageKey } from '@/lib/storageNamespace'
  *     page.
  *   - `'system'` is a storable choice that resolves through
  *     `prefers-color-scheme` and keeps tracking it live.
- *   - The default is LIGHT, deliberately not `'system'`: an installation with
- *     nothing stored opens light whatever the OS says.
+ *   - The default is `'system'`: a reader who has never touched the toggle
+ *     gets whatever their OS is set to, and follows it when it changes. The
+ *     toggle stores an outright `'light'` or `'dark'`, which then holds
+ *     regardless of the OS.
  *
  * The key moved onto the seam, which MOVES it: `next-themes` stored under the
  * bare `theme`, so a theme saved before this release reads once as no theme at
@@ -68,8 +70,8 @@ export type ResolvedTheme = 'light' | 'dark'
  */
 export const THEME_STORAGE_KEY = storageKey('theme')
 
-/** Nothing stored means light. Not the system preference — see the header. */
-const DEFAULT_THEME: ThemeChoice = 'light'
+/** Nothing stored means follow the OS — see the header. */
+const DEFAULT_THEME: ThemeChoice = 'system'
 
 const DARK_QUERY = '(prefers-color-scheme: dark)'
 

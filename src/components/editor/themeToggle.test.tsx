@@ -19,10 +19,10 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 /** The template's own prefix. Spelled out to prove the key arrived through it. */
 const STORED_KEY = 'ub-theme'
 
-/** A `matchMedia` that answers "no dark preference" and never changes. */
-function stubMatchMedia() {
+/** A `matchMedia` with a fixed answer — no dark preference unless asked. */
+function stubMatchMedia(prefersDark = false) {
   window.matchMedia = ((query: string) => ({
-    matches: false,
+    matches: prefersDark,
     media: query,
     onchange: null,
     addListener: () => {},
@@ -90,9 +90,15 @@ describe('the first render', () => {
     expect(toggle().hasAttribute('disabled')).toBe(false)
   })
 
-  it('opens light when nothing is stored', async () => {
+  it('opens on the OS preference when nothing is stored', async () => {
     await mount()
     expect(offer()).toBe('Switch to dark theme')
+  })
+
+  it('opens dark when nothing is stored and the OS prefers dark', async () => {
+    stubMatchMedia(true)
+    await mount()
+    expect(offer()).toBe('Switch to light theme')
   })
 })
 

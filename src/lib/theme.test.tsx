@@ -62,9 +62,9 @@ describe('what is stored', () => {
     expect(parseStoredTheme('system')).toBe('system')
     // Absent, hand-edited, or written by a build that knew another name: the
     // default is a correct answer and there is no throw path.
-    expect(parseStoredTheme(null)).toBe('light')
-    expect(parseStoredTheme('')).toBe('light')
-    expect(parseStoredTheme('midnight')).toBe('light')
+    expect(parseStoredTheme(null)).toBe('system')
+    expect(parseStoredTheme('')).toBe('system')
+    expect(parseStoredTheme('midnight')).toBe('system')
   })
 
   it('resolves the choice against the system preference', async () => {
@@ -95,13 +95,22 @@ describe('the class, applied while the module evaluates', () => {
     expect(getTheme().resolvedTheme).toBe('dark')
   })
 
-  it('nothing stored is light, not the system preference', async () => {
+  it('nothing stored follows the system preference', async () => {
     stubMatchMedia(true)
     const { getTheme } = await import('@/lib/theme')
-    expect(root().classList.contains('light')).toBe(true)
-    expect(root().style.colorScheme).toBe('light')
-    expect(getTheme().theme).toBe('light')
+    expect(root().classList.contains('dark')).toBe(true)
+    expect(root().style.colorScheme).toBe('dark')
+    expect(getTheme().theme).toBe('system')
+    expect(getTheme().resolvedTheme).toBe('dark')
+  })
+
+  it('nothing stored keeps following the OS as it changes', async () => {
+    const media = stubMatchMedia(false)
+    const { getTheme } = await import('@/lib/theme')
     expect(getTheme().resolvedTheme).toBe('light')
+    media.change(true)
+    expect(getTheme().resolvedTheme).toBe('dark')
+    expect(root().classList.contains('dark')).toBe(true)
   })
 
   it('a stored `system` reads the query', async () => {
