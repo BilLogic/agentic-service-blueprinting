@@ -16,6 +16,7 @@ import {
   replaceSlideImageSet,
   type SlideImageMemberInput,
 } from '@/lib/sliceMutations'
+import { servedUrl } from '@/lib/basePath'
 import { isRenderableImageSrc } from '@/lib/sliceCells'
 import { framesOfCitedCells, imagesThisSlideShows } from '@/lib/slideImages'
 import { cn, errorMessage } from '@/lib/utils'
@@ -238,7 +239,7 @@ export function SlideImagesField({
           return (
             <div key={frame.cellId} className="relative w-16 shrink-0">
               <ZoomableImage
-                src={frame.src}
+                src={servedUrl(frame.src)}
                 alt=""
                 triggerLabel="Enlarge frame"
                 siblings={siblings}
@@ -251,7 +252,7 @@ export function SlideImagesField({
                   on ? 'border-ring' : 'border-border opacity-45',
                 )}
               >
-                <img src={frame.src} alt="" className="aspect-[4/3] w-full object-cover" />
+                <img src={servedUrl(frame.src)} alt="" className="aspect-[4/3] w-full object-cover" />
               </ZoomableImage>
               <IconTooltip
                 label={on ? 'Included in this slide’s images' : 'Add this frame to the slide'}
@@ -283,7 +284,7 @@ export function SlideImagesField({
           return (
             <div key={src} className="relative w-16 shrink-0">
               <ZoomableImage
-                src={src}
+                src={servedUrl(src)}
                 alt=""
                 triggerLabel="Enlarge image"
                 siblings={siblings}
@@ -296,7 +297,7 @@ export function SlideImagesField({
                   on ? 'border-ring' : 'border-border opacity-45',
                 )}
               >
-                <img src={src} alt="" className="aspect-[4/3] w-full object-cover" />
+                <img src={servedUrl(src)} alt="" className="aspect-[4/3] w-full object-cover" />
               </ZoomableImage>
               <IconTooltip
                 label={on ? 'Included in this slide’s images' : 'Add this image to the slide'}

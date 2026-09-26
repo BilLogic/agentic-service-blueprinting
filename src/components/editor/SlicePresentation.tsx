@@ -24,6 +24,7 @@ import {
 import { DeferredSkeleton } from '@/components/ui/deferred-skeleton'
 import { useViewState } from '@/contexts/viewStateStore'
 import { useSliceBlueprint } from '@/hooks/useSliceBlueprint'
+import { servedUrl } from '@/lib/basePath'
 import { requestSliceCellFocus } from '@/lib/canvasFocusCells'
 import { buildCellLookup, getCellAt } from '@/lib/normalizeBlueprint'
 import { resolveBlueprintCellId } from '@/lib/resolveBlueprintCellId'
@@ -334,7 +335,7 @@ export function SlicePresentation({
                   {stageMedia.map((src, index) => (
                     <StageFrame
                       key={`${src}-${index}`}
-                      src={src}
+                      src={servedUrl(src)}
                       siblings={stageSiblings}
                       siblingIndex={index}
                     />
@@ -399,7 +400,7 @@ function StageFrame({
   } | null>(null)
   return (
     <ZoomableImage
-      src={src}
+      src={servedUrl(src)}
       alt=""
       triggerLabel="Enlarge image"
       siblings={siblings}
@@ -407,7 +408,7 @@ function StageFrame({
       triggerClassName="flex aspect-[4/3] w-full min-w-0 items-center justify-center overflow-hidden rounded-lg bg-card/40"
     >
       <img
-        src={src}
+        src={servedUrl(src)}
         alt=""
         onLoad={(event) => {
           const { naturalWidth, naturalHeight } = event.currentTarget

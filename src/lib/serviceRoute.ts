@@ -13,11 +13,21 @@
  * `urlViewState`/`viewStateStore` already own the URL by hand, and keeps the
  * single-service path (its slug in the path, nothing else changed) identical to
  * how the app writes URLs today via `history.replaceState`.
+ *
+ * Both functions work on the APP's path: a host that serves the app under a
+ * prefix (`lib/basePath.ts`) has that prefix taken off before the slug is read
+ * and put back when one is written, so `/demo/support-desk` names the service
+ * `support-desk` and the prefix is never mistaken for one.
  */
 
-/** The active service's slug from a pathname, or `null` at the bare root `/`. */
-export function parseServiceSlug(pathname: string): string | null {
-  const segment = pathname.split('/').filter(Boolean)[0]
+import { toAppPath, toServedPath } from '@/lib/basePath'
+
+/**
+ * The active service's slug from the browser's pathname, or `null` at the bare
+ * root — `/`, or the base path itself.
+ */
+export function parseServiceSlug(pathname: string, base?: string): string | null {
+  const segment = toAppPath(pathname, base).split('/').filter(Boolean)[0]
   if (!segment) return null
   try {
     return decodeURIComponent(segment).toLowerCase()
@@ -28,10 +38,11 @@ export function parseServiceSlug(pathname: string): string | null {
 }
 
 /**
- * The path for a slug, preserving the caller's search string. `null` maps to
- * the bare root, which is the pre-resolution state before a service is known.
+ * The browser path for a slug, under the base path, preserving the caller's
+ * search string. `null` maps to the bare root, which is the pre-resolution
+ * state before a service is known.
  */
-export function serviceRoutePath(slug: string | null, search = ''): string {
+export function serviceRoutePath(slug: string | null, search = '', base?: string): string {
   const path = slug ? `/${encodeURIComponent(slug)}` : '/'
-  return `${path}${search}`
+  return toServedPath(`${path}${search}`, base)
 }

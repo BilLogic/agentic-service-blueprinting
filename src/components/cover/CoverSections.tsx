@@ -11,6 +11,7 @@ import type {
   CoverSection,
 } from '@/components/cover/coverModel'
 import { COVER_MEASURE } from '@/components/cover/coverMeasure'
+import { servedUrl } from '@/lib/basePath'
 import { cn } from '@/lib/utils'
 
 function SectionHeading({ children }: { children: ReactNode }) {
@@ -65,7 +66,7 @@ function Portrait({
   */
   const picture = (
     <img
-      src={image.src}
+      src={servedUrl(image.src)}
       alt={image.alt}
       loading="lazy"
       decoding="async"
@@ -107,7 +108,7 @@ function Portrait({
       */}
       {image.size === 'framed' ? (
         <ZoomableImage
-          src={image.src}
+          src={servedUrl(image.src)}
           alt={image.alt}
           triggerLabel={`Expand: ${image.alt}`}
           // `w-fit`, because a button in a flex column stretches and the

@@ -105,6 +105,32 @@ The console-error rule below covers this case too, including the
 `RENDER_WALK_INJECT_CONSOLE_ERROR` self-test. It screenshots the dragged mark to
 `render-walk-output/annotation-drag.png`.
 
+## Served from a path
+
+`served-from-a-path.spec.ts` holds the app inside the path it is served from.
+It opens the app, lands a board through the Jump to… palette, and asserts that
+the address a reader would share carries the prefix, that a cold load of that
+address comes back to the same board, and that no request the page makes to
+its own host falls outside the prefix or fails.
+
+At the root that is a cheap reload check. It earns its place under a prefix,
+and CI runs the whole walk a second time over a build with `BASE_PATH=/demo/`:
+
+```bash
+BASE_PATH=/demo/ VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= npm run build
+BASE_PATH=/demo/ npm run check:render-walk
+```
+
+The config reads the same `BASE_PATH` the build read and previews at
+`http://localhost:<port>/demo/`. Every spec navigates relative to that (`./`,
+`./?phase=…`), never to `/`, because Playwright resolves a leading slash
+against the origin and would step out of the prefix. Under a prefix, the rest
+of the walk also catches a stored image path that lost the prefix: the request
+404s, and the browser logs that as a console error.
+
+A deployment served from a path enrols the same way. It runs the walk with its
+own `BASE_PATH` set, over a build made with it.
+
 ## What it catches, and what it does not
 
 It catches an error in the console, a page that threw, an error boundary, and a

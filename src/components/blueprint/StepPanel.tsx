@@ -12,6 +12,7 @@ import { StepPanelLoading } from '@/components/blueprint/panelLoading'
 import { PanelTextareaField } from '@/components/blueprint/PanelTextareaField'
 import { PanelSectionLabel } from '@/components/blueprint/PanelSectionLabel'
 import { ZoomableImage } from '@/components/blueprint/ZoomableImage'
+import { servedUrl } from '@/lib/basePath'
 import { PANEL_TERMS } from '@/lib/panelTerms'
 import { useStepSpec, type StepSpec } from '@/hooks/useStepSpec'
 import { usePanelFooterHost } from '@/hooks/usePanelFooterHost'
@@ -178,7 +179,7 @@ function StepPanelBody({
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden rounded-md bg-muted/20">
                   <ZoomableImage
-                    src={frame.src}
+                    src={servedUrl(frame.src)}
                     alt={frame.laneName}
                     triggerLabel={`Expand: ${frame.laneName}`}
                     siblings={frameSiblings}
@@ -186,7 +187,7 @@ function StepPanelBody({
                     triggerClassName="absolute inset-0 block cursor-pointer"
                   >
                     <img
-                      src={frame.src}
+                      src={servedUrl(frame.src)}
                       alt=""
                       loading="lazy"
                       decoding="async"

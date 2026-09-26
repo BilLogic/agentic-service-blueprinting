@@ -9,6 +9,7 @@ import {
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useImageZoom } from '@/hooks/useImageZoom'
+import { servedUrl } from '@/lib/basePath'
 import type { ImageZoomCursor } from '@/lib/imageZoomReducer'
 import { cn } from '@/lib/utils'
 
@@ -279,7 +280,7 @@ export function ZoomableImage({
           >
             <img
               ref={imageRef}
-              src={shown.src}
+              src={servedUrl(shown.src)}
               alt={shown.alt}
               onLoad={measure}
               draggable={false}

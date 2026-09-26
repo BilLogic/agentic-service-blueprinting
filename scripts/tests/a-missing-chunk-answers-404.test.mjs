@@ -32,11 +32,13 @@ import {
   IMMUTABLE,
   LONG_CACHE_SECONDS,
   MISSING_CHUNK,
+  basePathIn,
   cacheFindings,
   fileRedirectFindings,
   hashedCacheFindings,
   headerBlocksIn,
   hostingFindings,
+  hostingRules,
   isCacheHeader,
   judge,
   longCacheFindings,
@@ -373,10 +375,91 @@ test('a `_redirects` file nobody asked for is read, and the passing tree is sile
   assert.equal(withFallback.rules, clean.rules + 1)
 })
 
+/* ------------------------------------------------------ under a base path */
+
+// A deployment served from a prefix builds its output under `dist/<prefix>/`,
+// so every rule above moves under the prefix with it: the hashed chunks are
+// `/demo/assets/*`, and the fallback is `/demo/*`. The same order and the same
+// cache hold there, and a table still written for the root is the defect —
+// its `/assets/*` rule matches nothing the site serves.
+
+/** The rule files a deployment served from `/demo/` writes. */
+const PREFIXED_CONFIG = [
+  '[build.environment]',
+  '  BASE_PATH = "/demo/"',
+  '',
+  '[[redirects]]',
+  '  from = "/demo/assets/*"',
+  '  to = "/demo/assets/:splat"',
+  '  status = 404',
+  '',
+  '[[redirects]]',
+  '  from = "/demo/*"',
+  '  to = "/demo/index.html"',
+  '  status = 200',
+  '',
+].join('\n')
+
+const PREFIXED_HEADERS = [
+  '/*',
+  "  Content-Security-Policy: default-src 'self'",
+  '',
+  '/demo/assets/*',
+  `  Cache-Control: ${IMMUTABLE}`,
+  '',
+].join('\n')
+
+test('the rules move under the base path, and are the root rules at the root', () => {
+  assert.deepEqual(hostingRules('/'), {
+    assets: ASSETS,
+    missingChunk: MISSING_CHUNK,
+    catchAll: '/*',
+  })
+  assert.deepEqual(hostingRules('/demo/'), {
+    assets: '/demo/assets/*',
+    missingChunk: { from: '/demo/assets/*', to: '/demo/assets/:splat', status: '404' },
+    catchAll: '/demo/*',
+  })
+})
+
+test('the base path is read from the environment, then from the build table', () => {
+  assert.equal(basePathIn(ORDERED, {}), '/')
+  assert.equal(basePathIn(PREFIXED_CONFIG, {}), '/demo/')
+  assert.equal(basePathIn(ORDERED, { BASE_PATH: 'demo' }), '/demo/')
+  assert.equal(basePathIn(PREFIXED_CONFIG, { BASE_PATH: '/other/' }), '/other/')
+  // A commented key is not a setting.
+  assert.equal(basePathIn('[build.environment]\n# BASE_PATH = "/demo/"\n', {}), '/')
+  // A key under another table is not the build's.
+  assert.equal(basePathIn('[context.dev.environment]\n  BASE_PATH = "/demo/"\n', {}), '/')
+})
+
+test('a prefixed deployment passes with prefixed rules', () => {
+  const walk = walkOver({ [CONFIG]: PREFIXED_CONFIG, [HEADERS]: PREFIXED_HEADERS })
+  assert.deepEqual(hostingFindings(walk, '/demo/').failures, [])
+})
+
+test('a prefixed deployment with the root rules fails, naming the prefixed ones', () => {
+  const { failures } = hostingFindings(walkOver({ [CONFIG]: ORDERED, [HEADERS]: CACHED }), '/demo/')
+  assert.equal(failures.length, 4)
+  assert.match(failures[0], /no `\/demo\/assets\/\*` rule/)
+  assert.match(failures[1], /no `\/demo\/\*` catch-all/)
+  assert.match(failures[2], /no `\/demo\/assets\/\*` block/)
+  // And the root block's year is now a year on a path with no hash behind it.
+  assert.match(failures[3], /`\/assets\/\*` is cached as/)
+})
+
+test('under a base path a long cache on the root assets is the unhashed-path defect', () => {
+  // `/assets/*` names nothing a prefixed site serves, so a year on it is a
+  // year on a path with no hash behind it.
+  const found = cacheFindings(`${PREFIXED_HEADERS}\n${ASSETS}\n  Cache-Control: ${IMMUTABLE}\n`, HEADERS, '/demo/')
+  assert.equal(found.length, 1)
+  assert.match(found[0], /`\/assets\/\*` is cached as/)
+})
+
 /* ------------------------------------------------- and the committed files */
 
 test('the committed rule files pass, and the check counted them', () => {
-  const said = judge(ROOT)
+  const said = judge(ROOT, {})
   assert.deepEqual(said.findings, [])
   assert.ok(said.count > 0, 'a green line over no rules is the defect this check exists for')
   const config = readFileSync(resolve(ROOT, CONFIG), 'utf8')

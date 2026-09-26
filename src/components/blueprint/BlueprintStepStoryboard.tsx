@@ -1,4 +1,5 @@
 import { BlueprintCellButton } from '@/components/blueprint/BlueprintCellButton'
+import { servedUrl } from '@/lib/basePath'
 import { getStoryboardCellButtonMaxHeight } from '@/lib/blueprintLayout'
 import type { BlueprintLaneRole } from '@/lib/blueprintCellStyle'
 import { hasEmbeddedStoryboardFrame } from '@/lib/storyboardWalkthrough'
@@ -60,7 +61,7 @@ function StoryboardPictureStrip({
           className="flex h-full min-h-0 max-h-full min-w-0 flex-1 items-center justify-center overflow-hidden"
         >
           <img
-            src={entry.frame}
+            src={servedUrl(entry.frame)}
             alt=""
             loading="lazy"
             decoding="async"

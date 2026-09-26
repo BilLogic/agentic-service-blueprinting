@@ -3,6 +3,7 @@ import {
   hasEmbeddedStoryboardFrame,
   type StoryboardFrameEntry,
 } from '@/lib/storyboardWalkthrough'
+import { servedUrl } from '@/lib/basePath'
 import { cn } from '@/lib/utils'
 import type { CSSProperties } from 'react'
 
@@ -62,7 +63,7 @@ export function StoryboardStepDetailStack({
             style={{ gridColumn: index + 1, gridRow: 1 }}
           >
             <img
-              src={entry.frame}
+              src={servedUrl(entry.frame)}
               alt=""
               loading="lazy"
               decoding="async"
@@ -120,7 +121,7 @@ export function StoryboardStepDetailStack({
         <div key={entry.laneName} className="flex flex-col gap-2">
           <div className={PICTURE_FRAME_CLASS}>
             <ZoomableImage
-              src={entry.frame}
+              src={servedUrl(entry.frame)}
               alt={entry.label}
               triggerLabel={`Expand: ${entry.label}`}
               siblings={siblings}
@@ -128,7 +129,7 @@ export function StoryboardStepDetailStack({
               triggerClassName="absolute inset-0 block cursor-pointer"
             >
               <img
-                src={entry.frame}
+                src={servedUrl(entry.frame)}
                 alt=""
                 loading="lazy"
                 decoding="async"

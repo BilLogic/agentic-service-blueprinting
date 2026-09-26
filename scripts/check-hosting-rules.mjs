@@ -64,6 +64,16 @@
  * defect wherever it is written, and a check that read only one of the two
  * would be a check with a documented way around it.
  *
+ * UNDER A BASE PATH every rule moves with the output. A deployment served
+ * from a prefix sets `BASE_PATH` (`vite.config.ts`), and its build lands in
+ * `dist/<prefix>/`, so the hashed chunks are `/<prefix>/assets/*` and the
+ * fallback is `/<prefix>/*`. The check reads the same setting — the
+ * environment first, then the `[build.environment]` table of `netlify.toml`,
+ * which is where a host that builds from the file takes it — and holds the
+ * prefixed rules to the same order and the same cache. A table still written
+ * for the root is then the defect: its `/assets/*` rule matches nothing the
+ * site serves. Unset, the base is `/` and every rule reads as it always did.
+ *
  * What it counts is RULES, not files. Every file here passes every assertion
  * below when it is empty, so a run over emptied files would otherwise print
  * the same green line as a run over the real ones.
@@ -91,6 +101,61 @@ export const ASSETS = '/assets/*'
 
 /** What the missing-chunk rule has to say, in full. */
 export const MISSING_CHUNK = { from: ASSETS, to: '/assets/:splat', status: '404' }
+
+/**
+ * A base-path setting as `/` or `/<segments>/` — the rule `vite.config.ts`
+ * builds with, restated here because a check reads no application module.
+ *
+ * @param {string | undefined} value
+ */
+export function normalizeBasePath(value) {
+  const segments = (value ?? '').trim().split('/').filter(Boolean)
+  return segments.length === 0 ? '/' : `/${segments.join('/')}/`
+}
+
+/**
+ * The base path this deployment builds with: `BASE_PATH` from the
+ * environment, or else from the `[build.environment]` table of the host's
+ * configuration file — the one place a host that builds from the file reads
+ * it. Only that table: a `[context.*.environment]` value applies to some
+ * deploys and not others, and a check that guessed which would be guessing.
+ *
+ * @param {string | null} configText
+ * @param {Record<string, string | undefined>} [env]
+ */
+export function basePathIn(configText, env = process.env) {
+  if (env.BASE_PATH?.trim()) return normalizeBasePath(env.BASE_PATH)
+  let inBuildEnvironment = false
+  for (const raw of (configText ?? '').split('\n')) {
+    const line = raw.trim()
+    if (line.startsWith('#')) continue
+    if (line.startsWith('[')) {
+      inBuildEnvironment = line === '[build.environment]'
+      continue
+    }
+    if (!inBuildEnvironment) continue
+    const pair = /^BASE_PATH\s*=\s*(.*)$/.exec(line)
+    if (pair) return normalizeBasePath(pair[1].trim().replace(/^["']|["']$/g, ''))
+  }
+  return '/'
+}
+
+/**
+ * The rules, under a base path: the hashed output's path, the missing-chunk
+ * rule in full, and the catch-all's `from`. At `/` these are `ASSETS`,
+ * `MISSING_CHUNK` and `/*`.
+ *
+ * @param {string} [base]
+ */
+export function hostingRules(base = '/') {
+  if (base === '/') return { assets: ASSETS, missingChunk: MISSING_CHUNK, catchAll: '/*' }
+  const assets = `${base}assets/*`
+  return {
+    assets,
+    missingChunk: { from: assets, to: `${base}assets/:splat`, status: MISSING_CHUNK.status },
+    catchAll: `${base}*`,
+  }
+}
 
 /** What a hashed asset may be cached for. A year, and never revalidated. */
 export const IMMUTABLE = 'public, max-age=31536000, immutable'
@@ -300,13 +365,15 @@ export function outlivesADeploy(value) {
  * @param {ReturnType<typeof redirectsIn>} blocks
  * @param {string} subject
  * @param {string} [note]
+ * @param {string} [base]
  * @returns {string[]}
  */
-export function orderFindings(blocks, subject, note = '') {
+export function orderFindings(blocks, subject, note = '', base = '/') {
   const found = []
   const tail = note ? ` ${note}` : ''
+  const { missingChunk: MISSING_CHUNK, catchAll: CATCH_ALL } = hostingRules(base)
   const missing = blocks.findIndex((block) => block.from === MISSING_CHUNK.from)
-  const catchAll = blocks.findIndex((block) => block.from === '/*')
+  const catchAll = blocks.findIndex((block) => block.from === CATCH_ALL)
 
   if (missing === -1) {
     found.push(
@@ -354,14 +421,14 @@ export function orderFindings(blocks, subject, note = '') {
 
   if (catchAll === -1) {
     found.push(
-      `${subject} has no \`/*\` catch-all, so there is nothing for the ` +
+      `${subject} has no \`${CATCH_ALL}\` catch-all, so there is nothing for the ` +
         `\`${MISSING_CHUNK.from}\` rule to precede and no path reaches the app. The single-page ` +
         `fallback is what every deep link depends on.${tail}`,
     )
   } else if (missing > catchAll) {
     found.push(
       `${subject}:${blocks[missing].line} puts the \`${MISSING_CHUNK.from}\` rule BELOW the ` +
-        `\`/*\` catch-all on line ${blocks[catchAll].line}. The host takes the first rule that ` +
+        `\`${CATCH_ALL}\` catch-all on line ${blocks[catchAll].line}. The host takes the first rule that ` +
         'matches, so below it the rule is never reached and the defect it fixes is back, wearing ' +
         `the fix. Move the block above the catch-all.${tail}`,
     )
@@ -371,8 +438,8 @@ export function orderFindings(blocks, subject, note = '') {
 }
 
 /** The order claim over one `netlify.toml`'s text. */
-export function redirectFindings(text, subject = CONFIG) {
-  return orderFindings(redirectsIn(text), subject)
+export function redirectFindings(text, subject = CONFIG, base = '/') {
+  return orderFindings(redirectsIn(text), subject, '', base)
 }
 
 /**
@@ -382,12 +449,13 @@ export function redirectFindings(text, subject = CONFIG) {
  * the configuration file, so a catch-all here sits above every rule in
  * `netlify.toml` and reinstates the defect from above it.
  */
-export function fileRedirectFindings(text, subject = FILE_REDIRECTS) {
+export function fileRedirectFindings(text, subject = FILE_REDIRECTS, base = '/') {
   return orderFindings(
     redirectLinesIn(text),
     subject,
     `A host processes ${subject} BEFORE ${CONFIG}, so this file's own order is the one that ` +
       `decides; the rules in ${CONFIG} are never reached for a path this file matches.`,
+    base,
   )
 }
 
@@ -396,10 +464,12 @@ export function fileRedirectFindings(text, subject = FILE_REDIRECTS) {
  *
  * @param {ReturnType<typeof headerBlocksIn>} blocks
  * @param {string} subject
+ * @param {string} [base]
  * @returns {string[]}
  */
-export function hashedCacheFindings(blocks, subject = HEADERS) {
+export function hashedCacheFindings(blocks, subject = HEADERS, base = '/') {
   const found = []
+  const { assets: ASSETS } = hostingRules(base)
   const hashed = blocks.filter((block) => block.path === ASSETS)
 
   if (hashed.length === 0) {
@@ -448,10 +518,12 @@ export function hashedCacheFindings(blocks, subject = HEADERS) {
  *
  * @param {ReturnType<typeof headerBlocksIn>} blocks
  * @param {string} subject
+ * @param {string} [base]
  * @returns {string[]}
  */
-export function longCacheFindings(blocks, subject = HEADERS) {
+export function longCacheFindings(blocks, subject = HEADERS, base = '/') {
   const found = []
+  const { assets: ASSETS } = hostingRules(base)
   for (const block of blocks) {
     if (block.path === ASSETS) continue
     for (const header of block.headers) {
@@ -469,9 +541,12 @@ export function longCacheFindings(blocks, subject = HEADERS) {
 }
 
 /** Both cache claims over one `_headers` file's text. */
-export function cacheFindings(text, subject = HEADERS) {
+export function cacheFindings(text, subject = HEADERS, base = '/') {
   const blocks = headerBlocksIn(text)
-  return [...hashedCacheFindings(blocks, subject), ...longCacheFindings(blocks, subject)]
+  return [
+    ...hashedCacheFindings(blocks, subject, base),
+    ...longCacheFindings(blocks, subject, base),
+  ]
 }
 
 /**
@@ -493,9 +568,13 @@ export function hostingSweep(root = process.cwd()) {
  * about the subject. With no rule file there is nothing to count either, so
  * `count` falls to zero and the NO SUBJECT outcome says the rest.
  *
+ * `base` is the path the deployment is served from; `judge` reads it with
+ * `basePathIn`, and every rule below is held under it.
+ *
  * @param {{ read: (path: string) => string | null, files: string[] }} walk
+ * @param {string} [base]
  */
-export function hostingFindings(walk) {
+export function hostingFindings(walk, base = '/') {
   const tracked = new Set(walk.files)
   const found = []
   let rules = 0
@@ -527,19 +606,19 @@ export function hostingFindings(walk) {
     const blocks = redirectsIn(config)
     const tomlHeaders = tomlHeaderBlocksIn(config)
     rules += blocks.length + tomlHeaders.length
-    found.push(...orderFindings(blocks, CONFIG))
+    found.push(...orderFindings(blocks, CONFIG, '', base))
     // `[[headers]]` here does not have to declare the hashed cache — that is
     // `public/_headers`'s one home for it — but a long cache on an unhashed
     // path is the defect wherever it was written down.
-    found.push(...longCacheFindings(tomlHeaders, CONFIG))
+    found.push(...longCacheFindings(tomlHeaders, CONFIG, base))
   }
 
   const headers = present(HEADERS, true)
   if (headers !== null) {
     const blocks = headerBlocksIn(headers)
     rules += blocks.length
-    found.push(...hashedCacheFindings(blocks, HEADERS))
-    found.push(...longCacheFindings(blocks, HEADERS))
+    found.push(...hashedCacheFindings(blocks, HEADERS, base))
+    found.push(...longCacheFindings(blocks, HEADERS, base))
   }
 
   // Optional, and read for anyway: this template ships none, and a repository
@@ -548,7 +627,7 @@ export function hostingFindings(walk) {
   if (fileRedirects !== null) {
     const lines = redirectLinesIn(fileRedirects)
     rules += lines.length
-    found.push(...fileRedirectFindings(fileRedirects, FILE_REDIRECTS))
+    found.push(...fileRedirectFindings(fileRedirects, FILE_REDIRECTS, base))
   }
 
   return { failures: found, rules }
@@ -560,8 +639,11 @@ export function hostingFindings(walk) {
  * Pure — it reads, decides, and hands back what it found and how many rules it
  * counted. Nothing here prints or exits.
  */
-export function judge(root = process.cwd()) {
-  const { failures, rules } = hostingFindings(hostingSweep(root))
+export function judge(root = process.cwd(), env = process.env) {
+  const walk = hostingSweep(root)
+  const base = basePathIn(walk.read(CONFIG), env)
+  const { assets, missingChunk, catchAll } = hostingRules(base)
+  const { failures, rules } = hostingFindings(walk, base)
   return {
     what: 'a hosting rule a commit would carry',
     count: rules,
@@ -573,8 +655,8 @@ export function judge(root = process.cwd()) {
       `${HEADERS}. Then run npm run check:hosting.`,
     line:
       `[hosting] ${rules} rules in ${CONFIG} and ${HEADERS} — a missing chunk answers ` +
-      `${MISSING_CHUNK.status} above the catch-all, nothing is forced, and only ${ASSETS} is ` +
-      'cached past a deploy.',
+      `${missingChunk.status} above the ${catchAll} catch-all, nothing is forced, and only ` +
+      `${assets} is cached past a deploy.`,
   }
 }
 

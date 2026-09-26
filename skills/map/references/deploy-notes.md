@@ -50,6 +50,13 @@ the browser reports that as a module it could not import rather than as a
 missing file. Building the equivalent pair on another host means building the
 order too.
 
+Served from a path rather than a domain root, both rules move under it: build
+with `BASE_PATH=/demo/`, and the pair becomes `/demo/assets/*` → 404, then
+the SPA fallback from `/demo/*` to the app shell under the path. Check a deep
+link under the path, not at the root. The full recipe, including the rewrite
+for showing the app under a path on another site, is
+`docs/guide/04-operations.md` § Serving from a path.
+
 ## One site per locale
 
 Per-locale artifact sets mean **one deployment (and one target) per locale**
