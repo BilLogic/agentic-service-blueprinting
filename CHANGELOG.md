@@ -1,5 +1,75 @@
 # Changelog
 
+## 2.2.2
+
+**Every shared file cites only what a deployment holds.** The files a
+deployment holds byte-identical no longer name paths only the template has,
+and no longer say "here" where they mean the template. The template's guard
+now publishes all twenty-six of them, in three lists, and refuses a
+template-only script or a file under a tree only the template keeps.
+Comments and tests only; no behaviour changes.
+
+### Upgrading a deployment
+
+- **Bump the pin, and take thirteen files' new bytes.** `vite.config.ts`, the
+  three tsconfigs, `scripts/agent-account.mjs`, `always-loaded.mjs`,
+  `authoring-archivers.mjs`, `check-harness-claims.mjs`,
+  `check-target-schema.mjs`, `seed-list.mjs`, `sweep.mjs`, `verdict.mjs` and
+  `scripts/tests/the-router-is-a-router.test.mjs` changed. All are held
+  byte-identical, so the reconciled-files gate goes red until the pin bump
+  lands. Take the template's copies; no local edit is needed or allowed.
+- **The published lists grew, so a shared-scripts reader has more to read.**
+  `SHARED_SCRIPTS` keeps its shape and gains `erd-value-sets.mjs` and
+  `one-badge-one-size.test.mjs`, which a deployment already holds. The new
+  `SHARED_CONFIGS` and `SHARED_DATA` lists name the build configuration and
+  the two data files. A reader that should hold the whole reconciled set to
+  the template's lists reads all three; its entries are `[path, reason]`, and
+  the path is the first string.
+
+### Patch Changes
+
+- 77d971b: Every shared file cites only what a deployment holds
+
+  Four shared scripts still pointed at files only this template has, and now
+  name the thing rather than its path: `check-target-schema.mjs` (the IR
+  validator and the application's schema-version module), `agent-account.mjs`
+  (the panel-terms module and the database types), `authoring-archivers.mjs`
+  (the authoring-log module), and `check-harness-claims.mjs`, whose adoption
+  message sent the reader to the package's customization reference by a path
+  their tree lacks. The router suite's path-shaped fixtures move under `notes/`.
+
+  Shared files that spoke as if only the template read them now say what
+  holds on both sides, naming the template where they mean it.
+  `always-loaded.mjs` said "here that is `AGENTS.md`" and kept a census of near
+  misses only one side had. `vite.config.ts`, `tsconfig.json`,
+  `tsconfig.app.json` and `tsconfig.node.json` said "here" for "in the
+  template" — the second root "never reached here", `deployment/` "does not
+  exist here" — which a deployment holding the same bytes reads as false.
+  `sweep.mjs`, `verdict.mjs`, `seed-list.mjs`, `check-harness-claims.mjs` and
+  `check-target-schema.mjs` had the same slip in a sentence each: "this tree
+  here", "every check in this repository", "a deployment of this template".
+
+  The shared-file guard grows to match. A `scripts/…` file cited from a shared
+  file must be one `SHARED_SCRIPTS` or `REPO_LOCAL_IMPORTS` accounts for. A new
+  `SHARED_CONFIGS` list names the build configuration a deployment holds
+  byte-identical — `vite.config.ts`, the three tsconfigs, `eslint.config.js`,
+  `components.json` — and `SHARED_DATA` the triage-label map and the step
+  placeholder; both are held to the same rules. A third rule refuses a file
+  named under a tree only the template keeps — the plugin manifest, the hook,
+  the eval fixtures, the handoff template — which a deployment neither holds nor
+  reads out of the package. `src/…`, the reference documents and the skills
+  stay outside it: they are the package's published surface, which a
+  deployment reads by fixed path.
+
+  The published lists now match what a deployment actually holds.
+  `erd-value-sets.mjs` and `one-badge-one-size.test.mjs` were held
+  byte-identical by a deployment but missing from `SHARED_SCRIPTS`, so no
+  template-side guard read them; both are listed now, with their reasons.
+
+  Comments and tests only; no behaviour changes. A deployment that holds these
+  files takes the new bytes with the pin bump. `SHARED_SCRIPTS` keeps its
+  shape, so the deployment-side reader of that list is unaffected.
+
 ## 2.2.1
 
 **Two shared files cite only what a deployment holds.** Comments only: the
@@ -9789,8 +9859,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                                                  ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                                                  "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                                                    ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                                                    "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
