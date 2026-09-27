@@ -35,8 +35,8 @@ import { defineConfig, loadEnv, type Plugin } from 'vite'
  * checks that WALK the application — they have to land on the files the build
  * resolves or they are measuring a tree nobody ships. They cannot read it from
  * here: this file is loaded by bundling it in isolation. The template's own
- * suite is what makes the copies one fact: edit the roots here and it goes
- * red.
+ * suite is what makes the copies one fact: edit the roots in the template and
+ * it goes red.
  */
 const APP_SOURCE_ROOTS = [
   path.resolve(import.meta.dirname, './src'),
