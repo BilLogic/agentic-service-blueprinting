@@ -8,7 +8,9 @@ Four scripts a deployment holds byte-identical still pointed at files only
 this template has. `check-target-schema.mjs` named the IR validator and the
 application's schema-version module by path, `agent-account.mjs` the
 panel-terms module and the database types, and `authoring-archivers.mjs` the
-authoring-log module; each now names the thing rather than its path.
+authoring-log module, and `check-harness-claims.mjs`'s adoption message
+sent the reader to the package's customization reference by a path their
+tree lacks; each now names the thing rather than its path.
 `always-loaded.mjs` spoke as if only the template read it — "here that is
 `AGENTS.md`", a census of near misses only one side had — and now says what
 holds on both sides, naming the plugin manifest as the package's alone.

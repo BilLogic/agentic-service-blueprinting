@@ -241,7 +241,7 @@ export function sweepClaims({ root = process.cwd(), composition = repoConfig.com
     throw new Error(
       'repo-config.mjs states no usable `composition`: this check needs `documents` (where ' +
         "this repository's composition documents live) and `claimed` (the trees of its own " +
-        'assembled files, possibly empty). See references/customization.md.',
+        'assembled files, possibly empty). The package’s customization reference says how.',
     )
   }
   const problems = []

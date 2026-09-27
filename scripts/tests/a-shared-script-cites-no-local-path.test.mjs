@@ -37,7 +37,8 @@
  * `repo-config.mjs` is the one import that is deliberately NOT shared, and it
  * is the reason the closure needs two lists rather than one. It is the seam:
  * every field in it is a fact about the running repository, which is exactly
- * why a shared script reaches for it instead of spelling the value. *
+ * why a shared script reaches for it instead of spelling the value.
+ *
  * A SCRIPT IS A DOCUMENT TOO. A `scripts/…` path in a shared file is an
  * address in the same way a `docs/…` one is, and it dangles the same way: a
  * deployment keeps its own scripts, so a file named here that is on neither
@@ -141,7 +142,7 @@ function citedPaths(text) {
 
 test('a published shared file names no document an adopter does not have', () => {
   const offenders = []
-  for (const path of [...SHARED_SCRIPTS.keys(), ...SHARED_CONFIGS.keys()]) {
+  for (const path of SHARED_FILES) {
     for (const finding of citedPaths(readFileSync(join(ROOT, path), 'utf8'))) {
       offenders.push(`${path}:${finding}`)
     }
@@ -192,11 +193,14 @@ export const SHARED_CONFIGS = new Map([
   ],
 ])
 
+/** Every file a deployment holds byte-identical: the scripts, then the build. */
+const SHARED_FILES = [...SHARED_SCRIPTS.keys(), ...SHARED_CONFIGS.keys()]
+
 /** The last segment carries an extension: a file, not a tree. */
 const NAMES_A_FILE = /\.[A-Za-z0-9]+$/
 
 /**
- * The script FILES a line names, each as `line: path`.
+ * The script FILES a text names, each as `{ line, path }`.
  *
  * The same lookbehind as `DOCUMENT_PATH`, for the same reasons: `./scripts/…`
  * is relative to the reader and `node_modules/…/scripts/…` or
@@ -210,7 +214,7 @@ function citedScripts(text) {
     [...line.matchAll(every)]
       .map((match) => match[0].replace(/\.+$/, ''))
       .filter((path) => NAMES_A_FILE.test(path))
-      .map((path) => `${index + 1}: ${path}`),
+      .map((path) => ({ line: index + 1, path })),
   )
 }
 
@@ -308,18 +312,19 @@ test('the list is closed under import — a shared script imports nothing unclas
   )
 })
 
-test('both lists name a file that is there, and every reason is one worth reading', () => {
-  for (const [path, reason] of REPO_LOCAL_IMPORTS) {
+test('every list names a file that is there, and every reason is one worth reading', () => {
+  for (const [path, reason] of [...REPO_LOCAL_IMPORTS, ...SHARED_CONFIGS]) {
     assert.ok(readFileSync(join(ROOT, path), 'utf8').length > 0, `${path} is listed and empty`)
     assert.ok(reason.length > 20, `${path} is listed with no reason worth reading`)
+    assert.ok(!SHARED_SCRIPTS.has(path), `${path} is on two lists`)
   }
 })
 
 test('a published shared file names no script an adopter does not hold', () => {
   const offenders = []
-  for (const path of [...SHARED_SCRIPTS.keys(), ...SHARED_CONFIGS.keys()]) {
-    for (const finding of citedScripts(readFileSync(join(ROOT, path), 'utf8'))) {
-      if (!accountedFor(finding.slice(finding.indexOf(': ') + 2))) offenders.push(`${path}:${finding}`)
+  for (const path of SHARED_FILES) {
+    for (const cited of citedScripts(readFileSync(join(ROOT, path), 'utf8'))) {
+      if (!accountedFor(cited.path)) offenders.push(`${path}:${cited.line}: ${cited.path}`)
     }
   }
   assert.deepEqual(
@@ -334,13 +339,15 @@ test('a published shared file names no script an adopter does not hold', () => {
 
 test('the script guard reads files, not trees, and not paths the code builds', () => {
   assert.deepEqual(citedScripts(' * Same source as `scripts/validate_ir.py` and the app.'), [
-    '1: scripts/validate_ir.py',
+    { line: 1, path: 'scripts/validate_ir.py' },
   ])
   // A sentence that ends on the path keeps the path and loses the full stop.
-  assert.deepEqual(citedScripts(' * node scripts/sweep.mjs.'), ['1: scripts/sweep.mjs'])
+  assert.deepEqual(citedScripts(' * node scripts/sweep.mjs.'), [
+    { line: 1, path: 'scripts/sweep.mjs' },
+  ])
   assert.deepEqual(citedScripts("  'scripts/a.mjs', 'scripts/b.py',"), [
-    '1: scripts/a.mjs',
-    '1: scripts/b.py',
+    { line: 1, path: 'scripts/a.mjs' },
+    { line: 1, path: 'scripts/b.py' },
   ])
   // A tree both repositories have, a glob over one, and a path the code joins.
   assert.deepEqual(citedScripts("  include: ['scripts/tests/**/*.test.mjs'],"), [])
@@ -350,12 +357,4 @@ test('the script guard reads files, not trees, and not paths the code builds', (
   assert.equal(accountedFor('scripts/repo-config.mjs'), true)
   assert.equal(accountedFor('scripts/sweep.mjs'), true)
   assert.equal(accountedFor('scripts/validate_ir.py'), false)
-})
-
-test('every shared build config exists, and says why it is shared', () => {
-  for (const [path, reason] of SHARED_CONFIGS) {
-    assert.ok(readFileSync(join(ROOT, path), 'utf8').length > 0, `${path} is listed and empty`)
-    assert.ok(reason.length > 20, `${path} is listed with no reason worth reading`)
-    assert.ok(!SHARED_SCRIPTS.has(path), `${path} is on both lists`)
-  }
 })

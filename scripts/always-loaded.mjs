@@ -15,7 +15,7 @@
  *
  * WHAT COUNTS AS ALWAYS-LOADED. A file is in this tier when the harness hands
  * it to the session without the session choosing. On both sides that is
- * `AGENTS.md` and nothing else: neither repository keeps a `CLAUDE.md` or a
+ * `AGENTS.md` and nothing else: neither repository tracks a `CLAUDE.md` or a
  * `.claude/` bundle at its root, and no prompt assembler builds one.
  *
  * A plugin manifest is the near miss, and it is OUT on purpose. The template
