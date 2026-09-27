@@ -1,5 +1,79 @@
 # Changelog
 
+## 2.3.0
+
+**Small primary-coloured text reads role ink, and role ink outranks muted
+text in dark.** Links, active chips and small primary labels no longer take
+their colour from the button fill, so a deep brand fill no longer drags them
+under AA in dark. Role ink in dark now sits a step brighter than muted text,
+which changes how dark mode looks: every role's text there is a little
+brighter. Light mode is unchanged at the shipped dials.
+
+### Upgrading a deployment
+
+- **Bump the pin.** `vite.config.ts` and `scripts/sweep.mjs` are held
+  byte-identical and their comments moved, so take the template's copies with
+  the bump; the reconciled-files gate is red until you do.
+- **A deployment with a deep brand fill** gets its small primary text back
+  over AA in dark with no change on its side. If its own docs record the
+  interim dark-mode shortfall for `text-primary`, that note is now stale.
+- **A deployment that restates `--muted-foreground-level`** should know role
+  ink now follows it: in either mode, role ink lands at muted plus 0.08 of the
+  span, never below 0.76.
+- **A deployment component that colours small text with `text-primary`**
+  should move it to `text-text-primary`. The template's guard only reads the
+  template's own `src/`.
+
+### Minor Changes
+
+- 9bfe694: Small primary-coloured text reads role ink, not the fill
+
+  Six pieces of small text used the primary fill as their colour: the link
+  button, the session "Changes" chip and its agent badge, "Create" in the owner
+  tag picker, "Make slice", and the slide composer's "Drop here". A fill is tuned
+  to carry ink, not to be it. Unbranded, the fill is the foreground and the
+  text reads fine, but a deployment that sets a deep brand fill (lightness 0.52,
+  chroma 0.095, say) saw that text fall to about 3.1–3.5:1 in dark, short of the
+  4.5:1 small text needs. They now read the role ink, `--text-primary`, which is
+  derived from the surface ladder and so holds AA whatever the fill. The tinted
+  ground and border behind "Make slice" and the "Changes" chip are unchanged.
+
+  The pressed label in a segmented control now reads the foreground rather than
+  the fill, so the pressed state is emphasis rather than hue.
+
+  Two icons are unchanged on purpose: the check beside the selected owner tag
+  keeps the fill, and the path selector's selected-row mark keeps the brand
+  identity colour (the fill, while a deployment leaves the brand dials unset).
+  An icon's contrast bar is 3:1 rather than 4.5:1, and a deep brand fill still
+  clears it on a dark popover. A guard now fails the suite if `text-primary`
+  lands anywhere else in `src`.
+
+  Role ink in dark mode now always sits a step brighter than muted text. It was
+  drawn 76% of the way from the canvas to the foreground in both themes, but
+  dark mode draws muted text at 80%, so in dark an active label read fainter
+  than the resting label beside it — invisible behind a brand hue, and plain
+  grey on grey in a template with no brand. `--role-ink-mix` now follows muted
+  text up (muted plus 0.08, never below 0.76, never past the foreground), and
+  the on-tint ink stays 0.06 above it; a test now holds that order in both
+  modes. At the shipped dials light mode resolves to exactly what it did. In
+  dark, every `--text-{role}` moves from about L 0.77 to 0.86 and every
+  `--text-on-surface-{role}` from about 0.81 to 0.90: warning, destructive, info
+  and success text reads a little brighter and softer there, and contrast only
+  rises. This is why the release is a minor: dark mode looks different.
+
+### Patch Changes
+
+- eccaf0d: The last shared comments fit the wrap
+
+  Three comment blocks in `vite.config.ts` and `scripts/sweep.mjs` that ran
+  past the comment width are rewrapped, and the seed sweep's skip message now
+  says to check out a deployment "beside this checkout" rather than "beside
+  this repository" — the same words the seed list's own skip uses, and true
+  whichever repository the sweep runs in.
+
+  Comments and one message only; no behaviour changes. Both files are held
+  byte-identical by a deployment, so it takes the new bytes with the pin bump.
+
 ## 2.2.3
 
 **Shared files speak from both sides.** Comments only: the last two sentences
@@ -9886,8 +9960,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                                                      ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                                                      "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                                                        ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                                                        "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
