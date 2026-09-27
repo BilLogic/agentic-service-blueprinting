@@ -3,7 +3,7 @@
  * questions the sibling-checkout seed check and the sweep's deployment-seed
  * subject both ask.
  *
- * Locating: which checkout beside this one is a deployment of this template —
+ * Locating: which checkout beside this one is a deployment of the template —
  * exactly one that ships a seed and is not another checkout of this package;
  * "none" and "several" both mean nothing to run against, and say which.
  *
@@ -22,7 +22,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 
 /**
- * Which sibling checkout is a deployment of this template?
+ * Which sibling checkout is a deployment of the template?
  *
  * `candidates` are `{ dir, name, hasSeed }` — `name` is the sibling's declared
  * package name, `null` when it declares none. A deployment ships a seed and is
@@ -80,8 +80,8 @@ export function packageName(dir) {
  * The `[db.seed]` table of a `config.toml`, as `{ enabled, sqlPaths }` — or
  * null when the file states no such section.
  *
- * A hand-rolled reader rather than a TOML parser: this repository depends on
- * nothing to run its checks, and the shape read here is one boolean and one
+ * A hand-rolled reader rather than a TOML parser: the scripts that import it
+ * depend on nothing to run, and the shape read here is one boolean and one
  * array of strings that may wrap across lines. Anything else in the section is
  * ignored on purpose, including comments, which is why the strings are taken
  * from the array's text rather than from the line.

@@ -253,16 +253,16 @@ test('a rule that holds for every skill is exempt from the trigger rules, and it
 })
 
 test('a Python pointer is swept — the validator and the secret hook are not prose', () => {
-  const live = repo('## Routes\n\n- **Validation** is `scripts/validate_ir.py` exit 0.\n', {
-    'scripts/validate_ir.py': '',
+  const live = repo('## Routes\n\n- **Validation** is `notes/validate_ir.py` exit 0.\n', {
+    'notes/validate_ir.py': '',
   })
   try {
     assert.deepEqual(sweep(live.root).failures, [])
   } finally {
     live.done()
   }
-  const dead = repo('## Routes\n\n- **Validation** is `scripts/validate_ir.py` exit 0.\n', {
-    'scripts/other.py': '',
+  const dead = repo('## Routes\n\n- **Validation** is `notes/validate_ir.py` exit 0.\n', {
+    'notes/other.py': '',
   })
   try {
     const { failures } = sweep(dead.root)
@@ -294,8 +294,8 @@ test('a directory pointer resolves against the directory', () => {
 })
 
 test('an item keeps its wrapped continuation lines, so a pointer may land on the second line', () => {
-  const router = '## Routes\n\n- **Editing** anything under `skills/` means running\n  `scripts/sync.mjs` afterwards.\n'
-  const r = repo(router, { 'skills/map/SKILL.md': '', 'scripts/sync.mjs': '' })
+  const router = '## Routes\n\n- **Editing** anything under `skills/` means running\n  `notes/sync.mjs` afterwards.\n'
+  const r = repo(router, { 'skills/map/SKILL.md': '', 'notes/sync.mjs': '' })
   try {
     const items = itemsIn(router)
     assert.equal(items.length, 1)

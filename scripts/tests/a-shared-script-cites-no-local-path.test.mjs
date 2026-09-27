@@ -38,10 +38,40 @@
  * is the reason the closure needs two lists rather than one. It is the seam:
  * every field in it is a fact about the running repository, which is exactly
  * why a shared script reaches for it instead of spelling the value.
+ *
+ * A SCRIPT IS A DOCUMENT TOO. A `scripts/…` path in a shared file is an
+ * address in the same way a `docs/…` one is, and it dangles the same way: a
+ * deployment keeps its own scripts, so a file named here that is on neither
+ * list is one the reader's tree may not have — the IR validator was cited by
+ * path from a shared script, and a deployment has no copy of it. So a script
+ * a shared file names has to be one the two lists account for.
+ *
+ * A TREE ONLY THE TEMPLATE KEEPS is the same failure at a larger scale. The
+ * plugin manifest, the hook, the eval fixtures and the handoff template live in
+ * trees a deployment neither holds nor reads out of the package, so a file
+ * named under one of them dangles on that side whatever it is. The trees a
+ * deployment DOES read out of the package — the application, the reference
+ * documents and the skills, which it imports by fixed path — are the
+ * package's published surface, and a path into them is not on this rule.
+ *
+ * THE BUILD'S OWN CONFIGURATION IS SHARED TOO, and held to the same rules.
+ * A deployment holds those files byte-identical for a stronger reason than
+ * it holds the scripts — they carry the seam by which it runs code it does
+ * not contain — so a comment in one of them is read from both sides of that
+ * seam. So are the two data files a deployment holds: the triage-label map
+ * and the placeholder a step without artwork shows.
+ *
+ * `src/…` is NOT on the rule, deliberately. It is the application's own
+ * spelling of its files, which a deployment reads out of the package: the
+ * pointer sweep resolves it through the overlay, the harness claims are
+ * spelled with it, and two of the configs carry it as values the tools act
+ * on. A shared comment still names a module by its role rather than its path
+ * where the role says as much — but that is a choice of wording, not a
+ * dangling reference, and no line-based scan can tell the two apart.
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, statSync } from 'node:fs'
 import { dirname, join, resolve, sep } from 'node:path'
 
 import { DOCUMENT_PATH } from '@/citations.ts'
@@ -97,6 +127,14 @@ export const SHARED_SCRIPTS = new Map([
     'scripts/tests/authoring-log.test.mjs',
     'the one seam between the log’s two writers, held from both sides in either tree',
   ],
+  [
+    'scripts/erd-value-sets.mjs',
+    'a pure parser over whichever ERD the caller hands it, held to whichever catalog the caller reads',
+  ],
+  [
+    'scripts/tests/one-badge-one-size.test.mjs',
+    'a badge’s size is decided where badges are defined, asked of whichever application the sweep resolves',
+  ],
 ])
 
 /**
@@ -119,9 +157,9 @@ function citedPaths(text) {
     .flatMap((line, index) => [...line.matchAll(every)].map((match) => `${index + 1}: ${match[0]}`))
 }
 
-test('a published shared script names no document an adopter does not have', () => {
+test('a published shared file names no document an adopter does not have', () => {
   const offenders = []
-  for (const path of SHARED_SCRIPTS.keys()) {
+  for (const path of SHARED_FILES) {
     for (const finding of citedPaths(readFileSync(join(ROOT, path), 'utf8'))) {
       offenders.push(`${path}:${finding}`)
     }
@@ -146,6 +184,91 @@ export const REPO_LOCAL_IMPORTS = new Map([
     'the seam itself — every field is a fact about the running repository, which is why a shared script reaches for it rather than spelling the value',
   ],
 ])
+
+/**
+ * The build's own configuration, which a deployment holds byte-identical, and
+ * why each file is shared. Not scripts, so not on `SHARED_SCRIPTS` — a
+ * deployment reads that list to know which scripts it must hold, and a config
+ * there would be a script it went looking for — but read by people in two
+ * repositories all the same, and so held to the same citation rules.
+ */
+export const SHARED_CONFIGS = new Map([
+  [
+    'vite.config.ts',
+    'the two aliases and the application source root — the mechanism by which a deployment runs code it does not contain',
+  ],
+  ['tsconfig.json', 'the `@/*` and `~/*` mappings every import in the package resolves through'],
+  [
+    'tsconfig.app.json',
+    'the language the shared code is authored in, and what the compiler collects on either side',
+  ],
+  ['tsconfig.node.json', 'the compiler configuration for the build config itself'],
+  ['eslint.config.js', 'one register of lint exceptions, so identical source is held to identical rules'],
+  [
+    'components.json',
+    'the registry configuration that generates the UI primitives, so the next one added is the same shape in either tree',
+  ],
+])
+
+/**
+ * The data files a deployment holds byte-identical, and why each is shared.
+ * Neither script nor build, and read by people in two repositories all the
+ * same.
+ */
+export const SHARED_DATA = new Map([
+  [
+    'docs/agents/triage-labels.md',
+    'the label strings the five canonical triage roles map to, so a role respelled on one side is not applied under the old label on the other',
+  ],
+  [
+    'public/step-visual-placeholder.svg',
+    'the placeholder a step with no artwork shows, whose name applied migrations carry, so only its content can be shared',
+  ],
+])
+
+/** Every file a deployment holds byte-identical: the scripts, the build, the data. */
+const SHARED_FILES = [...SHARED_SCRIPTS.keys(), ...SHARED_CONFIGS.keys(), ...SHARED_DATA.keys()]
+
+/**
+ * The top-level trees only the template keeps, and why a deployment has no
+ * copy: it neither holds them nor reads them out of the package, so a file
+ * named under one dangles on that side.
+ */
+export const TEMPLATE_ONLY_TREES = new Map([
+  ['.claude-plugin', 'the plugin manifest — the template is the plugin; a deployment installs the package'],
+  ['assets', 'the handoff template a new workspace is scaffolded from, which a deployment never scaffolds'],
+  ['evals', 'the eval fixtures the template’s own agent harness runs against'],
+  ['hooks', 'the secret guard, which the plugin host runs and a deployment’s tree never loads'],
+])
+
+/** The last segment carries an extension: a file, not a tree. */
+const NAMES_A_FILE = /\.[A-Za-z0-9]+$/
+
+/**
+ * The FILES a text names under one of `trees`, each as `{ line, path }`.
+ *
+ * The same lookbehind as `DOCUMENT_PATH`, for the same reasons: `./scripts/…`
+ * is relative to the reader and `node_modules/…/scripts/…` or
+ * `${root}/scripts/…` is a path the code builds, so neither is a citation.
+ * A directory or a glob — `scripts/tests/**` — names a tree, and is not the
+ * subject either; a file is. A tree only one side keeps is named in words.
+ */
+function citedFilesUnder(text, trees) {
+  const escaped = trees.map((tree) => tree.replace(/[.]/g, '\\.')).join('|')
+  const every = new RegExp(`(?<![.\\w/])(?:${escaped})\\/[A-Za-z0-9_.-]+(?:\\/[A-Za-z0-9_.-]+)*`, 'g')
+  return text.split('\n').flatMap((line, index) =>
+    [...line.matchAll(every)]
+      .map((match) => match[0].replace(/\.+$/, ''))
+      .filter((path) => NAMES_A_FILE.test(path))
+      .map((path) => ({ line: index + 1, path })),
+  )
+}
+
+/** The script files a text names. */
+const citedScripts = (text) => citedFilesUnder(text, ['scripts'])
+
+/** Whether a cited script is one the two lists account for. */
+const accountedFor = (path) => SHARED_SCRIPTS.has(path) || REPO_LOCAL_IMPORTS.has(path)
 
 /**
  * The paths a module imports relatively, resolved against the repository root.
@@ -238,9 +361,104 @@ test('the list is closed under import — a shared script imports nothing unclas
   )
 })
 
-test('both lists name a file that is there, and every reason is one worth reading', () => {
-  for (const [path, reason] of REPO_LOCAL_IMPORTS) {
+test('every list names a file that is there, and every reason is one worth reading', () => {
+  for (const [path, reason] of [...REPO_LOCAL_IMPORTS, ...SHARED_CONFIGS, ...SHARED_DATA]) {
     assert.ok(readFileSync(join(ROOT, path), 'utf8').length > 0, `${path} is listed and empty`)
     assert.ok(reason.length > 20, `${path} is listed with no reason worth reading`)
+  }
+})
+
+test('a published shared file names no script an adopter does not hold', () => {
+  const offenders = []
+  for (const path of SHARED_FILES) {
+    for (const cited of citedScripts(readFileSync(join(ROOT, path), 'utf8'))) {
+      if (!accountedFor(cited.path)) offenders.push(`${path}:${cited.line}: ${cited.path}`)
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    'A deployment keeps its own scripts, so a script named here that is on neither list is one ' +
+      'its tree may not have. Name the tool by what it does, share the script — SHARED_SCRIPTS, ' +
+      'with the reason — or, if it is a fixture, spell it under a tree no repository claims:\n' +
+      offenders.join('\n'),
+  )
+})
+
+test('the script guard reads files, not trees, and not paths the code builds', () => {
+  assert.deepEqual(citedScripts(' * Same source as `scripts/validate_ir.py` and the app.'), [
+    { line: 1, path: 'scripts/validate_ir.py' },
+  ])
+  // A sentence that ends on the path keeps the path and loses the full stop.
+  assert.deepEqual(citedScripts(' * node scripts/sweep.mjs.'), [
+    { line: 1, path: 'scripts/sweep.mjs' },
+  ])
+  assert.deepEqual(citedScripts("  'scripts/a.mjs', 'scripts/b.py',"), [
+    { line: 1, path: 'scripts/a.mjs' },
+    { line: 1, path: 'scripts/b.py' },
+  ])
+  // A tree both repositories have, a glob over one, and a path the code joins.
+  assert.deepEqual(citedScripts("  include: ['scripts/tests/**/*.test.mjs'],"), [])
+  assert.deepEqual(citedScripts(' * everything under `scripts/` is repo-local'), [])
+  assert.deepEqual(citedScripts('  `${root}/scripts/x.mjs`, `node_modules/p/scripts/y.mjs`'), [])
+  assert.deepEqual(citedScripts("  import('./scripts/z.mjs')"), [])
+  assert.equal(accountedFor('scripts/repo-config.mjs'), true)
+  assert.equal(accountedFor('scripts/sweep.mjs'), true)
+  assert.equal(accountedFor('scripts/validate_ir.py'), false)
+})
+
+test('a published shared file names no file in a tree only the template keeps', () => {
+  const offenders = []
+  for (const path of SHARED_FILES) {
+    for (const cited of citedFilesUnder(readFileSync(join(ROOT, path), 'utf8'), [...TEMPLATE_ONLY_TREES.keys()])) {
+      offenders.push(`${path}:${cited.line}: ${cited.path}`)
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    'A deployment neither holds these trees nor reads them out of the package, so a file named ' +
+      'under one dangles there. Name the thing — "the plugin manifest", "the secret-guard hook" — ' +
+      `rather than its path:\n${offenders.join('\n')}`,
+  )
+})
+
+test('every template-only tree is a tree here, and says why a deployment lacks it', () => {
+  for (const [tree, reason] of TEMPLATE_ONLY_TREES) {
+    assert.ok(statSync(join(ROOT, tree)).isDirectory(), `${tree} is listed and is not a tree here`)
+    assert.ok(reason.length > 20, `${tree} is listed with no reason worth reading`)
+  }
+})
+
+test('the template-only guard reads files in those trees and nothing else', () => {
+  assert.deepEqual(
+    citedFilesUnder(' * `.claude-plugin/plugin.json` and `hooks/secret_guard.py` are', [...TEMPLATE_ONLY_TREES.keys()]),
+    [
+      { line: 1, path: '.claude-plugin/plugin.json' },
+      { line: 1, path: 'hooks/secret_guard.py' },
+    ],
+  )
+  assert.deepEqual(citedFilesUnder("  x('evals/fixtures/a.json')", [...TEMPLATE_ONLY_TREES.keys()]), [
+    { line: 1, path: 'evals/fixtures/a.json' },
+  ])
+  // The application's own hooks folder, a tree named as a tree, and the
+  // package's published surface are not the subject.
+  assert.deepEqual(citedFilesUnder(" * `src/hooks/useThing.ts` and '@/hooks'", [...TEMPLATE_ONLY_TREES.keys()]), [])
+  assert.deepEqual(citedFilesUnder(' * hooks/constants beside the component', [...TEMPLATE_ONLY_TREES.keys()]), [])
+  assert.deepEqual(citedFilesUnder(" locate('references/ir-schema.json')", [...TEMPLATE_ONLY_TREES.keys()]), [])
+})
+
+test('the four lists are disjoint, so each file has one reason', () => {
+  const seen = new Map()
+  for (const [name, list] of [
+    ['SHARED_SCRIPTS', SHARED_SCRIPTS],
+    ['SHARED_CONFIGS', SHARED_CONFIGS],
+    ['SHARED_DATA', SHARED_DATA],
+    ['REPO_LOCAL_IMPORTS', REPO_LOCAL_IMPORTS],
+  ]) {
+    for (const path of list.keys()) {
+      assert.ok(!seen.has(path), `${path} is on ${seen.get(path)} and ${name}`)
+      seen.set(path, name)
+    }
   }
 })

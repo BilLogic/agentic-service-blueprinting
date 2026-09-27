@@ -16,9 +16,9 @@ import { defineConfig, loadEnv, type Plugin } from 'vite'
  * reconciled set — so the choice cannot be made by editing it there. It is
  * made by what is on disk: when the package is installed, the package is the
  * application and `src` is the overlay; when it is not, `src` is the
- * application. Here the package is never installed — this repo has no
- * self-dependency — so the alias points at `src` and the overlay plugin is
- * never loaded. The two tsconfigs carry the same pair of roots, in the same
+ * application. In the template the package is never installed — it has no
+ * self-dependency — so there the alias points at `src` and the overlay
+ * plugin is never loaded. The two tsconfigs carry the same pair of roots, in the same
  * order, and already resolve per module.
  *
  * The ALL-OR-NOTHING rule this file used to state — the alias pointed at one
@@ -27,14 +27,14 @@ import { defineConfig, loadEnv, type Plugin } from 'vite'
  * deployment overlays the package per path records the overlay, and the
  * package's `overlay` module is the rule. That module is imported BY
  * PACKAGE NAME, which is the one spelling that resolves on both sides: out of
- * `node_modules` in a deployment, and by self-reference here. A relative
+ * `node_modules` in a deployment, and by self-reference in the template. A relative
  * import would name a file a deployment does not have, and a config that
  * imports a module the tree lacks is a config that does not load.
  *
  * THE PAIR IS WRITTEN DOWN A FOURTH TIME, in `scripts/sweep.mjs`, for the
  * checks that WALK the application — they have to land on the files the build
  * resolves or they are measuring a tree nobody ships. They cannot read it from
- * here: this file is loaded by bundling it in isolation. The template's own
+ * this file: it is loaded by bundling it in isolation. The template's own
  * suite is what makes the copies one fact: edit the roots in the template and
  * it goes red.
  */
@@ -127,12 +127,11 @@ const packagedApplicationOptimizeDeps = {
  * which side it is on: `@/…` is the application, whichever layer answers,
  * and `~/…` is this deployment's.
  *
- * The directory is named here, in the template, rather than by each
- * deployment, because this file is one a deployment holds byte-identical to
- * this one. The same bytes have to serve a repository that has a deployment
- * root and one that has not. This repository is the second kind: `deployment/`
- * does not exist here and never will, the alias is never reached, and the test
- * glob below matches nothing. The template's own suite holds both halves —
+ * The directory is named in the template rather than by each deployment,
+ * because a deployment holds this file byte-identical. The same bytes have to
+ * serve a repository that has a deployment root and one that has not. The
+ * template is the second kind: it has no `deployment/` and never will, so
+ * there the alias is never reached and the test glob below matches nothing. The template's own suite holds both halves —
  * that the three lines name the root, and that a tree without one is unchanged
  * by their naming it.
  */
@@ -236,7 +235,7 @@ export default defineConfig(({ mode }) => {
       include: [
         'src/**/*.test.ts',
         'src/**/*.test.tsx',
-        // A deployment's own tests, in its own root. Nothing here matches them —
+        // A deployment's own tests, in its own root. The template has none —
         // see the deployment source root above.
         'deployment/**/*.test.ts',
         'deployment/**/*.test.tsx',

@@ -1,7 +1,7 @@
 /**
  * ONE MODULE ANSWERS "SO WHAT DID THE CHECK FIND".
  *
- * `sweep.mjs` is the first half of every check in this repository: a check
+ * `sweep.mjs` is the first half of every check built on it: a check
  * names a Subject and receives its files, and nothing in it resolves a root,
  * walks a directory, or decides what a missing folder means. This module is
  * the second half. Every check used to end the same way and disagree about
@@ -51,7 +51,7 @@
  * reading the annotations, and they are counted together.
  *
  * WHAT THIS MODULE DOES NOT DECIDE is the wording. It renders; the check
- * writes. That line is what let every check in this repository move under it
+ * writes. That line is what let every check in the template move under it
  * without a single output byte changing, and it is the line to keep: a module
  * that started composing sentences would be a module that has to know what
  * each check is for.

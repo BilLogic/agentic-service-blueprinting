@@ -1,7 +1,7 @@
 /**
  * ONE MODULE ANSWERS "GIVE ME THE FILES FOR THIS SUBJECT".
  *
- * Every check in this repository used to begin the same way and end
+ * Every check in the template used to begin the same way and end
  * differently: resolve a root from its own location, walk a directory, decide
  * what a missing folder means, decide what a file that vanished between the
  * listing and the read means — and then, a hundred lines in, judge something.
@@ -48,9 +48,10 @@
  *   reference-docs   The PACKAGE's `references/`, read and never written —
  *                    what a check holds this tree's own documents against,
  *                    out of the installed package in a deployment and out of
- *                    this tree here. None is a FAILURE, and so is an installed
- *                    package that ships none: the deployment's own documents
- *                    are never handed back as the package's.
+ *                    its own tree in the template. None is a FAILURE, and so
+ *                    is an installed package that ships none: the
+ *                    deployment's own documents are never handed back as the
+ *                    package's.
  *   deployment-seed  A deployment's seed, in a checkout beside this one.
  *                    Local only: exactly one sibling that ships a seed and is
  *                    not another checkout of this package. None, or several,
@@ -90,7 +91,7 @@ import { appendFileSync, existsSync, readFileSync, readdirSync, statSync } from 
 import { dirname, join, relative, resolve, sep } from 'node:path'
 // By package name, not relative: a deployment enrols this module byte-identical
 // and reaches the overlay rule through the package it installed, the same
-// spelling `vite.config.ts` uses; here the name resolves by self-reference.
+// spelling `vite.config.ts` uses; in the template the name resolves by self-reference.
 import { resolveOverlaid } from 'uno-blueprint/overlay'
 import { repoConfig } from './repo-config.mjs'
 import { chooseDeployment, packageName, resolveSeedFiles, siblingCandidates } from './seed-list.mjs'
@@ -328,7 +329,8 @@ function commitFiles(root) {
 }
 
 /**
- * The package's root: the installed package in a deployment, this tree here.
+ * The package's root: the installed package in a deployment, the tree itself
+ * in the template.
  * Decided by whether the package is installed, not by whether it ships the
  * folder asked for — an installed package with no `references/` is a failure
  * to report, not a reason to answer with the deployment's own documents as if
@@ -351,7 +353,7 @@ function deploymentSeedFiles(root, io) {
   const chosen = chooseDeployment(siblingCandidates(root), packageName(root))
   if (chosen.skip) {
     unverified(
-      "a deployment's seed against this template's portable core",
+      "a deployment's seed against the template's portable core",
       `${chosen.skip}; check out a deployment beside this repository, or run the ` +
         'deployment seed check with --seed <path>.',
       io,

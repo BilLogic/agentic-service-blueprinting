@@ -20,9 +20,9 @@
  * ── WHO CLAIMS WHAT, ACROSS THE SEAM ──────────────────────────────────────
  *
  * This check runs in two kinds of repository and the answer has to differ.
- * Here, the application IS this tree and these documents are its own. In a
- * deployment the application arrives inside the installed package, and the
- * package's documents arrive with it.
+ * In the template, the application IS the tree and these documents are its
+ * own. In a deployment the application arrives inside the installed package,
+ * and the package's documents arrive with it.
  *
  * THE PACKAGE CLAIMS WHAT THE PACKAGE SHIPS. That is the whole point. A
  * deployment that pins a release which added a module used to go red on the
@@ -100,7 +100,7 @@ export const isAssembled = (path) =>
  *
  * The same two layers and the same order `appLayers` answers with, because it
  * is the same rule: a deployment's copy of a name wins, and the package's
- * answers everything the deployment did not name. In this repository the
+ * answers everything the deployment did not name. In the template the
  * package is not installed, there is one layer, and nothing overlays anything.
  *
  * ONE FOLDER NAME SERVES BOTH LAYERS, and that is the one place this arrangement
@@ -241,7 +241,7 @@ export function sweepClaims({ root = process.cwd(), composition = repoConfig.com
     throw new Error(
       'repo-config.mjs states no usable `composition`: this check needs `documents` (where ' +
         "this repository's composition documents live) and `claimed` (the trees of its own " +
-        'assembled files, possibly empty). See references/customization.md.',
+        'assembled files, possibly empty). The package’s customization reference says how.',
     )
   }
   const problems = []
