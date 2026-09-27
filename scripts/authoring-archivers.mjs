@@ -14,11 +14,11 @@
  * two rows, one of them with no payload — two records of one event, only one
  * of which can restore anything.
  *
- * `ARCHIVED_BY_THE_DATABASE` in `src/lib/authoringLog.ts` is that skip set,
- * and this is the other half of the comparison: the set read out of the SQL.
- * `scripts/tests/authoring-log.test.mjs` holds them together, so adding a
- * seventh archiving function without a line in the client fails a test rather
- * than silently double-recording.
+ * `ARCHIVED_BY_THE_DATABASE` in the application's authoring-log module is
+ * that skip set, and this is the other half of the comparison: the set read
+ * out of the SQL. `scripts/tests/authoring-log.test.mjs` holds them together,
+ * so adding a seventh archiving function without a line in the client fails a
+ * test rather than silently double-recording.
  *
  * IT MATCHES BOTH RELATION NAMES ON PURPOSE. The migration series still says
  * `deleted_structure` inside all six bodies, because the redirect is a

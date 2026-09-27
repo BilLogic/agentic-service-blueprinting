@@ -49,9 +49,9 @@ const ROOT = process.cwd()
 /**
  * The versions this checkout speaks, from the schema that declares them.
  *
- * Same source as `scripts/validate_ir.py` and, by test, as
- * `src/lib/backend/schemaVersion.ts`. A second copy of a version list is a
- * second thing to forget.
+ * Same source as the IR validator and, by test, as the application's own
+ * schema-version module. A second copy of a version list is a second thing
+ * to forget.
  */
 export function supportedVersions() {
   const schema = JSON.parse(

@@ -37,7 +37,27 @@
  * `repo-config.mjs` is the one import that is deliberately NOT shared, and it
  * is the reason the closure needs two lists rather than one. It is the seam:
  * every field in it is a fact about the running repository, which is exactly
- * why a shared script reaches for it instead of spelling the value.
+ * why a shared script reaches for it instead of spelling the value. *
+ * A SCRIPT IS A DOCUMENT TOO. A `scripts/…` path in a shared file is an
+ * address in the same way a `docs/…` one is, and it dangles the same way: a
+ * deployment keeps its own scripts, so a file named here that is on neither
+ * list is one the reader's tree may not have — the IR validator was cited by
+ * path from a shared script, and a deployment has no copy of it. So a script
+ * a shared file names has to be one the two lists account for.
+ *
+ * THE BUILD'S OWN CONFIGURATION IS SHARED TOO, and held to the same two
+ * rules. A deployment holds those files byte-identical for a stronger reason
+ * than it holds the scripts — they carry the seam by which it runs code it
+ * does not contain — so a comment in one of them is read from both sides of
+ * that seam.
+ *
+ * `src/…` is NOT on the rule, deliberately. It is the application's own
+ * spelling of its files, which a deployment reads out of the package: the
+ * pointer sweep resolves it through the overlay, the harness claims are
+ * spelled with it, and two of the configs carry it as values the tools act
+ * on. A shared comment still names a module by its role rather than its path
+ * where the role says as much — but that is a choice of wording, not a
+ * dangling reference, and no line-based scan can tell the two apart.
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
@@ -119,9 +139,9 @@ function citedPaths(text) {
     .flatMap((line, index) => [...line.matchAll(every)].map((match) => `${index + 1}: ${match[0]}`))
 }
 
-test('a published shared script names no document an adopter does not have', () => {
+test('a published shared file names no document an adopter does not have', () => {
   const offenders = []
-  for (const path of SHARED_SCRIPTS.keys()) {
+  for (const path of [...SHARED_SCRIPTS.keys(), ...SHARED_CONFIGS.keys()]) {
     for (const finding of citedPaths(readFileSync(join(ROOT, path), 'utf8'))) {
       offenders.push(`${path}:${finding}`)
     }
@@ -146,6 +166,56 @@ export const REPO_LOCAL_IMPORTS = new Map([
     'the seam itself — every field is a fact about the running repository, which is why a shared script reaches for it rather than spelling the value',
   ],
 ])
+
+/**
+ * The build's own configuration, which a deployment holds byte-identical, and
+ * why each file is shared. Not scripts, so not on `SHARED_SCRIPTS` — a
+ * deployment reads that list to know which scripts it must hold, and a config
+ * there would be a script it went looking for — but read by people in two
+ * repositories all the same, and so held to the same citation rules.
+ */
+export const SHARED_CONFIGS = new Map([
+  [
+    'vite.config.ts',
+    'the two aliases and the application source root — the mechanism by which a deployment runs code it does not contain',
+  ],
+  ['tsconfig.json', 'the `@/*` and `~/*` mappings every import in the package resolves through'],
+  [
+    'tsconfig.app.json',
+    'the language the shared code is authored in, and what the compiler collects on either side',
+  ],
+  ['tsconfig.node.json', 'the compiler configuration for the build config itself'],
+  ['eslint.config.js', 'one register of lint exceptions, so identical source is held to identical rules'],
+  [
+    'components.json',
+    'the registry configuration that generates the UI primitives, so the next one added is the same shape in either tree',
+  ],
+])
+
+/** The last segment carries an extension: a file, not a tree. */
+const NAMES_A_FILE = /\.[A-Za-z0-9]+$/
+
+/**
+ * The script FILES a line names, each as `line: path`.
+ *
+ * The same lookbehind as `DOCUMENT_PATH`, for the same reasons: `./scripts/…`
+ * is relative to the reader and `node_modules/…/scripts/…` or
+ * `${root}/scripts/…` is a path the code builds, so neither is a citation.
+ * A directory or a glob — `scripts/tests/**` — names a tree both repositories
+ * have, and is not the subject either; a file is.
+ */
+function citedScripts(text) {
+  const every = /(?<![.\w/])scripts\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*/g
+  return text.split('\n').flatMap((line, index) =>
+    [...line.matchAll(every)]
+      .map((match) => match[0].replace(/\.+$/, ''))
+      .filter((path) => NAMES_A_FILE.test(path))
+      .map((path) => `${index + 1}: ${path}`),
+  )
+}
+
+/** Whether a cited script is one the two lists account for. */
+const accountedFor = (path) => SHARED_SCRIPTS.has(path) || REPO_LOCAL_IMPORTS.has(path)
 
 /**
  * The paths a module imports relatively, resolved against the repository root.
@@ -242,5 +312,50 @@ test('both lists name a file that is there, and every reason is one worth readin
   for (const [path, reason] of REPO_LOCAL_IMPORTS) {
     assert.ok(readFileSync(join(ROOT, path), 'utf8').length > 0, `${path} is listed and empty`)
     assert.ok(reason.length > 20, `${path} is listed with no reason worth reading`)
+  }
+})
+
+test('a published shared file names no script an adopter does not hold', () => {
+  const offenders = []
+  for (const path of [...SHARED_SCRIPTS.keys(), ...SHARED_CONFIGS.keys()]) {
+    for (const finding of citedScripts(readFileSync(join(ROOT, path), 'utf8'))) {
+      if (!accountedFor(finding.slice(finding.indexOf(': ') + 2))) offenders.push(`${path}:${finding}`)
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    'A deployment keeps its own scripts, so a script named here that is on neither list is one ' +
+      'its tree may not have. Name the tool by what it does, share the script — SHARED_SCRIPTS, ' +
+      'with the reason — or, if it is a fixture, spell it under a tree no repository claims:\n' +
+      offenders.join('\n'),
+  )
+})
+
+test('the script guard reads files, not trees, and not paths the code builds', () => {
+  assert.deepEqual(citedScripts(' * Same source as `scripts/validate_ir.py` and the app.'), [
+    '1: scripts/validate_ir.py',
+  ])
+  // A sentence that ends on the path keeps the path and loses the full stop.
+  assert.deepEqual(citedScripts(' * node scripts/sweep.mjs.'), ['1: scripts/sweep.mjs'])
+  assert.deepEqual(citedScripts("  'scripts/a.mjs', 'scripts/b.py',"), [
+    '1: scripts/a.mjs',
+    '1: scripts/b.py',
+  ])
+  // A tree both repositories have, a glob over one, and a path the code joins.
+  assert.deepEqual(citedScripts("  include: ['scripts/tests/**/*.test.mjs'],"), [])
+  assert.deepEqual(citedScripts(' * everything under `scripts/` is repo-local'), [])
+  assert.deepEqual(citedScripts('  `${root}/scripts/x.mjs`, `node_modules/p/scripts/y.mjs`'), [])
+  assert.deepEqual(citedScripts("  import('./scripts/z.mjs')"), [])
+  assert.equal(accountedFor('scripts/repo-config.mjs'), true)
+  assert.equal(accountedFor('scripts/sweep.mjs'), true)
+  assert.equal(accountedFor('scripts/validate_ir.py'), false)
+})
+
+test('every shared build config exists, and says why it is shared', () => {
+  for (const [path, reason] of SHARED_CONFIGS) {
+    assert.ok(readFileSync(join(ROOT, path), 'utf8').length > 0, `${path} is listed and empty`)
+    assert.ok(reason.length > 20, `${path} is listed with no reason worth reading`)
+    assert.ok(!SHARED_SCRIPTS.has(path), `${path} is on both lists`)
   }
 })
