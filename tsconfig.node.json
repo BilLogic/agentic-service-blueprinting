@@ -21,8 +21,10 @@
     "noFallthroughCasesInSwitch": true
   },
   // The build's own config, and the browser render walk beside it: both are
-  // Node programs about this repository rather than part of the application,
-  // and `render-walk/` ships to deployments, so its five TypeScript files are typechecked
-  // here rather than only by whatever Playwright tolerates at run time.
+  // Node programs about the repository rather than part of the application.
+  // The walk ships to deployments inside the package, so the template, which
+  // keeps it at its root, typechecks it rather than leaving it to whatever
+  // Playwright tolerates at run time. A deployment keeps no copy at its root,
+  // and there the include matches nothing.
   "include": ["vite.config.ts", "render-walk"]
 }

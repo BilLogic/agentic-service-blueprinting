@@ -47,18 +47,19 @@
  * a shared file names has to be one the two lists account for.
  *
  * A TREE ONLY THE TEMPLATE KEEPS is the same failure at a larger scale. The
- * plugin manifest, the hook, the eval harness and the brand assets live in
+ * plugin manifest, the hook, the eval fixtures and the handoff template live in
  * trees a deployment neither holds nor reads out of the package, so a file
  * named under one of them dangles on that side whatever it is. The trees a
  * deployment DOES read out of the package — the application, the reference
  * documents and the skills, which it imports by fixed path — are the
  * package's published surface, and a path into them is not on this rule.
  *
- * THE BUILD'S OWN CONFIGURATION IS SHARED TOO, and held to the same
- * rules, and so are the two data files a deployment holds. A deployment holds those files byte-identical for a stronger reason
- * than it holds the scripts — they carry the seam by which it runs code it
- * does not contain — so a comment in one of them is read from both sides of
- * that seam.
+ * THE BUILD'S OWN CONFIGURATION IS SHARED TOO, and held to the same rules.
+ * A deployment holds those files byte-identical for a stronger reason than
+ * it holds the scripts — they carry the seam by which it runs code it does
+ * not contain — so a comment in one of them is read from both sides of that
+ * seam. So are the two data files a deployment holds: the triage-label map
+ * and the placeholder a step without artwork shows.
  *
  * `src/…` is NOT on the rule, deliberately. It is the application's own
  * spelling of its files, which a deployment reads out of the package: the
@@ -70,7 +71,7 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, statSync } from 'node:fs'
 import { dirname, join, resolve, sep } from 'node:path'
 
 import { DOCUMENT_PATH } from '@/citations.ts'
@@ -229,10 +230,16 @@ export const SHARED_DATA = new Map([
 const SHARED_FILES = [...SHARED_SCRIPTS.keys(), ...SHARED_CONFIGS.keys(), ...SHARED_DATA.keys()]
 
 /**
- * The top-level trees only the template keeps: a deployment neither holds
- * them nor reads them out of the package, so a file named under one dangles.
+ * The top-level trees only the template keeps, and why a deployment has no
+ * copy: it neither holds them nor reads them out of the package, so a file
+ * named under one dangles on that side.
  */
-export const TEMPLATE_ONLY_TREES = ['.claude-plugin', 'assets', 'evals', 'hooks']
+export const TEMPLATE_ONLY_TREES = new Map([
+  ['.claude-plugin', 'the plugin manifest — the template is the plugin; a deployment installs the package'],
+  ['assets', 'the handoff template a new workspace is scaffolded from, which a deployment never scaffolds'],
+  ['evals', 'the eval fixtures the template’s own agent harness runs against'],
+  ['hooks', 'the secret guard, which the plugin host runs and a deployment’s tree never loads'],
+])
 
 /** The last segment carries an extension: a file, not a tree. */
 const NAMES_A_FILE = /\.[A-Za-z0-9]+$/
@@ -403,7 +410,7 @@ test('the script guard reads files, not trees, and not paths the code builds', (
 test('a published shared file names no file in a tree only the template keeps', () => {
   const offenders = []
   for (const path of SHARED_FILES) {
-    for (const cited of citedFilesUnder(readFileSync(join(ROOT, path), 'utf8'), TEMPLATE_ONLY_TREES)) {
+    for (const cited of citedFilesUnder(readFileSync(join(ROOT, path), 'utf8'), [...TEMPLATE_ONLY_TREES.keys()])) {
       offenders.push(`${path}:${cited.line}: ${cited.path}`)
     }
   }
@@ -416,22 +423,29 @@ test('a published shared file names no file in a tree only the template keeps', 
   )
 })
 
+test('every template-only tree is a tree here, and says why a deployment lacks it', () => {
+  for (const [tree, reason] of TEMPLATE_ONLY_TREES) {
+    assert.ok(statSync(join(ROOT, tree)).isDirectory(), `${tree} is listed and is not a tree here`)
+    assert.ok(reason.length > 20, `${tree} is listed with no reason worth reading`)
+  }
+})
+
 test('the template-only guard reads files in those trees and nothing else', () => {
   assert.deepEqual(
-    citedFilesUnder(' * `.claude-plugin/plugin.json` and `hooks/secret_guard.py` are', TEMPLATE_ONLY_TREES),
+    citedFilesUnder(' * `.claude-plugin/plugin.json` and `hooks/secret_guard.py` are', [...TEMPLATE_ONLY_TREES.keys()]),
     [
       { line: 1, path: '.claude-plugin/plugin.json' },
       { line: 1, path: 'hooks/secret_guard.py' },
     ],
   )
-  assert.deepEqual(citedFilesUnder("  x('evals/fixtures/a.json')", TEMPLATE_ONLY_TREES), [
+  assert.deepEqual(citedFilesUnder("  x('evals/fixtures/a.json')", [...TEMPLATE_ONLY_TREES.keys()]), [
     { line: 1, path: 'evals/fixtures/a.json' },
   ])
   // The application's own hooks folder, a tree named as a tree, and the
   // package's published surface are not the subject.
-  assert.deepEqual(citedFilesUnder(" * `src/hooks/useThing.ts` and '@/hooks'", TEMPLATE_ONLY_TREES), [])
-  assert.deepEqual(citedFilesUnder(' * hooks/constants beside the component', TEMPLATE_ONLY_TREES), [])
-  assert.deepEqual(citedFilesUnder(" locate('references/ir-schema.json')", TEMPLATE_ONLY_TREES), [])
+  assert.deepEqual(citedFilesUnder(" * `src/hooks/useThing.ts` and '@/hooks'", [...TEMPLATE_ONLY_TREES.keys()]), [])
+  assert.deepEqual(citedFilesUnder(' * hooks/constants beside the component', [...TEMPLATE_ONLY_TREES.keys()]), [])
+  assert.deepEqual(citedFilesUnder(" locate('references/ir-schema.json')", [...TEMPLATE_ONLY_TREES.keys()]), [])
 })
 
 test('the four lists are disjoint, so each file has one reason', () => {

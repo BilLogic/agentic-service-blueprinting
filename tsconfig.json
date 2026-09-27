@@ -11,10 +11,10 @@
     //
     // Two roots, tried in order: this repository's own `src`, then the
     // package's, so a deployment that vendors the application instead of
-    // copying it resolves `@/…` without editing this file. Here the second
-    // is never reached. See `vite.config.ts` for the whole account.
+    // copying it resolves `@/…` without editing this file. In the template
+    // the second is never reached. See `vite.config.ts` for the whole account.
     // And `~/…` is the deployment's own root beside it, so an editor resolves
-    // what the build resolves. Absent here; see `vite.config.ts`.
+    // what the build resolves. The template has none; see `vite.config.ts`.
     "paths": {
       "@/*": [
         "./src/*",

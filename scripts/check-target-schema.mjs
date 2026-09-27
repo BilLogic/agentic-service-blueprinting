@@ -56,9 +56,10 @@ const ROOT = process.cwd()
 export function supportedVersions() {
   const schema = JSON.parse(
     // The schema is the package's reference surface — in a deployment the
-    // installed package's, here this tree's — which is what `reference-docs`
-    // answers with; the subject lists markdown and `locate` answers for any
-    // path under its base, and a missing schema is a failure with the path in it.
+    // installed package's, in the template its own — which is what
+    // `reference-docs` answers with; the subject lists markdown and `locate`
+    // answers for any path under its base, and a missing schema is a failure
+    // with the path in it.
     readFileSync(sweep({ subject: 'reference-docs', root: ROOT }).locate('references/ir-schema.json'), 'utf8'),
   )
   return schema.properties.schema_version.enum
