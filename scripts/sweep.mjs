@@ -355,7 +355,7 @@ function deploymentSeedFiles(root, io) {
   if (chosen.skip) {
     unverified(
       "a deployment's seed against the template's portable core",
-      `${chosen.skip}; check out a deployment beside the template, or run the ` +
+      `${chosen.skip}; check out a deployment beside this checkout, or run the ` +
         'deployment seed check with --seed <path>.',
       io,
     )
