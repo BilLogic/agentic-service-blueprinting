@@ -10,8 +10,8 @@
  * for the checks that knew to call it, and a check written without one of
  * them got that piece wrong in the way the helper's header described. They
  * are gone; this module is the first half, once — the skip-said-out-loud
- * rule that was `unverified.mjs` is the last section of this file. A check names a Subject, receives its
- * files, and contains only its judgement.
+ * rule that was `unverified.mjs` is the last section of this file. A check
+ * names a Subject, receives its files, and contains only its judgement.
  *
  * A SUBJECT is a named tree and its rule: where its root is, which files are
  * its, and what "cannot see the subject" means there. There are eight — the
@@ -37,8 +37,8 @@
  *                    runs against a live database. A deployment's scripts
  *                    are its own, so the root is always this tree's. No
  *                    scripts is a FAILURE.
- *   migrations       `supabase/migrations/`, the `.sql` files, this tree's. None is a
- *                    FAILURE.
+ *   migrations       `supabase/migrations/`, the `.sql` files, this tree's.
+ *                    None is a FAILURE.
  *   references       The published reference surface of THIS repository:
  *                    `references/` and every `skills/<skill>/references/`,
  *                    every file — the schemas are addressed by filename, so
@@ -355,7 +355,7 @@ function deploymentSeedFiles(root, io) {
   if (chosen.skip) {
     unverified(
       "a deployment's seed against the template's portable core",
-      `${chosen.skip}; check out a deployment beside this repository, or run the ` +
+      `${chosen.skip}; check out a deployment beside this checkout, or run the ` +
         'deployment seed check with --seed <path>.',
       io,
     )
