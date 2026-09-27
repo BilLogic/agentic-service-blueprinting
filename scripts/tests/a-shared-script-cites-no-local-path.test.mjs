@@ -46,8 +46,16 @@
  * path from a shared script, and a deployment has no copy of it. So a script
  * a shared file names has to be one the two lists account for.
  *
- * THE BUILD'S OWN CONFIGURATION IS SHARED TOO, and held to the same two
- * rules. A deployment holds those files byte-identical for a stronger reason
+ * A TREE ONLY THE TEMPLATE KEEPS is the same failure at a larger scale. The
+ * plugin manifest, the hook, the eval harness and the brand assets live in
+ * trees a deployment neither holds nor reads out of the package, so a file
+ * named under one of them dangles on that side whatever it is. The trees a
+ * deployment DOES read out of the package — the application, the reference
+ * documents and the skills, which it imports by fixed path — are the
+ * package's published surface, and a path into them is not on this rule.
+ *
+ * THE BUILD'S OWN CONFIGURATION IS SHARED TOO, and held to the same
+ * rules, and so are the two data files a deployment holds. A deployment holds those files byte-identical for a stronger reason
  * than it holds the scripts — they carry the seam by which it runs code it
  * does not contain — so a comment in one of them is read from both sides of
  * that seam.
@@ -117,6 +125,14 @@ export const SHARED_SCRIPTS = new Map([
   [
     'scripts/tests/authoring-log.test.mjs',
     'the one seam between the log’s two writers, held from both sides in either tree',
+  ],
+  [
+    'scripts/erd-value-sets.mjs',
+    'a pure parser over whichever ERD the caller hands it, held to whichever catalog the caller reads',
+  ],
+  [
+    'scripts/tests/one-badge-one-size.test.mjs',
+    'a badge’s size is decided where badges are defined, asked of whichever application the sweep resolves',
   ],
 ])
 
@@ -193,23 +209,46 @@ export const SHARED_CONFIGS = new Map([
   ],
 ])
 
-/** Every file a deployment holds byte-identical: the scripts, then the build. */
-const SHARED_FILES = [...SHARED_SCRIPTS.keys(), ...SHARED_CONFIGS.keys()]
+/**
+ * The data files a deployment holds byte-identical, and why each is shared.
+ * Neither script nor build, and read by people in two repositories all the
+ * same.
+ */
+export const SHARED_DATA = new Map([
+  [
+    'docs/agents/triage-labels.md',
+    'the label strings the five canonical triage roles map to, so a role respelled on one side is not applied under the old label on the other',
+  ],
+  [
+    'public/step-visual-placeholder.svg',
+    'the placeholder a step with no artwork shows, whose name applied migrations carry, so only its content can be shared',
+  ],
+])
+
+/** Every file a deployment holds byte-identical: the scripts, the build, the data. */
+const SHARED_FILES = [...SHARED_SCRIPTS.keys(), ...SHARED_CONFIGS.keys(), ...SHARED_DATA.keys()]
+
+/**
+ * The top-level trees only the template keeps: a deployment neither holds
+ * them nor reads them out of the package, so a file named under one dangles.
+ */
+export const TEMPLATE_ONLY_TREES = ['.claude-plugin', 'assets', 'evals', 'hooks']
 
 /** The last segment carries an extension: a file, not a tree. */
 const NAMES_A_FILE = /\.[A-Za-z0-9]+$/
 
 /**
- * The script FILES a text names, each as `{ line, path }`.
+ * The FILES a text names under one of `trees`, each as `{ line, path }`.
  *
  * The same lookbehind as `DOCUMENT_PATH`, for the same reasons: `./scripts/…`
  * is relative to the reader and `node_modules/…/scripts/…` or
  * `${root}/scripts/…` is a path the code builds, so neither is a citation.
- * A directory or a glob — `scripts/tests/**` — names a tree both repositories
- * have, and is not the subject either; a file is.
+ * A directory or a glob — `scripts/tests/**` — names a tree, and is not the
+ * subject either; a file is. A tree only one side keeps is named in words.
  */
-function citedScripts(text) {
-  const every = /(?<![.\w/])scripts\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*/g
+function citedFilesUnder(text, trees) {
+  const escaped = trees.map((tree) => tree.replace(/[.]/g, '\\.')).join('|')
+  const every = new RegExp(`(?<![.\\w/])(?:${escaped})\\/[A-Za-z0-9_.-]+(?:\\/[A-Za-z0-9_.-]+)*`, 'g')
   return text.split('\n').flatMap((line, index) =>
     [...line.matchAll(every)]
       .map((match) => match[0].replace(/\.+$/, ''))
@@ -217,6 +256,9 @@ function citedScripts(text) {
       .map((path) => ({ line: index + 1, path })),
   )
 }
+
+/** The script files a text names. */
+const citedScripts = (text) => citedFilesUnder(text, ['scripts'])
 
 /** Whether a cited script is one the two lists account for. */
 const accountedFor = (path) => SHARED_SCRIPTS.has(path) || REPO_LOCAL_IMPORTS.has(path)
@@ -313,10 +355,9 @@ test('the list is closed under import — a shared script imports nothing unclas
 })
 
 test('every list names a file that is there, and every reason is one worth reading', () => {
-  for (const [path, reason] of [...REPO_LOCAL_IMPORTS, ...SHARED_CONFIGS]) {
+  for (const [path, reason] of [...REPO_LOCAL_IMPORTS, ...SHARED_CONFIGS, ...SHARED_DATA]) {
     assert.ok(readFileSync(join(ROOT, path), 'utf8').length > 0, `${path} is listed and empty`)
     assert.ok(reason.length > 20, `${path} is listed with no reason worth reading`)
-    assert.ok(!SHARED_SCRIPTS.has(path), `${path} is on two lists`)
   }
 })
 
@@ -357,4 +398,53 @@ test('the script guard reads files, not trees, and not paths the code builds', (
   assert.equal(accountedFor('scripts/repo-config.mjs'), true)
   assert.equal(accountedFor('scripts/sweep.mjs'), true)
   assert.equal(accountedFor('scripts/validate_ir.py'), false)
+})
+
+test('a published shared file names no file in a tree only the template keeps', () => {
+  const offenders = []
+  for (const path of SHARED_FILES) {
+    for (const cited of citedFilesUnder(readFileSync(join(ROOT, path), 'utf8'), TEMPLATE_ONLY_TREES)) {
+      offenders.push(`${path}:${cited.line}: ${cited.path}`)
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    'A deployment neither holds these trees nor reads them out of the package, so a file named ' +
+      'under one dangles there. Name the thing — "the plugin manifest", "the secret-guard hook" — ' +
+      `rather than its path:\n${offenders.join('\n')}`,
+  )
+})
+
+test('the template-only guard reads files in those trees and nothing else', () => {
+  assert.deepEqual(
+    citedFilesUnder(' * `.claude-plugin/plugin.json` and `hooks/secret_guard.py` are', TEMPLATE_ONLY_TREES),
+    [
+      { line: 1, path: '.claude-plugin/plugin.json' },
+      { line: 1, path: 'hooks/secret_guard.py' },
+    ],
+  )
+  assert.deepEqual(citedFilesUnder("  x('evals/fixtures/a.json')", TEMPLATE_ONLY_TREES), [
+    { line: 1, path: 'evals/fixtures/a.json' },
+  ])
+  // The application's own hooks folder, a tree named as a tree, and the
+  // package's published surface are not the subject.
+  assert.deepEqual(citedFilesUnder(" * `src/hooks/useThing.ts` and '@/hooks'", TEMPLATE_ONLY_TREES), [])
+  assert.deepEqual(citedFilesUnder(' * hooks/constants beside the component', TEMPLATE_ONLY_TREES), [])
+  assert.deepEqual(citedFilesUnder(" locate('references/ir-schema.json')", TEMPLATE_ONLY_TREES), [])
+})
+
+test('the four lists are disjoint, so each file has one reason', () => {
+  const seen = new Map()
+  for (const [name, list] of [
+    ['SHARED_SCRIPTS', SHARED_SCRIPTS],
+    ['SHARED_CONFIGS', SHARED_CONFIGS],
+    ['SHARED_DATA', SHARED_DATA],
+    ['REPO_LOCAL_IMPORTS', REPO_LOCAL_IMPORTS],
+  ]) {
+    for (const path of list.keys()) {
+      assert.ok(!seen.has(path), `${path} is on ${seen.get(path)} and ${name}`)
+      seen.set(path, name)
+    }
+  }
 })

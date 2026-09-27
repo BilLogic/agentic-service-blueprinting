@@ -20,8 +20,18 @@ file must be one `SHARED_SCRIPTS` or `REPO_LOCAL_IMPORTS` accounts for, so a
 template-only script can no longer be cited by path. A new `SHARED_CONFIGS`
 list names the build configuration a deployment holds byte-identical —
 `vite.config.ts`, the three tsconfigs, `eslint.config.js`, `components.json`
-— and holds it to both rules. `src/…` stays outside the rule: it is the
-application's own spelling, resolved through the overlay on either side.
+— and holds it to both rules, and `SHARED_DATA` does the same for the
+triage-label map and the step placeholder. A third rule refuses a file named
+under a tree only the template keeps — the plugin manifest, the hook, the
+eval harness, the brand assets — which a deployment neither holds nor reads
+out of the package. `src/…`, the reference documents and the skills stay
+outside it: they are the package's published surface, which a deployment
+reads by fixed path.
+
+The published lists now match what a deployment actually holds.
+`erd-value-sets.mjs` and `one-badge-one-size.test.mjs` were held
+byte-identical by a deployment but missing from `SHARED_SCRIPTS`, so no
+template-side guard read them; both are listed now, with their reasons.
 
 Comments and tests only; no behaviour changes. A deployment that holds these
 files takes the new bytes with the pin bump. `SHARED_SCRIPTS` keeps its shape,
