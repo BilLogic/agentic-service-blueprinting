@@ -1367,10 +1367,11 @@ const BRAND_JOBS = [
     file: 'components/ui/switch.tsx',
     mark: 'data-checked:bg-brand',
   },
-  // The fill, not `text-text-brand`, because the mark is an icon: its bar is
-  // 3:1 (non-text contrast, WCAG SC 1.4.11), not the 4.5:1 small text needs,
-  // and a deep fill still clears it on a dark popover at about 3.1:1. A
-  // selected-state mark is where the brand's own colour belongs.
+  // `text-brand`, the brand identity colour (which resolves to the fill while
+  // a deployment leaves the brand dials unset), not the role ink
+  // `text-text-brand`: the mark is an icon, and an icon's contrast bar is
+  // lower than text's. The measure is stated once, on the owner-tag check's
+  // entry in FILL_INK_MARKS in tokenDiscipline.test.ts.
   {
     job: "the selected row in the path selector's popover",
     file: 'components/editor/PathSelectorMenu.tsx',

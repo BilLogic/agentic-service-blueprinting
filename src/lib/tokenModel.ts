@@ -724,32 +724,43 @@ export type ClassUse = {
   utility: string
   file: string
   line: number
+  /** The whole source line, for a rule that asks what element it is on. */
+  text: string
 }
 
 let cachedClassUses: ClassUse[] | null = null
 
 /**
- * Every utility-shaped token that appears inside a quoted string in source.
+ * Every utility-shaped token that appears inside a quoted string in the
+ * given sources.
  *
  * Quoted-string-only on purpose: it keeps identifiers, imports and prose out
  * of the sample without needing to know which prop a string ends up on.
+ * Taking the sources as an argument is what lets a rule prove itself against
+ * a violating string rather than only against the tree.
  */
-export function classUses(): ClassUse[] {
-  if (cachedClassUses) return cachedClassUses
+export function classUsesIn(
+  sources: ReadonlyArray<Pick<SourceFile, 'file' | 'code'>>,
+): ClassUse[] {
   const out: ClassUse[] = []
-  for (const source of sourceFiles()) {
-    source.code.split('\n').forEach((line, index) => {
-      for (const match of line.matchAll(/'([^']*)'|"([^"]*)"|`([^`]*)`/g)) {
+  for (const source of sources) {
+    source.code.split('\n').forEach((text, index) => {
+      for (const match of text.matchAll(/'([^']*)'|"([^"]*)"|`([^`]*)`/g)) {
         const body = match[1] ?? match[2] ?? match[3] ?? ''
         for (const token of body.split(/\s+/)) {
           if (!token) continue
           if (!/^[-a-z@[\]:.]/i.test(token)) continue
-          out.push({ utility: token, file: source.file, line: index + 1 })
+          out.push({ utility: token, file: source.file, line: index + 1, text })
         }
       }
     })
   }
-  cachedClassUses = out
+  return out
+}
+
+/** Every class use in the application's source. */
+export function classUses(): ClassUse[] {
+  cachedClassUses ??= classUsesIn(sourceFiles())
   return cachedClassUses
 }
 

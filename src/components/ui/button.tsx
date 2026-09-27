@@ -64,6 +64,8 @@ const buttonVariants = cva(
         // unmistakable is the point.
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
+        // Role ink, not upstream's `text-primary` fill; tokenDiscipline.test.ts
+        // refuses the bare fill, so a re-vendor that reverts this fails there.
         link: "text-text-primary underline-offset-4 hover:underline",
         // ONE variant, two shapes. There used to be a second entry here whose
         // class string was byte-for-byte identical to this one, so a touchpoint

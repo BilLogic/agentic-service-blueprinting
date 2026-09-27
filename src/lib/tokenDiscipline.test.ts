@@ -1,10 +1,13 @@
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import {
+  classUses,
+  classUsesIn,
   classUsesMatching,
   sourceFiles,
   sourceMatching,
   stylesheetMatching,
+  type ClassUse,
   type TokenLayer,
 } from '@/lib/tokenModel'
 import { BRAND } from '@/config'
@@ -907,13 +910,13 @@ test('every vendored font-size exemption is still a file that needs one', () => 
  * Text takes the role ink, not the fill.
  *
  * `text-primary` reads `--color-primary`, the FILL: a colour tuned to carry
- * ink, and so the wrong lightness for being ink. On the template's mint
- * default, small text in it sits near 1.6:1 in light; on a deep fill a
- * deployment is free to set, it holds in light and falls to about 3.1:1 on a
- * dark popover, short of the 4.5:1 small text needs. `--text-primary` is
- * derived from the surface ladder instead, so `text-text-primary` clears it
- * on both themes at any dial setting. A pressed label wants `text-foreground`,
- * which is emphasis rather than hue.
+ * ink, not to be it. Unbranded, the fill is near-black and the question never
+ * comes up; a deployment that sets a deep brand fill (lightness 0.52, chroma
+ * 0.095, say) keeps it legible in light but sees small text in it fall to
+ * about 3.1–3.5:1 in dark, short of the 4.5:1 small text needs.
+ * `--text-primary` is derived from the surface ladder instead, so
+ * `text-text-primary` holds AA whatever the fill. A pressed label wants
+ * `text-foreground`, which is emphasis rather than hue.
  *
  * Read as text wherever it is written, because a class string does not say
  * what it lands on. What the fill is still right for is a small mark whose bar
@@ -933,35 +936,17 @@ const FILL_INK_MARKS: ReadonlyArray<{
     file: 'components/blueprint/OwnerTagSelect.tsx',
     element: 'Check',
     because:
-      "the selected tag's check is an icon: its bar is 3:1, which a deep fill " +
-      'still clears on a dark popover (about 3.1:1), and a selected-state mark ' +
-      "reads as the brand's own colour",
+      "the selected tag's check is an icon, so its bar is 3:1 (SC 1.4.11), " +
+      'not 4.5:1. The unbranded fill clears it easily, and a deep brand fill ' +
+      'still clears it on a dark popover, at about 3.1:1.',
   },
 ]
 
-type FillUse = { file: string; line: number; text: string; utility: string }
+/** Every `text-primary` written in a quoted string in the given sources. */
+const fillUses = (sources: ReadonlyArray<{ file: string; code: string }>) =>
+  classUsesIn(sources).filter((use) => FILL_AS_INK.test(use.utility))
 
-/** Every `text-primary` written in a quoted string, with the line it is on. */
-function fillUses(
-  sources: ReadonlyArray<{ file: string; code: string }>,
-): FillUse[] {
-  const out: FillUse[] = []
-  for (const source of sources) {
-    source.code.split('\n').forEach((text, index) => {
-      for (const match of text.matchAll(/'([^']*)'|"([^"]*)"|`([^`]*)`/g)) {
-        const body = match[1] ?? match[2] ?? match[3] ?? ''
-        for (const utility of body.split(/\s+/)) {
-          if (FILL_AS_INK.test(utility)) {
-            out.push({ file: source.file, line: index + 1, text, utility })
-          }
-        }
-      }
-    })
-  }
-  return out
-}
-
-const namedMark = (use: FillUse) =>
+const namedMark = (use: ClassUse) =>
   FILL_INK_MARKS.find(
     (entry) =>
       entry.file === use.file && use.text.includes(`<${entry.element} `),
@@ -1002,7 +987,11 @@ test('text takes the role ink, not the fill', () => {
 })
 
 test('every fill-ink mark is still an element that carries the fill', () => {
-  const marks = new Set(fillUses(sourceFiles()).map(namedMark))
+  const marks = new Set(
+    classUses()
+      .filter((use) => FILL_AS_INK.test(use.utility))
+      .map(namedMark),
+  )
   const stale = FILL_INK_MARKS.filter((entry) => !marks.has(entry)).map(
     (entry) => `${entry.file} <${entry.element}>`,
   )

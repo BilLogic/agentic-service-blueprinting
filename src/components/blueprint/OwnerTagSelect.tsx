@@ -171,10 +171,9 @@ export function OwnerTagSelect({
                 >
                   <span className="min-w-0 flex-1 truncate">{tag}</span>
                   {value === tag ? (
-                    // The fill, not the role ink: an icon's bar is 3:1,
-                    // which a deep fill still clears on a dark popover, and
-                    // a selected mark reads as the brand's own colour. The
-                    // rule and its named exceptions: tokenDiscipline.test.ts.
+                    // The fill, not the role ink: an icon's contrast bar is
+                    // lower than text's. The measure is on this mark's entry
+                    // in FILL_INK_MARKS, in tokenDiscipline.test.ts.
                     <Check className="size-3 shrink-0 text-primary" aria-hidden />
                   ) : null}
                 </button>
