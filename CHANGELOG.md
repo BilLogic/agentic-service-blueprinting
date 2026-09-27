@@ -1,5 +1,40 @@
 # Changelog
 
+## 2.2.0
+
+**The template follows the system theme.** A reader who has never chosen a
+theme now gets their operating system's light or dark mode, and keeps
+following it as the OS flips, where before the app always opened light. That
+changes what a first visit looks like, which is why this is a minor.
+
+### Upgrading a deployment
+
+- **Nothing is required** beyond the pin bump: the change lives in
+  `src/lib/theme.ts` and `src/styles/themes/dark.css`, which a deployment reads
+  from the package rather than holding a copy of.
+- **A deployment whose brand stylesheet restates dark dials** should know
+  what the pre-load frame reads: only `--surface` switches, under
+  `@media (prefers-color-scheme: dark)` on `:root:not(.light, .dark)`, and
+  every other dial keeps its light value until the app stamps `.dark`. A
+  restated dark `--surface` needs the same value there, or the canvas shifts
+  shade once the app loads; a restated `--chroma` or `--surface-hue` only tints
+  that one frame differently.
+- Readers who toggled before keep their stored choice; nothing migrates it.
+
+### Minor Changes
+
+- c3e3446: The template follows the system theme
+
+  With nothing stored, the app now opens in whatever light or dark mode the
+  reader's operating system is set to, and keeps following it when the OS
+  flips — before, it opened light regardless. A dark OS also gets a dark canvas
+  before the app has loaded, rather than a white flash.
+
+  The theme toggle stays two-state. Toggling away from what the OS prefers
+  stores that choice, which then holds; toggling back onto it returns to
+  following the OS. A reader who already chose keeps their choice until they
+  next toggle onto their OS's setting.
+
 ## 2.1.0
 
 **The template can be served from a path.** One build-time variable,
@@ -9727,8 +9762,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                                              ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                                              "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                                                ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                                                "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
