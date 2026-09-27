@@ -180,7 +180,7 @@ function JumpToDialog({
   )
   const { blueprintsByScenario } = useCanvasBlueprints(scenarioIds)
   const zoom = useCanvasZoomChrome()
-  const { resolvedTheme, setTheme } = useTheme()
+  const { toggleTheme } = useTheme()
 
   const scenarios = useMemo(() => {
     return getMainSlides(slides).flatMap((phase) =>
@@ -338,9 +338,7 @@ function JumpToDialog({
             <CommandItem
               value="Switch theme"
               onSelect={() =>
-                runAndClose(() => {
-                  setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
-                })
+                runAndClose(toggleTheme)
               }
             >
               <JumpToRow

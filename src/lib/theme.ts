@@ -47,8 +47,12 @@ import { storageKey } from '@/lib/storageNamespace'
  *     page.
  *   - `'system'` is a storable choice that resolves through
  *     `prefers-color-scheme` and keeps tracking it live.
- *   - The default is LIGHT, deliberately not `'system'`: an installation with
- *     nothing stored opens light whatever the OS says.
+ *   - The default is `'system'`: a reader who has never touched the toggle
+ *     gets whatever their OS is set to, and follows it when it changes. The
+ *     toggle is two-state, and `toggleTheme` is where it decides what to
+ *     store: a pick that departs from the OS is stored outright and holds, and
+ *     a pick that lands back on the OS stores `'system'`, which is the way
+ *     back to following it without a third state on the control.
  *
  * The key moved onto the seam, which MOVES it: `next-themes` stored under the
  * bare `theme`, so a theme saved before this release reads once as no theme at
@@ -68,8 +72,8 @@ export type ResolvedTheme = 'light' | 'dark'
  */
 export const THEME_STORAGE_KEY = storageKey('theme')
 
-/** Nothing stored means light. Not the system preference — see the header. */
-const DEFAULT_THEME: ThemeChoice = 'light'
+/** Nothing stored means follow the OS — see the header. */
+const DEFAULT_THEME: ThemeChoice = 'system'
 
 const DARK_QUERY = '(prefers-color-scheme: dark)'
 
@@ -146,7 +150,10 @@ const listeners = new Set<() => void>()
  * rebuilt per read because `useSyncExternalStore` compares snapshots by
  * identity, and a fresh object every call loops the render.
  */
-let snapshot: ThemeState = { theme: DEFAULT_THEME, resolvedTheme: 'light' }
+let snapshot: ThemeState = {
+  theme: DEFAULT_THEME,
+  resolvedTheme: resolveTheme(DEFAULT_THEME, systemPrefersDark()),
+}
 
 function publish(choice: ThemeChoice): void {
   const resolved = resolveTheme(choice, systemPrefersDark())
@@ -177,6 +184,18 @@ export function setTheme(choice: ThemeChoice): void {
     // See `readStoredTheme` — the choice still applies to this session.
   }
   publish(choice)
+}
+
+/**
+ * Flip what is painted — the one thing both switches (the shell toggle and
+ * the jump-to command) do. Landing on what the OS already prefers stores
+ * `'system'` rather than the outright value, so a reader who toggles away and
+ * back is following the OS again, not pinned to today's answer of it.
+ */
+export function toggleTheme(): void {
+  const next: ResolvedTheme =
+    snapshot.resolvedTheme === 'dark' ? 'light' : 'dark'
+  setTheme(resolveTheme('system', systemPrefersDark()) === next ? 'system' : next)
 }
 
 /*
@@ -219,7 +238,13 @@ if (typeof document !== 'undefined') {
  */
 export function useTheme(): ThemeState & {
   setTheme: (choice: ThemeChoice) => void
+  toggleTheme: () => void
 } {
   const state = useSyncExternalStore(subscribeTheme, getTheme, getTheme)
-  return { theme: state.theme, resolvedTheme: state.resolvedTheme, setTheme }
+  return {
+    theme: state.theme,
+    resolvedTheme: state.resolvedTheme,
+    setTheme,
+    toggleTheme,
+  }
 }
