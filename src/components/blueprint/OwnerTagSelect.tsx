@@ -171,6 +171,10 @@ export function OwnerTagSelect({
                 >
                   <span className="min-w-0 flex-1 truncate">{tag}</span>
                   {value === tag ? (
+                    // The fill, not the role ink: an icon's bar is 3:1,
+                    // which a deep fill still clears on a dark popover, and
+                    // a selected mark reads as the brand's own colour. The
+                    // rule and its named exceptions: tokenDiscipline.test.ts.
                     <Check className="size-3 shrink-0 text-primary" aria-hidden />
                   ) : null}
                 </button>
@@ -193,7 +197,7 @@ export function OwnerTagSelect({
           {trimmedFilter && !exactExists ? (
             <button
               type="button"
-              className="flex items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-primary hover:bg-muted"
+              className="flex items-center gap-2 rounded-md px-2 py-2 text-left text-xs text-text-primary hover:bg-muted"
               onClick={() => pick(trimmedFilter)}
             >
               Create “{trimmedFilter}”

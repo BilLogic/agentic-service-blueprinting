@@ -362,7 +362,7 @@ export function SliceSlideComposer({
           className={cn(
             'flex h-9 items-center justify-center rounded-lg border border-dashed text-xs transition-colors',
             slot?.slide === slides.length
-              ? 'border-primary text-primary'
+              ? 'border-primary text-text-primary'
               : 'border-border text-muted-foreground',
           )}
         >

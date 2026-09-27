@@ -64,7 +64,7 @@ const buttonVariants = cva(
         // unmistakable is the point.
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
-        link: "text-primary underline-offset-4 hover:underline",
+        link: "text-text-primary underline-offset-4 hover:underline",
         // ONE variant, two shapes. There used to be a second entry here whose
         // class string was byte-for-byte identical to this one, so a touchpoint
         // face read as a different component when it is the same cell with a
