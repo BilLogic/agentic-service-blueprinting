@@ -1,10 +1,13 @@
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
 import {
+  classUses,
+  classUsesIn,
   classUsesMatching,
   sourceFiles,
   sourceMatching,
   stylesheetMatching,
+  type ClassUse,
   type TokenLayer,
 } from '@/lib/tokenModel'
 import { BRAND } from '@/config'
@@ -900,5 +903,102 @@ test('every vendored font-size exemption is still a file that needs one', () => 
     [],
     `Exempted from the font-size rule but no longer carrying a literal: ${stale.join(', ')}. ` +
       'If the file moved, move the exemption with it; if the re-vendor dropped the literal, delete the exemption.',
+  )
+})
+
+/**
+ * Text takes the role ink, not the fill.
+ *
+ * `text-primary` reads `--color-primary`, the FILL: a colour tuned to carry
+ * ink, not to be it. Unbranded, the fill is near-black and the question never
+ * comes up; a deployment that sets a deep brand fill (lightness 0.52, chroma
+ * 0.095, say) keeps it legible in light but sees small text in it fall to
+ * about 3.1–3.5:1 in dark, short of the 4.5:1 small text needs.
+ * `--text-primary` is derived from the surface ladder instead, so
+ * `text-text-primary` holds AA whatever the fill. A pressed label wants
+ * `text-foreground`, which is emphasis rather than hue.
+ *
+ * Read as text wherever it is written, because a class string does not say
+ * what it lands on. What the fill is still right for is a small mark whose bar
+ * is 3:1 rather than 4.5:1 (non-text contrast, WCAG SC 1.4.11), and those are
+ * named below, element by element, each with the reason it keeps the fill.
+ * An element rather than a file, so a text site added beside the mark in the
+ * same component is still caught.
+ */
+const FILL_AS_INK = new RegExp(`^${VARIANTS}text-primary(?:/\\d{1,3})?$`)
+
+const FILL_INK_MARKS: ReadonlyArray<{
+  file: string
+  element: string
+  because: string
+}> = [
+  {
+    file: 'components/blueprint/OwnerTagSelect.tsx',
+    element: 'Check',
+    because:
+      "the selected tag's check is an icon, so its bar is 3:1 (SC 1.4.11), " +
+      'not 4.5:1. The unbranded fill clears it easily, and a deep brand fill ' +
+      'still clears it on a dark popover, at about 3.1:1.',
+  },
+]
+
+/** Every `text-primary` written in a quoted string in the given sources. */
+const fillUses = (sources: ReadonlyArray<{ file: string; code: string }>) =>
+  classUsesIn(sources).filter((use) => FILL_AS_INK.test(use.utility))
+
+const namedMark = (use: ClassUse) =>
+  FILL_INK_MARKS.find(
+    (entry) =>
+      entry.file === use.file && use.text.includes(`<${entry.element} `),
+  )
+
+/** The uses that are not a named mark, as `file:line: utility`. */
+const fillAsInk = (sources: ReadonlyArray<{ file: string; code: string }>) =>
+  fillUses(sources)
+    .filter((use) => !namedMark(use))
+    .map((use) => `${use.file}:${use.line}: ${use.utility}`)
+
+test('the fill-as-ink rule reads what it claims to', () => {
+  const at = (code: string, file = 'components/Example.tsx') =>
+    fillAsInk([{ file, code }])
+  assert.deepEqual(at('<span className="text-xs text-primary">'), [
+    'components/Example.tsx:1: text-primary',
+  ])
+  assert.equal(at("cn('hover:text-primary', x)").length, 1)
+  assert.equal(at('`aria-pressed:text-primary/80`').length, 1)
+  assert.deepEqual(
+    at('"text-text-primary text-primary-foreground bg-primary/10"'),
+    [],
+  )
+  const icon = '<Check className="size-3 text-primary" aria-hidden />'
+  const owner = 'components/blueprint/OwnerTagSelect.tsx'
+  assert.deepEqual(at(icon, owner), [])
+  assert.equal(at(icon).length, 1)
+  assert.equal(at('<button className="text-xs text-primary">', owner).length, 1)
+})
+
+test('text takes the role ink, not the fill', () => {
+  const offenders = fillAsInk(sourceFiles())
+  assert.deepEqual(
+    offenders,
+    [],
+    `The fill used as text ink — write text-text-primary, or text-foreground for a pressed label. An icon that keeps the fill is named in FILL_INK_MARKS with its reason:\n${offenders.join('\n')}`,
+  )
+})
+
+test('every fill-ink mark is still an element that carries the fill', () => {
+  const marks = new Set(
+    classUses()
+      .filter((use) => FILL_AS_INK.test(use.utility))
+      .map(namedMark),
+  )
+  const stale = FILL_INK_MARKS.filter((entry) => !marks.has(entry)).map(
+    (entry) => `${entry.file} <${entry.element}>`,
+  )
+  assert.deepEqual(
+    stale,
+    [],
+    `Named as a fill-ink mark but no longer carrying the fill: ${stale.join(', ')}. ` +
+      'If the mark moved, move the entry with it; if it left the fill, delete the entry.',
   )
 })

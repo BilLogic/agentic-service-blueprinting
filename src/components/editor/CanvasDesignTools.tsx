@@ -145,7 +145,7 @@ export function CanvasDesignTools() {
             className={cn(
               'pointer-events-auto shrink-0 gap-2 px-2',
               picked.length > 0
-                ? 'border border-primary/30 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'
+                ? 'border border-primary/30 bg-primary/10 text-text-primary hover:bg-primary/15 hover:text-text-primary'
                 : 'text-muted-foreground hover:text-foreground',
             )}
           >

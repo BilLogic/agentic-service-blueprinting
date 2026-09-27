@@ -1367,6 +1367,11 @@ const BRAND_JOBS = [
     file: 'components/ui/switch.tsx',
     mark: 'data-checked:bg-brand',
   },
+  // `text-brand`, the brand identity colour (which resolves to the fill while
+  // a deployment leaves the brand dials unset), not the role ink
+  // `text-text-brand`: the mark is an icon, and an icon's contrast bar is
+  // lower than text's. The measure is stated once, on the owner-tag check's
+  // entry in FILL_INK_MARKS in tokenDiscipline.test.ts.
   {
     job: "the selected row in the path selector's popover",
     file: 'components/editor/PathSelectorMenu.tsx',
@@ -1441,6 +1446,19 @@ describe.each(['light', 'dark'] as const)('role ink: %s', (theme) => {
     expect(
       contrast(resolveColor(`--text-${role}`, theme), page),
     ).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it.each(ROLE_NAMES)('%s reads past muted text, and further on its tint', (role) => {
+    // Role ink marks what is on. Measured as distance from the page along the
+    // span, it has to outrank muted text or an active label reads fainter
+    // than the resting one beside it — which dark did, grey on grey, while
+    // role ink sat at a fixed fraction and dark drew muted text further out.
+    const from = (name: string) =>
+      Math.abs(resolveColorValue(name, theme).l - resolveColorValue('--background', theme).l)
+    const muted = from('--muted-foreground')
+    const ink = from(`--text-${role}`)
+    expect(ink - muted).toBeGreaterThan(0.04)
+    expect(from(`--text-on-surface-${role}`)).toBeGreaterThan(ink)
   })
 
   it.each(ROLE_NAMES)('%s reads as ink on its own tint', (role) => {

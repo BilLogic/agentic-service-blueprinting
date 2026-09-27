@@ -516,7 +516,7 @@ export function SessionChangesSheet() {
               variant="ghost"
               size="sm"
               aria-label={`Review ${changes.length} changes`}
-              className="pointer-events-auto shrink-0 gap-2 border border-primary/30 bg-primary/10 px-2 text-primary hover:bg-primary/15 hover:text-primary"
+              className="pointer-events-auto shrink-0 gap-2 border border-primary/30 bg-primary/10 px-2 text-text-primary hover:bg-primary/15 hover:text-text-primary"
             >
               <History className="size-3.5" aria-hidden />
               Changes
@@ -743,7 +743,7 @@ function ChangeRow({
             same revert, same Save gate; the badge is the entire distinction. */}
         {entry.author === 'agent' ? (
           <span
-            className="shrink-0 text-xs text-primary"
+            className="shrink-0 text-xs text-text-primary"
             title="Made by the agent"
             aria-label="Made by the agent"
           >
