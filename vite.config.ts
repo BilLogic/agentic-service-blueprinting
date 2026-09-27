@@ -6,10 +6,10 @@ import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 
 /**
- * Where `@/…` points: this repository's own `src`, or the package's, with
- * this repository's `src` laid over it PER PATH.
+ * Where `@/…` points: the running repository's own `src`, or the package's,
+ * with that `src` laid over it PER PATH.
  *
- * A deployment that imports this repository as a dependency reads the
+ * A deployment that imports the template as a dependency reads the
  * application out of `node_modules` and keeps, in its own `src`, only the
  * files it still has a reason to hold — its residents. Its build config is
  * the same file as this one — held byte-identical by the deployment's
@@ -18,8 +18,8 @@ import { defineConfig, loadEnv, type Plugin } from 'vite'
  * application and `src` is the overlay; when it is not, `src` is the
  * application. In the template the package is never installed — it has no
  * self-dependency — so there the alias points at `src` and the overlay
- * plugin is never loaded. The two tsconfigs carry the same pair of roots, in the same
- * order, and already resolve per module.
+ * plugin is never loaded. The two tsconfigs carry the same pair of roots, in
+ * the same order, and already resolve per module.
  *
  * The ALL-OR-NOTHING rule this file used to state — the alias pointed at one
  * root, the first that existed, so a half-vendored `src` captured every
@@ -27,9 +27,9 @@ import { defineConfig, loadEnv, type Plugin } from 'vite'
  * deployment overlays the package per path records the overlay, and the
  * package's `overlay` module is the rule. That module is imported BY
  * PACKAGE NAME, which is the one spelling that resolves on both sides: out of
- * `node_modules` in a deployment, and by self-reference in the template. A relative
- * import would name a file a deployment does not have, and a config that
- * imports a module the tree lacks is a config that does not load.
+ * `node_modules` in a deployment, and by self-reference in the template. A
+ * relative import would name a file a deployment does not have, and a config
+ * that imports a module the tree lacks is a config that does not load.
  *
  * THE PAIR IS WRITTEN DOWN A FOURTH TIME, in `scripts/sweep.mjs`, for the
  * checks that WALK the application — they have to land on the files the build
@@ -131,9 +131,9 @@ const packagedApplicationOptimizeDeps = {
  * because a deployment holds this file byte-identical. The same bytes have to
  * serve a repository that has a deployment root and one that has not. The
  * template is the second kind: it has no `deployment/` and never will, so
- * there the alias is never reached and the test glob below matches nothing. The template's own suite holds both halves —
- * that the three lines name the root, and that a tree without one is unchanged
- * by their naming it.
+ * there the alias is never reached and the test glob below matches nothing.
+ * The template's own suite holds both halves — that the three lines name the
+ * root, and that a tree without one is unchanged by their naming it.
  */
 const deploymentSource = path.resolve(import.meta.dirname, './deployment')
 

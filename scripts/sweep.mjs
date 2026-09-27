@@ -91,7 +91,8 @@ import { appendFileSync, existsSync, readFileSync, readdirSync, statSync } from 
 import { dirname, join, relative, resolve, sep } from 'node:path'
 // By package name, not relative: a deployment enrols this module byte-identical
 // and reaches the overlay rule through the package it installed, the same
-// spelling `vite.config.ts` uses; in the template the name resolves by self-reference.
+// spelling `vite.config.ts` uses; in the template the name resolves by
+// self-reference.
 import { resolveOverlaid } from 'uno-blueprint/overlay'
 import { repoConfig } from './repo-config.mjs'
 import { chooseDeployment, packageName, resolveSeedFiles, siblingCandidates } from './seed-list.mjs'
