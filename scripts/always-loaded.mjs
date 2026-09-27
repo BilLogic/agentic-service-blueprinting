@@ -45,8 +45,8 @@
  * is the intended cost of growing a tier that every session pays for.
  *
  * Shared shape with the deployment this template was generalised from: same
- * module, same two exports, same reasoning. Only the census of near misses differs, because only this
- * repository ships a plugin manifest.
+ * module, same two exports, same reasoning. Only the census of near misses
+ * differs, because only this repository ships a plugin manifest.
  */
 
 /** Repo-relative paths, in load order. */

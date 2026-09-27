@@ -24,8 +24,8 @@ import { defineConfig, loadEnv, type Plugin } from 'vite'
  * The ALL-OR-NOTHING rule this file used to state — the alias pointed at one
  * root, the first that existed, so a half-vendored `src` captured every
  * import and resolved none of the rest — is withdrawn; the decision that the
- * deployment overlays the package per path records the overlay, and
- * `scripts/overlay.mjs` is the rule. That module is imported BY
+ * deployment overlays the package per path records the overlay, and the
+ * package's `overlay` module is the rule. That module is imported BY
  * PACKAGE NAME, which is the one spelling that resolves on both sides: out of
  * `node_modules` in a deployment, and by self-reference here. A relative
  * import would name a file a deployment does not have, and a config that
@@ -34,9 +34,9 @@ import { defineConfig, loadEnv, type Plugin } from 'vite'
  * THE PAIR IS WRITTEN DOWN A FOURTH TIME, in `scripts/sweep.mjs`, for the
  * checks that WALK the application — they have to land on the files the build
  * resolves or they are measuring a tree nobody ships. They cannot read it from
- * here: this file is loaded by bundling it in isolation.
- * `scripts/tests/the-build-and-a-walk-find-one-root.test.mjs` is what makes
- * the copies one fact. Edit the roots here and that test goes red.
+ * here: this file is loaded by bundling it in isolation. The template's own
+ * suite is what makes the copies one fact: edit the roots in the template and
+ * it goes red.
  */
 const APP_SOURCE_ROOTS = [
   path.resolve(import.meta.dirname, './src'),
@@ -132,9 +132,9 @@ const packagedApplicationOptimizeDeps = {
  * this one. The same bytes have to serve a repository that has a deployment
  * root and one that has not. This repository is the second kind: `deployment/`
  * does not exist here and never will, the alias is never reached, and the test
- * glob below matches nothing. `deploymentRoot.test.ts` holds both halves —
- * that the three lines name the root, and that this tree is unchanged by their
- * naming it.
+ * glob below matches nothing. The template's own suite holds both halves —
+ * that the three lines name the root, and that a tree without one is unchanged
+ * by their naming it.
  */
 const deploymentSource = path.resolve(import.meta.dirname, './deployment')
 
@@ -146,8 +146,8 @@ const deploymentSource = path.resolve(import.meta.dirname, './deployment')
  * `DeploymentConfig`, because a config is read when `App` renders and the
  * prefix has to be in every asset URL the build emits. Vite takes it as
  * `base`, and the application reads it back as `import.meta.env.BASE_URL`
- * through `src/lib/basePath.ts`, which is where every path the app reads or
- * writes crosses it.
+ * through its one base-path module, which is where every path the app reads
+ * or writes crosses it.
  *
  * The build is written UNDER the prefix too — `dist/demo/…` — so the files on
  * disk sit at the paths the browser asks for. That is what lets one output
@@ -158,9 +158,9 @@ const deploymentSource = path.resolve(import.meta.dirname, './deployment')
  *
  * Unset, both are what they always were: `base` is `/` and the output is
  * `dist`. The rule for the value is stated inline rather than imported: this
- * file is bundled in isolation. The hosting check states it too, and
- * `scripts/tests/base-path-rule.test.mjs` holds the two to one answer;
- * `src/lib/basePath.ts` is pinned to the same table by its own test.
+ * file is bundled in isolation. The template's hosting check states it too,
+ * and the template's own suite holds the two to one answer and pins the
+ * application's base-path module to the same table.
  */
 export function basePath(value: string | undefined): string {
   const trimmed = (value ?? '').trim()
