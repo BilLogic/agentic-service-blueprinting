@@ -612,14 +612,19 @@
      ladder to swallow, and on a card it was swallowed. */
   --role-tint-mix: 0.06;
   /* Role ink on the page. Far enough along the span to clear AA on the canvas
-     in both modes, and always a clear step past muted text — role ink marks
-     the thing that is on, and a label that reads fainter than the resting one
-     beside it says the opposite. 0.76 is that step in light, where muted sits
-     at 0.65; dark keeps muted at 0.8, so there the ink follows muted up rather
-     than falling under it. With no hue to carry it — a template with no brand
-     — lightness is the only difference between the two, which is how the
-     inversion first showed. The ceiling is the foreground, where a
-     high-contrast muted lands. */
+     in both modes, and a step past muted text wherever the span leaves room —
+     role ink marks the thing that is on, and a label that reads fainter than
+     the resting one beside it says the opposite. 0.76 is that step in light,
+     where muted sits at 0.65; dark keeps muted at 0.8, so there the ink
+     follows muted up rather than falling under it. With no hue to carry it —
+     a template with no brand — lightness is the only difference between the
+     two, which is how the inversion first showed. The ceiling is the
+     foreground: at the top of the contrast dial muted text reaches it too,
+     and the two meet there rather than cross.
+
+     What makes this ink rather than a smaller fill is its job, not a
+     lightness short of the fill's. A deep brand fill already sat below it in
+     dark, and in a template with no brand the fill IS the foreground. */
   --role-ink-mix: min(1, max(0.76, calc(var(--muted-foreground-mix) + 0.08)));
   /* Role ink on the role's tint. Further along than the ink above, because the
      tint is already a step off the canvas and eats the difference; derived

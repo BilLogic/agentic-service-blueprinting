@@ -30,8 +30,8 @@ dark mode draws muted text at 80%, so in dark an active label read fainter
 than the resting label beside it — invisible behind a brand hue, and plain
 grey on grey in a template with no brand. `--role-ink-mix` now follows muted
 text up (muted plus 0.08, never below 0.76, never past the foreground), and
-the on-tint ink stays 0.06 above it. Light mode resolves to exactly what it
-did. In dark, every `--text-{role}` moves from about L 0.77 to 0.86 and every
+the on-tint ink stays 0.06 above it; a test now holds that order in both
+modes. At the shipped dials light mode resolves to exactly what it did. In dark, every `--text-{role}` moves from about L 0.77 to 0.86 and every
 `--text-on-surface-{role}` from about 0.81 to 0.90: warning, destructive, info
 and success text reads a little brighter and softer there, and contrast only
 rises. This is why the release is a minor: dark mode looks different.

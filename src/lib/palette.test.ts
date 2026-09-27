@@ -1448,6 +1448,19 @@ describe.each(['light', 'dark'] as const)('role ink: %s', (theme) => {
     ).toBeGreaterThanOrEqual(4.5)
   })
 
+  it.each(ROLE_NAMES)('%s reads past muted text, and further on its tint', (role) => {
+    // Role ink marks what is on. Measured as distance from the page along the
+    // span, it has to outrank muted text or an active label reads fainter
+    // than the resting one beside it — which dark did, grey on grey, while
+    // role ink sat at a fixed fraction and dark drew muted text further out.
+    const from = (name: string) =>
+      Math.abs(resolveColorValue(name, theme).l - resolveColorValue('--background', theme).l)
+    const muted = from('--muted-foreground')
+    const ink = from(`--text-${role}`)
+    expect(ink - muted).toBeGreaterThan(0.04)
+    expect(from(`--text-on-surface-${role}`)).toBeGreaterThan(ink)
+  })
+
   it.each(ROLE_NAMES)('%s reads as ink on its own tint', (role) => {
     // The ground here is the role's tint, not the page. A status word on a
     // ten-percent wash of itself measures about 2.3:1, which is the defect
