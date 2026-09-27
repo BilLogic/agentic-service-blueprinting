@@ -75,3 +75,23 @@
      lightness step of the two — 0.070 against light's 0.076. */
   --role-edge-step: 0.092;
 }
+
+/*
+ * The frame before the theme module runs. `lib/theme.ts` stamps `.light` or
+ * `.dark` on the root while the import graph evaluates, but that graph is a
+ * deferred module, and a browser may paint the empty document first — on the
+ * bare `:root` light defaults above. With `'system'` the default, that frame
+ * is every dark-OS newcomer's first sight of the app, a white flash.
+ *
+ * So until a class arrives, a dark OS gets a dark canvas: `#root` is still
+ * empty, the canvas is all there is to see, and `--surface` is the one dial
+ * `--background` reads that differs by mode. It must match `.dark`'s above.
+ * Once the module stamps either class this stops matching and the real rules
+ * take over — including a stored `light` that overrides the OS.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light, .dark) {
+    --surface: 0.19;
+    color-scheme: dark;
+  }
+}

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, act, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { stubMatchMedia } from '@/test/stubMatchMedia'
 
 /**
  * The theme, and specifically WHEN it is applied.
@@ -11,36 +12,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
  * import at the top of this file would apply the theme once, before any case
  * had set anything up, and prove nothing about the order.
  */
-
-type MediaListener = (event: { matches: boolean }) => void
-
-/** A `matchMedia` whose answer a case can set, then change under a listener. */
-function stubMatchMedia(prefersDark: boolean) {
-  const listeners = new Set<MediaListener>()
-  let matches = prefersDark
-  window.matchMedia = ((query: string) => ({
-    get matches() {
-      return matches
-    },
-    media: query,
-    onchange: null,
-    addListener: () => {},
-    removeListener: () => {},
-    addEventListener: (_type: string, listener: MediaListener) => {
-      listeners.add(listener)
-    },
-    removeEventListener: (_type: string, listener: MediaListener) => {
-      listeners.delete(listener)
-    },
-    dispatchEvent: () => false,
-  })) as unknown as typeof window.matchMedia
-  return {
-    change(next: boolean) {
-      matches = next
-      listeners.forEach((listener) => listener({ matches: next }))
-    },
-  }
-}
 
 const root = () => document.documentElement
 
@@ -199,6 +170,38 @@ describe('changing it', () => {
       new StorageEvent('storage', { key: 'ub-slide-sheet-height' }),
     )
     expect(getTheme().resolvedTheme).toBe('light')
+  })
+})
+
+describe('toggling', () => {
+  it('stores the outright value when the pick departs from the OS', async () => {
+    stubMatchMedia(false)
+    const { getTheme, toggleTheme } = await import('@/lib/theme')
+    toggleTheme()
+    expect(getTheme()).toEqual({ theme: 'dark', resolvedTheme: 'dark' })
+    expect(window.localStorage.getItem('ub-theme')).toBe('dark')
+  })
+
+  it('goes back to following the OS when the pick lands on it', async () => {
+    const media = stubMatchMedia(false)
+    const { getTheme, toggleTheme } = await import('@/lib/theme')
+    toggleTheme()
+    toggleTheme()
+    expect(getTheme()).toEqual({ theme: 'system', resolvedTheme: 'light' })
+    expect(window.localStorage.getItem('ub-theme')).toBe('system')
+    // Following, not pinned: the OS flipping now moves the page.
+    media.change(true)
+    expect(getTheme().resolvedTheme).toBe('dark')
+  })
+
+  it('from a stored choice that matches the OS, still flips what is painted', async () => {
+    window.localStorage.setItem('ub-theme', 'dark')
+    stubMatchMedia(true)
+    const { getTheme, toggleTheme } = await import('@/lib/theme')
+    toggleTheme()
+    expect(getTheme()).toEqual({ theme: 'light', resolvedTheme: 'light' })
+    toggleTheme()
+    expect(getTheme()).toEqual({ theme: 'system', resolvedTheme: 'dark' })
   })
 })
 

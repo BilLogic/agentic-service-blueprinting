@@ -15,23 +15,10 @@ import { cleanup, act, fireEvent, render, screen } from '@testing-library/react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { stubMatchMedia } from '@/test/stubMatchMedia'
 
 /** The template's own prefix. Spelled out to prove the key arrived through it. */
 const STORED_KEY = 'ub-theme'
-
-/** A `matchMedia` with a fixed answer — no dark preference unless asked. */
-function stubMatchMedia(prefersDark = false) {
-  window.matchMedia = ((query: string) => ({
-    matches: prefersDark,
-    media: query,
-    onchange: null,
-    addListener: () => {},
-    removeListener: () => {},
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    dispatchEvent: () => false,
-  })) as unknown as typeof window.matchMedia
-}
 
 /** Mount the toggle, importing it only now so the seeded storage is what it reads. */
 async function mount() {
@@ -90,7 +77,7 @@ describe('the first render', () => {
     expect(toggle().hasAttribute('disabled')).toBe(false)
   })
 
-  it('opens on the OS preference when nothing is stored', async () => {
+  it('opens light when nothing is stored and the OS prefers light', async () => {
     await mount()
     expect(offer()).toBe('Switch to dark theme')
   })

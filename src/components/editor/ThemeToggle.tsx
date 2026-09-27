@@ -25,7 +25,7 @@ type ThemeToggleProps = {
  * regardless of this setting, because a projected slide is always dark.
  */
 export function ThemeToggle({ className, size = 'icon-xs' }: ThemeToggleProps) {
-  const { resolvedTheme, setTheme } = useTheme()
+  const { resolvedTheme, toggleTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
   return (
@@ -41,7 +41,7 @@ export function ThemeToggle({ className, size = 'icon-xs' }: ThemeToggleProps) {
           'shrink-0 text-muted-foreground hover:text-foreground',
           className,
         )}
-        onClick={() => setTheme(isDark ? 'light' : 'dark')}
+        onClick={toggleTheme}
         aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
       >
         {/*
