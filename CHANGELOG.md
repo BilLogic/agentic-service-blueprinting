@@ -1,5 +1,32 @@
 # Changelog
 
+## 2.2.1
+
+**Two shared files cite only what a deployment holds.** Comments only: the
+build config no longer points a deployment's reader at files only the template
+has, and one over-wide comment line is rewrapped. No behaviour changes.
+
+### Upgrading a deployment
+
+- **Bump the pin, and nothing else.** `vite.config.ts` and
+  `scripts/always-loaded.mjs` are both held byte-identical, so their bytes
+  move with this release and the reconciled-files gate goes red until the pin
+  bump lands. No local edit is needed or allowed; take the template's copies.
+
+### Patch Changes
+
+- 3148836: Two shared files cite only what a deployment holds
+
+  `vite.config.ts` is held byte-identical by a deployment, but its comments
+  pointed at five files only this template has — the overlay module by its
+  path, three test suites, and the base-path module. Read from a deployment,
+  each was a pointer to nothing. They now name the thing rather than the
+  path. `scripts/always-loaded.mjs` has one comment line rewrapped to the
+  comment width.
+
+  Comments only; no behaviour changes. A deployment that holds either file
+  byte-identical takes the new bytes with the pin bump.
+
 ## 2.2.0
 
 **The template follows the system theme.** A reader who has never chosen a
@@ -9762,8 +9789,8 @@ accent: BRAND.accent }, content: { workspaceTitle: coverContent.title } }`. The
   constraint violation rather than as anything the authoring tools had said
   (#204):
 
-                                                                                                                                                                                                                                ERROR: new row for relation "lanes" violates check constraint
-                                                                                                                                                                                                                                "lanes_lane_role_check" … compliance_review
+                                                                                                                                                                                                                                  ERROR: new row for relation "lanes" violates check constraint
+                                                                                                                                                                                                                                  "lanes_lane_role_check" … compliance_review
 
   That error at least names the value. Meeting it after validation has passed is
   the wrong moment.
