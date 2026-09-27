@@ -16,9 +16,10 @@
  * asserted without a prohibition or a padded file ever being written into the
  * real router.
  *
- * Same suite as the deployment's `the-router-is-a-router.test.mjs`, plus the
- * two cases for what differs here: a Python pointer is swept, and the exempt
- * section is § Rules that hold for every skill.
+ * One suite in every repository that holds it, byte-identical. Two of its
+ * cases — a Python pointer is swept, and the exempt section is § Rules that
+ * hold for every skill — build their own router in a throwaway tree, so both
+ * hold wherever the suite runs.
  *
  * THE FIXTURE PATHS SIT UNDER `notes/`, AND NOT UNDER EITHER REPOSITORY'S
  * DOCUMENTATION TREE, DELIBERATELY. They are files this suite CREATES in a
