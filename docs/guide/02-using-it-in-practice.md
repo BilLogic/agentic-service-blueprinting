@@ -42,7 +42,7 @@ two documents that were true on different days.
 | the app | anyone | read, compare, present |
 | the in-app agent | the person already reading | ask, and it drafts the change |
 | agentic tools | whoever works in an IDE or CLI | map and audit with the `ub` skills |
-| the Slack bot | everyone else | answers, and links to the exact cell |
+| a Slack bot you build | everyone else | answers, and links to the exact cell |
 
 The first three read and write, and this template ships all three. The fourth
 is a shape rather than a component: **nothing here is a Slack bot**, and the
