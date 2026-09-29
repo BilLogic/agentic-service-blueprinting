@@ -728,7 +728,7 @@ const SCENARIOS = [
       'Dispatch the auditors',
       'Collect and dedupe',
       'Record the findings',
-      'Triage on the canvas',
+      'Triage the findings',
       'Re-run the roster',
     ],
     lanes: LANES,
@@ -738,7 +738,7 @@ const SCENARIOS = [
       {
         lane: 'owner', col: 6,
         content: {
-          TRIAGED: 'Triages every finding: accept, dismiss, or resolve once the fix has landed',
+          TRIAGED: 'Triages every finding: dismisses it, or resolves it once the fix has landed',
           REOPENS: 'Marks a critical finding resolved before the fix has actually landed',
         },
       },
@@ -750,10 +750,10 @@ const SCENARIOS = [
         },
       },
 
-      { lane: 'surface', col: 5, content: 'Findings panel\nSeverity badges' },
+      { lane: 'surface', col: 5, content: 'Findings stored as rows, one per check hit' },
       {
         lane: 'surface', col: 6,
-        content: 'Triage controls (accept / dismiss / resolve)',
+        content: 'Triage through the agent chat (dismiss / resolve / reopen)',
         // The pair check-perceived-owner exists to catch: people read the
         // audit as the thing that closes findings. It never closes anything.
         owner: 'Whoever triages',
