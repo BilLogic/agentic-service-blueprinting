@@ -711,7 +711,7 @@ const SCENARIOS = [
         key: 'TRIAGED',
         name: 'Findings triaged',
         kind: 'happy',
-        summary: 'Every finding accepted, dismissed, or genuinely resolved, and the re-run comes back quiet.',
+        summary: 'Every finding dismissed or genuinely resolved, and the re-run comes back quiet.',
       },
       {
         ordinal: 2,
@@ -750,10 +750,10 @@ const SCENARIOS = [
         },
       },
 
-      { lane: 'surface', col: 5, content: 'Findings stored as rows, one per check hit' },
+      { lane: 'surface', col: 5, content: 'Findings listed in the agent chat\nCited cells boxed on the canvas' },
       {
         lane: 'surface', col: 6,
-        content: 'Triage through the agent chat (dismiss / resolve / reopen)',
+        content: 'Triage by asking the agent: dismiss, resolve or reopen',
         // The pair check-perceived-owner exists to catch: people read the
         // audit as the thing that closes findings. It never closes anything.
         owner: 'Whoever triages',
