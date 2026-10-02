@@ -12,40 +12,61 @@
  *   node scripts/decide-initialiser-publish.mjs
  *
  * It reads the run from the environment a workflow sets — `GITHUB_REF_TYPE`,
- * `GITHUB_REF_NAME`, `GITHUB_REPOSITORY` — and writes `publish=true` or
- * `publish=false` to `GITHUB_OUTPUT`. It publishes nothing itself.
+ * `GITHUB_REF_NAME`, `GITHUB_REPOSITORY`, and `REPOSITORY_IS_FORK`, which the
+ * workflow passes in — and appends `publish=true` or `publish=false` to
+ * `GITHUB_OUTPUT`. It publishes nothing itself.
  *
- * FOUR ANSWERS, AND ONLY ONE OF THEM IS YES.
+ * THREE OUTCOMES, EACH WITH ONE REASON LINE, DECIDED IN THIS ORDER.
  *
- *   NOTHING TO PUBLISH   This tree carries no initialiser, or this repository
- *                        is not the one its manifest names. A workspace the
- *                        initialiser wrote carries this script and the
- *                        workflow that runs it, and a fork carries the
- *                        manifest too; neither is where the package comes
- *                        from, and a tag pushed there is not a failure. Said
- *                        through the unverified register, and green.
- *   REFUSED              The run was not started by a `v<version>` tag, the
- *                        tag is not the version the initialiser's manifest
- *                        states, the places that state the version disagree
- *                        (`check-version-agreement.mjs` is what holds them),
- *                        or the registry could not be asked. Red. An unasked
- *                        registry is a refusal rather than a guess, because
- *                        the guess is a publish.
- *   ALREADY PUBLISHED    The registry has this version. Green, and nothing
- *                        is published: a run started again says so and stops.
- *   PUBLISH              The tag, the manifest and every other statement
- *                        agree, and the registry does not have the version.
+ *   SKIP     This tree carries no initialiser. A workspace the initialiser
+ *            wrote carries this script and the workflow that runs it, and
+ *            has no package to publish. Decided first, before anything reads
+ *            a version: what a workspace kept of the template's release
+ *            bookkeeping is its owner's business. Green.
+ *   SKIP     This repository is a fork. It carries the manifest and is not
+ *            where the package comes from. Green.
+ *   REFUSE   This repository is not a fork and is not the one the manifest
+ *            names: a rename or a transfer the manifest did not follow. A
+ *            green skip there is a release that never reaches the registry
+ *            and says nothing. Red, naming both.
+ *   REFUSE   The run was not started by a `v<version>` tag, the tag is not
+ *            the version the initialiser's manifest states, or the places
+ *            that state the version disagree (`check-version-agreement.mjs`
+ *            is what holds them). Red.
+ *   REFUSE   The tagged commit is not on `main`. Anybody who can push a tag
+ *            can push one on any commit, and the versions in a commit that
+ *            was never merged agree with each other perfectly well. Red.
+ *   REFUSE   The installed npm is older than trusted publishing needs. It
+ *            would fail at the publish by asking for a login, which reads as
+ *            a missing secret. Red, in one line that names the version.
+ *   REFUSE   The registry could not be asked whether the version exists. Red
+ *            rather than a guess, because the guess is a publish. Nothing is
+ *            wrong with the release; run it again.
+ *   SKIP     The registry has this version. Green, and nothing is published:
+ *            a run started again says so and stops.
+ *   PUBLISH  None of the above.
  *
  * THE TAG EXISTS BEFORE THE PUBLISH BECAUSE THE TAG STARTS IT. The published
  * initialiser downloads `v<its own version>`, so a version on the registry
  * with no tag behind it is a command that ends in a 404. A run a tag started
  * cannot be in that state, which is why any other kind of run is refused.
+ *
+ * WHAT IT FETCHES IS HANDED IN. The registry's answer, whether the commit is
+ * on `main`, and the npm version are three functions with defaults that go
+ * and look. A test hands in its own, so every outcome above is reached
+ * without a network, a remote or a second npm.
  */
+import { execFileSync } from 'node:child_process'
 import { appendFileSync, existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { tagFor } from './check-release-tag.mjs'
-import { INITIALISER_MANIFEST, disagreements, versions } from './check-version-agreement.mjs'
+import { misnamedTag, tagFor, versionNamedBy } from './check-release-tag.mjs'
+import {
+  INITIALISER_MANIFEST,
+  disagreementLine,
+  disagreements,
+  versions,
+} from './check-version-agreement.mjs'
 import { whenRun } from './verdict.mjs'
 
 /** The tree this script runs in: the working directory — never this file's location; `sweep.mjs` says why. */
@@ -56,6 +77,12 @@ export const REGISTRY = 'https://registry.npmjs.org'
 
 /** How long the registry is given to answer. A stalled lookup is a job that never ends. */
 const LOOKUP_TIMEOUT_MS = 30_000
+
+/** The oldest npm that can publish through trusted publishing, as npm's documentation states it. */
+const NPM_FLOOR = [11, 5, 1]
+
+/** The branch a release is cut on, as this checkout's remote knows it. */
+const MAIN = 'origin/main'
 
 /**
  * `owner/name` for the GitHub repository a manifest names, or null when it
@@ -90,111 +117,164 @@ export function registryLookup(fetch = globalThis.fetch) {
 }
 
 /**
- * The decision, from everything it would otherwise read.
+ * Whether the commit checked out in `root` is on `main`.
  *
- * Pure but for the lookup it is handed, so every answer is testable without a
- * tag, a runner or a registry.
- *
- * @param tag          the tag that started the run, or null when none did
- * @param repository   `owner/name` of the repository the run is in
- * @param manifest     the initialiser's manifest, or null where there is none
- * @param stated       every place that states the version, by file
- * @param isPublished  `(name, version) => Promise<boolean>`
- * @returns {Promise<{
- *   publish: boolean,
- *   refusals: string[],
- *   line?: string,
- *   nothing?: string,
- * }>} `refusals` are why the run is red; `nothing` is why there was nothing
- *   here to publish; `line` is the green sentence.
+ * `git merge-base --is-ancestor` exits 0 for yes and 1 for no. Any other exit
+ * is git saying it could not tell — a shallow checkout with no `origin/main`
+ * in it is the usual one — and that throws, because "could not tell" is not
+ * "no" and is certainly not "yes".
  */
-export async function decide({ tag, repository, manifest, stated, isPublished }) {
-  const no = (rest) => ({ publish: false, refusals: [], ...rest })
-
-  if (!manifest) {
-    return no({
-      nothing:
-        `this tree has no ${INITIALISER_MANIFEST}, so there is no initialiser here to ` +
-        `publish. A workspace is the template without that folder.`,
-    })
+function onMain(root) {
+  return () => {
+    try {
+      execFileSync('git', ['merge-base', '--is-ancestor', 'HEAD', MAIN], {
+        cwd: root,
+        stdio: ['ignore', 'ignore', 'pipe'],
+        encoding: 'utf8',
+      })
+      return true
+    } catch (error) {
+      if (error.status === 1) return false
+      const said = String(error.stderr || error.message).trim().split('\n')[0]
+      throw new Error(`git could not tell whether HEAD is on ${MAIN}: ${said}`)
+    }
   }
-  const home = repositoryOf(manifest)
-  if (!home || repository !== home) {
-    return no({
-      nothing:
-        `this run is in ${repository ?? 'no repository it can name'} and the initialiser's ` +
-        `manifest names ${home ?? 'none'}. The package is published from the repository its ` +
-        `manifest names and from nowhere else.`,
-    })
-  }
+}
 
+/** The npm on this machine's PATH, as it states its own version. */
+const installedNpm = () => execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim()
+
+/** Whether `version` is at or past `NPM_FLOOR`. A version that cannot be read is not. */
+function meetsNpmFloor(version) {
+  const parts = /^(\d+)\.(\d+)\.(\d+)/.exec(version)?.slice(1).map(Number)
+  if (!parts) return false
+  for (const [index, floor] of NPM_FLOOR.entries()) {
+    if (parts[index] !== floor) return parts[index] > floor
+  }
+  return true
+}
+
+/**
+ * The decision for one run.
+ *
+ * The order is the header's. Each fact is asked for only once the answers
+ * before it have let the decision get that far, so a workspace is never asked
+ * for a changelog and a refused tag never reaches the registry.
+ *
+ * @returns {Promise<{ outcome: 'publish' | 'skip' | 'refuse', reason: string }>}
+ */
+async function decide({ root, env, isPublished, isOnMain, npmVersion }) {
+  const skip = (reason) => ({ outcome: 'skip', reason })
+  const refuse = (reason) => ({ outcome: 'refuse', reason })
+
+  const path = join(root, INITIALISER_MANIFEST)
+  if (!existsSync(path)) {
+    return skip(
+      `this tree has no initialiser (no ${INITIALISER_MANIFEST}), so there is nothing here ` +
+        `to publish`,
+    )
+  }
+  const manifest = JSON.parse(readFileSync(path, 'utf8'))
   const { name, version } = manifest
+
+  const here = env.GITHUB_REPOSITORY
+  const home = repositoryOf(manifest)
+  if (!home || here?.toLowerCase() !== home.toLowerCase()) {
+    if (env.REPOSITORY_IS_FORK === 'true') {
+      return skip(`${here} is a fork; ${name} is published from ${home ?? 'the repository its manifest names'}`)
+    }
+    return refuse(
+      `this run is in ${here ?? '(no repository named)'} and ${INITIALISER_MANIFEST} names ` +
+        `${home ?? '(none it can read)'} as its repository. If the repository was renamed ` +
+        `or moved, the manifest and the trusted publisher on npmjs.com both follow it.`,
+    )
+  }
+
+  const tag = env.GITHUB_REF_TYPE === 'tag' ? env.GITHUB_REF_NAME : null
   if (!tag) {
-    return no({
-      refusals: [
-        `this run was not started by a tag. ${name} downloads the release tagged ` +
-          `${tagFor(version)}, so the tag comes first and the tag is what publishes.`,
-      ],
-    })
+    return refuse(
+      `this run was not started by a tag. ${name} downloads the release tagged ` +
+        `${tagFor(version)}, so the tag comes first and the tag is what publishes.`,
+    )
   }
-  if (!/^v\d+\.\d+\.\d+$/.test(tag)) {
-    return no({ refusals: [`tag ${tag} is not v<major>.<minor>.<patch>`] })
-  }
-  const refusals = []
+  if (versionNamedBy(tag) === null) return refuse(misnamedTag(tag))
   if (tag !== tagFor(version)) {
-    refusals.push(`tag ${tag} is not the version ${INITIALISER_MANIFEST} states, ${version}`)
+    return refuse(`tag ${tag} is not the version ${INITIALISER_MANIFEST} states, ${version}`)
   }
-  for (const { file, version: said, expected } of disagreements(stated)) {
-    refusals.push(`${file} says ${said ?? '(none)'}, package.json says ${expected}`)
+  const apart = disagreements(versions(root))
+  if (apart.length > 0) return refuse(apart.map(disagreementLine).join('; '))
+
+  try {
+    if (!(await isOnMain())) {
+      return refuse(
+        `tag ${tag} is on a commit that is not on main. A release is tagged at its commit ` +
+          `on main, and only that tag publishes.`,
+      )
+    }
+  } catch (error) {
+    return refuse(error.message)
   }
-  if (refusals.length > 0) return no({ refusals })
+
+  const npm = npmVersion()
+  if (!meetsNpmFloor(npm)) {
+    return refuse(
+      `npm ${npm} is older than ${NPM_FLOOR.join('.')}, the first that can publish without ` +
+        `a token. Raise the Node this workflow sets up.`,
+    )
+  }
 
   let published
   try {
     published = await isPublished(name, version)
   } catch (error) {
-    return no({
-      refusals: [
-        `the registry could not be asked whether ${name}@${version} exists: ${error.message}`,
-      ],
-    })
+    return refuse(
+      `the registry could not be asked whether ${name}@${version} exists (${error.message}). ` +
+        `Nothing is wrong with the release: re-run this run.`,
+    )
   }
   return published
-    ? no({ line: `${name}@${version} is already on the registry; nothing published` })
-    : { publish: true, refusals: [], line: `${name}@${version} is not on the registry; publishing it` }
-}
-
-/** What the workflow's next step reads: one line of `GITHUB_OUTPUT`. */
-export const outputOf = (decision) => `publish=${decision.publish ? 'true' : 'false'}\n`
-
-/** The decision as `verdict.mjs` takes it: unverified, findings, or one green line. */
-export function judgementOf(decision) {
-  if (decision.nothing) return { what: 'the initialiser', unverified: decision.nothing }
-  return {
-    what: 'the initialiser at this tag',
-    count: 1,
-    findings: decision.refusals,
-    opening: 'The initialiser is not published from this run:',
-    closing: '\nProcedure: docs/engineering/releasing.md',
-    line: decision.line,
-  }
+    ? skip(`${name}@${version} is already on the registry; nothing published`)
+    : { outcome: 'publish', reason: `${name}@${version} is not on the registry; publishing it` }
 }
 
 /**
- * The verdict for this run: read the environment and the tree, decide, and
- * leave the answer where the next step reads it.
+ * The script's entry: decide, and leave the answer where the workflow's next
+ * step reads it.
+ *
+ * @param root         the tree to read
+ * @param env          the run's environment
+ * @param isPublished  `(name, version) => Promise<boolean>`
+ * @param isOnMain     `() => boolean | Promise<boolean>`
+ * @param npmVersion   `() => string`
  */
-export async function judge(env = process.env) {
-  const path = join(REPO_ROOT, INITIALISER_MANIFEST)
-  const decision = await decide({
-    tag: env.GITHUB_REF_TYPE === 'tag' ? (env.GITHUB_REF_NAME ?? null) : null,
-    repository: env.GITHUB_REPOSITORY,
-    manifest: existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null,
-    stated: versions(REPO_ROOT),
-    isPublished: registryLookup(),
-  })
-  if (env.GITHUB_OUTPUT) appendFileSync(env.GITHUB_OUTPUT, outputOf(decision))
-  return judgementOf(decision)
+export async function settle({
+  root = REPO_ROOT,
+  env = process.env,
+  isPublished = registryLookup(),
+  isOnMain = onMain(root),
+  npmVersion = installedNpm,
+} = {}) {
+  const decision = await decide({ root, env, isPublished, isOnMain, npmVersion })
+  if (env.GITHUB_OUTPUT) {
+    appendFileSync(env.GITHUB_OUTPUT, `publish=${decision.outcome === 'publish'}\n`)
+  }
+  return decision
 }
 
-whenRun(import.meta.url, judge)
+/**
+ * The verdict for this run: the decision as `verdict.mjs` takes it. A refusal
+ * is the one finding; a skip and a publish are each the green line.
+ */
+export async function judge(facts) {
+  const { outcome, reason } = await settle(facts)
+  return {
+    what: 'a run that could publish the initialiser',
+    count: 1,
+    findings: outcome === 'refuse' ? [reason] : [],
+    opening: 'The initialiser is not published from this run:',
+    closing: '\nProcedure: docs/engineering/releasing.md',
+    line: reason,
+  }
+}
+
+whenRun(import.meta.url, () => judge())

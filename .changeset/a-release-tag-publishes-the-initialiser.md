@@ -1,5 +1,5 @@
 ---
-'uno-blueprint': patch
+'uno-blueprint': minor
 ---
 
 A release tag publishes the initialiser
@@ -10,11 +10,12 @@ through npm's trusted publishing: the registry trusts this repository and that
 workflow file by name, so no npm token is stored anywhere.
 
 The workflow asks `scripts/decide-initialiser-publish.mjs` before it publishes.
-A tag that is not the version the initialiser states is refused, and so is a
-tree whose version statements disagree. A version the registry already has is
-left alone and the run is green, so re-running a tag's run is safe. A workspace
-or a fork, which carries the workflow and has no package to publish, does
-nothing.
+It refuses a tag that is not the version the initialiser states, a tree whose
+version statements disagree, a tag on a commit that is not on `main`, an npm
+too old to publish without a token, and a repository that is not the one the
+manifest names. A version the registry already has is left alone and the run
+is green, so re-running a tag's run is safe. A workspace or a fork, which
+carries the workflow and has no package to publish, does nothing.
 
 The package now ships a README and a LICENSE, and its manifest states
 `publishConfig.access`, `bugs` and a `homepage` that opens the README.

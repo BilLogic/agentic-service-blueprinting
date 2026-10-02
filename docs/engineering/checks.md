@@ -36,6 +36,14 @@ once stated in prose and was once untrue.
 | `npm run check:version` | `package.json`, `.claude-plugin/plugin.json`, the CHANGELOG's top heading, `package-lock.json` or the initialiser's manifest (the `package.json` under `packages/create-uno-blueprint/`) state different versions. `package.json` is the source; `--write` propagates into `plugin.json`, the lockfile and the initialiser's manifest. The initialiser downloads the release whose tag is its own version, so one number off there is a workspace written from the wrong release; a tree without the initialiser, which is what it writes, is held to the other four. The CHANGELOG entry stays a human's job, so a release with nothing written still fails. |
 | `npm run check:release-tag` | A `v*` tag names a version no CHANGELOG release does, or a tag's tree states a different version. The tag is the only thing a consumer can pin. `--require` — that *this* version has a tag — is the release step, not the pull-request step, because the tag is cut after the release commit is on `main`. CI must `git fetch --tags` first: a checkout does not fetch them. |
 
+One script here is not a check a pull request runs, and is listed because it
+goes red the same way. The publish workflow runs it on a release tag, before
+`npm publish`:
+
+| Command | What goes red |
+| --- | --- |
+| `node scripts/decide-initialiser-publish.mjs` | The run would publish the initialiser and should not: it was not started by a `v<version>` tag, the tag is not the version the initialiser's manifest states, the statements `check:version` holds disagree, the tagged commit is not on `main`, the job's npm is older than trusted publishing needs, the repository is neither a fork nor the one the manifest names, or the registry could not be asked. It is green and publishes nothing when the registry already has the version, in a fork, and in a tree with no initialiser. It reads the run from the environment a workflow sets, so run by hand it is red for want of one. [releasing.md § 6](./releasing.md) has every outcome and what to do about it. |
+
 Procedure: [releasing.md](./releasing.md).
 
 ## 3. The database, and the portability claim

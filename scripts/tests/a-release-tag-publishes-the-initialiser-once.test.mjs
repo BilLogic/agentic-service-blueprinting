@@ -3,50 +3,79 @@
  * A RELEASE TAG PUBLISHES THE INITIALISER, ONCE, AND ONLY WHEN THE NUMBERS AGREE.
  *
  * The publish workflow runs one command it cannot take back, so the decision
- * to run it is a function and is held here. Every case hands the decision what
- * it would otherwise read — the tag, the repository, the manifest, the places
- * that state the version — and a registry that answers from the test. Nothing
- * here reaches the network, and nothing here publishes.
+ * to run it is a function and is held here. Every case goes in through the
+ * door the workflow uses: a tree on disk, the environment a runner sets, and
+ * the three facts the script would otherwise go and fetch — what the registry
+ * has, whether the tagged commit is on `main`, and which npm is installed —
+ * handed in from the test. A misspelt variable name in the script fails here
+ * rather than on the first release. Nothing reaches the network, nothing
+ * needs a git remote, and nothing publishes.
  *
  * Run: npm test
  */
-import { test } from 'vitest'
+import { afterEach, test } from 'vitest'
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { INITIALISER_MANIFEST } from '../check-version-agreement.mjs'
 import {
-  decide,
-  judgementOf,
-  outputOf,
+  judge,
   registryLookup,
   repositoryOf,
+  settle,
 } from '../decide-initialiser-publish.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 
-const MANIFEST = {
-  name: 'create-uno-blueprint',
-  version: '2.4.0',
-  repository: {
-    type: 'git',
-    url: 'git+https://github.com/BilLogic/uno-blueprint.git',
-    directory: 'packages/create-uno-blueprint',
-  },
-}
-
-/** Every place stating `version`, the initialiser's manifest among them. */
-const stating = (version, initialiser = version) => ({
-  'package.json': version,
-  '.claude-plugin/plugin.json': version,
-  'CHANGELOG.md': version,
-  'package-lock.json': version,
-  [INITIALISER_MANIFEST]: initialiser,
+const scratch = []
+afterEach(() => {
+  for (const folder of scratch.splice(0)) rmSync(folder, { recursive: true, force: true })
 })
 
-/** A registry that holds `versions` of the initialiser, and counts its callers. */
+/**
+ * A throwaway tree stating `version` everywhere, with the initialiser's
+ * manifest stating `initialiser` — or absent when that is null, as it is in a
+ * workspace the initialiser wrote.
+ */
+function treeStating(version, initialiser = version) {
+  const root = mkdtempSync(join(tmpdir(), 'initialiser-publish-'))
+  scratch.push(root)
+  const write = (path, text) => {
+    mkdirSync(dirname(join(root, path)), { recursive: true })
+    writeFileSync(join(root, path), text)
+  }
+  write('package.json', JSON.stringify({ name: 'uno-blueprint', version }))
+  write('.claude-plugin/plugin.json', JSON.stringify({ version }))
+  write('CHANGELOG.md', `# Changelog\n\n## ${version}\n`)
+  write('package-lock.json', JSON.stringify({ version, packages: { '': { version } } }))
+  if (initialiser !== null) {
+    write(
+      INITIALISER_MANIFEST,
+      JSON.stringify({
+        name: 'create-uno-blueprint',
+        version: initialiser,
+        repository: {
+          type: 'git',
+          url: 'git+https://github.com/BilLogic/uno-blueprint.git',
+          directory: 'packages/create-uno-blueprint',
+        },
+      }),
+    )
+  }
+  return root
+}
+
+/** A registry that holds `versions` of the initialiser, and remembers who asked. */
 function registryHolding(...versions) {
   const asked = []
   const isPublished = async (name, version) => {
@@ -56,105 +85,226 @@ function registryHolding(...versions) {
   return { isPublished, asked }
 }
 
-/** The decision for a `v2.4.0` release in the template's own repository, with overrides. */
-const decided = (overrides = {}) =>
-  decide({
-    tag: 'v2.4.0',
-    repository: 'BilLogic/uno-blueprint',
-    manifest: MANIFEST,
-    stated: stating('2.4.0'),
-    isPublished: registryHolding().isPublished,
-    ...overrides,
-  })
+/** The environment of a run a `v2.4.0` tag started in the template's own repository. */
+const TAG_RUN = {
+  GITHUB_REF_TYPE: 'tag',
+  GITHUB_REF_NAME: 'v2.4.0',
+  GITHUB_REPOSITORY: 'BilLogic/uno-blueprint',
+  REPOSITORY_IS_FORK: 'false',
+}
 
-test('a tag for a version the registry does not have publishes it', async () => {
+/**
+ * The script's entry, for a `v2.4.0` release that should publish, with
+ * overrides. Returns the decision and what was appended to `GITHUB_OUTPUT`.
+ */
+async function settled({ env = {}, root = treeStating('2.4.0'), ...facts } = {}) {
+  const output = join(root, 'github-output')
+  const decision = await settle({
+    root,
+    env: { ...TAG_RUN, GITHUB_OUTPUT: output, ...env },
+    isPublished: registryHolding().isPublished,
+    isOnMain: () => true,
+    npmVersion: () => '11.19.0',
+    ...facts,
+  })
+  return { ...decision, output: existsSync(output) ? readFileSync(output, 'utf8') : null }
+}
+
+test('a tag on main for a version the registry does not have publishes it', async () => {
   const registry = registryHolding('2.3.0')
-  const decision = await decided({ isPublished: registry.isPublished })
-  assert.equal(decision.publish, true)
-  assert.deepEqual(decision.refusals, [])
+  const { outcome, reason, output } = await settled({ isPublished: registry.isPublished })
+  assert.equal(outcome, 'publish')
+  assert.match(reason, /create-uno-blueprint@2\.4\.0/)
   assert.deepEqual(registry.asked, ['create-uno-blueprint@2.4.0'])
-  assert.match(decision.line, /create-uno-blueprint@2\.4\.0/)
+  assert.equal(output, 'publish=true\n')
 })
 
 test('a version already on the registry is left alone, and that is a success', async () => {
-  const decision = await decided({ isPublished: registryHolding('2.4.0').isPublished })
-  assert.equal(decision.publish, false)
-  assert.deepEqual(decision.refusals, [])
-  assert.match(decision.line, /already on the registry/)
-  // Green: a clean judgement with a line and a count, and nothing found.
-  const judgement = judgementOf(decision)
-  assert.deepEqual(judgement.findings, [])
-  assert.equal(judgement.count, 1)
+  const { outcome, reason, output } = await settled({
+    isPublished: registryHolding('2.4.0').isPublished,
+  })
+  assert.equal(outcome, 'skip')
+  assert.match(reason, /already on the registry/)
+  assert.equal(output, 'publish=false\n')
+})
+
+test('the answer is appended to the step output, not written over it', async () => {
+  const root = treeStating('2.4.0')
+  writeFileSync(join(root, 'github-output'), 'earlier=kept\n')
+  const { output } = await settled({ root })
+  assert.equal(output, 'earlier=kept\npublish=true\n')
+})
+
+test('with no step output to write to, the decision is still reached', async () => {
+  const { outcome, output } = await settled({ env: { GITHUB_OUTPUT: undefined } })
+  assert.equal(outcome, 'publish')
+  assert.equal(output, null)
 })
 
 test('a tag that is not the version the initialiser states is refused', async () => {
   const registry = registryHolding()
-  const decision = await decided({ tag: 'v2.5.0', isPublished: registry.isPublished })
-  assert.equal(decision.publish, false)
-  assert.equal(decision.refusals.length, 1)
-  assert.match(decision.refusals[0], /v2\.5\.0/)
-  assert.match(decision.refusals[0], /2\.4\.0/)
+  const { outcome, reason, output } = await settled({
+    env: { GITHUB_REF_NAME: 'v2.5.0' },
+    isPublished: registry.isPublished,
+  })
+  assert.equal(outcome, 'refuse')
+  assert.match(reason, /v2\.5\.0/)
+  assert.match(reason, /2\.4\.0/)
   // Refused before the registry is asked anything.
   assert.deepEqual(registry.asked, [])
-  assert.equal(judgementOf(decision).findings.length, 1)
+  assert.equal(output, 'publish=false\n')
 })
 
 test('an initialiser one number off the template is refused, naming its manifest', async () => {
-  const decision = await decided({ stated: stating('2.5.0', '2.4.0') })
-  assert.equal(decision.publish, false)
-  assert.ok(
-    decision.refusals.some((refusal) => refusal.includes(INITIALISER_MANIFEST)),
-    decision.refusals.join('\n'),
-  )
+  const { outcome, reason } = await settled({ root: treeStating('2.5.0', '2.4.0') })
+  assert.equal(outcome, 'refuse')
+  assert.ok(reason.includes(`${INITIALISER_MANIFEST} says 2.4.0, package.json says 2.5.0`), reason)
 })
 
 test('a tag that is not a release tag is refused', async () => {
   for (const tag of ['v2.4', 'v2.4.0-rc.1', 'vnext', '2.4.0']) {
-    const decision = await decided({ tag })
-    assert.equal(decision.publish, false, tag)
-    assert.match(decision.refusals[0], /v<major>\.<minor>\.<patch>/, tag)
+    const { outcome, reason } = await settled({ env: { GITHUB_REF_NAME: tag } })
+    assert.equal(outcome, 'refuse', tag)
+    assert.match(reason, /is not v<major>\.<minor>\.<patch>/, tag)
   }
 })
 
-test('a run that was not started by a tag is refused', async () => {
-  const decision = await decided({ tag: null })
-  assert.equal(decision.publish, false)
-  assert.match(decision.refusals[0], /not started by a tag/)
+test('a run a branch started is refused, whatever the branch is called', async () => {
+  // `GITHUB_REF_NAME` is a branch name on a branch run, and a branch can be
+  // named like a tag. The ref's type is what says which it is.
+  const registry = registryHolding()
+  for (const type of ['branch', undefined]) {
+    const { outcome, reason, output } = await settled({
+      env: { GITHUB_REF_TYPE: type },
+      isPublished: registry.isPublished,
+    })
+    assert.equal(outcome, 'refuse', String(type))
+    assert.match(reason, /not started by a tag/, String(type))
+    assert.equal(output, 'publish=false\n')
+  }
+  assert.deepEqual(registry.asked, [])
+})
+
+test('a tag on a commit that is not on main is refused', async () => {
+  const registry = registryHolding()
+  const { outcome, reason } = await settled({
+    isOnMain: () => false,
+    isPublished: registry.isPublished,
+  })
+  assert.equal(outcome, 'refuse')
+  assert.match(reason, /v2\.4\.0/)
+  assert.match(reason, /not on main/)
+  assert.deepEqual(registry.asked, [])
+})
+
+test('a history that could not be read is a refusal, never a publish', async () => {
+  const { outcome, reason } = await settled({
+    isOnMain: () => {
+      throw new Error('origin/main is not a commit this checkout has')
+    },
+  })
+  assert.equal(outcome, 'refuse')
+  assert.match(reason, /origin\/main is not a commit/)
+})
+
+test('an npm older than trusted publishing needs is refused in one line', async () => {
+  const registry = registryHolding()
+  for (const version of ['10.9.2', '11.5.0', '9.0.0', 'not a version']) {
+    const { outcome, reason } = await settled({
+      npmVersion: () => version,
+      isPublished: registry.isPublished,
+    })
+    assert.equal(outcome, 'refuse', version)
+    assert.match(reason, /11\.5\.1/, version)
+    assert.ok(reason.includes(version), reason)
+    assert.ok(!reason.includes('\n'), reason)
+  }
+  assert.deepEqual(registry.asked, [])
+  for (const version of ['11.5.1', '11.19.0', '12.0.0']) {
+    assert.equal((await settled({ npmVersion: () => version })).outcome, 'publish', version)
+  }
 })
 
 test('a registry that could not be asked is a refusal, never a publish', async () => {
-  const decision = await decided({
+  const { outcome, reason, output } = await settled({
     isPublished: async () => {
       throw new Error('the registry answered 503')
     },
   })
-  assert.equal(decision.publish, false)
-  assert.match(decision.refusals[0], /the registry answered 503/)
+  assert.equal(outcome, 'refuse')
+  assert.match(reason, /the registry answered 503/)
+  assert.match(reason, /[Rr]e-run/)
+  assert.equal(output, 'publish=false\n')
 })
 
 test('a tree with no initialiser, which is what a workspace is, has nothing to publish', async () => {
   const registry = registryHolding()
-  const decision = await decided({ manifest: null, isPublished: registry.isPublished })
-  assert.equal(decision.publish, false)
-  assert.deepEqual(decision.refusals, [])
+  const { outcome, reason, output } = await settled({
+    root: treeStating('2.4.0', null),
+    isPublished: registry.isPublished,
+  })
+  assert.equal(outcome, 'skip')
+  assert.match(reason, /no initialiser/)
   assert.deepEqual(registry.asked, [])
-  // Said through the unverified register rather than as a clean run.
-  assert.ok(judgementOf(decision).unverified)
+  assert.equal(output, 'publish=false\n')
 })
 
-test('a copy of the repository is not where the package is published from', async () => {
+test('a workspace that dropped its changelog and plugin manifest still skips', async () => {
+  // The skip comes before anything reads the version statements: a workspace
+  // is the adopter's tree, and what they kept of the template's release
+  // bookkeeping is theirs to decide.
+  const root = treeStating('2.4.0', null)
+  rmSync(join(root, 'CHANGELOG.md'))
+  rmSync(join(root, '.claude-plugin'), { recursive: true })
+  rmSync(join(root, 'package-lock.json'))
+  const { outcome } = await settled({
+    root,
+    env: { GITHUB_REPOSITORY: 'somebody/their-service', GITHUB_REF_NAME: 'v0.1.0' },
+    npmVersion: () => '10.9.2',
+    isOnMain: () => false,
+  })
+  assert.equal(outcome, 'skip')
+})
+
+test('a fork is not where the package is published from, and says so in green', async () => {
   const registry = registryHolding()
-  for (const repository of ['somebody/uno-blueprint', 'billogic/uno-blueprint', undefined]) {
-    const decision = await decided({ repository, isPublished: registry.isPublished })
-    assert.equal(decision.publish, false, String(repository))
-    assert.deepEqual(decision.refusals, [], String(repository))
-    assert.ok(judgementOf(decision).unverified, String(repository))
+  const { outcome, reason, output } = await settled({
+    env: { GITHUB_REPOSITORY: 'somebody/uno-blueprint', REPOSITORY_IS_FORK: 'true' },
+    isPublished: registry.isPublished,
+  })
+  assert.equal(outcome, 'skip')
+  assert.match(reason, /fork/)
+  assert.deepEqual(registry.asked, [])
+  assert.equal(output, 'publish=false\n')
+})
+
+test('a repository that is not a fork and not the one the manifest names is refused', async () => {
+  // A rename or a transfer: the workflow is where it should be and the
+  // manifest still names the old place. Skipping green would be a release
+  // that silently never reaches the registry.
+  const registry = registryHolding()
+  for (const repository of ['BilLogic/uno-blueprint-next', 'NewOwner/uno-blueprint', undefined]) {
+    const { outcome, reason } = await settled({
+      env: { GITHUB_REPOSITORY: repository },
+      isPublished: registry.isPublished,
+    })
+    assert.equal(outcome, 'refuse', String(repository))
+    assert.ok(reason.includes('BilLogic/uno-blueprint'), reason)
+    if (repository) assert.ok(reason.includes(repository), reason)
   }
   assert.deepEqual(registry.asked, [])
 })
 
+test('repository names are compared without regard to case', async () => {
+  const { outcome } = await settled({ env: { GITHUB_REPOSITORY: 'billogic/Uno-Blueprint' } })
+  assert.equal(outcome, 'publish')
+})
+
 test('the repository a manifest names is read out of its url, in either spelling', () => {
-  assert.equal(repositoryOf(MANIFEST), 'BilLogic/uno-blueprint')
+  assert.equal(
+    repositoryOf({ repository: { url: 'git+https://github.com/BilLogic/uno-blueprint.git' } }),
+    'BilLogic/uno-blueprint',
+  )
   assert.equal(
     repositoryOf({ repository: 'https://github.com/BilLogic/uno-blueprint' }),
     'BilLogic/uno-blueprint',
@@ -163,10 +313,24 @@ test('the repository a manifest names is read out of its url, in either spelling
   assert.equal(repositoryOf({}), null)
 })
 
-test('the step output says publish or not, and a refusal says not', async () => {
-  assert.equal(outputOf(await decided()), 'publish=true\n')
-  assert.equal(outputOf(await decided({ tag: 'v9.9.9' })), 'publish=false\n')
-  assert.equal(outputOf(await decided({ manifest: null })), 'publish=false\n')
+test('each outcome reaches the verdict as what it is: a green line, or a finding', async () => {
+  const facts = { isOnMain: () => true, npmVersion: () => '11.19.0' }
+  const judged = (root, env, registry = registryHolding()) =>
+    judge({ root, env: { ...TAG_RUN, ...env }, isPublished: registry.isPublished, ...facts })
+
+  const publish = await judged(treeStating('2.4.0'))
+  assert.deepEqual(publish.findings, [])
+  assert.match(publish.line, /publishing/)
+  assert.equal(publish.count, 1)
+
+  const skip = await judged(treeStating('2.4.0', null))
+  assert.deepEqual(skip.findings, [])
+  assert.match(skip.line, /no initialiser/)
+  assert.equal(skip.count, 1)
+
+  const refuse = await judged(treeStating('2.4.0'), { GITHUB_REF_NAME: 'v2.5.0' })
+  assert.equal(refuse.findings.length, 1)
+  assert.match(refuse.findings[0], /v2\.5\.0/)
 })
 
 test('the lookup reads the registry: 200 is published, 404 is not, anything else is an error', async () => {

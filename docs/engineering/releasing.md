@@ -96,27 +96,38 @@ behind it is a command that ends in a 404. The workflow holds that order by
 construction, because the tag is what starts it. A publish by hand has to hold
 it too.
 
-Before it publishes, the workflow runs
-`scripts/decide-initialiser-publish.mjs`, and the run goes one of three ways:
-
-- **Red, nothing published.** The tag is not the version the initialiser's
-  manifest states, or the places `npm run check:version` holds together
-  disagree. Fix the release; a tag that points at the wrong tree is replaced
-  by the next version, not moved.
-- **Green, nothing published.** The registry already has this version. This is
-  what re-running a tag's run does, and it is safe to do.
-- **Green, published.** Everything agrees and the version is new.
+**Only a tag on `main` publishes.** A tag can be pushed on any commit, and a
+version on the registry is permanent, so the workflow refuses a tag whose
+commit `main` does not contain.
 
 It uses npm's trusted publishing: the registry trusts this repository and that
 workflow file by name, the job proves which run it is with a short-lived
 token, and no npm token is stored in the repository. There is no secret to
 add and none to rotate.
 
+### What a run does
+
+Before it publishes, the workflow runs
+`scripts/decide-initialiser-publish.mjs`. Every run ends one of these ways,
+and the run's log says which in one line.
+
+| The run | Why | What to do |
+| --- | --- | --- |
+| Green, published | The tag, the initialiser's manifest and every other statement of the version agree, the tagged commit is on `main`, and the registry does not have the version. | Nothing. |
+| Green, nothing published | The registry already has this version. This is what re-running a tag's run does. | Nothing. |
+| Green, nothing published | The repository is a fork. It carries the manifest and is not where the package comes from. | Nothing. |
+| Green, nothing published | The tree has no initialiser. A workspace carries the workflow and has no package. | Nothing. |
+| Red | The tag is not the version the initialiser's manifest states, or the places `npm run check:version` holds together disagree. | Fix the release. A tag that points at the wrong tree is replaced by the next version, not moved. |
+| Red | The tagged commit is not on `main`. | Tag the release commit on `main`, as step 4 says. |
+| Red | The npm the job has is older than 11.5.1, the first that can publish without a token. | Raise `node-version` in the workflow. Nothing is installed over the npm that Node carries. |
+| Red | The repository is not a fork and is not the one the initialiser's manifest names: a rename or a transfer. | Change `repository` in the manifest, and the trusted publisher on npmjs.com, to the new name. |
+| Red | The registry could not be asked whether the version exists. | Re-run the run. Nothing is wrong with the release, and changing a version would not help. |
+
 ### Once, by the owner
 
 Trust is set per package, on a package that already exists, so the first
-version is published by hand from the owner's own npm account. These three
-steps happen once and are never repeated.
+version is published by hand from the owner's own npm account. These steps
+happen once and are never repeated.
 
 1. **Log in to npm.**
 
@@ -153,11 +164,23 @@ steps happen once and are never repeated.
    page can disallow token publishing for the package, which leaves the
    workflow as the only way a version gets out.
 
+4. **Protect the tags, as a second lock.** The workflow's own check that a tag
+   is on `main` is the first. On GitHub, under the repository's *Settings*,
+   then *Rules*, then *Rulesets*, add a tag ruleset that targets `v*` and
+   restricts creating, updating and deleting those tags to the people who cut
+   releases. Then a tag that could start a publish cannot be pushed by anybody
+   else in the first place, and a release tag cannot be moved after the fact.
+
 The first tag pushed after this workflow lands starts a run before any of that
 exists, and its publish step fails: the registry has no reason to trust it
-yet. That one red run is expected. When the three steps are done, re-run it.
-It finds the version on the registry and goes green, which is also the first
-proof the decision reads the registry correctly.
+yet. That one red run is expected. When the steps above are done, re-run it.
+It finds the version on the registry and goes green.
+
+**That re-run proves less than it looks like.** It stops at "already
+published", before the job asks for a token, so it shows that the decision
+reads the registry and nothing about trusted publishing. The first time the
+registry is asked to trust this workflow is the second release. Watch that
+run.
 
 Renaming the workflow file breaks the trust, because the registry holds the
 name. Change it on npmjs.com in the same breath.
