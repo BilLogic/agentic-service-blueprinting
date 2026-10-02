@@ -50,13 +50,22 @@ Options:
   --version      show the version
 `
 
-/** The tarball GitHub serves for a release tag. */
-export const releaseUrl = (version) =>
-  `https://codeload.github.com/BilLogic/uno-blueprint/tar.gz/refs/tags/v${version}`
+/** The tarball GitHub serves for this version's release tag. */
+const RELEASE_URL = `https://codeload.github.com/BilLogic/uno-blueprint/tar.gz/refs/tags/v${VERSION}`
 
-/** Download a tarball with the platform fetch. Throws on anything but a 2xx. */
+/**
+ * Two bounds on what comes back from the network, because nothing here has
+ * seen it before. A connection that stalls would otherwise be a command that
+ * never ends, and a few kilobytes of gzip can unpack to more than a machine
+ * holds. The template is about a tenth of the second; both are far enough out
+ * that neither is met by a release.
+ */
+const DOWNLOAD_TIMEOUT_MS = 60_000
+const UNPACKED_LIMIT_MB = 128
+
+/** Download a tarball with the platform fetch. Throws on anything but a 2xx, and on the timeout. */
 async function fetchRelease(url) {
-  const response = await fetch(url)
+  const response = await fetch(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) })
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
   return new Uint8Array(await response.arrayBuffer())
 }
@@ -83,7 +92,9 @@ export async function run({ argv, env: _env, cwd, stdout, stderr, nodeVersion, f
   }
 
   // First, before the arguments are even read: every later line assumes it.
-  if (parseInt(nodeVersion.replace(/^v/, ''), 10) < NODE_FLOOR) {
+  // Written as "not at least" so a version that cannot be read is refused
+  // rather than compared with nothing and let through.
+  if (!(parseInt(String(nodeVersion).replace(/^v/, ''), 10) >= NODE_FLOOR)) {
     return fail(`Node ${NODE_FLOOR} or later is needed; this is Node ${nodeVersion}.`)
   }
 
@@ -100,15 +111,23 @@ export async function run({ argv, env: _env, cwd, stdout, stderr, nodeVersion, f
 
   const directory = asked.directory ?? DEFAULT_DIRECTORY
   const target = resolve(cwd, directory)
-  const existed = existsSync(target)
-  if (existed && !statSync(target).isDirectory()) {
-    return fail(`${directory} exists and is not a folder.`)
-  }
-  if (existed && readdirSync(target).length > 0) {
-    return fail(`${directory} already has files in it. Name an empty folder, or one that does not exist yet.`)
+  /** Whether the workspace is the folder the command was run in, which changes how it is spoken of. */
+  const here = target === resolve(cwd)
+  try {
+    const existed = existsSync(target)
+    if (existed && !statSync(target).isDirectory()) {
+      return fail(`${directory} exists and is not a folder.`)
+    }
+    if (existed && readdirSync(target).length > 0) {
+      return fail(
+        `${here ? 'this folder' : directory} already has files in it. Name an empty folder, or one that does not exist yet.`,
+      )
+    }
+  } catch (error) {
+    return fail(`could not read ${directory} (${reason(error)}).`)
   }
 
-  const url = releaseUrl(VERSION)
+  const url = RELEASE_URL
   let tarball
   try {
     tarball = await fetchTarball(url)
@@ -120,10 +139,21 @@ export async function run({ argv, env: _env, cwd, stdout, stderr, nodeVersion, f
   // written, so a tarball that is refused leaves nothing behind.
   let entries
   try {
-    entries = workspaceEntries(readTar(gunzipSync(tarball)))
+    entries = workspaceEntries(
+      readTar(gunzipSync(tarball, { maxOutputLength: UNPACKED_LIMIT_MB * 1024 * 1024 })),
+    )
   } catch (error) {
-    return fail(`the template downloaded from ${url} could not be unpacked (${reason(error)}).`)
+    const why =
+      error?.code === 'ERR_BUFFER_TOO_LARGE'
+        ? `it unpacks to more than ${UNPACKED_LIMIT_MB} MB`
+        : reason(error)
+    return fail(`the template downloaded from ${url} could not be unpacked (${why}).`)
   }
+
+  // The highest folder this run will have made: the target, or the first of
+  // its parents that is not there yet. It is what a failed write takes back.
+  let made = null
+  for (let path = target; !existsSync(path); path = dirname(path)) made = path
 
   try {
     for (const { segments, kind, mode, data } of entries) {
@@ -140,13 +170,15 @@ export async function run({ argv, env: _env, cwd, stdout, stderr, nodeVersion, f
   } catch (error) {
     // The folder was empty or absent a moment ago, so all that is in it now
     // is half a workspace, and leaving it would make the next run refuse.
-    // Taking it back can fail for the reason the write did; the write's
-    // failure is the one worth reporting.
+    // What goes is what this run made and nothing else: the folders it had to
+    // create on the way down, or, in a folder that was already there, what it
+    // put inside. Taking it back can fail for the reason the write did; the
+    // write's failure is the one worth reporting.
     try {
-      if (existed) {
-        for (const name of readdirSync(target)) rmSync(join(target, name), { recursive: true, force: true })
+      if (made !== null) {
+        rmSync(made, { recursive: true, force: true })
       } else {
-        rmSync(target, { recursive: true, force: true })
+        for (const name of readdirSync(target)) rmSync(join(target, name), { recursive: true, force: true })
       }
     } catch {
       // Nothing to add: the line below already says the workspace is not there.
@@ -154,15 +186,16 @@ export async function run({ argv, env: _env, cwd, stdout, stderr, nodeVersion, f
     return fail(`could not write the workspace to ${directory} (${reason(error)}).`)
   }
 
-  const steps = [...(target === resolve(cwd) ? [] : [`cd ${directory}`]), 'npm install', 'npm run dev']
+  const steps = [...(here ? [] : [`cd ${directory}`]), 'npm install', 'npm run dev']
   stdout.write(
-    `Uno Blueprint ${VERSION} is in ${directory}.\n\nNext steps:\n\n${steps.map((step) => `  ${step}\n`).join('')}`,
+    `Uno Blueprint ${VERSION} is in ${here ? 'this folder' : directory}.\n\nNext steps:\n\n${steps.map((step) => `  ${step}\n`).join('')}`,
   )
   return 0
 }
 
 /**
  * What the arguments ask for: at most one directory, and the three flags.
+ * `-h` and `-v` are the short forms a person tries first.
  * `--no-install` is read and changes nothing, because nothing is installed.
  */
 function parseArguments(argv) {
@@ -171,6 +204,8 @@ function parseArguments(argv) {
     if (argument === '--help' || argument === '-h') asked.help = true
     else if (argument === '--version' || argument === '-v') asked.version = true
     else if (argument === '--no-install') continue
+    // An empty argument is what a script passes when its variable was unset.
+    else if (argument === '') continue
     else if (argument.startsWith('-')) asked.fault ??= `unknown option ${argument}.`
     else if (asked.directory !== undefined) asked.fault ??= `one directory at a time: got ${asked.directory} and ${argument}.`
     else asked.directory = argument
@@ -187,7 +222,7 @@ function workspaceEntries(archive) {
   const entries = []
   for (const { path, kind, mode, data } of archive) {
     const segments = segmentsInsideTop(path)
-    if (segments.length === 0 || isUnder(OWN_FOLDER, segments)) continue
+    if (segments.length === 0 || isAtOrBelow(segments, OWN_FOLDER)) continue
     // A link can point anywhere, and a template has no use for one.
     if (kind === 'other') throw new Error(`${path} is neither a file nor a folder`)
     entries.push({ segments, kind, mode, data })
@@ -197,8 +232,8 @@ function workspaceEntries(archive) {
   return entries.filter(
     ({ segments, kind }) =>
       kind !== 'directory' ||
-      !isUnder(segments, OWN_FOLDER) ||
-      entries.some((other) => other.kind === 'file' && isUnder(segments, other.segments)),
+      !isAtOrBelow(OWN_FOLDER, segments) ||
+      entries.some((other) => other.kind === 'file' && isAtOrBelow(other.segments, segments)),
   )
 }
 
@@ -218,9 +253,9 @@ function segmentsInsideTop(path) {
   return segments.slice(1)
 }
 
-/** Whether `segments` is `folder` or somewhere beneath it. */
-function isUnder(folder, segments) {
-  return folder.every((segment, index) => segments[index] === segment)
+/** Whether `path` is `folder` or somewhere beneath it, both as segments. */
+function isAtOrBelow(path, folder) {
+  return folder.every((segment, index) => path[index] === segment)
 }
 
 /** Why something failed, on one line. A failed fetch keeps its cause one level down, so that is read too. */

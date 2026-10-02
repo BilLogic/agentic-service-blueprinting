@@ -77,15 +77,24 @@ export function disagreements(stated) {
     .map(([file, version]) => ({ file, version, expected: source }))
 }
 
-/** Copy package.json's version into plugin.json. Returns true if it changed. */
-export function writePluginVersion(root = REPO_ROOT) {
-  const path = join(root, '.claude-plugin/plugin.json')
+/**
+ * Copy package.json's version over the first `"version"` a manifest states.
+ * A text edit rather than a JSON round-trip, so the file keeps its formatting
+ * and the diff is the one line that changed. Returns true if it changed.
+ */
+function writeManifestVersion(root, manifest) {
+  const path = join(root, manifest)
   const source = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
   const raw = readFileSync(path, 'utf8')
   const next = raw.replace(/("version":\s*)"[^"]*"/, `$1"${source}"`)
   if (next === raw) return false
   writeFileSync(path, next)
   return true
+}
+
+/** Copy package.json's version into plugin.json. Returns true if it changed. */
+export function writePluginVersion(root = REPO_ROOT) {
+  return writeManifestVersion(root, '.claude-plugin/plugin.json')
 }
 
 /**
@@ -112,14 +121,8 @@ export function writeLockfileVersion(root = REPO_ROOT) {
  * if it changed, and null where there is no initialiser to write to.
  */
 export function writeInitialiserVersion(root = REPO_ROOT) {
-  const path = join(root, INITIALISER_MANIFEST)
-  if (!existsSync(path)) return null
-  const source = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version
-  const raw = readFileSync(path, 'utf8')
-  const next = raw.replace(/("version":\s*)"[^"]*"/, `$1"${source}"`)
-  if (next === raw) return false
-  writeFileSync(path, next)
-  return true
+  if (!existsSync(join(root, INITIALISER_MANIFEST))) return null
+  return writeManifestVersion(root, INITIALISER_MANIFEST)
 }
 
 /**

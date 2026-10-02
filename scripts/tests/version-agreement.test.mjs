@@ -6,7 +6,7 @@
  */
 import { test } from 'vitest'
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -137,3 +137,20 @@ test('a tree with no initialiser, which is what a workspace is, still agrees', (
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+// A workspace the initialiser wrote carries this file and no `packages/`, so
+// there is nothing for this to hold there.
+test.skipIf(!existsSync(join(ROOT, 'packages')))(
+  'wherever the initialiser sits in this tree, the guard is looking at it',
+  () => {
+    // The guard skips a manifest that is not there, so a moved folder would
+    // pass in silence. Found by name rather than by the path the guard holds.
+    const manifests = readdirSync(join(ROOT, 'packages'))
+      .map((folder) => `packages/${folder}/package.json`)
+      .filter((path) => existsSync(join(ROOT, path)))
+      .filter((path) => JSON.parse(readFileSync(join(ROOT, path), 'utf8')).name === 'create-uno-blueprint')
+
+    assert.deepEqual(manifests, [INITIALISER_MANIFEST])
+    assert.equal(typeof versions(ROOT)[INITIALISER_MANIFEST], 'string')
+  },
+)

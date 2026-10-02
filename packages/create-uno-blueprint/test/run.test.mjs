@@ -7,9 +7,10 @@
  *
  * Run: npm test
  */
-import { afterEach, beforeEach, test } from 'vitest'
+import { afterEach, beforeEach, test, vi } from 'vitest'
 import assert from 'node:assert/strict'
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -24,7 +25,6 @@ import { join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
 
-import { INITIALISER_MANIFEST, versions } from '../../../scripts/check-version-agreement.mjs'
 import { run } from '../src/run.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
@@ -93,6 +93,11 @@ function paxRecord(key, value) {
  * given, outside the top-level folder if it says so.
  */
 function tarball(entries) {
+  return gzipSync(tar(entries))
+}
+
+/** The same archive before it is gzipped, for a case that has to damage it first. */
+function tar(entries) {
   const blocks = [member({ name: 'pax_global_header', type: 'g' }, paxRecord('comment', 'f'.repeat(40)))]
   for (const { path, data = '', type = '0', mode, raw = false, prefix } of entries) {
     const full = raw ? path : `${TOP}/${path}`
@@ -107,7 +112,7 @@ function tarball(entries) {
     }
   }
   blocks.push(Buffer.alloc(1024))
-  return gzipSync(Buffer.concat(blocks))
+  return Buffer.concat(blocks)
 }
 
 /** A small template: a manifest, a script that must stay executable, a nested folder, the initialiser's own folder. */
@@ -132,8 +137,14 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.unstubAllGlobals()
   rmSync(cwd, { recursive: true, force: true })
 })
+
+/** Every path under the throwaway folder, sorted: what the disk holds, to compare before and after. */
+function disk() {
+  return readdirSync(cwd, { recursive: true }).map(String).sort()
+}
 
 /** Run the initialiser in the throwaway folder and hand back everything a user would see. */
 async function create(argv, { entries = TEMPLATE, fetchTarball, ...rest } = {}) {
@@ -147,10 +158,16 @@ async function create(argv, { entries = TEMPLATE, fetchTarball, ...rest } = {}) 
     stdout: { write: (text) => out.push(text) },
     stderr: { write: (text) => err.push(text) },
     nodeVersion: '22.12.0',
-    fetchTarball: async (url) => {
-      asked.push(url)
-      return fetchTarball ? fetchTarball(url) : tarball(entries)
-    },
+    // `null` leaves the download to the initialiser's own, for the cases that
+    // stand in for the platform fetch instead.
+    ...(fetchTarball === null
+      ? {}
+      : {
+          fetchTarball: async (url) => {
+            asked.push(url)
+            return fetchTarball ? fetchTarball(url) : tarball(entries)
+          },
+        }),
     ...rest,
   })
   return { code, out: out.join(''), err: err.join(''), asked }
@@ -341,16 +358,58 @@ test('a download that is not a tarball is reported, not thrown', async () => {
   assert.equal(existsSync(join(cwd, 'my-blueprint')), false)
 })
 
-test('a folder that cannot be written is reported in one line, with nothing left half-made', async () => {
-  writeFileSync(join(cwd, 'a-file'), '')
+/** A template that cannot be written whole: `a` lands as a file, and then `a/b` needs it to be a folder. */
+const UNWRITABLE = [
+  { path: 'package.json', data: '{}\n' },
+  { path: 'a', data: 'a file\n' },
+  { path: 'a/b', data: 'under a file\n' },
+]
 
-  const { code, out, err } = await create(['a-file/inside'])
+test('a write that fails part-way takes back every folder it made, and only those', async () => {
+  mkdirSync(join(cwd, 'mine'))
+  writeFileSync(join(cwd, 'mine/notes.txt'), 'keep me\n')
+  const before = disk()
+
+  const { code, out, err } = await create(['mine/new/deep'], { entries: UNWRITABLE })
 
   assert.equal(code, 1)
   assert.equal(out, '')
   oneLine(err)
-  assert.match(err, /could not write the workspace to a-file\/inside/)
+  assert.match(err, /could not write the workspace to mine\/new\/deep/)
+  assert.deepEqual(disk(), before)
 })
+
+test('a write that fails part-way in a folder that was already there leaves it there, empty', async () => {
+  mkdirSync(join(cwd, 'empty'))
+  const before = disk()
+
+  const { code, err } = await create(['empty'], { entries: UNWRITABLE })
+
+  assert.equal(code, 1)
+  oneLine(err)
+  assert.deepEqual(disk(), before)
+})
+
+// Root reads a mode-000 folder like any other, so there is nothing to refuse.
+test.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+  'a folder that cannot be read is reported in one line, before anything is downloaded',
+  async () => {
+    mkdirSync(join(cwd, 'locked'))
+    chmodSync(join(cwd, 'locked'), 0o000)
+    try {
+      const { code, out, err, asked } = await create(['locked'])
+
+      assert.equal(code, 1)
+      assert.equal(out, '')
+      oneLine(err)
+      assert.match(err, /locked/)
+      assert.match(err, /EACCES/)
+      assert.deepEqual(asked, [])
+    } finally {
+      chmodSync(join(cwd, 'locked'), 0o755)
+    }
+  },
+)
 
 test('a name that is a file is refused before anything is downloaded', async () => {
   writeFileSync(join(cwd, 'a-file'), '')
@@ -362,10 +421,126 @@ test('a name that is a file is refused before anything is downloaded', async () 
   assert.deepEqual(asked, [])
 })
 
-test('the version guard holds this package to the template', () => {
-  // The guard skips a manifest that is not there, because a workspace has
-  // none. This test travels with the package, so wherever the package is,
-  // the guard is looking at it.
-  assert.equal(INITIALISER_MANIFEST, `${OWN_FOLDER}/package.json`)
-  assert.equal(versions(REPO_ROOT)[INITIALISER_MANIFEST], VERSION)
+test('a Node version that cannot be read is refused, not waved through', async () => {
+  const { code, err, asked } = await create(['my-blueprint'], { nodeVersion: 'unknown' })
+
+  assert.equal(code, 1)
+  oneLine(err)
+  assert.match(err, /Node 22/)
+  assert.deepEqual(asked, [])
+})
+
+test('a dot writes into the current folder, and the next steps have no cd', async () => {
+  const { code, out } = await create(['.'])
+
+  assert.equal(code, 0)
+  assert.equal(existsSync(join(cwd, 'package.json')), true)
+  assert.ok(out.includes(`Uno Blueprint ${VERSION} is in this folder.`))
+  assert.match(out, /Next steps:\n\n {2}npm install\n {2}npm run dev\n$/)
+})
+
+test('a dot is refused like any folder when the current one has files', async () => {
+  writeFileSync(join(cwd, 'notes.txt'), 'keep me\n')
+
+  const { code, err, asked } = await create(['.'])
+
+  assert.equal(code, 1)
+  oneLine(err)
+  assert.deepEqual(asked, [])
+  assert.deepEqual(disk(), ['notes.txt'])
+})
+
+test('an empty argument is no argument', async () => {
+  const { code, out } = await create([''])
+
+  assert.equal(code, 0)
+  assert.equal(existsSync(join(cwd, 'uno-blueprint/package.json')), true)
+  assert.match(out, /\n {2}cd uno-blueprint\n/)
+})
+
+test('a link in the tarball is refused and nothing is written', async () => {
+  const { code, out, err } = await create(['my-blueprint'], {
+    entries: [...TEMPLATE, { path: 'link-to-elsewhere', type: '2' }],
+  })
+
+  assert.equal(code, 1)
+  assert.equal(out, '')
+  oneLine(err)
+  assert.match(err, /could not be unpacked/)
+  assert.deepEqual(disk(), [])
+})
+
+test('a backslash in a path is refused and nothing is written', async () => {
+  const { code, err } = await create(['my-blueprint'], {
+    entries: [...TEMPLATE, { path: 'src\\..\\..\\escaped.txt', data: 'out\n' }],
+  })
+
+  assert.equal(code, 1)
+  oneLine(err)
+  assert.match(err, /could not be unpacked/)
+  assert.deepEqual(disk(), [])
+})
+
+test('a tarball cut short is reported in one line and nothing is written', async () => {
+  const whole = tar([...TEMPLATE, { path: 'docs/long.md', data: 'x'.repeat(2000) }])
+  // Past the last header and into its data, with the end marker gone.
+  const cut = whole.subarray(0, whole.length - 1024 - 1536)
+
+  const { code, out, err } = await create(['my-blueprint'], {
+    fetchTarball: async () => gzipSync(cut),
+  })
+
+  assert.equal(code, 1)
+  assert.equal(out, '')
+  oneLine(err)
+  assert.match(err, /could not be unpacked/)
+  assert.deepEqual(disk(), [])
+})
+
+test('a tarball that unpacks past any size a template could be is refused', async () => {
+  // Zeros compress to almost nothing, which is the whole of the trick.
+  const { code, err } = await create(['my-blueprint'], {
+    fetchTarball: async () => gzipSync(Buffer.alloc(129 * 1024 * 1024)),
+  })
+
+  assert.equal(code, 1)
+  oneLine(err)
+  assert.match(err, /could not be unpacked/)
+  assert.match(err, /128 MB/)
+  assert.deepEqual(disk(), [])
+})
+
+test('its own download gives up after a time, and reports a refusal by status', async () => {
+  const calls = []
+  vi.stubGlobal('fetch', async (url, options) => {
+    calls.push({ url, options })
+    return { ok: false, status: 404 }
+  })
+
+  const { code, out, err } = await create(['my-blueprint'], { fetchTarball: null })
+
+  assert.equal(code, 1)
+  assert.equal(out, '')
+  oneLine(err)
+  assert.ok(err.includes(RELEASE_URL))
+  assert.match(err, /HTTP 404/)
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].url, RELEASE_URL)
+  // The bound is a signal the platform aborts on its own; without one a
+  // stalled connection is a command that never ends.
+  assert.ok(calls[0].options?.signal instanceof AbortSignal)
+  assert.deepEqual(disk(), [])
+})
+
+test('its own download that runs out of time is one line naming where it tried', async () => {
+  vi.stubGlobal('fetch', async () => {
+    throw new DOMException('The operation was aborted due to timeout', 'TimeoutError')
+  })
+
+  const { code, err } = await create(['my-blueprint'], { fetchTarball: null })
+
+  assert.equal(code, 1)
+  oneLine(err)
+  assert.ok(err.includes(RELEASE_URL))
+  assert.match(err, /timeout/)
 })

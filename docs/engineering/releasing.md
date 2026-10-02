@@ -36,7 +36,8 @@ npm run version        # changeset version, then propagate from package.json
 That bumps `package.json`, writes the CHANGELOG entry from the pending
 changesets, and copies the new number into `.claude-plugin/plugin.json` — the
 version a consumer's plugin install actually reads — and into the lockfile and
-the initialiser's manifest, `packages/create-uno-blueprint/package.json`. Edit the CHANGELOG entry
+the initialiser's manifest, the `package.json` under
+`packages/create-uno-blueprint/`. Edit the CHANGELOG entry
 into prose a human would want to read, and flag identifier-layer changes under
 a `### Plugin contract` heading.
 
