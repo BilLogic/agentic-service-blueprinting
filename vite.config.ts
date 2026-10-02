@@ -241,6 +241,9 @@ export default defineConfig(({ mode }) => {
         'deployment/**/*.test.ts',
         'deployment/**/*.test.tsx',
         'scripts/tests/**/*.test.mjs',
+        // The initialiser's, beside the package they test. A workspace is
+        // written without that folder, and there this matches nothing.
+        'packages/**/*.test.mjs',
       ],
     },
   }

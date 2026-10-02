@@ -1,0 +1,28 @@
+{
+  "name": "create-uno-blueprint",
+  "version": "2.3.0",
+  "description": "Start an Uno Blueprint workspace with one command.",
+  "type": "module",
+  "bin": {
+    "create-uno-blueprint": "./bin/create-uno-blueprint.mjs"
+  },
+  "files": [
+    "bin",
+    "src"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/BilLogic/uno-blueprint",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BilLogic/uno-blueprint.git",
+    "directory": "packages/create-uno-blueprint"
+  },
+  "keywords": [
+    "service-blueprint",
+    "service-design",
+    "uno-blueprint"
+  ]
+}
