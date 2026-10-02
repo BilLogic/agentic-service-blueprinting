@@ -33,7 +33,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-import { run } from '../src/run.mjs'
+import { runInProcess } from '../src/run.mjs'
 
 const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version
 
@@ -50,12 +50,5 @@ function archiveOfHead() {
   )
 }
 
-process.exitCode = await run({
-  argv: process.argv.slice(2),
-  env: process.env,
-  cwd: process.cwd(),
-  stdout: process.stdout,
-  stderr: process.stderr,
-  nodeVersion: process.versions.node,
-  fetchTarball: async () => archiveOfHead(),
-})
+// The bin's own call, with the download answered from the checkout.
+process.exitCode = await runInProcess({ fetchTarball: async () => archiveOfHead() })

@@ -26,7 +26,7 @@ import { join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
 
-import { run } from '../src/run.mjs'
+import { installWith, run } from '../src/run.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
 
@@ -562,18 +562,48 @@ test('its own download that runs out of time is one line naming where it tried',
   assert.match(err, /timeout/)
 })
 
-/** What each package manager puts in `npm_config_user_agent`, and the two lines a user types to it. */
+/**
+ * The four callers: what each puts in `npm_config_user_agent`, what the
+ * initialiser runs to install with it, and the two lines it tells a user.
+ */
 const CALLERS = [
-  ['npm', 'npm/10.9.2 node/v22.17.0 darwin arm64 workspaces/false', 'npm install', 'npm run dev'],
-  ['pnpm', 'pnpm/10.33.0 npm/? node/v22.17.0 darwin arm64', 'pnpm install', 'pnpm dev'],
-  ['yarn', 'yarn/1.22.22 npm/? node/v22.17.0 darwin arm64', 'yarn install', 'yarn dev'],
-  ['yarn', 'yarn/4.9.1 npm/? node/v22.17.0 darwin arm64', 'yarn install', 'yarn dev'],
-  ['bun', 'bun/1.2.10 npm/? node/v22.17.0 darwin arm64', 'bun install', 'bun dev'],
+  {
+    agent: 'npm/10.9.2 node/v22.17.0 darwin arm64 workspaces/false',
+    pm: 'npm',
+    command: 'npm',
+    args: ['install'],
+    installLine: 'npm install',
+    devLine: 'npm run dev',
+  },
+  {
+    agent: 'pnpm/10.33.0 npm/? node/v22.17.0 darwin arm64',
+    pm: 'pnpm',
+    command: 'pnpm',
+    args: ['install'],
+    installLine: 'pnpm install',
+    devLine: 'pnpm dev',
+  },
+  {
+    agent: 'yarn/1.22.22 npm/? node/v22.17.0 darwin arm64',
+    pm: 'yarn',
+    command: 'yarn',
+    args: ['install'],
+    installLine: 'yarn install',
+    devLine: 'yarn dev',
+  },
+  {
+    agent: 'bun/1.2.10 npm/? node/v22.17.0 darwin arm64',
+    pm: 'bun',
+    command: 'bun',
+    args: ['install'],
+    installLine: 'bun install',
+    devLine: 'bun dev',
+  },
 ]
 
 test.each(CALLERS)(
-  'called by %s (%s), it installs with it and the next step is its own',
-  async (pm, agent, _install, dev) => {
+  'called by $pm, it installs with it and the next step is its own',
+  async ({ agent, pm, command, args, devLine }) => {
     const { code, out, err, installs } = await create(['my-blueprint'], {
       env: { npm_config_user_agent: agent },
     })
@@ -581,23 +611,52 @@ test.each(CALLERS)(
     assert.equal(code, 0)
     assert.equal(err, '')
     // Once, in the workspace, after the files are there.
-    assert.deepEqual(installs, [{ pm, cwd: join(cwd, 'my-blueprint') }])
+    assert.deepEqual(installs, [{ pm, command, args, cwd: join(cwd, 'my-blueprint') }])
     assert.ok(out.includes(`Installing its dependencies with ${pm}.`))
     // No install line: it has just been done.
-    assert.ok(out.endsWith(`Next steps:\n\n  cd my-blueprint\n  ${dev}\n`), out)
+    assert.ok(out.endsWith(`Next steps:\n\n  cd my-blueprint\n  ${devLine}\n`), out)
   },
 )
 
 test.each(CALLERS)(
-  'called by %s (%s) with --no-install, the install is the next step in its own words',
-  async (_pm, agent, install, dev) => {
+  'called by $pm with --no-install, the install is the next step in its own words',
+  async ({ agent, installLine, devLine }) => {
     const { code, out, installs } = await create(['my-blueprint', '--no-install'], {
       env: { npm_config_user_agent: agent },
     })
 
     assert.equal(code, 0)
     assert.deepEqual(installs, [])
-    assert.ok(out.endsWith(`Next steps:\n\n  cd my-blueprint\n  ${install}\n  ${dev}\n`), out)
+    assert.ok(out.endsWith(`Next steps:\n\n  cd my-blueprint\n  ${installLine}\n  ${devLine}\n`), out)
+  },
+)
+
+test.each(CALLERS)('what is run for $pm is what is printed for it', async ({ agent, installLine }) => {
+  const { installs } = await create(['my-blueprint'], { env: { npm_config_user_agent: agent } })
+
+  const [{ command, args }] = installs
+  assert.equal([command, ...args].join(' '), installLine)
+})
+
+test.each(['yarn/2.4.3 npm/? node/v22.17.0 darwin arm64', 'yarn/4.9.1 npm/? node/v22.17.0 darwin arm64'])(
+  'called by Yarn 2 or later (%s), the workspace is written, not installed, and it says who can',
+  async (agent) => {
+    for (const argv of [['my-blueprint'], ['other', '--no-install']]) {
+      const { code, out, err, installs } = await create(argv, { env: { npm_config_user_agent: agent } })
+
+      assert.equal(code, 1)
+      assert.deepEqual(installs, [])
+      oneLine(err)
+      assert.match(err, new RegExp(`the workspace is in ${argv[0]}`))
+      assert.match(err, /Yarn [24]\b/)
+      assert.match(err, /npm, pnpm, Bun and Yarn 1/)
+      assert.match(err, new RegExp(`in ${argv[0]}\\b.*\\.\\n$`))
+      // The files are there for whichever of those the user picks.
+      assert.equal(existsSync(join(cwd, argv[0], 'package.json')), true)
+      // And nothing tells them to type `yarn dev` into a workspace Yarn cannot run.
+      assert.equal(out.includes('Next steps'), false)
+      assert.equal(out.includes('yarn'), false)
+    }
   },
 )
 
@@ -616,7 +675,7 @@ test('the workspace is whole before the install is asked for', async () => {
 test('a dot installs in the current folder', async () => {
   const { installs } = await create(['.'])
 
-  assert.deepEqual(installs, [{ pm: 'npm', cwd }])
+  assert.deepEqual(installs, [{ pm: 'npm', command: 'npm', args: ['install'], cwd }])
 })
 
 test('with no user-agent, or one it does not know, it is npm', async () => {
@@ -627,9 +686,17 @@ test('with no user-agent, or one it does not know, it is npm', async () => {
     })
 
     assert.equal(code, 0, agent)
-    assert.deepEqual(installs, [{ pm: 'npm', cwd: join(cwd, `workspace-${index}`) }], agent)
+    assert.equal(installs.length, 1, agent)
+    assert.equal(installs[0].pm, 'npm', agent)
     assert.ok(out.endsWith('  npm run dev\n'), agent)
   }
+})
+
+test('a Yarn whose version cannot be read is taken for Yarn 1', async () => {
+  const { code, installs } = await create(['my-blueprint'], { env: { npm_config_user_agent: 'yarn' } })
+
+  assert.equal(code, 0)
+  assert.equal(installs[0].pm, 'yarn')
 })
 
 test('nothing is installed when the workspace was not written', async () => {
@@ -650,15 +717,16 @@ test('nothing is installed when the workspace was not written', async () => {
 
 test('an install that fails leaves the workspace, says so in one line and exits non-zero', async () => {
   const { code, out, err, installs } = await create(['my-blueprint'], {
-    env: { npm_config_user_agent: 'pnpm/10.33.0 npm/? node/v22.17.0 darwin arm64' },
+    env: { npm_config_user_agent: 'bun/1.2.10 npm/? node/v22.17.0 darwin arm64' },
     install: () => 1,
   })
 
   assert.equal(code, 1)
   assert.equal(installs.length, 1)
-  oneLine(err)
-  assert.match(err, /my-blueprint/)
-  assert.match(err, /pnpm install/)
+  assert.equal(
+    err,
+    'create-uno-blueprint: the workspace is in my-blueprint, but bun install failed (exit code 1). Run it in my-blueprint to finish.\n',
+  )
   // The files are the user's to keep: the install is theirs to run again.
   assert.equal(
     readFileSync(join(cwd, 'my-blueprint/package.json'), 'utf8'),
@@ -669,18 +737,85 @@ test('an install that fails leaves the workspace, says so in one line and exits 
   assert.equal(out.includes('Next steps'), false)
 })
 
-test('a package manager that cannot be started is the same failure, with why', async () => {
-  const { code, out, err } = await create(['my-blueprint'], {
-    env: { npm_config_user_agent: 'bun/1.2.10 npm/? node/v22.17.0 darwin arm64' },
-    install: async () => {
-      throw new Error('spawn bun ENOENT')
-    },
-  })
+test('an install that fails in the current folder is spoken of as this folder throughout', async () => {
+  const { code, err } = await create(['.'], { install: () => 1 })
 
   assert.equal(code, 1)
-  oneLine(err)
-  assert.match(err, /bun install/)
-  assert.match(err, /ENOENT/)
-  assert.equal(existsSync(join(cwd, 'my-blueprint/package.json')), true)
-  assert.equal(out.includes('Next steps'), false)
+  assert.equal(
+    err,
+    'create-uno-blueprint: the workspace is in this folder, but npm install failed (exit code 1). Run it in this folder to finish.\n',
+  )
 })
+
+/**
+ * The installer the bin uses, at its own seam: handed a command, its
+ * arguments and a folder, it runs them and answers with the exit code. These
+ * hand it Node itself and a name nothing answers to, so what is exercised is
+ * the starting, the waiting and the three ways it can end, and no package
+ * manager is started. Not on Windows, where it goes through a shell and the
+ * path to Node would need quoting that a package manager's name never does.
+ */
+const viaTheRealInstaller = (command, args) => ({
+  install: ({ cwd: workspace }) => installWith({ command, args, cwd: workspace, stdio: 'ignore' }),
+})
+
+test.skipIf(process.platform === 'win32')(
+  'its own installer, given a command that does not exist, is one line saying so',
+  async () => {
+    const { code, out, err } = await create(['my-blueprint'], viaTheRealInstaller('no-such-package-manager', ['install']))
+
+    assert.equal(code, 1)
+    oneLine(err)
+    assert.match(err, /npm install failed/)
+    assert.match(err, /ENOENT/)
+    assert.equal(existsSync(join(cwd, 'my-blueprint/package.json')), true)
+    assert.equal(out.includes('Next steps'), false)
+  },
+)
+
+test.skipIf(process.platform === 'win32')(
+  'its own installer, when the child exits non-zero, reports that exit code',
+  async () => {
+    const { code, err } = await create(
+      ['my-blueprint'],
+      viaTheRealInstaller(process.execPath, ['-e', 'process.exit(3)']),
+    )
+
+    assert.equal(code, 1)
+    oneLine(err)
+    assert.match(err, /\(exit code 3\)/)
+    assert.equal(existsSync(join(cwd, 'my-blueprint/package.json')), true)
+  },
+)
+
+test.skipIf(process.platform === 'win32')(
+  'its own installer runs in the workspace, and a child that exits 0 is a finished install',
+  async () => {
+    const { code, err } = await create(
+      ['my-blueprint'],
+      viaTheRealInstaller(process.execPath, [
+        '-e',
+        'require("node:fs").writeFileSync("installed-here", "")',
+      ]),
+    )
+
+    assert.equal(code, 0)
+    assert.equal(err, '')
+    assert.equal(existsSync(join(cwd, 'my-blueprint/installed-here')), true)
+  },
+)
+
+test.skipIf(process.platform === 'win32')(
+  'its own installer, when the child is killed, names the signal and not an exit code',
+  async () => {
+    const { code, err } = await create(
+      ['my-blueprint'],
+      viaTheRealInstaller(process.execPath, ['-e', 'process.kill(process.pid, "SIGTERM")']),
+    )
+
+    assert.equal(code, 1)
+    oneLine(err)
+    assert.match(err, /SIGTERM/)
+    assert.equal(err.includes('exit code'), false)
+  },
+)

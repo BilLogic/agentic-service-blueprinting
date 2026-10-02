@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * The command. Everything it does is `run`; this file hands it the real
- * process, so a test can hand it a throwaway one.
+ * The command. Everything it does is `run`, handed the real process by
+ * `runInProcess` beside it, so a test can hand it a throwaway one.
  *
  * WRITTEN IN THE SYNTAX AN OLD NODE PARSES, and that is the whole reason it
  * looks the way it does. `run` checks the Node floor first — but a Node old
@@ -30,14 +30,7 @@ if (!(parseInt(process.versions.node, 10) >= NODE_FLOOR)) {
 } else {
   import('../src/run.mjs')
     .then(function (entry) {
-      return entry.run({
-        argv: process.argv.slice(2),
-        env: process.env,
-        cwd: process.cwd(),
-        stdout: process.stdout,
-        stderr: process.stderr,
-        nodeVersion: process.versions.node,
-      })
+      return entry.runInProcess()
     })
     .then(function (code) {
       process.exitCode = code

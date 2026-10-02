@@ -12,7 +12,10 @@
  * streams, the Node version, where the tarball comes from, what installs the
  * dependencies — and returns the exit code. The bin hands it the real process;
  * a test hands it a temporary folder, a tarball built in memory and an install
- * that only records the call, and reads back what a user would see.
+ * that only records the call, and reads back what a user would see. The two
+ * other exports are the halves of that hand-over the bin does not write out
+ * itself: `runInProcess`, which is `run` over the real process, and
+ * `installWith`, which is the install when nothing replaces it.
  *
  * Once the files are written it installs their dependencies with the package
  * manager that called it, and ends by saying what to type next in that
@@ -75,17 +78,24 @@ async function fetchRelease(url) {
 }
 
 /**
- * The package managers a workspace installs and runs under, each with the
- * two lines a user types: the install, and the one that starts the canvas.
+ * The package managers a workspace installs and runs under. One entry is
+ * everything said about a manager: the command, what it is given to install,
+ * and what it is given to start the canvas. What is run and what is printed
+ * are both read from here, so the line a user is told to type is the line
+ * that was typed for them.
+ *
  * `npm` is the one that needs `run`; the other three take a script's name as
  * a command of their own.
  */
 const PACKAGE_MANAGERS = {
-  npm: { install: 'npm install', dev: 'npm run dev' },
-  pnpm: { install: 'pnpm install', dev: 'pnpm dev' },
-  yarn: { install: 'yarn install', dev: 'yarn dev' },
-  bun: { install: 'bun install', dev: 'bun dev' },
+  npm: { command: 'npm', install: ['install'], dev: ['run', 'dev'] },
+  pnpm: { command: 'pnpm', install: ['install'], dev: ['dev'] },
+  yarn: { command: 'yarn', install: ['install'], dev: ['dev'] },
+  bun: { command: 'bun', install: ['install'], dev: ['dev'] },
 }
+
+/** A command and its arguments as the line a user types. */
+const typed = (command, args) => [command, ...args].join(' ')
 
 /**
  * Which package manager called. `npm create`, `pnpm create`, `yarn create`
@@ -93,25 +103,71 @@ const PACKAGE_MANAGERS = {
  * `npm_config_user_agent`, as `pnpm/10.1.0 npm/? node/v22.12.0 …`. Only that
  * first word is read: the three that are not npm name npm further along, to
  * say what they stand in for. Run by hand, or by anything else, it is npm.
+ *
+ * YARN IS TWO PROGRAMS UNDER ONE NAME, and the version is what tells them
+ * apart. Yarn 1 runs this template. Yarn 2 and later do not run the `pre`
+ * scripts `dev` and `build` rely on and install without a `node_modules` by
+ * default, so an install there would exit 0 over a workspace that then does
+ * not start. That caller is answered with `unsupported` and what it calls
+ * itself, and nothing is installed. A Yarn that states no version is taken
+ * for the first.
  */
 function callingPackageManager(env) {
-  const name = String(env?.npm_config_user_agent ?? '').trim().split('/')[0]
-  return Object.hasOwn(PACKAGE_MANAGERS, name) ? name : 'npm'
+  const [name, version] = String(env?.npm_config_user_agent ?? '').trim().split(/\s+/)[0].split('/')
+  if (!Object.hasOwn(PACKAGE_MANAGERS, name)) return { pm: 'npm' }
+  const major = parseInt(version, 10)
+  if (name === 'yarn' && major >= 2) return { pm: name, unsupported: `Yarn ${major}` }
+  return { pm: name }
 }
 
 /**
- * Install a workspace's dependencies by running the package manager there,
- * with its output going straight to the terminal the command was run in.
- * Resolves with its exit code; rejects when it could not be started at all.
+ * Install a workspace's dependencies: run `command` with `args` in `cwd`,
+ * its output going straight to the terminal the command was run in.
+ * Resolves with the exit code. Rejects when it could not be started at all,
+ * and when a signal ended it, which is not an install that finished.
+ *
+ * @param {object} request
+ * @param {string} request.command
+ * @param {string[]} request.args
+ * @param {string} request.cwd
+ * @param {import('node:child_process').StdioOptions} [request.stdio]
+ * @returns {Promise<number>}
  */
-function installWith({ pm, cwd }) {
+export function installWith({ command, args, cwd, stdio = 'inherit' }) {
   return new Promise((resolveCode, reject) => {
-    // On Windows a package manager is a `.cmd` shim, which only a shell runs.
-    // Both arguments are fixed words, so there is nothing for a shell to read.
-    const child = spawn(pm, ['install'], { cwd, stdio: 'inherit', shell: process.platform === 'win32' })
+    // On Windows a package manager is a `.cmd` shim, which only a shell runs,
+    // and a shell is handed one string rather than a list it would have to
+    // join unquoted. The string is safe to hand over: every word of it comes
+    // from the table above, and none from the user.
+    const child =
+      process.platform === 'win32'
+        ? spawn(typed(command, args), { cwd, stdio, shell: true })
+        : spawn(command, args, { cwd, stdio })
     child.on('error', reject)
-    // No code means a signal ended it, which is not an install that finished.
-    child.on('close', (code) => resolveCode(code ?? 1))
+    child.on('close', (code, signal) =>
+      code === null ? reject(new Error(`ended by ${signal}`)) : resolveCode(code),
+    )
+  })
+}
+
+/**
+ * The command as its bin runs it: `run`, handed the real process. Anything in
+ * `overrides` replaces what the process would have supplied, which is how the
+ * helper that writes a workspace from a checkout swaps the download and
+ * nothing else.
+ *
+ * @param {Partial<Parameters<typeof run>[0]>} [overrides]
+ * @returns {Promise<number>} the exit code
+ */
+export function runInProcess(overrides = {}) {
+  return run({
+    argv: process.argv.slice(2),
+    env: process.env,
+    cwd: process.cwd(),
+    stdout: process.stdout,
+    stderr: process.stderr,
+    nodeVersion: process.versions.node,
+    ...overrides,
   })
 }
 
@@ -126,8 +182,9 @@ function installWith({ pm, cwd }) {
  * @param {{ write(text: string): unknown }} options.stderr
  * @param {string} options.nodeVersion  `process.versions.node`
  * @param {(url: string) => Promise<Uint8Array>} [options.fetchTarball]  the gzipped tarball at a URL
- * @param {(request: { pm: 'npm' | 'pnpm' | 'yarn' | 'bun', cwd: string }) => number | Promise<number>} [options.install]
- *   installs the dependencies of the workspace at `cwd` with `pm`, and answers with its exit code
+ * @param {(request: { pm: 'npm' | 'pnpm' | 'yarn' | 'bun', command: string, args: string[], cwd: string }) => number | Promise<number>} [options.install]
+ *   installs the dependencies of the workspace at `cwd` by running `command` with `args`, which are
+ *   `pm`'s own, and answers with the exit code
  * @returns {Promise<number>} the exit code: 0 only when the workspace is complete
  */
 export async function run({
@@ -240,28 +297,38 @@ export async function run({
     return fail(`could not write the workspace to ${directory} (${reason(error)}).`)
   }
 
-  const pm = callingPackageManager(env)
-  const commands = PACKAGE_MANAGERS[pm]
+  const { pm, unsupported } = callingPackageManager(env)
+  const { command, install: installArgs, dev } = PACKAGE_MANAGERS[pm]
   const where = here ? 'this folder' : directory
   stdout.write(`Uno Blueprint ${VERSION} is in ${where}.`)
+
+  // The files are written either way: they are a whole workspace, and one of
+  // the managers that can run it finishes the job. `--no-install` changes
+  // nothing here, because the next steps would be this caller's own.
+  if (unsupported) {
+    stdout.write('\n')
+    return fail(
+      `the workspace is in ${where}, but it was not installed: ${unsupported} cannot run it. It runs under npm, pnpm, Bun and Yarn 1, so install with one of those in ${where}.`,
+    )
+  }
 
   if (asked.install) {
     // Said before the install rather than after, so the wait that follows has
     // a reason on screen and the package manager's own output has a heading.
     stdout.write(` Installing its dependencies with ${pm}.\n\n`)
-    // A package manager that exits non-zero and one that could not be
-    // started are the same failure here. Either way the files stay: they are
-    // a whole workspace, and what is left to do in it is the line this names.
+    // A package manager that exits non-zero, one that was killed and one that
+    // could not be started are the same failure here. Either way the files
+    // stay, and what is left to do in them is the line this names.
     let why = null
     try {
-      const code = await install({ pm, cwd: target })
+      const code = await install({ pm, command, args: installArgs, cwd: target })
       if (code !== 0) why = `exit code ${code}`
     } catch (error) {
       why = reason(error)
     }
     if (why !== null) {
       return fail(
-        `the workspace is in ${where}, but ${commands.install} failed there (${why}). Run it in that folder to finish.`,
+        `the workspace is in ${where}, but ${typed(command, installArgs)} failed (${why}). Run it in ${where} to finish.`,
       )
     }
   } else {
@@ -271,8 +338,8 @@ export async function run({
   // The install is a next step only when it was not done here.
   const steps = [
     ...(here ? [] : [`cd ${directory}`]),
-    ...(asked.install ? [] : [commands.install]),
-    commands.dev,
+    ...(asked.install ? [] : [typed(command, installArgs)]),
+    typed(command, dev),
   ]
   stdout.write(`\nNext steps:\n\n${steps.map((step) => `  ${step}\n`).join('')}`)
   return 0
