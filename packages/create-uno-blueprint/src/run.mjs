@@ -9,13 +9,16 @@
  *
  * ONE FUNCTION IS THE WHOLE INTERFACE. `run` takes everything it would
  * otherwise reach for — arguments, environment, working directory, the two
- * streams, the Node version, where the tarball comes from — and returns the
- * exit code. The bin hands it the real process; a test hands it a temporary
- * folder and a tarball built in memory, and reads back what a user would see.
+ * streams, the Node version, where the tarball comes from, what installs the
+ * dependencies — and returns the exit code. The bin hands it the real process;
+ * a test hands it a temporary folder, a tarball built in memory and an install
+ * that only records the call, and reads back what a user would see.
  *
- * It stops once the files are written and says what to type next. Installing
- * the workspace's dependencies is the user's next line, not a step here.
+ * Once the files are written it installs their dependencies with the package
+ * manager that called it, and ends by saying what to type next in that
+ * package manager's own words.
  */
+import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
@@ -42,10 +45,11 @@ const OWN_FOLDER = ['packages', 'create-uno-blueprint']
 const USAGE = `Usage: ${NAME} [directory] [options]
 
 Writes an Uno Blueprint workspace, the template at release ${VERSION}, into
-[directory]. The folder must be empty or not exist yet. Default: ${DEFAULT_DIRECTORY}
+[directory], and installs its dependencies with the package manager that ran
+this command. The folder must be empty or not exist yet. Default: ${DEFAULT_DIRECTORY}
 
 Options:
-  --no-install   leave dependencies uninstalled, which this version always does
+  --no-install   write the workspace and leave its dependencies uninstalled
   --help         show this message
   --version      show the version
 `
@@ -71,7 +75,48 @@ async function fetchRelease(url) {
 }
 
 /**
- * Write a workspace, or say in one line why not.
+ * The package managers a workspace installs and runs under, each with the
+ * two lines a user types: the install, and the one that starts the canvas.
+ * `npm` is the one that needs `run`; the other three take a script's name as
+ * a command of their own.
+ */
+const PACKAGE_MANAGERS = {
+  npm: { install: 'npm install', dev: 'npm run dev' },
+  pnpm: { install: 'pnpm install', dev: 'pnpm dev' },
+  yarn: { install: 'yarn install', dev: 'yarn dev' },
+  bun: { install: 'bun install', dev: 'bun dev' },
+}
+
+/**
+ * Which package manager called. `npm create`, `pnpm create`, `yarn create`
+ * and `bun create` each put their name and version first in
+ * `npm_config_user_agent`, as `pnpm/10.1.0 npm/? node/v22.12.0 …`. Only that
+ * first word is read: the three that are not npm name npm further along, to
+ * say what they stand in for. Run by hand, or by anything else, it is npm.
+ */
+function callingPackageManager(env) {
+  const name = String(env?.npm_config_user_agent ?? '').trim().split('/')[0]
+  return Object.hasOwn(PACKAGE_MANAGERS, name) ? name : 'npm'
+}
+
+/**
+ * Install a workspace's dependencies by running the package manager there,
+ * with its output going straight to the terminal the command was run in.
+ * Resolves with its exit code; rejects when it could not be started at all.
+ */
+function installWith({ pm, cwd }) {
+  return new Promise((resolveCode, reject) => {
+    // On Windows a package manager is a `.cmd` shim, which only a shell runs.
+    // Both arguments are fixed words, so there is nothing for a shell to read.
+    const child = spawn(pm, ['install'], { cwd, stdio: 'inherit', shell: process.platform === 'win32' })
+    child.on('error', reject)
+    // No code means a signal ended it, which is not an install that finished.
+    child.on('close', (code) => resolveCode(code ?? 1))
+  })
+}
+
+/**
+ * Write a workspace and install it, or say in one line why not.
  *
  * @param {object} options
  * @param {string[]} options.argv  the arguments after the command's own name
@@ -81,11 +126,20 @@ async function fetchRelease(url) {
  * @param {{ write(text: string): unknown }} options.stderr
  * @param {string} options.nodeVersion  `process.versions.node`
  * @param {(url: string) => Promise<Uint8Array>} [options.fetchTarball]  the gzipped tarball at a URL
+ * @param {(request: { pm: 'npm' | 'pnpm' | 'yarn' | 'bun', cwd: string }) => number | Promise<number>} [options.install]
+ *   installs the dependencies of the workspace at `cwd` with `pm`, and answers with its exit code
  * @returns {Promise<number>} the exit code: 0 only when the workspace is complete
  */
-export async function run({ argv, env: _env, cwd, stdout, stderr, nodeVersion, fetchTarball = fetchRelease }) {
-  // `env` is taken and not read yet: it is where the calling package manager
-  // names itself, and nothing here depends on which one called.
+export async function run({
+  argv,
+  env,
+  cwd,
+  stdout,
+  stderr,
+  nodeVersion,
+  fetchTarball = fetchRelease,
+  install = installWith,
+}) {
   const fail = (message) => {
     stderr.write(`${NAME}: ${message}\n`)
     return 1
@@ -186,24 +240,54 @@ export async function run({ argv, env: _env, cwd, stdout, stderr, nodeVersion, f
     return fail(`could not write the workspace to ${directory} (${reason(error)}).`)
   }
 
-  const steps = [...(here ? [] : [`cd ${directory}`]), 'npm install', 'npm run dev']
-  stdout.write(
-    `Uno Blueprint ${VERSION} is in ${here ? 'this folder' : directory}.\n\nNext steps:\n\n${steps.map((step) => `  ${step}\n`).join('')}`,
-  )
+  const pm = callingPackageManager(env)
+  const commands = PACKAGE_MANAGERS[pm]
+  const where = here ? 'this folder' : directory
+  stdout.write(`Uno Blueprint ${VERSION} is in ${where}.`)
+
+  if (asked.install) {
+    // Said before the install rather than after, so the wait that follows has
+    // a reason on screen and the package manager's own output has a heading.
+    stdout.write(` Installing its dependencies with ${pm}.\n\n`)
+    // A package manager that exits non-zero and one that could not be
+    // started are the same failure here. Either way the files stay: they are
+    // a whole workspace, and what is left to do in it is the line this names.
+    let why = null
+    try {
+      const code = await install({ pm, cwd: target })
+      if (code !== 0) why = `exit code ${code}`
+    } catch (error) {
+      why = reason(error)
+    }
+    if (why !== null) {
+      return fail(
+        `the workspace is in ${where}, but ${commands.install} failed there (${why}). Run it in that folder to finish.`,
+      )
+    }
+  } else {
+    stdout.write('\n')
+  }
+
+  // The install is a next step only when it was not done here.
+  const steps = [
+    ...(here ? [] : [`cd ${directory}`]),
+    ...(asked.install ? [] : [commands.install]),
+    commands.dev,
+  ]
+  stdout.write(`\nNext steps:\n\n${steps.map((step) => `  ${step}\n`).join('')}`)
   return 0
 }
 
 /**
  * What the arguments ask for: at most one directory, and the three flags.
  * `-h` and `-v` are the short forms a person tries first.
- * `--no-install` is read and changes nothing, because nothing is installed.
  */
 function parseArguments(argv) {
-  const asked = { directory: undefined, help: false, version: false, fault: undefined }
+  const asked = { directory: undefined, install: true, help: false, version: false, fault: undefined }
   for (const argument of argv) {
     if (argument === '--help' || argument === '-h') asked.help = true
     else if (argument === '--version' || argument === '-v') asked.version = true
-    else if (argument === '--no-install') continue
+    else if (argument === '--no-install') asked.install = false
     // An empty argument is what a script passes when its variable was unset.
     else if (argument === '') continue
     else if (argument.startsWith('-')) asked.fault ??= `unknown option ${argument}.`

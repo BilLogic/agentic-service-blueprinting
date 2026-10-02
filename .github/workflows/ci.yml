@@ -575,3 +575,80 @@ jobs:
             exit 1
           fi
           echo "ok: Postgres refused a broken core, and ON_ERROR_STOP reported it"
+
+  # The workspace, under each package manager that can start one.
+  #
+  # `npm create`, `pnpm create`, `yarn create` and `bun create` all run the
+  # same initialiser, and it installs with whichever of them called. So the
+  # template has four ways to be installed and three of them are not the one
+  # this repository uses: every other job here runs `npm ci` against the lock
+  # file. What a strict store does to an import nobody declared, or what a
+  # manager that reads no `package-lock.json` resolves instead, is invisible
+  # to all of them.
+  #
+  # This job writes the workspace this commit would be — the initialiser, fed a
+  # `git archive` of the checkout where a release's tarball would have been
+  # (`from-working-tree.mjs`, beside the initialiser's own source) — lets the
+  # initialiser install it with the manager under test, and builds it there. It
+  # runs no `npm ci` of its own: the initialiser has no dependencies, which is
+  # the other thing this would notice.
+  #
+  # Install and build, and not the suite. A workspace is not a git checkout,
+  # and part of the suite reads tags and the commit's file list out of git.
+  workspace:
+    name: workspace (${{ matrix.pm }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      # One manager going red says nothing about the other three.
+      fail-fast: false
+      matrix:
+        include:
+          - pm: npm
+          - pm: pnpm
+            setup: npm install --global pnpm@10
+          # Yarn 1, which is what `yarn` is on a machine that has pinned
+          # nothing, and what Corepack hands a folder with no `packageManager`.
+          - pm: yarn
+            setup: npm install --global yarn@1
+          - pm: bun
+            setup: npm install --global bun@1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install ${{ matrix.pm }}
+        if: matrix.setup
+        run: ${{ matrix.setup }}
+
+      # The manager is named the way it names itself when it runs the
+      # initialiser: first in `npm_config_user_agent`. Set here rather than
+      # by running the script through each manager, because the checkout is an
+      # npm tree and three of them would have something to say about that.
+      #
+      # `CI` is cleared for this step because the workspace is new. It has
+      # npm's lock file and no other, and pnpm refuses to write its own when it
+      # believes it is in a pipeline. A person's terminal is what `create`
+      # runs in, so that is what this step is.
+      - name: Write a workspace from this commit and install it
+        run: node packages/create-uno-blueprint/scripts/from-working-tree.mjs "$RUNNER_TEMP/workspace"
+        env:
+          npm_config_user_agent: ${{ matrix.pm }}/0.0.0
+          CI: 'false'
+
+      - name: Build it
+        working-directory: ${{ runner.temp }}/workspace
+        run: ${{ matrix.pm }} run build
+
+      # A build with no figures still exits 0: they are copied in by the
+      # script's `prebuild` hook, and a manager that skipped the hook would
+      # ship a sample board whose storyboard frames are missing.
+      - name: The build carries the page and the figures
+        working-directory: ${{ runner.temp }}/workspace
+        run: |
+          set -euo pipefail
+          test -s dist/index.html
+          test -s dist/cover/blueprint-anatomy.svg

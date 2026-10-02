@@ -2,8 +2,9 @@
  * The initialiser, called the way its bin calls it and read the way a user
  * reads it: the files that landed, the text that was printed, the exit code.
  *
- * Every case hands `run` a release tarball built here, in memory, and a
- * throwaway folder to write into. Nothing reaches the network.
+ * Every case hands `run` a release tarball built here, in memory, a throwaway
+ * folder to write into, and an install that records what it was asked and
+ * does nothing. Nothing reaches the network or starts a package manager.
  *
  * Run: npm test
  */
@@ -146,14 +147,21 @@ function disk() {
   return readdirSync(cwd, { recursive: true }).map(String).sort()
 }
 
-/** Run the initialiser in the throwaway folder and hand back everything a user would see. */
-async function create(argv, { entries = TEMPLATE, fetchTarball, ...rest } = {}) {
+/**
+ * Run the initialiser in the throwaway folder and hand back everything a user
+ * would see, plus what it asked of the two things it does not do itself: the
+ * download and the install. The install here is a stand-in that records the
+ * call and reports success, unless a case gives it another answer; no case
+ * starts a package manager.
+ */
+async function create(argv, { entries = TEMPLATE, fetchTarball, install, env = {}, ...rest } = {}) {
   const out = []
   const err = []
   const asked = []
+  const installs = []
   const code = await run({
     argv,
-    env: {},
+    env,
     cwd,
     stdout: { write: (text) => out.push(text) },
     stderr: { write: (text) => err.push(text) },
@@ -168,9 +176,13 @@ async function create(argv, { entries = TEMPLATE, fetchTarball, ...rest } = {}) 
             return fetchTarball ? fetchTarball(url) : tarball(entries)
           },
         }),
+    install: async (request) => {
+      installs.push(request)
+      return install ? install(request) : 0
+    },
     ...rest,
   })
-  return { code, out: out.join(''), err: err.join(''), asked }
+  return { code, out: out.join(''), err: err.join(''), asked, installs }
 }
 
 /** One line, and only one, on stderr. */
@@ -195,7 +207,7 @@ test('a named folder receives the template at the release matching this version'
   // The wrapping folder is the tarball's, not the workspace's.
   assert.equal(existsSync(join(cwd, 'my-blueprint', TOP)), false)
   assert.ok(out.includes(`Uno Blueprint ${VERSION}`))
-  assert.match(out, /\n {2}cd my-blueprint\n {2}npm install\n {2}npm run dev\n/)
+  assert.match(out, /Next steps:\n\n {2}cd my-blueprint\n {2}npm run dev\n$/)
 })
 
 test('with no folder named, the workspace lands in uno-blueprint', async () => {
@@ -275,14 +287,19 @@ test('--version prints this version and writes nothing', async () => {
   assert.deepEqual(readdirSync(cwd), [])
 })
 
-test('--no-install is accepted, on either side of the folder', async () => {
+test('--no-install writes the workspace and installs nothing, on either side of the folder', async () => {
   const before = await create(['--no-install', 'one'])
   const after = await create(['two', '--no-install'])
 
-  assert.equal(before.code, 0)
-  assert.equal(after.code, 0)
-  assert.equal(existsSync(join(cwd, 'one/package.json')), true)
-  assert.equal(existsSync(join(cwd, 'two/package.json')), true)
+  for (const [result, folder] of [[before, 'one'], [after, 'two']]) {
+    assert.equal(result.code, 0)
+    assert.equal(result.err, '')
+    assert.equal(existsSync(join(cwd, folder, 'package.json')), true)
+    assert.deepEqual(result.installs, [])
+    // The install it skipped is the user's next line.
+    assert.ok(result.out.includes(`Uno Blueprint ${VERSION} is in ${folder}.\n`))
+    assert.match(result.out, new RegExp(`Next steps:\\n\\n {2}cd ${folder}\\n {2}npm install\\n {2}npm run dev\\n$`))
+  }
 })
 
 test('an option it does not know is refused in one line', async () => {
@@ -436,7 +453,7 @@ test('a dot writes into the current folder, and the next steps have no cd', asyn
   assert.equal(code, 0)
   assert.equal(existsSync(join(cwd, 'package.json')), true)
   assert.ok(out.includes(`Uno Blueprint ${VERSION} is in this folder.`))
-  assert.match(out, /Next steps:\n\n {2}npm install\n {2}npm run dev\n$/)
+  assert.match(out, /Next steps:\n\n {2}npm run dev\n$/)
 })
 
 test('a dot is refused like any folder when the current one has files', async () => {
@@ -543,4 +560,127 @@ test('its own download that runs out of time is one line naming where it tried',
   oneLine(err)
   assert.ok(err.includes(RELEASE_URL))
   assert.match(err, /timeout/)
+})
+
+/** What each package manager puts in `npm_config_user_agent`, and the two lines a user types to it. */
+const CALLERS = [
+  ['npm', 'npm/10.9.2 node/v22.17.0 darwin arm64 workspaces/false', 'npm install', 'npm run dev'],
+  ['pnpm', 'pnpm/10.33.0 npm/? node/v22.17.0 darwin arm64', 'pnpm install', 'pnpm dev'],
+  ['yarn', 'yarn/1.22.22 npm/? node/v22.17.0 darwin arm64', 'yarn install', 'yarn dev'],
+  ['yarn', 'yarn/4.9.1 npm/? node/v22.17.0 darwin arm64', 'yarn install', 'yarn dev'],
+  ['bun', 'bun/1.2.10 npm/? node/v22.17.0 darwin arm64', 'bun install', 'bun dev'],
+]
+
+test.each(CALLERS)(
+  'called by %s (%s), it installs with it and the next step is its own',
+  async (pm, agent, _install, dev) => {
+    const { code, out, err, installs } = await create(['my-blueprint'], {
+      env: { npm_config_user_agent: agent },
+    })
+
+    assert.equal(code, 0)
+    assert.equal(err, '')
+    // Once, in the workspace, after the files are there.
+    assert.deepEqual(installs, [{ pm, cwd: join(cwd, 'my-blueprint') }])
+    assert.ok(out.includes(`Installing its dependencies with ${pm}.`))
+    // No install line: it has just been done.
+    assert.ok(out.endsWith(`Next steps:\n\n  cd my-blueprint\n  ${dev}\n`), out)
+  },
+)
+
+test.each(CALLERS)(
+  'called by %s (%s) with --no-install, the install is the next step in its own words',
+  async (_pm, agent, install, dev) => {
+    const { code, out, installs } = await create(['my-blueprint', '--no-install'], {
+      env: { npm_config_user_agent: agent },
+    })
+
+    assert.equal(code, 0)
+    assert.deepEqual(installs, [])
+    assert.ok(out.endsWith(`Next steps:\n\n  cd my-blueprint\n  ${install}\n  ${dev}\n`), out)
+  },
+)
+
+test('the workspace is whole before the install is asked for', async () => {
+  let seen
+  await create(['my-blueprint'], {
+    install: ({ cwd: workspace }) => {
+      seen = readdirSync(workspace).sort()
+      return 0
+    },
+  })
+
+  assert.deepEqual(seen, ['package.json', 'scripts', 'src'])
+})
+
+test('a dot installs in the current folder', async () => {
+  const { installs } = await create(['.'])
+
+  assert.deepEqual(installs, [{ pm: 'npm', cwd }])
+})
+
+test('with no user-agent, or one it does not know, it is npm', async () => {
+  const agents = [undefined, '', 'deno/2.1.4 npm/? deno/2.1.4 darwin aarch64', 'npminstall/7.0.0', 'toString/1.0.0']
+  for (const [index, agent] of agents.entries()) {
+    const { code, out, installs } = await create([`workspace-${index}`], {
+      env: { npm_config_user_agent: agent },
+    })
+
+    assert.equal(code, 0, agent)
+    assert.deepEqual(installs, [{ pm: 'npm', cwd: join(cwd, `workspace-${index}`) }], agent)
+    assert.ok(out.endsWith('  npm run dev\n'), agent)
+  }
+})
+
+test('nothing is installed when the workspace was not written', async () => {
+  mkdirSync(join(cwd, 'mine'))
+  writeFileSync(join(cwd, 'mine/notes.txt'), 'keep me\n')
+
+  const refused = await create(['mine'])
+  const offline = await create(['my-blueprint'], {
+    fetchTarball: async () => {
+      throw new Error('offline')
+    },
+  })
+  const unwritable = await create(['other'], { entries: UNWRITABLE })
+  const help = await create(['--help'])
+
+  for (const { installs } of [refused, offline, unwritable, help]) assert.deepEqual(installs, [])
+})
+
+test('an install that fails leaves the workspace, says so in one line and exits non-zero', async () => {
+  const { code, out, err, installs } = await create(['my-blueprint'], {
+    env: { npm_config_user_agent: 'pnpm/10.33.0 npm/? node/v22.17.0 darwin arm64' },
+    install: () => 1,
+  })
+
+  assert.equal(code, 1)
+  assert.equal(installs.length, 1)
+  oneLine(err)
+  assert.match(err, /my-blueprint/)
+  assert.match(err, /pnpm install/)
+  // The files are the user's to keep: the install is theirs to run again.
+  assert.equal(
+    readFileSync(join(cwd, 'my-blueprint/package.json'), 'utf8'),
+    '{ "name": "uno-blueprint" }\n',
+  )
+  assert.equal(existsSync(join(cwd, 'my-blueprint/src/components/Canvas.tsx')), true)
+  // And it does not go on to say the canvas is one step away.
+  assert.equal(out.includes('Next steps'), false)
+})
+
+test('a package manager that cannot be started is the same failure, with why', async () => {
+  const { code, out, err } = await create(['my-blueprint'], {
+    env: { npm_config_user_agent: 'bun/1.2.10 npm/? node/v22.17.0 darwin arm64' },
+    install: async () => {
+      throw new Error('spawn bun ENOENT')
+    },
+  })
+
+  assert.equal(code, 1)
+  oneLine(err)
+  assert.match(err, /bun install/)
+  assert.match(err, /ENOENT/)
+  assert.equal(existsSync(join(cwd, 'my-blueprint/package.json')), true)
+  assert.equal(out.includes('Next steps'), false)
 })
