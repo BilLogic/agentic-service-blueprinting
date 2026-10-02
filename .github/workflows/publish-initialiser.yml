@@ -1,0 +1,85 @@
+# A release tag publishes the initialiser.
+#
+# `create-uno-blueprint` is the one package in this tree that goes to a
+# registry, and it downloads the release whose tag is its own version. So the
+# tag is what publishes it: the tag exists before the package does, and a
+# version on the registry always has a release behind it.
+#
+# NO TOKEN. The registry trusts this repository and this workflow file by
+# name (npm calls it trusted publishing): the job mints a short-lived OIDC
+# token, npm exchanges it for the right to publish this one package, and
+# nothing long-lived is stored here to leak or to rotate. The trust is set up
+# once, by the package's owner, on npmjs.com — docs/engineering/releasing.md
+# says how. It names this file, so renaming the file is a change to make there
+# as well.
+#
+# `push` on a tag, and nothing else. A run started by hand could be started
+# from a branch, where there is no tag for the published package to download.
+# To publish a tag again, re-run its run: a version the registry already has
+# is left alone and the run is green.
+name: Publish the initialiser
+
+on:
+  push:
+    tags: ['v*']
+
+# Least privilege at the top level. The one job raises what it needs, so the
+# diff shows the escalation.
+permissions:
+  contents: read
+
+# One publish per tag at a time, and never cancelled part-way: a publish that
+# is interrupted is a state nobody can read.
+concurrency:
+  group: publish-initialiser-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # What lets the job ask GitHub for the OIDC token npm exchanges. It
+      # grants nothing in this repository.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      # Node 24 for the npm it carries, not for the package: the initialiser's
+      # own floor is 22 and nothing here runs it. No `cache`: a job that
+      # publishes restores nothing another run wrote.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+      # Trusted publishing needs npm 11.5.1 or later, and an older one fails
+      # at the publish by asking for a login. Stated here rather than left to
+      # whichever npm the runner's Node happens to carry.
+      - run: npm install --global npm@^11.5.1
+      - run: npm --version
+
+      # NO `npm ci`. The initialiser has no dependencies and no build step,
+      # and the decision below reads files and one registry address with
+      # nothing but Node. A job holding the right to publish installs nobody
+      # else's code.
+      #
+      # THE DECISION, BEFORE THE ONE COMMAND THAT CANNOT BE TAKEN BACK. Red
+      # when the tag and the initialiser's version disagree, or when the
+      # places that state the version do. `publish=false` and green when the
+      # registry already has this version, or when this tree is a workspace or
+      # a fork and has nothing to publish. `publish=true` otherwise. The
+      # script's header is the account.
+      - name: Decide whether this tag publishes
+        id: decide
+        run: node scripts/decide-initialiser-publish.mjs
+
+      # From the initialiser's own folder: the root manifest is `private` and
+      # is not what is being published. `--provenance` is said out loud so the
+      # publish fails rather than going out without the attestation, and
+      # `--access public` says here what the manifest's `publishConfig` says.
+      - name: Publish with provenance
+        if: steps.decide.outputs.publish == 'true'
+        working-directory: packages/create-uno-blueprint
+        run: npm publish --provenance --access public

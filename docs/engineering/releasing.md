@@ -1,5 +1,5 @@
 ---
-summary: How a release is cut — changesets bump package.json, plugin.json and the CHANGELOG derive from it, and every release ends in an annotated v<version> tag on main, which is the only thing a consumer can pin.
+summary: How a release is cut — changesets bump package.json, plugin.json and the CHANGELOG derive from it, and every release ends in an annotated v<version> tag on main, which is the only thing a consumer can pin and is what publishes the initialiser to npm.
 ---
 
 # Releasing
@@ -82,3 +82,82 @@ npm pack github:BilLogic/uno-blueprint#v0.4.0
 That is the resolution path a downstream lockfile takes. It prints the file
 list, the shasum and the integrity hash. `package.json` is `private: true`,
 which blocks `npm publish` and does not block this — see ADR 1 §5.
+
+## 6. The tag publishes the initialiser
+
+Pushing the tag in step 4 starts
+[`publish-initialiser.yml`](../../.github/workflows/publish-initialiser.yml),
+which publishes `create-uno-blueprint` to npm at that version, with
+provenance. There is nothing to run by hand after the first time.
+
+**The tag comes first, always.** The published initialiser downloads the
+release tagged `v<its own version>`, so a version on the registry with no tag
+behind it is a command that ends in a 404. The workflow holds that order by
+construction, because the tag is what starts it. A publish by hand has to hold
+it too.
+
+Before it publishes, the workflow runs
+`scripts/decide-initialiser-publish.mjs`, and the run goes one of three ways:
+
+- **Red, nothing published.** The tag is not the version the initialiser's
+  manifest states, or the places `npm run check:version` holds together
+  disagree. Fix the release; a tag that points at the wrong tree is replaced
+  by the next version, not moved.
+- **Green, nothing published.** The registry already has this version. This is
+  what re-running a tag's run does, and it is safe to do.
+- **Green, published.** Everything agrees and the version is new.
+
+It uses npm's trusted publishing: the registry trusts this repository and that
+workflow file by name, the job proves which run it is with a short-lived
+token, and no npm token is stored in the repository. There is no secret to
+add and none to rotate.
+
+### Once, by the owner
+
+Trust is set per package, on a package that already exists, so the first
+version is published by hand from the owner's own npm account. These three
+steps happen once and are never repeated.
+
+1. **Log in to npm.**
+
+   ```bash
+   npm login
+   ```
+
+2. **Publish the first version by hand, from the initialiser's folder, at the
+   tag.** Cut the release through step 4 first, so the tag is on GitHub, then
+   publish the tree the tag names:
+
+   ```bash
+   git checkout v<version>
+   cd packages/create-uno-blueprint
+   npm publish --access public
+   ```
+
+   This one version carries no provenance: an attestation is made by a CI run,
+   and a laptop is not one. Every version after it does.
+
+3. **Add this repository and the workflow file as the package's trusted
+   publisher.** On npmjs.com, open `create-uno-blueprint`, then *Settings*,
+   then *Trusted Publisher*, choose *GitHub Actions*, and enter:
+
+   | Field | Value |
+   | --- | --- |
+   | Organization or user | `BilLogic` |
+   | Repository | `uno-blueprint` |
+   | Workflow filename | `publish-initialiser.yml` |
+   | Environment name | leave empty |
+
+   Every field is case-sensitive, and the filename is the file's name alone,
+   with its extension and without its folder. Once that is saved, the same
+   page can disallow token publishing for the package, which leaves the
+   workflow as the only way a version gets out.
+
+The first tag pushed after this workflow lands starts a run before any of that
+exists, and its publish step fails: the registry has no reason to trust it
+yet. That one red run is expected. When the three steps are done, re-run it.
+It finds the version on the registry and goes green, which is also the first
+proof the decision reads the registry correctly.
+
+Renaming the workflow file breaks the trust, because the registry holds the
+name. Change it on npmjs.com in the same breath.
