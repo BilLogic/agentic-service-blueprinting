@@ -329,6 +329,15 @@ jobs:
           BASE_PATH: /demo/
           VITE_SUPABASE_URL: ''
           VITE_SUPABASE_ANON_KEY: ''
+      # The rules that build wrote for the path. `BASE_PATH` alone is the
+      # whole setting, so the build writes the prefixed redirects and the
+      # hashed cache into dist/_redirects and dist/_headers; this reads them
+      # back through the hosting check, strictly at /demo/. The preview below
+      # reads neither file, so this is the step that sees them.
+      - name: The build for /demo/ wrote the prefixed hosting rules
+        run: npm run check:hosting -- --built
+        env:
+          BASE_PATH: /demo/
       - name: Walk the build served from /demo/
         run: npm run check:render-walk
         env:
