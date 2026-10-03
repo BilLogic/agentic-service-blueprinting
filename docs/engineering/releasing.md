@@ -115,18 +115,20 @@ and the run's log says which in one line.
 | --- | --- | --- |
 | Green, published | The tag, the initialiser's manifest and every other statement of the version agree, the tagged commit is on `main`, and the registry does not have the version. | Nothing. |
 | Green, nothing published | The registry already has this version. This is what re-running a tag's run does. | Nothing. |
-| Green, nothing published | The repository is not the one the initialiser's manifest names: a fork, a repository made from the template, or any other copy. It carries the manifest and is not where the package comes from. The line names both repositories. | Nothing. If this is the template's own repository after a rename or a transfer, see the next paragraph. |
+| Green, nothing published | The repository is not the one the initialiser's manifest names: a fork, a repository made from the template, or any other copy. It carries the manifest and is not where the package comes from. The line names both repositories. | Nothing in a copy. In the template's own repository after a rename or a transfer, this row is a release that published nothing while the run reads green: update the manifest's `repository` and the trusted publisher, as the next paragraph says. |
 | Green, nothing published | The tree has no initialiser. A workspace carries the workflow and has no package. | Nothing. |
 | Red | The tag is not the version the initialiser's manifest states, or the places `npm run check:version` holds together disagree. | Fix the release. A tag that points at the wrong tree is replaced by the next version, not moved. |
 | Red | The tagged commit is not on `main`. | Tag the release commit on `main`, as § 4 says. |
 | Red | The npm the job has is older than 11.5.1, the first that can publish without a token, or could not be asked its version. | Raise `node-version` in the workflow. Nothing is installed over the npm that Node carries. |
 | Red | The registry could not be asked whether the version exists. | Re-run the run. Nothing is wrong with the release, and changing a version would not help. |
 
-**Renaming or moving this repository** turns every release into the green
-"not the repository its manifest names" row above, and nothing is published.
-So the rename carries two changes with it, in the same breath: the
-`repository` url in the initialiser's manifest, and the trusted publisher on
-npmjs.com. Then the next tag publishes again.
+**Renaming or moving this repository without updating the manifest gives a
+green run that publishes nothing.** Every release lands in the "not the
+repository its manifest names" row above, and nothing goes red to say so. So
+the rename and the manifest change are one change: update the `repository`
+url in the initialiser's manifest in the same pull request as the rename, and
+the trusted publisher on npmjs.com the same day. Then the next tag publishes
+again.
 
 ### Once, by the owner
 

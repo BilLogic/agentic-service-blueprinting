@@ -25,9 +25,11 @@ the folder is `uno-blueprint`. Give `.` to write into the current folder. The
 folder must be empty or not exist yet: one that already has files in it is
 refused, and nothing of yours is overwritten.
 
-With Yarn, that means Yarn 1. Yarn 2 and later cannot run the template, so
-under them the workspace is written, nothing is installed, and the command
-exits with an error naming the package managers that can.
+With Yarn, that means Yarn 1. Yarn 2 and later cannot run the template. Under
+them the workspace is still written and nothing is installed: asked to
+install, the command exits with an error naming the package managers that can;
+with `--no-install`, it says so in one line, prints the next steps for npm,
+and succeeds.
 
 The command asks no questions, so an agent can run it unattended. It ends by
 printing the commands that start the canvas.
