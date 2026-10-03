@@ -19,6 +19,8 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  symlinkSync,
+  lstatSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -26,6 +28,7 @@ import { join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
 
+import { NODE_FLOOR } from '../src/node-floor.mjs'
 import { installWith, run } from '../src/run.mjs'
 
 const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
@@ -407,6 +410,19 @@ test('a write that fails part-way in a folder that was already there leaves it t
   assert.deepEqual(disk(), before)
 })
 
+test.skipIf(process.platform === 'win32')(
+  'a dangling link on the way to the target is the user\'s, and a failed write leaves it',
+  async () => {
+    symlinkSync(join(cwd, 'nowhere'), join(cwd, 'mine'))
+
+    const { code, err } = await create(['mine/new'], { entries: UNWRITABLE })
+
+    assert.equal(code, 1)
+    oneLine(err)
+    assert.equal(lstatSync(join(cwd, 'mine')).isSymbolicLink(), true)
+  },
+)
+
 // Root reads a mode-000 folder like any other, so there is nothing to refuse.
 test.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
   'a folder that cannot be read is reported in one line, before anything is downloaded',
@@ -638,25 +654,42 @@ test.each(CALLERS)('what is run for $pm is what is printed for it', async ({ age
   assert.equal([command, ...args].join(' '), installLine)
 })
 
-test.each(['yarn/2.4.3 npm/? node/v22.17.0 darwin arm64', 'yarn/4.9.1 npm/? node/v22.17.0 darwin arm64'])(
+const LATER_YARNS = ['yarn/2.4.3 npm/? node/v22.17.0 darwin arm64', 'yarn/4.9.1 npm/? node/v22.17.0 darwin arm64']
+
+test.each(LATER_YARNS)(
   'called by Yarn 2 or later (%s), the workspace is written, not installed, and it says who can',
   async (agent) => {
-    for (const argv of [['my-blueprint'], ['other', '--no-install']]) {
-      const { code, out, err, installs } = await create(argv, { env: { npm_config_user_agent: agent } })
+    const { code, out, err, installs } = await create(['my-blueprint'], { env: { npm_config_user_agent: agent } })
 
-      assert.equal(code, 1)
-      assert.deepEqual(installs, [])
-      oneLine(err)
-      assert.match(err, new RegExp(`the workspace is in ${argv[0]}`))
-      assert.match(err, /Yarn [24]\b/)
-      assert.match(err, /npm, pnpm, Bun and Yarn 1/)
-      assert.match(err, new RegExp(`in ${argv[0]}\\b.*\\.\\n$`))
-      // The files are there for whichever of those the user picks.
-      assert.equal(existsSync(join(cwd, argv[0], 'package.json')), true)
-      // And nothing tells them to type `yarn dev` into a workspace Yarn cannot run.
-      assert.equal(out.includes('Next steps'), false)
-      assert.equal(out.includes('yarn'), false)
-    }
+    assert.equal(code, 1)
+    assert.deepEqual(installs, [])
+    oneLine(err)
+    assert.match(err, /the workspace is in my-blueprint/)
+    assert.match(err, /Yarn [24]\b/)
+    assert.match(err, /npm, pnpm, Bun and Yarn 1/)
+    assert.match(err, /in my-blueprint\.\n$/)
+    // The files are there for whichever of those the user picks.
+    assert.equal(existsSync(join(cwd, 'my-blueprint', 'package.json')), true)
+    // And nothing tells them to type `yarn dev` into a workspace Yarn cannot run.
+    assert.equal(out.includes('Next steps'), false)
+    assert.equal(out.includes('yarn'), false)
+  },
+)
+
+test.each(LATER_YARNS)(
+  'called by Yarn 2 or later (%s) with --no-install, that is what was asked for: exit 0, and one line on who can install it',
+  async (agent) => {
+    const { code, out, err, installs } = await create(['my-blueprint', '--no-install'], {
+      env: { npm_config_user_agent: agent },
+    })
+
+    assert.equal(code, 0)
+    assert.equal(err, '')
+    assert.deepEqual(installs, [])
+    assert.equal(existsSync(join(cwd, 'my-blueprint', 'package.json')), true)
+    assert.match(out, /\n[^\n]*Yarn [24]\b[^\n]*npm, pnpm, Bun or Yarn 1[^\n]*\n\nNext steps:/)
+    // The steps are npm's, since the caller cannot take them.
+    assert.ok(out.endsWith('Next steps:\n\n  cd my-blueprint\n  npm install\n  npm run dev\n'), out)
   },
 )
 
@@ -686,8 +719,11 @@ test('with no user-agent, or one it does not know, it is npm', async () => {
     })
 
     assert.equal(code, 0, agent)
-    assert.equal(installs.length, 1, agent)
-    assert.equal(installs[0].pm, 'npm', agent)
+    assert.deepEqual(
+      installs,
+      [{ pm: 'npm', command: 'npm', args: ['install'], cwd: join(cwd, `workspace-${index}`) }],
+      agent,
+    )
     assert.ok(out.endsWith('  npm run dev\n'), agent)
   }
 })
@@ -819,3 +855,9 @@ test.skipIf(process.platform === 'win32')(
     assert.equal(err.includes('exit code'), false)
   },
 )
+
+test('the Node floor the command checks is the one both manifests state', () => {
+  for (const manifest of [new URL('../package.json', import.meta.url), join(REPO_ROOT, 'package.json')]) {
+    assert.equal(JSON.parse(readFileSync(manifest, 'utf8')).engines.node, `>=${NODE_FLOOR}`, String(manifest))
+  }
+})

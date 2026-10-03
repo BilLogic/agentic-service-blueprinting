@@ -7,11 +7,13 @@
  * looks the way it does. `run` checks the Node floor first — but a Node old
  * enough fails to PARSE the module `run` lives in, and says `SyntaxError`
  * about an operator instead of which Node is needed. So the floor is checked
- * here as well, in nothing newer than `var` and a function expression, and
- * the entry is imported only once it has passed. The floor is the one in
- * `src/run.mjs` and the root manifest's `engines`.
+ * here as well, in nothing newer than `var`, function expressions, a static
+ * `import` of the floor and a dynamic `import()` of the entry — the last only
+ * once the check has passed. That is the module syntax any Node that can load
+ * this file at all already parses. The floor is `src/node-floor.mjs`, which
+ * `run` reads too; both manifests state it in `engines`.
  */
-var NODE_FLOOR = 22
+import { NODE_FLOOR } from '../src/node-floor.mjs'
 
 function lastResort(error) {
   // Nothing should arrive here: `run` reports its own failures in one line.

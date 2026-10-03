@@ -22,19 +22,17 @@
  * package manager's own words.
  */
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 
+import { NODE_FLOOR } from './node-floor.mjs'
 import { readTar } from './tar.mjs'
 
 const NAME = 'create-uno-blueprint'
 
 /** This package's version, which is the template's: the version guard holds the two together. */
 const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version
-
-/** The oldest Node the template runs on. The root manifest's `engines` states the same floor. */
-const NODE_FLOOR = 22
 
 const DEFAULT_DIRECTORY = 'uno-blueprint'
 
@@ -126,9 +124,14 @@ function callingPackageManager(env) {
  * Resolves with the exit code. Rejects when it could not be started at all,
  * and when a signal ended it, which is not an install that finished.
  *
+ * The command and arguments are taken as words, never as anything a user
+ * typed: on Windows they are joined into one string for a shell, unquoted.
+ * `run` passes an entry of the table above, whose words need no quoting, and
+ * any other caller has to pass words that do not either.
+ *
  * @param {object} request
- * @param {string} request.command
- * @param {string[]} request.args
+ * @param {string} request.command  a package manager's command from the table, or another word that needs no quoting
+ * @param {string[]} request.args  its arguments, on the same terms
  * @param {string} request.cwd
  * @param {import('node:child_process').StdioOptions} [request.stdio]
  * @returns {Promise<number>}
@@ -137,8 +140,8 @@ export function installWith({ command, args, cwd, stdio = 'inherit' }) {
   return new Promise((resolveCode, reject) => {
     // On Windows a package manager is a `.cmd` shim, which only a shell runs,
     // and a shell is handed one string rather than a list it would have to
-    // join unquoted. The string is safe to hand over: every word of it comes
-    // from the table above, and none from the user.
+    // join unquoted. Safe for the words this is given, which the comment
+    // above holds every caller to.
     const child =
       process.platform === 'win32'
         ? spawn(typed(command, args), { cwd, stdio, shell: true })
@@ -263,8 +266,13 @@ export async function run({
 
   // The highest folder this run will have made: the target, or the first of
   // its parents that is not there yet. It is what a failed write takes back.
+  // `lstat`, not `exists`: a link that points nowhere is a thing that is
+  // there, and it is the user's. Followed, it reads as absent, and a failed
+  // write would take it back as though this run had made it.
   let made = null
-  for (let path = target; !existsSync(path); path = dirname(path)) made = path
+  for (let path = target; lstatSync(path, { throwIfNoEntry: false }) === undefined; path = dirname(path)) {
+    made = path
+  }
 
   try {
     for (const { segments, kind, mode, data } of entries) {
@@ -298,18 +306,22 @@ export async function run({
   }
 
   const { pm, unsupported } = callingPackageManager(env)
-  const { command, install: installArgs, dev } = PACKAGE_MANAGERS[pm]
+  const { command, install: installArgs } = PACKAGE_MANAGERS[pm]
   const where = here ? 'this folder' : directory
   stdout.write(`Uno Blueprint ${VERSION} is in ${where}.`)
 
-  // The files are written either way: they are a whole workspace, and one of
-  // the managers that can run it finishes the job. `--no-install` changes
-  // nothing here, because the next steps would be this caller's own.
-  if (unsupported) {
+  // Yarn 2 and later get the workspace and not the install. Asked to install,
+  // that is a refusal; asked not to, it is what was asked for, and what is
+  // owed is who can install it and the steps in the words of one that can.
+  if (unsupported && asked.install) {
     stdout.write('\n')
     return fail(
       `the workspace is in ${where}, but it was not installed: ${unsupported} cannot run it. It runs under npm, pnpm, Bun and Yarn 1, so install with one of those in ${where}.`,
     )
+  }
+  if (unsupported) {
+    stdout.write(`\n${unsupported} cannot install or run it; npm, pnpm, Bun or Yarn 1 can, and the steps below are npm's.\n`)
+    return nextSteps(PACKAGE_MANAGERS.npm, { install: true })
   }
 
   if (asked.install) {
@@ -335,14 +347,18 @@ export async function run({
     stdout.write('\n')
   }
 
-  // The install is a next step only when it was not done here.
-  const steps = [
-    ...(here ? [] : [`cd ${directory}`]),
-    ...(asked.install ? [] : [typed(command, installArgs)]),
-    typed(command, dev),
-  ]
-  stdout.write(`\nNext steps:\n\n${steps.map((step) => `  ${step}\n`).join('')}`)
-  return 0
+  return nextSteps(PACKAGE_MANAGERS[pm], { install: !asked.install })
+
+  /** The lines left to type, in one manager's words, and the exit code that ends a complete run. */
+  function nextSteps({ command, install: args, dev: devArgs }, { install: stillToInstall }) {
+    const steps = [
+      ...(here ? [] : [`cd ${directory}`]),
+      ...(stillToInstall ? [typed(command, args)] : []),
+      typed(command, devArgs),
+    ]
+    stdout.write(`\nNext steps:\n\n${steps.map((step) => `  ${step}\n`).join('')}`)
+    return 0
+  }
 }
 
 /**
