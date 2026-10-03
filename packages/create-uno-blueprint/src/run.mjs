@@ -22,7 +22,7 @@
  * package manager's own words.
  */
 import { spawn } from 'node:child_process'
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { accessSync, constants, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 
@@ -50,9 +50,9 @@ Writes an Uno Blueprint workspace, the template at release ${VERSION}, into
 this command. The folder must be empty or not exist yet. Default: ${DEFAULT_DIRECTORY}
 
 Options:
-  --no-install   write the workspace and leave its dependencies uninstalled
-  --help         show this message
-  --version      show the version
+  --no-install   Write the workspace and skip installing dependencies
+  --help         Show this message
+  --version      Show the version
 `
 
 /** The tarball GitHub serves for this version's release tag. */
@@ -227,6 +227,9 @@ export async function run({
   const target = resolve(cwd, directory)
   /** Whether the workspace is the folder the command was run in, which changes how it is spoken of. */
   const here = target === resolve(cwd)
+  // The highest folder this run will make: the target, or the first of its
+  // parents that is not there yet. It is what a failed write takes back.
+  let made = null
   try {
     const existed = existsSync(target)
     if (existed && !statSync(target).isDirectory()) {
@@ -237,8 +240,24 @@ export async function run({
         `${here ? 'this folder' : directory} already has files in it. Name an empty folder, or one that does not exist yet.`,
       )
     }
+    // `lstat`, not `exists`: a link that points nowhere is a thing that is
+    // there, and it is the user's. Followed, it reads as absent, and a failed
+    // write would take it back as though this run had made it. Anything but
+    // absence — a file where a folder has to go, a parent that cannot be
+    // searched — throws, and is answered below.
+    for (let path = target; lstatSync(path, { throwIfNoEntry: false }) === undefined; path = dirname(path)) {
+      made = path
+    }
+    // The folder the new ones go into has to be one, and one this user can
+    // write in. Asked now, so a target that can never be written costs no
+    // download.
+    if (made !== null) {
+      const parent = dirname(made)
+      if (!statSync(parent).isDirectory()) throw new Error(`${parent} is not a folder`)
+      accessSync(parent, constants.W_OK | constants.X_OK)
+    }
   } catch (error) {
-    return fail(`could not read ${directory} (${reason(error)}).`)
+    return fail(`could not use ${directory} (${reason(error)}).`)
   }
 
   const url = RELEASE_URL
@@ -262,16 +281,6 @@ export async function run({
         ? `it unpacks to more than ${UNPACKED_LIMIT_MB} MB`
         : reason(error)
     return fail(`the template downloaded from ${url} could not be unpacked (${why}).`)
-  }
-
-  // The highest folder this run will have made: the target, or the first of
-  // its parents that is not there yet. It is what a failed write takes back.
-  // `lstat`, not `exists`: a link that points nowhere is a thing that is
-  // there, and it is the user's. Followed, it reads as absent, and a failed
-  // write would take it back as though this run had made it.
-  let made = null
-  for (let path = target; lstatSync(path, { throwIfNoEntry: false }) === undefined; path = dirname(path)) {
-    made = path
   }
 
   try {
@@ -321,7 +330,8 @@ export async function run({
   }
   if (unsupported) {
     stdout.write(`\n${unsupported} cannot install or run it; npm, pnpm, Bun or Yarn 1 can, and the steps below are npm's.\n`)
-    return nextSteps(PACKAGE_MANAGERS.npm, { install: true })
+    stdout.write(nextSteps({ manager: PACKAGE_MANAGERS.npm, directory: here ? null : directory, installed: false }))
+    return 0
   }
 
   if (asked.install) {
@@ -347,18 +357,22 @@ export async function run({
     stdout.write('\n')
   }
 
-  return nextSteps(PACKAGE_MANAGERS[pm], { install: !asked.install })
+  stdout.write(nextSteps({ manager: PACKAGE_MANAGERS[pm], directory: here ? null : directory, installed: asked.install }))
+  return 0
+}
 
-  /** The lines left to type, in one manager's words, and the exit code that ends a complete run. */
-  function nextSteps({ command, install: args, dev: devArgs }, { install: stillToInstall }) {
-    const steps = [
-      ...(here ? [] : [`cd ${directory}`]),
-      ...(stillToInstall ? [typed(command, args)] : []),
-      typed(command, devArgs),
-    ]
-    stdout.write(`\nNext steps:\n\n${steps.map((step) => `  ${step}\n`).join('')}`)
-    return 0
-  }
+/**
+ * The lines left to type, in one manager's words: into the workspace unless
+ * it is the current folder (`directory` null), the install unless it was
+ * done here, and the line that starts the canvas.
+ */
+function nextSteps({ manager, directory, installed }) {
+  const steps = [
+    ...(directory === null ? [] : [`cd ${directory}`]),
+    ...(installed ? [] : [typed(manager.command, manager.install)]),
+    typed(manager.command, manager.dev),
+  ]
+  return `\nNext steps:\n\n${steps.map((step) => `  ${step}\n`).join('')}`
 }
 
 /**

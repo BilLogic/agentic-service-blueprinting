@@ -423,6 +423,45 @@ test.skipIf(process.platform === 'win32')(
   },
 )
 
+test('a file on the way to the target is refused in one line, before anything is downloaded', async () => {
+  writeFileSync(join(cwd, 'afile'), '')
+
+  const { code, out, err, asked } = await create(['afile/new'])
+
+  assert.equal(code, 1)
+  assert.equal(out, '')
+  oneLine(err)
+  assert.match(err, /afile\/new/)
+  assert.deepEqual(asked, [])
+  assert.deepEqual(disk(), ['afile'])
+})
+
+// Root searches and writes any folder, so there is nothing to refuse.
+for (const [mode, shape] of [
+  [0o000, 'cannot be searched'],
+  [0o555, 'cannot be written'],
+]) {
+  test.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+    `a parent that ${shape} is refused in one line, before anything is downloaded`,
+    async () => {
+      mkdirSync(join(cwd, 'locked'))
+      chmodSync(join(cwd, 'locked'), mode)
+      try {
+        const { code, out, err, asked } = await create(['locked/new'])
+
+        assert.equal(code, 1)
+        assert.equal(out, '')
+        oneLine(err)
+        assert.match(err, /locked\/new/)
+        assert.match(err, /EACCES/)
+        assert.deepEqual(asked, [])
+      } finally {
+        chmodSync(join(cwd, 'locked'), 0o755)
+      }
+    },
+  )
+}
+
 // Root reads a mode-000 folder like any other, so there is nothing to refuse.
 test.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
   'a folder that cannot be read is reported in one line, before anything is downloaded',
