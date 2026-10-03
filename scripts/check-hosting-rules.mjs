@@ -69,17 +69,29 @@
  * `dist/<prefix>/`, so the hashed chunks are `/<prefix>/assets/*` and the
  * fallback is `/<prefix>/*`. The check reads the same setting — the
  * environment first, then the `[build.environment]` table of `netlify.toml`,
- * which is where a host that builds from the file takes it — and holds the
- * prefixed rules to the same order and the same cache. A table still written
- * for the root is then the defect: its `/assets/*` rule matches nothing the
- * site serves. Unset, the base is `/` and every rule reads as it always did.
+ * which is where a host that builds from the file takes it. The build writes
+ * the prefixed rules itself: `dist/_redirects` gets the root redirect, the
+ * `/<prefix>/assets/*` 404 and the `/<prefix>/*` fallback, in that order, and
+ * the hashed cache in `dist/_headers` moves under the prefix. So a committed
+ * file still written for the root is held to the root's rules, and one that
+ * already names the prefix — a deployment writing the rules by hand — is held
+ * to the whole prefixed set. Unset, the base is `/` and every rule reads as it
+ * always did.
+ *
+ * `--built` reads the build instead of the commit: `dist/_redirects` and
+ * `dist/_headers`, held strictly to the rules of the base the build was made
+ * for. That is the half that proves the build wrote what it says it writes.
  *
  * What it counts is RULES, not files. Every file here passes every assertion
  * below when it is empty, so a run over emptied files would otherwise print
  * the same green line as a run over the real ones.
  *
  * Run: node scripts/check-hosting-rules.mjs   (also: npm run check:hosting)
+ *      node scripts/check-hosting-rules.mjs --built   (after npm run build)
  */
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
 import { sweep } from './sweep.mjs'
 import { whenRun } from './verdict.mjs'
 
@@ -148,19 +160,55 @@ export function basePathIn(configText, env = process.env) {
 
 /**
  * The rules, under a base path: the hashed output's path, the missing-chunk
- * rule in full, and the catch-all's `from`. At `/` these are `ASSETS`,
- * `MISSING_CHUNK` and `/*`.
+ * rule in full, the catch-all's `from`, the single-page fallback in full, and
+ * the redirect that sends the site root on to the prefix. At `/` these are
+ * `ASSETS`, `MISSING_CHUNK`, `/*`, `/*` → `/index.html`, and no redirect —
+ * the root is where the app already is.
+ *
+ * Under a prefix they are also what the build writes into `dist/_redirects`,
+ * in this order: the root redirect, the missing-chunk rule, the fallback.
+ * `vite.config.ts` writes them from its own copy, because a config reads no
+ * script, and `a-path-build-writes-its-hosting-rules.test.mjs` holds that copy
+ * to this one.
  *
  * @param {string} [base]
  */
 export function hostingRules(base = '/') {
-  if (base === '/') return { assets: ASSETS, missingChunk: MISSING_CHUNK, catchAll: '/*' }
+  if (base === '/') {
+    return {
+      assets: ASSETS,
+      missingChunk: MISSING_CHUNK,
+      catchAll: '/*',
+      fallback: { from: '/*', to: '/index.html', status: '200' },
+      toPrefix: null,
+    }
+  }
   const assets = `${base}assets/*`
   return {
     assets,
     missingChunk: { from: assets, to: `${base}assets/:splat`, status: MISSING_CHUNK.status },
     catchAll: `${base}*`,
+    fallback: { from: `${base}*`, to: `${base}index.html`, status: '200' },
+    toPrefix: { from: '/', to: base, status: '301' },
   }
+}
+
+/**
+ * The base a committed rule file is written for: the deployment's base when
+ * any rule in it already names the prefix, and the root otherwise.
+ *
+ * A build under a prefix writes the prefixed rules into `dist/` itself, so a
+ * committed file still written for the root is no longer the defect — it is
+ * the default, and it is held to the root's order and cache. A file that names
+ * the prefix is a deployment writing the rules by hand, and is held to the
+ * whole prefixed set: half of it is the defect it always was.
+ *
+ * @param {Array<string | undefined>} paths every `from` or header path in the file
+ * @param {string} base
+ */
+export function baseWrittenFor(paths, base) {
+  if (base === '/') return '/'
+  return paths.some((path) => path?.startsWith(base)) ? base : '/'
 }
 
 /** What a hashed asset may be cached for. A year, and never revalidated. */
@@ -575,7 +623,10 @@ export function hostingSweep(root = process.cwd()) {
  * `count` falls to zero and the NO SUBJECT outcome says the rest.
  *
  * `base` is the path the deployment is served from; `judge` reads it with
- * `basePathIn`, and every rule below is held under it.
+ * `basePathIn`. Each file is held to the rules of the base it is written for
+ * (`baseWrittenFor`): the prefixed set where it names the prefix, the root's
+ * where it does not, because the build then writes the prefixed set itself.
+ * `judgedAt` is the base `netlify.toml` was held to.
  *
  * @param {{ read: (path: string) => string | null, files: string[] }} walk
  * @param {string} [base]
@@ -584,6 +635,7 @@ export function hostingFindings(walk, base = '/') {
   const tracked = new Set(walk.files)
   const found = []
   let rules = 0
+  let judgedAt = base
 
   /** Present, committed, or neither — asked of one rule file. */
   const present = (subject, required) => {
@@ -612,19 +664,27 @@ export function hostingFindings(walk, base = '/') {
     const blocks = redirectsIn(config)
     const tomlHeaders = tomlHeaderBlocksIn(config)
     rules += blocks.length + tomlHeaders.length
-    found.push(...orderFindings(blocks, CONFIG, '', base))
+    judgedAt = baseWrittenFor(
+      [...blocks.map((block) => block.from), ...tomlHeaders.map((block) => block.path)],
+      base,
+    )
+    found.push(...orderFindings(blocks, CONFIG, '', judgedAt))
     // `[[headers]]` here does not have to declare the hashed cache — that is
     // `public/_headers`'s one home for it — but a long cache on an unhashed
     // path is the defect wherever it was written down.
-    found.push(...longCacheFindings(tomlHeaders, CONFIG, base))
+    found.push(...longCacheFindings(tomlHeaders, CONFIG, judgedAt))
   }
 
   const headers = present(HEADERS, true)
   if (headers !== null) {
     const blocks = headerBlocksIn(headers)
+    const at = baseWrittenFor(
+      blocks.map((block) => block.path),
+      base,
+    )
     rules += blocks.length
-    found.push(...hashedCacheFindings(blocks, HEADERS, base))
-    found.push(...longCacheFindings(blocks, HEADERS, base))
+    found.push(...hashedCacheFindings(blocks, HEADERS, at))
+    found.push(...longCacheFindings(blocks, HEADERS, at))
   }
 
   // Optional, and read for anyway: this template ships none, and a repository
@@ -633,7 +693,86 @@ export function hostingFindings(walk, base = '/') {
   if (fileRedirects !== null) {
     const lines = redirectLinesIn(fileRedirects)
     rules += lines.length
-    found.push(...fileRedirectFindings(fileRedirects, FILE_REDIRECTS, base))
+    found.push(
+      ...fileRedirectFindings(
+        fileRedirects,
+        FILE_REDIRECTS,
+        baseWrittenFor(
+          lines.map((rule) => rule.from),
+          base,
+        ),
+      ),
+    )
+  }
+
+  return { failures: found, rules, judgedAt }
+}
+
+/** Where a build publishes the redirect file a host reads first. */
+export const BUILT_REDIRECTS = 'dist/_redirects'
+
+/** Where a build publishes the response headers. */
+export const BUILT_HEADERS = 'dist/_headers'
+
+/**
+ * Every finding over a BUILT output, and how many rules were read for them.
+ *
+ * The committed files say what a repository asked for; `dist/` is what a host
+ * is handed. Under a prefix they differ — the build writes the prefixed rules
+ * into `dist/_redirects` and moves the hashed cache in `dist/_headers` — so
+ * the published pair is held to the whole prefixed set here, strictly, with
+ * no root reading to fall back on: the root redirect, then the missing-chunk
+ * rule above the fallback, nothing forced, and only `/<prefix>/assets/*`
+ * cached past a deploy. At the root a build writes no `_redirects` and the
+ * `netlify.toml` table answers, so only the headers are required.
+ *
+ * Read from disk rather than from the commit: `dist/` is never committed, and
+ * whether a file is tracked says nothing about what a build just wrote.
+ *
+ * @param {(path: string) => string | null} read
+ * @param {string} [base]
+ */
+export function builtFindings(read, base = '/') {
+  const found = []
+  let rules = 0
+  const { toPrefix } = hostingRules(base)
+
+  const redirects = read(BUILT_REDIRECTS)
+  if (redirects === null) {
+    if (toPrefix) {
+      found.push(
+        `${BUILT_REDIRECTS} is not in the build. A build under BASE_PATH=${base} writes the ` +
+          `prefixed rules there, and without them no deep link under ${base} reaches the app. ` +
+          `Build again with BASE_PATH=${base} set.`,
+      )
+    }
+  } else {
+    const lines = redirectLinesIn(redirects)
+    rules += lines.length
+    found.push(...fileRedirectFindings(redirects, BUILT_REDIRECTS, base))
+    if (toPrefix) {
+      const root = lines.find((rule) => rule.from === toPrefix.from)
+      if (!root || root.to !== toPrefix.to || root.status !== toPrefix.status) {
+        found.push(
+          `${BUILT_REDIRECTS} does not send \`${toPrefix.from}\` on to \`${toPrefix.to}\` with ` +
+            `a ${toPrefix.status}, so a visitor to the site root meets a 404 where the app is ` +
+            'one path segment away.',
+        )
+      }
+    }
+  }
+
+  const headers = read(BUILT_HEADERS)
+  if (headers === null) {
+    found.push(
+      `${BUILT_HEADERS} is not in the build, so nothing tells the host to cache the hashed ` +
+        'output — or to send the CSP. Build again; `public/_headers` is what it is made from.',
+    )
+  } else {
+    const blocks = headerBlocksIn(headers)
+    rules += blocks.length
+    found.push(...hashedCacheFindings(blocks, BUILT_HEADERS, base))
+    found.push(...longCacheFindings(blocks, BUILT_HEADERS, base))
   }
 
   return { failures: found, rules }
@@ -644,12 +783,53 @@ export function hostingFindings(walk, base = '/') {
  *
  * Pure — it reads, decides, and hands back what it found and how many rules it
  * counted. Nothing here prints or exits.
+ *
+ * `built` (`--built` on the command line) reads the build in `dist/` instead
+ * of the commit: what a host is handed, after a build under `BASE_PATH` has
+ * written the prefixed rules into it.
+ *
+ * @param {string} [root]
+ * @param {Record<string, string | undefined>} [env]
+ * @param {{ built?: boolean }} [mode]
  */
-export function judge(root = process.cwd(), env = process.env) {
+export function judge(
+  root = process.cwd(),
+  env = process.env,
+  { built = process.argv.slice(2).includes('--built') } = {},
+) {
+  const plural = (count) => `${count} rule${count === 1 ? '' : 's'}`
+  if (built) {
+    const read = (path) => {
+      const file = resolve(root, path)
+      return existsSync(file) ? readFileSync(file, 'utf8') : null
+    }
+    const base = basePathIn(read(CONFIG), env)
+    const { assets, missingChunk, catchAll } = hostingRules(base)
+    const { failures, rules } = builtFindings(read, base)
+    return {
+      what: 'a hosting rule a build publishes',
+      count: rules,
+      opening: `The rule files this build publishes for ${base} do not say what they have to:\n`,
+      findings: failures.map((one) => `  ${one}`),
+      closing:
+        `\n${plural(failures.length)} to fix in ${BUILT_REDIRECTS} / ${BUILT_HEADERS}. ` +
+        'Build again, then run npm run check:hosting -- --built.',
+      line:
+        base === '/'
+          ? `[hosting] ${rules} rules in the build for / — only ${assets} is cached past a ` +
+            `deploy, and the redirect table is ${CONFIG}'s.`
+          : `[hosting] ${rules} rules in the build for ${base} — a missing chunk answers ` +
+            `${missingChunk.status} above the ${catchAll} catch-all, nothing is forced, and ` +
+            `only ${assets} is cached past a deploy.`,
+    }
+  }
+
   const walk = hostingSweep(root)
   const base = basePathIn(walk.read(CONFIG), env)
-  const { assets, missingChunk, catchAll } = hostingRules(base)
-  const { failures, rules } = hostingFindings(walk, base)
+  const { failures, rules, judgedAt } = hostingFindings(walk, base)
+  const { assets, missingChunk, catchAll } = hostingRules(judgedAt)
+  const written =
+    judgedAt === base ? '' : ` The build writes the ${base} rules into ${BUILT_REDIRECTS}.`
   return {
     what: 'a hosting rule a commit would carry',
     count: rules,
@@ -657,12 +837,12 @@ export function judge(root = process.cwd(), env = process.env) {
       'The files a host reads before any of this code runs no longer say what they have to:\n',
     findings: failures.map((one) => `  ${one}`),
     closing:
-      `\n${failures.length} rule${failures.length === 1 ? '' : 's'} to fix in ${CONFIG} / ` +
-      `${HEADERS}. Then run npm run check:hosting.`,
+      `\n${plural(failures.length)} to fix in ${CONFIG} / ${HEADERS}. ` +
+      'Then run npm run check:hosting.',
     line:
       `[hosting] ${rules} rules in ${CONFIG} and ${HEADERS} — a missing chunk answers ` +
       `${missingChunk.status} above the ${catchAll} catch-all, nothing is forced, and only ` +
-      `${assets} is cached past a deploy.`,
+      `${assets} is cached past a deploy.${written}`,
   }
 }
 

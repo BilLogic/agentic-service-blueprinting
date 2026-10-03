@@ -154,7 +154,7 @@ All three are generated. Edit a migration and run `npm run generate:portable-cor
 
 `netlify.toml` at the repo root carries the build command, `dist/` publish dir, node version, and the redirect table — a 404 for `/assets/*` above the SPA fallback (`/* /index.html 200`). `public/_headers` carries the CSP and the one-year immutable cache for `/assets/*`. Both files are held by `npm run check:hosting`. Any static host works — the build always produces a plain `dist/`; live-DB mode needs `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` at **build time**. Blueprint-specific deploy gotchas: [skills/map/references/deploy-notes.md](./skills/map/references/deploy-notes.md).
 
-**Serving from a path** (`https://example.org/demo/` rather than a domain root): set `BASE_PATH=/demo/` at build time. The output then lands in `dist/demo/`, every URL the app reads or writes keeps the prefix, and the redirect and cache rules move under `/demo/`. The rules, and the one-line Netlify rewrite for showing the app under a path on another site, are in [guide/04 § Serving from a path](./docs/guide/04-operations.md#serving-from-a-path).
+**Serving from a path** (`https://example.org/demo/` rather than a domain root): set `BASE_PATH=/demo/` at build time. The output then lands in `dist/demo/`, every URL the app reads or writes keeps the prefix, and the build writes the redirect and cache rules for `/demo/` into `dist/`. The rules, and the one-line Netlify rewrite for showing the app under a path on another site, are in [guide/04 § Serving from a path](./docs/guide/04-operations.md#serving-from-a-path).
 
 ### Connect your agents
 

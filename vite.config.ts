@@ -1,5 +1,5 @@
 /// <reference types="vitest/config" />
-import { existsSync, renameSync } from 'fs'
+import { existsSync, readFileSync, renameSync, writeFileSync } from 'fs'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
@@ -172,20 +172,101 @@ export function basePath(value: string | undefined): string {
 }
 
 /**
- * The host's own files, put back where the host reads them.
+ * The hosting rules a build served from a path writes for itself.
+ *
+ * `netlify.toml` is written for the root, and a repository that serves the
+ * root from it cannot also serve a prefix from it. So under a prefix the build
+ * writes the prefixed rules into the files a host reads BEFORE that table:
+ *
+ *   `_redirects` — `/` sent on to the prefix with a 301, the
+ *   `/<prefix>/assets/*` 404 for a hashed chunk the deploy no longer ships,
+ *   then the `/<prefix>/*` single-page fallback. In that order, and none of
+ *   them forced: the 404 below the fallback is never reached, and a forced
+ *   404 answers for every asset that IS there.
+ *
+ *   `_headers` — the year-long cache on the hashed output moves to
+ *   `/<prefix>/assets/*`, the only path the hashed names are served from.
+ *   Headers that already name it are a deployment writing the rule by hand,
+ *   and are left as they are.
+ *
+ * A `_redirects` the repository wrote itself is kept, first, so its own rules
+ * still apply above the fallback. A rule in it that answers a path the
+ * generated rules are for — `/`, or anything that covers the prefix — would
+ * answer in their place, and the build refuses it in one line rather than
+ * publish a site whose deep links depend on which rule a host met first.
+ *
+ * The rules are stated here rather than imported because this file is bundled
+ * in isolation. The template's hosting check states them too, and the
+ * template's own suite reads what this writes back through that check, so the
+ * two are one fact.
+ */
+const IMMUTABLE = 'public, max-age=31536000, immutable'
+
+export function hostRulesUnder(
+  base: string,
+  own: { redirects: string | null; headers: string | null },
+): { redirects: string; headers: string } {
+  const assets = `${base}assets/*`
+  const rules = [
+    ['/', base, '301'],
+    [assets, `${base}assets/:splat`, '404'],
+    [`${base}*`, `${base}index.html`, '200'],
+  ]
+  const generated = rules.map(([from]) => from)
+
+  for (const [index, raw] of (own.redirects ?? '').split('\n').entries()) {
+    const line = raw.trim()
+    if (!line || line.startsWith('#')) continue
+    const from = line.split(/\s+/)[0]
+    const covers = from.endsWith('*') && base.startsWith(from.slice(0, -1))
+    if (!generated.includes(from) && !covers) continue
+    throw new Error(
+      `public/_redirects line ${index + 1} sends ${from}, which a host reads before the rules ` +
+        `this build writes for BASE_PATH=${base} (${generated.join(', ')}) and so answers in ` +
+        'their place. Remove the line; the build writes the prefixed rules itself.',
+    )
+  }
+
+  const kept = own.redirects ? `${own.redirects.replace(/\n*$/, '')}\n\n` : ''
+  const redirects =
+    `${kept}# Written by the build for BASE_PATH=${base}: the site root goes on to the\n` +
+    '# prefix, a hashed chunk the deploy no longer ships answers 404, and every\n' +
+    '# other path under the prefix is the app. Read before netlify.toml.\n' +
+    rules.map((rule) => rule.join('  ')).join('\n') +
+    '\n'
+
+  const lines = (own.headers ?? '').split('\n')
+  const block = `${assets}\n  Cache-Control: ${IMMUTABLE}\n`
+  let headers: string
+  if (own.headers === null) headers = block
+  else if (lines.some((line) => line.trimEnd() === assets)) headers = own.headers
+  else if (lines.some((line) => line.trimEnd() === '/assets/*')) {
+    headers = lines.map((line) => (line.trimEnd() === '/assets/*' ? assets : line)).join('\n')
+  } else headers = `${own.headers.replace(/\n*$/, '')}\n\n${block}`
+
+  return { redirects, headers }
+}
+
+/**
+ * The host's own files, put back where the host reads them, with the rules
+ * the prefix needs.
  *
  * `public/_headers` and `public/_redirects` are read from the ROOT of the
  * published directory and nowhere else. Under a prefix the whole output —
  * `public/` included — lands in `dist/<prefix>/`, so without this step the
  * two files are published one level down, where the host never looks, and
  * every rule in them (the CSP, the hashed-asset cache) silently stops
- * applying. At the root there is nothing to move and the step is not loaded.
+ * applying. Once they are back at the root, `hostRulesUnder` writes the
+ * prefixed rules into them. At the root there is nothing to move or write,
+ * and the step is not loaded.
  */
 const HOST_FILES = ['_headers', '_redirects']
 
 function hostFilesAtPublishRoot(base: string): Plugin[] {
   if (base === '/') return []
   const publishRoot = path.resolve(import.meta.dirname, 'dist')
+  const at = (file: string) => path.join(publishRoot, file)
+  const read = (file: string) => (existsSync(at(file)) ? readFileSync(at(file), 'utf8') : null)
   return [
     {
       name: 'host-files-at-publish-root',
@@ -193,8 +274,14 @@ function hostFilesAtPublishRoot(base: string): Plugin[] {
       closeBundle() {
         for (const file of HOST_FILES) {
           const nested = path.join(publishRoot, base, file)
-          if (existsSync(nested)) renameSync(nested, path.join(publishRoot, file))
+          if (existsSync(nested)) renameSync(nested, at(file))
         }
+        const written = hostRulesUnder(base, {
+          redirects: read('_redirects'),
+          headers: read('_headers'),
+        })
+        writeFileSync(at('_redirects'), written.redirects)
+        writeFileSync(at('_headers'), written.headers)
       },
     },
   ]
