@@ -12,9 +12,8 @@
  *   node scripts/decide-initialiser-publish.mjs
  *
  * It reads the run from the environment a workflow sets — `GITHUB_REF_TYPE`,
- * `GITHUB_REF_NAME`, `GITHUB_REPOSITORY`, and `REPOSITORY_IS_FORK`, which the
- * workflow passes in — and appends `publish=true` or `publish=false` to
- * `GITHUB_OUTPUT`. It publishes nothing itself.
+ * `GITHUB_REF_NAME` and `GITHUB_REPOSITORY` — and appends `publish=true` or
+ * `publish=false` to `GITHUB_OUTPUT`. It publishes nothing itself.
  *
  * THREE OUTCOMES, EACH WITH ONE REASON LINE, DECIDED IN THIS ORDER.
  *
@@ -23,12 +22,13 @@
  *            has no package to publish. Decided first, before anything reads
  *            a version: what a workspace kept of the template's release
  *            bookkeeping is its owner's business. Green.
- *   SKIP     This repository is a fork. It carries the manifest and is not
- *            where the package comes from. Green.
- *   REFUSE   This repository is not a fork and is not the one the manifest
- *            names: a rename or a transfer the manifest did not follow. A
- *            green skip there is a release that never reaches the registry
- *            and says nothing. Red, naming both.
+ *   SKIP     This repository is not the one the manifest names. A fork, a
+ *            repository made from the template, and a copy somebody pushed
+ *            elsewhere all carry the manifest, and none of them is where the
+ *            package comes from. Green, in one line naming both. A rename of
+ *            the template's own repository lands here too, which is why the
+ *            manifest's `repository` moves with the rename: the releasing
+ *            guide says so.
  *   REFUSE   The run was not started by a `v<version>` tag, the tag is not
  *            the version the initialiser's manifest states, or the places
  *            that state the version disagree (`check-version-agreement.mjs`
@@ -36,9 +36,10 @@
  *   REFUSE   The tagged commit is not on `main`. Anybody who can push a tag
  *            can push one on any commit, and the versions in a commit that
  *            was never merged agree with each other perfectly well. Red.
- *   REFUSE   The installed npm is older than trusted publishing needs. It
- *            would fail at the publish by asking for a login, which reads as
- *            a missing secret. Red, in one line that names the version.
+ *   REFUSE   The installed npm is older than trusted publishing needs, or
+ *            could not be asked its version. It would fail at the publish by
+ *            asking for a login, which reads as a missing secret. Red, in one
+ *            line that names the version or what went wrong.
  *   REFUSE   The registry could not be asked whether the version exists. Red
  *            rather than a guess, because the guess is a publish. Nothing is
  *            wrong with the release; run it again.
@@ -177,16 +178,15 @@ async function decide({ root, env, isPublished, isOnMain, npmVersion }) {
   const manifest = JSON.parse(readFileSync(path, 'utf8'))
   const { name, version } = manifest
 
-  const here = env.GITHUB_REPOSITORY
   const home = repositoryOf(manifest)
-  if (!home || here?.toLowerCase() !== home.toLowerCase()) {
-    if (env.REPOSITORY_IS_FORK === 'true') {
-      return skip(`${here} is a fork; ${name} is published from ${home ?? 'the repository its manifest names'}`)
-    }
-    return refuse(
-      `this run is in ${here ?? '(no repository named)'} and ${INITIALISER_MANIFEST} names ` +
-        `${home ?? '(none it can read)'} as its repository. If the repository was renamed ` +
-        `or moved, the manifest and the trusted publisher on npmjs.com both follow it.`,
+  if (!home) {
+    return refuse(`${INITIALISER_MANIFEST} names no GitHub repository this can read`)
+  }
+  const here = env.GITHUB_REPOSITORY
+  if (here?.toLowerCase() !== home.toLowerCase()) {
+    return skip(
+      `this run is in ${here ?? '(no repository named)'} and ${name} is published from ` +
+        `${home}, the repository its manifest names; nothing published`,
     )
   }
 
@@ -215,7 +215,12 @@ async function decide({ root, env, isPublished, isOnMain, npmVersion }) {
     return refuse(error.message)
   }
 
-  const npm = npmVersion()
+  let npm
+  try {
+    npm = npmVersion()
+  } catch (error) {
+    return refuse(`npm could not be asked its version: ${error.message.split('\n')[0]}`)
+  }
   if (!meetsNpmFloor(npm)) {
     return refuse(
       `npm ${npm} is older than ${NPM_FLOOR.join('.')}, the first that can publish without ` +

@@ -77,19 +77,14 @@ jobs:
       # THE DECISION, BEFORE THE ONE COMMAND THAT CANNOT BE TAKEN BACK. Red
       # when the tag and the initialiser's version disagree, when the places
       # that state the version do, when the tagged commit is not on `main`,
-      # when npm is too old, when the repository is not the one the manifest
-      # names, or when the registry cannot be asked. `publish=false` and green
-      # when the registry already has this version, or when this tree is a
-      # workspace or a fork and has nothing to publish. `publish=true`
+      # when npm is too old or cannot be asked, or when the registry cannot be
+      # asked. `publish=false` and green when the registry already has this
+      # version, when this tree is a workspace, or when this repository is not
+      # the one the manifest names (a fork, or a repository made from the
+      # template). `publish=true`
       # otherwise. The script's header is the account.
-      #
-      # Whether this repository is a fork is the one fact the runner does not
-      # put in the environment by itself, so it is passed in here, as a
-      # variable and never spliced into the command.
       - name: Decide whether this tag publishes
         id: decide
-        env:
-          REPOSITORY_IS_FORK: ${{ github.event.repository.fork }}
         run: node scripts/decide-initialiser-publish.mjs
 
       # From the initialiser's own folder: the root manifest is `private` and

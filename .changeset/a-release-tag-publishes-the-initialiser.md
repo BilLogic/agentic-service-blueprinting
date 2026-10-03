@@ -11,11 +11,11 @@ workflow file by name, so no npm token is stored anywhere.
 
 The workflow asks `scripts/decide-initialiser-publish.mjs` before it publishes.
 It refuses a tag that is not the version the initialiser states, a tree whose
-version statements disagree, a tag on a commit that is not on `main`, an npm
-too old to publish without a token, and a repository that is not the one the
-manifest names. A version the registry already has is left alone and the run
-is green, so re-running a tag's run is safe. A workspace or a fork, which
-carries the workflow and has no package to publish, does nothing.
+version statements disagree, a tag on a commit that is not on `main`, and an
+npm too old to publish without a token. A version the registry already has is
+left alone and the run is green, so re-running a tag's run is safe. A
+workspace, a fork, or a repository made from the template carries the workflow
+and is not where the package comes from, so there it does nothing.
 
 The package now ships a README and a LICENSE, and its manifest states
 `publishConfig.access`, `bugs` and a `homepage` that opens the README.

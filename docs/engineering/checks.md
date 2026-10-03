@@ -42,7 +42,7 @@ goes red the same way. The publish workflow runs it on a release tag, before
 
 | Command | What goes red |
 | --- | --- |
-| `node scripts/decide-initialiser-publish.mjs` | The run would publish the initialiser and should not: it was not started by a `v<version>` tag, the tag is not the version the initialiser's manifest states, the statements `check:version` holds disagree, the tagged commit is not on `main`, the job's npm is older than trusted publishing needs, the repository is neither a fork nor the one the manifest names, or the registry could not be asked. It is green and publishes nothing when the registry already has the version, in a fork, and in a tree with no initialiser. It reads the run from the environment a workflow sets, so run by hand it is red for want of one. [releasing.md § 6](./releasing.md) has every outcome and what to do about it. |
+| `node scripts/decide-initialiser-publish.mjs` | The run would publish the initialiser and should not: it was not started by a `v<version>` tag, the tag is not the version the initialiser's manifest states, the statements `check:version` holds disagree, the tagged commit is not on `main`, the job's npm is older than trusted publishing needs or cannot be asked, or the registry could not be asked. It is green and publishes nothing when the registry already has the version, in a repository other than the one the initialiser's manifest names (a fork, or a repository made from the template), and in a tree with no initialiser. It reads the run from the environment a workflow sets, so run by hand it skips for want of one. [releasing.md § 6](./releasing.md) has every outcome and what to do about it. |
 
 Procedure: [releasing.md](./releasing.md).
 

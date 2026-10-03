@@ -90,7 +90,6 @@ const TAG_RUN = {
   GITHUB_REF_TYPE: 'tag',
   GITHUB_REF_NAME: 'v2.4.0',
   GITHUB_REPOSITORY: 'BilLogic/uno-blueprint',
-  REPOSITORY_IS_FORK: 'false',
 }
 
 /**
@@ -225,6 +224,21 @@ test('an npm older than trusted publishing needs is refused in one line', async 
   }
 })
 
+test('an npm that cannot be asked its version is a refusal in one line', async () => {
+  const registry = registryHolding()
+  const { outcome, reason, output } = await settled({
+    npmVersion: () => {
+      throw new Error('spawnSync npm ENOENT\n    at somewhere')
+    },
+    isPublished: registry.isPublished,
+  })
+  assert.equal(outcome, 'refuse')
+  assert.match(reason, /npm could not be asked its version: spawnSync npm ENOENT/)
+  assert.ok(!reason.includes('\n'), reason)
+  assert.deepEqual(registry.asked, [])
+  assert.equal(output, 'publish=false\n')
+})
+
 test('a registry that could not be asked is a refusal, never a publish', async () => {
   const { outcome, reason, output } = await settled({
     isPublished: async () => {
@@ -266,33 +280,40 @@ test('a workspace that dropped its changelog and plugin manifest still skips', a
   assert.equal(outcome, 'skip')
 })
 
-test('a fork is not where the package is published from, and says so in green', async () => {
+test('a repository other than the one the manifest names has nothing to publish', async () => {
+  // A fork, a repository made from the template with "Use this template", a
+  // copy pushed elsewhere: each carries the manifest and the workflow, none is
+  // where the package comes from, and a tag pushed there is not a failure. A
+  // rename of the template's own repository looks the same, which is why the
+  // manifest's `repository` moves with it.
   const registry = registryHolding()
-  const { outcome, reason, output } = await settled({
-    env: { GITHUB_REPOSITORY: 'somebody/uno-blueprint', REPOSITORY_IS_FORK: 'true' },
-    isPublished: registry.isPublished,
-  })
-  assert.equal(outcome, 'skip')
-  assert.match(reason, /fork/)
-  assert.deepEqual(registry.asked, [])
-  assert.equal(output, 'publish=false\n')
-})
-
-test('a repository that is not a fork and not the one the manifest names is refused', async () => {
-  // A rename or a transfer: the workflow is where it should be and the
-  // manifest still names the old place. Skipping green would be a release
-  // that silently never reaches the registry.
-  const registry = registryHolding()
-  for (const repository of ['BilLogic/uno-blueprint-next', 'NewOwner/uno-blueprint', undefined]) {
-    const { outcome, reason } = await settled({
+  for (const repository of [
+    'somebody/uno-blueprint',
+    'SomeOrg/our-service-blueprint',
+    'BilLogic/uno-blueprint-next',
+    undefined,
+  ]) {
+    const { outcome, reason, output } = await settled({
       env: { GITHUB_REPOSITORY: repository },
       isPublished: registry.isPublished,
     })
-    assert.equal(outcome, 'refuse', String(repository))
+    assert.equal(outcome, 'skip', String(repository))
     assert.ok(reason.includes('BilLogic/uno-blueprint'), reason)
     if (repository) assert.ok(reason.includes(repository), reason)
+    assert.ok(!reason.includes('\n'), reason)
+    assert.equal(output, 'publish=false\n')
   }
   assert.deepEqual(registry.asked, [])
+})
+
+test('a manifest that names no repository it can read is refused', async () => {
+  const root = treeStating('2.4.0')
+  const path = join(root, INITIALISER_MANIFEST)
+  const manifest = JSON.parse(readFileSync(path, 'utf8'))
+  writeFileSync(path, JSON.stringify({ ...manifest, repository: undefined }))
+  const { outcome, reason } = await settled({ root })
+  assert.equal(outcome, 'refuse')
+  assert.match(reason, /names no GitHub repository/)
 })
 
 test('repository names are compared without regard to case', async () => {

@@ -16,7 +16,7 @@ command has the same shape in each:
 ```bash
 npm create uno-blueprint@latest my-blueprint
 pnpm create uno-blueprint my-blueprint
-yarn create uno-blueprint my-blueprint
+yarn create uno-blueprint my-blueprint   # Yarn 1
 bun create uno-blueprint my-blueprint
 ```
 
@@ -24,6 +24,10 @@ bun create uno-blueprint my-blueprint
 the folder is `uno-blueprint`. Give `.` to write into the current folder. The
 folder must be empty or not exist yet: one that already has files in it is
 refused, and nothing of yours is overwritten.
+
+With Yarn, that means Yarn 1. Yarn 2 and later cannot run the template, so
+under them the workspace is written, nothing is installed, and the command
+exits with an error naming the package managers that can.
 
 The command asks no questions, so an agent can run it unattended. It ends by
 printing the commands that start the canvas.
@@ -36,9 +40,9 @@ create-uno-blueprint [directory] [options]
 
 | Option | What it does |
 | --- | --- |
-| `--no-install` | Leave dependencies uninstalled. |
-| `--help`, `-h` | Show the usage. |
-| `--version`, `-v` | Show the version. |
+| `--no-install` | Write the workspace and skip installing dependencies. |
+| `--help` | Show the usage. |
+| `--version` | Show the version. |
 
 With npm, options go after a `--`:
 
@@ -74,7 +78,8 @@ neither git nor a system `tar`, and it has no dependencies.
 
 - The template, its documentation and its issues:
   <https://github.com/BilLogic/uno-blueprint>
-- Published from that repository's release tags, with provenance.
+- Published from that repository's release tags. Every version after the
+  first carries provenance, so you can see it was built there.
 
 ## Licence
 
