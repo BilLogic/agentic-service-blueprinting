@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * The fourth place this repo states its version: the git tag.
+ * The last place this repo states its version: the git tag.
  *
- * `check-version-agreement.mjs` holds the three files together. None of them
- * is what a consumer actually pins — `github:BilLogic/uno-blueprint#v0.4.0`
- * resolves a TAG, and a lockfile integrity hash exists only because a tag
- * names one immutable tree. A release with no tag states a version that
- * nothing downstream can ask for.
+ * `check-version-agreement.mjs` holds the files that state it together — the
+ * manifest, the plugin manifest, the changelog, the lockfile and the
+ * initialiser's manifest. None of them is what a consumer actually pins —
+ * `github:BilLogic/uno-blueprint#v0.4.0` resolves a TAG, and a lockfile
+ * integrity hash exists only because a tag names one immutable tree. A
+ * release with no tag states a version that nothing downstream can ask for.
  *
  *   node scripts/check-release-tag.mjs             # tags that exist must be honest
  *   node scripts/check-release-tag.mjs --require   # ...and this version must have one
