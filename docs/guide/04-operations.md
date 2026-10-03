@@ -124,9 +124,13 @@ answers 404, and every other path under the prefix is the app. In
 holds them to the same order and cache as the committed ones.
 
 A `public/_redirects` of your own is kept, above the generated rules, so a
-rule in it for a path of its own still applies. A rule that answers `/` or
-covers the prefix would answer in place of the generated ones, and the build
-refuses it with one line naming it.
+rule in it for a path of its own (`/old`, `/demo/api/*`) still applies. A line
+that states one of the generated rules exactly is dropped, since the build
+writes it below. Any other rule that answers `/`, the prefix itself, or every
+path under it — through a splat or a `:placeholder`, as `/*`, `/demo/*` or
+`/demo/:slug` do — would answer in place of the generated ones, and the build
+refuses it with one line naming it. `npm run check:hosting` finds the same
+line before a build does.
 
 **Writing the rules by hand.** A deployment that prefers its rules in
 `netlify.toml` can still write them there. `npm run check:hosting` reads

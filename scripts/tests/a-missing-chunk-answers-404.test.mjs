@@ -451,10 +451,27 @@ test('a prefixed deployment passes with prefixed rules', () => {
 test('a prefixed deployment with the root rules passes, because the build writes the prefixed ones', () => {
   const said = hostingFindings(walkOver({ [CONFIG]: ORDERED, [HEADERS]: CACHED }), '/demo/')
   assert.deepEqual(said.failures, [])
-  assert.equal(said.judgedAt, '/')
+  assert.equal(said.redirectsAt, '/')
+  assert.equal(said.headersAt, '/')
   assert.equal(baseWrittenFor(['/assets/*', '/*'], '/demo/'), '/')
   assert.equal(baseWrittenFor(['/demo/*'], '/demo/'), '/demo/')
   assert.equal(baseWrittenFor(['/demo/*'], '/'), '/')
+})
+
+test('under a prefix a `_redirects` of its own is held to what the build accepts', () => {
+  // The build writes the 404 and the fallback below this file, so the file
+  // need not carry them, and a copy of them is dropped rather than refused.
+  const tree = { [CONFIG]: ORDERED, [HEADERS]: CACHED }
+  const own = (text) => hostingFindings(walkOver({ ...tree, [FILE_REDIRECTS]: text }), '/demo/')
+  assert.deepEqual(own('/old  /demo/  301\n').failures, [])
+  assert.deepEqual(
+    own('/demo/assets/*  /demo/assets/:splat  404\n/demo/*  /demo/index.html  200\n').failures,
+    [],
+  )
+  // A root catch-all is read before the generated rules and answers for them.
+  const fallback = own('/*  /index.html  200\n').failures
+  assert.equal(fallback.length, 1)
+  assert.match(fallback[0], /^public\/_redirects:1 sends `\/\*`.*the build refuses it/)
 })
 
 test('a table that names the prefix is held to the whole prefixed set', () => {
@@ -538,13 +555,13 @@ test('`--built` reads `dist/` off the disk, at the base the environment names', 
     writeFileSync(join(root, CONFIG), ORDERED)
     writeFileSync(join(root, BUILT_REDIRECTS), BUILT_PREFIXED)
     writeFileSync(join(root, BUILT_HEADERS), PREFIXED_HEADERS)
-    const said = judge(root, { BASE_PATH: '/demo/' }, { built: true })
+    const said = judge(['--built'], { BASE_PATH: '/demo/' }, root)
     assert.deepEqual(said.findings, [])
     assert.equal(said.count, 5)
     assert.match(said.line, /in the build for \/demo\//)
 
     // The same build judged as a root build is the wrong build.
-    assert.ok(judge(root, {}, { built: true }).findings.length > 0)
+    assert.ok(judge(['--built'], {}, root).findings.length > 0)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
@@ -553,7 +570,7 @@ test('`--built` reads `dist/` off the disk, at the base the environment names', 
 /* ------------------------------------------------- and the committed files */
 
 test('the committed rule files pass, and the check counted them', () => {
-  const said = judge(ROOT, {})
+  const said = judge([], {}, ROOT)
   assert.deepEqual(said.findings, [])
   assert.ok(said.count > 0, 'a green line over no rules is the defect this check exists for')
   const config = readFileSync(resolve(ROOT, CONFIG), 'utf8')

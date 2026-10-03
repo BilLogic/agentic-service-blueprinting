@@ -75,12 +75,16 @@
  * the hashed cache in `dist/_headers` moves under the prefix. So a committed
  * file still written for the root is held to the root's rules, and one that
  * already names the prefix — a deployment writing the rules by hand — is held
- * to the whole prefixed set. Unset, the base is `/` and every rule reads as it
- * always did.
+ * to the whole prefixed set. A `public/_redirects` under a prefix is held to
+ * what the build accepts above the rules it writes: it need not carry them,
+ * and the finding is a line that would answer in their place. Unset, the base
+ * is `/` and every rule reads as it always did.
  *
  * `--built` reads the build instead of the commit: `dist/_redirects` and
  * `dist/_headers`, held strictly to the rules of the base the build was made
  * for. That is the half that proves the build wrote what it says it writes.
+ * `dist/` is read off the disk, not through a sweep subject: every subject the
+ * sweep names is a tree a commit carries, and `dist/` is the one it never does.
  *
  * What it counts is RULES, not files. Every file here passes every assertion
  * below when it is empty, so a run over emptied files would otherwise print
@@ -514,6 +518,70 @@ export function fileRedirectFindings(text, subject = FILE_REDIRECTS, base = '/')
 }
 
 /**
+ * Whether a redirect's `from` answers for the app under `base`: the site root,
+ * the prefix itself, or any path beneath it — the case a splat or a
+ * placeholder in the segment after the prefix makes. A literal segment there
+ * (`/demo/api/*`) names a path of the repository's own.
+ *
+ * The rule `vite.config.ts` refuses a repository's own redirect by, restated
+ * here because a check reads no application module;
+ * `a-path-build-writes-its-hosting-rules.test.mjs` holds the two to one answer.
+ *
+ * @param {string} from
+ * @param {string} base
+ */
+export function answersForTheApp(from, base) {
+  if (from === '/') return true
+  const want = base.split('/').filter(Boolean)
+  const have = from.split('/').filter(Boolean)
+  for (const [index, segment] of want.entries()) {
+    const said = have[index]
+    if (said === undefined) return false
+    if (said === '*') return true
+    if (said !== segment && !said.startsWith(':')) return false
+  }
+  const next = have[want.length]
+  return next === undefined || next === '*' || next.startsWith(':')
+}
+
+/**
+ * A repository's own `_redirects`, under a prefix the build writes rules for.
+ *
+ * The build keeps the file above the rules it writes, drops a line that states
+ * one of them exactly, and refuses any other line that answers a path they are
+ * for. So the file does not have to carry the missing-chunk rule or the
+ * fallback — the build supplies both, in order — and the one finding is the
+ * line the build would refuse, found here before a build is run.
+ *
+ * @param {string} text
+ * @param {string} subject
+ * @param {string} base
+ * @returns {string[]}
+ */
+export function ownRedirectFindings(text, subject, base) {
+  const { toPrefix, missingChunk, fallback } = hostingRules(base)
+  const generated = [toPrefix, missingChunk, fallback]
+  const found = []
+  for (const rule of redirectLinesIn(text)) {
+    const restates = generated.some(
+      (one) =>
+        one.from === rule.from && one.to === rule.to && one.status === rule.status && !rule.force,
+    )
+    if (restates) continue
+    if (!generated.some((one) => one.from === rule.from) && !answersForTheApp(rule.from, base)) {
+      continue
+    }
+    found.push(
+      `${subject}:${rule.line} sends \`${rule.from}\`, which a host reads before the rules a ` +
+        `build under BASE_PATH=${base} writes (${generated.map((one) => one.from).join(', ')}) ` +
+        'and so answers in their place, and the build refuses it. Remove the line; the build ' +
+        'writes the prefixed rules itself.',
+    )
+  }
+  return found
+}
+
+/**
  * The hashed output declares its own long cache — once.
  *
  * @param {ReturnType<typeof headerBlocksIn>} blocks
@@ -626,7 +694,9 @@ export function hostingSweep(root = process.cwd()) {
  * `basePathIn`. Each file is held to the rules of the base it is written for
  * (`baseWrittenFor`): the prefixed set where it names the prefix, the root's
  * where it does not, because the build then writes the prefixed set itself.
- * `judgedAt` is the base `netlify.toml` was held to.
+ * `redirectsAt` is the base `netlify.toml` was held to, and `headersAt` the
+ * base `public/_headers` was. A `public/_redirects` under a prefix is held to
+ * what the build accepts above the rules it writes (`ownRedirectFindings`).
  *
  * @param {{ read: (path: string) => string | null, files: string[] }} walk
  * @param {string} [base]
@@ -635,7 +705,8 @@ export function hostingFindings(walk, base = '/') {
   const tracked = new Set(walk.files)
   const found = []
   let rules = 0
-  let judgedAt = base
+  let redirectsAt = base
+  let headersAt = base
 
   /** Present, committed, or neither — asked of one rule file. */
   const present = (subject, required) => {
@@ -664,27 +735,27 @@ export function hostingFindings(walk, base = '/') {
     const blocks = redirectsIn(config)
     const tomlHeaders = tomlHeaderBlocksIn(config)
     rules += blocks.length + tomlHeaders.length
-    judgedAt = baseWrittenFor(
+    redirectsAt = baseWrittenFor(
       [...blocks.map((block) => block.from), ...tomlHeaders.map((block) => block.path)],
       base,
     )
-    found.push(...orderFindings(blocks, CONFIG, '', judgedAt))
+    found.push(...orderFindings(blocks, CONFIG, '', redirectsAt))
     // `[[headers]]` here does not have to declare the hashed cache — that is
     // `public/_headers`'s one home for it — but a long cache on an unhashed
     // path is the defect wherever it was written down.
-    found.push(...longCacheFindings(tomlHeaders, CONFIG, judgedAt))
+    found.push(...longCacheFindings(tomlHeaders, CONFIG, redirectsAt))
   }
 
   const headers = present(HEADERS, true)
   if (headers !== null) {
     const blocks = headerBlocksIn(headers)
-    const at = baseWrittenFor(
+    headersAt = baseWrittenFor(
       blocks.map((block) => block.path),
       base,
     )
     rules += blocks.length
-    found.push(...hashedCacheFindings(blocks, HEADERS, at))
-    found.push(...longCacheFindings(blocks, HEADERS, at))
+    found.push(...hashedCacheFindings(blocks, HEADERS, headersAt))
+    found.push(...longCacheFindings(blocks, HEADERS, headersAt))
   }
 
   // Optional, and read for anyway: this template ships none, and a repository
@@ -693,19 +764,17 @@ export function hostingFindings(walk, base = '/') {
   if (fileRedirects !== null) {
     const lines = redirectLinesIn(fileRedirects)
     rules += lines.length
+    // Under a prefix the build always writes the prefixed rules below this
+    // file, whatever it is written for, so it is held to what the build
+    // accepts rather than to a whole table of its own.
     found.push(
-      ...fileRedirectFindings(
-        fileRedirects,
-        FILE_REDIRECTS,
-        baseWrittenFor(
-          lines.map((rule) => rule.from),
-          base,
-        ),
-      ),
+      ...(base === '/'
+        ? fileRedirectFindings(fileRedirects, FILE_REDIRECTS, base)
+        : ownRedirectFindings(fileRedirects, FILE_REDIRECTS, base)),
     )
   }
 
-  return { failures: found, rules, judgedAt }
+  return { failures: found, rules, redirectsAt, headersAt }
 }
 
 /** Where a build publishes the redirect file a host reads first. */
@@ -784,19 +853,18 @@ export function builtFindings(read, base = '/') {
  * Pure — it reads, decides, and hands back what it found and how many rules it
  * counted. Nothing here prints or exits.
  *
- * `built` (`--built` on the command line) reads the build in `dist/` instead
- * of the commit: what a host is handed, after a build under `BASE_PATH` has
- * written the prefixed rules into it.
+ * `--built` reads the build in `dist/` instead of the commit: what a host is
+ * handed, after a build under `BASE_PATH` has written the prefixed rules into
+ * it. Those files are read off the disk rather than through a sweep subject,
+ * because every subject `sweep.mjs` names is a tree a commit carries, and
+ * `dist/` is the one tree here a commit never does.
  *
- * @param {string} [root]
+ * @param {string[]} [argv]
  * @param {Record<string, string | undefined>} [env]
- * @param {{ built?: boolean }} [mode]
+ * @param {string} [root]
  */
-export function judge(
-  root = process.cwd(),
-  env = process.env,
-  { built = process.argv.slice(2).includes('--built') } = {},
-) {
+export function judge(argv = process.argv.slice(2), env = process.env, root = process.cwd()) {
+  const built = argv.includes('--built')
   const plural = (count) => `${count} rule${count === 1 ? '' : 's'}`
   if (built) {
     const read = (path) => {
@@ -826,10 +894,13 @@ export function judge(
 
   const walk = hostingSweep(root)
   const base = basePathIn(walk.read(CONFIG), env)
-  const { failures, rules, judgedAt } = hostingFindings(walk, base)
-  const { assets, missingChunk, catchAll } = hostingRules(judgedAt)
+  const { failures, rules, redirectsAt, headersAt } = hostingFindings(walk, base)
+  const { missingChunk, catchAll } = hostingRules(redirectsAt)
+  const { assets } = hostingRules(headersAt)
   const written =
-    judgedAt === base ? '' : ` The build writes the ${base} rules into ${BUILT_REDIRECTS}.`
+    redirectsAt === base && headersAt === base
+      ? ''
+      : ` The build writes the ${base} rules into ${BUILT_REDIRECTS} and ${BUILT_HEADERS}.`
   return {
     what: 'a hosting rule a commit would carry',
     count: rules,

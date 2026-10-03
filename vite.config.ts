@@ -1,5 +1,5 @@
 /// <reference types="vitest/config" />
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'fs'
+import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'fs'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
@@ -190,10 +190,13 @@ export function basePath(value: string | undefined): string {
  *   and are left as they are.
  *
  * A `_redirects` the repository wrote itself is kept, first, so its own rules
- * still apply above the fallback. A rule in it that answers a path the
- * generated rules are for — `/`, or anything that covers the prefix — would
- * answer in their place, and the build refuses it in one line rather than
- * publish a site whose deep links depend on which rule a host met first.
+ * still apply above the fallback. A line that states one of the generated
+ * rules exactly is dropped, since the build writes it below. Any other rule
+ * that answers a path the generated rules are for — `/`, the prefix itself,
+ * or every path under it, through a splat or a `:placeholder` — would answer
+ * in their place, and the build refuses it in one line rather than publish a
+ * site whose deep links depend on which rule a host met first. The rules are
+ * written once, so a file the build wrote passed back in comes out unchanged.
  *
  * The rules are stated here rather than imported because this file is bundled
  * in isolation. The template's hosting check states them too, and the
@@ -201,6 +204,27 @@ export function basePath(value: string | undefined): string {
  * two are one fact.
  */
 const IMMUTABLE = 'public, max-age=31536000, immutable'
+
+/**
+ * Whether a redirect's `from` answers for the app under `base`: the site root,
+ * the prefix itself, or any path beneath it — the case a splat or a
+ * placeholder in the segment after the prefix makes. A literal segment there
+ * (`/demo/api/*`) names a path of the repository's own and answers nothing
+ * else.
+ */
+export function answersForTheApp(from: string, base: string): boolean {
+  if (from === '/') return true
+  const want = base.split('/').filter(Boolean)
+  const have = from.split('/').filter(Boolean)
+  for (const [index, segment] of want.entries()) {
+    const said = have[index]
+    if (said === undefined) return false
+    if (said === '*') return true
+    if (said !== segment && !said.startsWith(':')) return false
+  }
+  const next = have[want.length]
+  return next === undefined || next === '*' || next.startsWith(':')
+}
 
 export function hostRulesUnder(
   base: string,
@@ -212,33 +236,41 @@ export function hostRulesUnder(
     [assets, `${base}assets/:splat`, '404'],
     [`${base}*`, `${base}index.html`, '200'],
   ]
-  const generated = rules.map(([from]) => from)
+  const written = rules.map((rule) => rule.join('  '))
+  const comment = [
+    `# Written by the build for BASE_PATH=${base}: the site root goes on to the`,
+    '# prefix, a hashed chunk the deploy no longer ships answers 404, and every',
+    '# other path under the prefix is the app. Read before netlify.toml.',
+  ]
 
+  const kept: string[] = []
   for (const [index, raw] of (own.redirects ?? '').split('\n').entries()) {
     const line = raw.trim()
-    if (!line || line.startsWith('#')) continue
-    const from = line.split(/\s+/)[0]
-    const covers = from.endsWith('*') && base.startsWith(from.slice(0, -1))
-    if (!generated.includes(from) && !covers) continue
+    if (comment.includes(line)) continue
+    if (!line || line.startsWith('#')) {
+      kept.push(raw)
+      continue
+    }
+    const [from, to, status] = line.split(/\s+/)
+    if (rules.some((rule) => rule.join(' ') === [from, to, status].join(' '))) continue
+    if (!rules.some(([generated]) => generated === from) && !answersForTheApp(from, base)) {
+      kept.push(raw)
+      continue
+    }
     throw new Error(
       `public/_redirects line ${index + 1} sends ${from}, which a host reads before the rules ` +
-        `this build writes for BASE_PATH=${base} (${generated.join(', ')}) and so answers in ` +
-        'their place. Remove the line; the build writes the prefixed rules itself.',
+        `this build writes for BASE_PATH=${base} (${rules.map(([one]) => one).join(', ')}) and ` +
+        'so answers in their place. Remove the line; the build writes the prefixed rules itself.',
     )
   }
 
-  const kept = own.redirects ? `${own.redirects.replace(/\n*$/, '')}\n\n` : ''
-  const redirects =
-    `${kept}# Written by the build for BASE_PATH=${base}: the site root goes on to the\n` +
-    '# prefix, a hashed chunk the deploy no longer ships answers 404, and every\n' +
-    '# other path under the prefix is the app. Read before netlify.toml.\n' +
-    rules.map((rule) => rule.join('  ')).join('\n') +
-    '\n'
+  const before = kept.join('\n').trim()
+  const redirects = `${before ? `${before}\n\n` : ''}${[...comment, ...written].join('\n')}\n`
 
-  const lines = (own.headers ?? '').split('\n')
   const block = `${assets}\n  Cache-Control: ${IMMUTABLE}\n`
+  const lines = (own.headers ?? '').split('\n')
   let headers: string
-  if (own.headers === null) headers = block
+  if (!own.headers?.trim()) headers = block
   else if (lines.some((line) => line.trimEnd() === assets)) headers = own.headers
   else if (lines.some((line) => line.trimEnd() === '/assets/*')) {
     headers = lines.map((line) => (line.trimEnd() === '/assets/*' ? assets : line)).join('\n')
@@ -272,9 +304,14 @@ function hostFilesAtPublishRoot(base: string): Plugin[] {
       name: 'host-files-at-publish-root',
       apply: 'build',
       closeBundle() {
+        // Only `dist/<prefix>/` is emptied before a build under a prefix, so
+        // a previous build's files at the root are still there. A file the
+        // repository does not ship this time is one to remove, not to read
+        // back as if the repository had written it.
         for (const file of HOST_FILES) {
           const nested = path.join(publishRoot, base, file)
           if (existsSync(nested)) renameSync(nested, at(file))
+          else rmSync(at(file), { force: true })
         }
         const written = hostRulesUnder(base, {
           redirects: read('_redirects'),
